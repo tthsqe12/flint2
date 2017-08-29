@@ -45,8 +45,8 @@ void mpoly_search_monomials(
         fscore is score(fexp)
         ditto for g and h
 
-        we always maintain paths f, h, g with corresponding exponents
-        fexp > hexp > gexp. example:
+        We always maintain paths f, h, g with corresponding exponents
+        fexp > hexp > gexp. These paths are non-increasing. Example:
 
             b_len |
                   |
@@ -58,7 +58,7 @@ void mpoly_search_monomials(
                   |               _____
              f => |_______
                   |       _______
-                0 +--------------------
+                0 +--------------______
                   0                   a_len
     */
     slong fscore, gscore, hscore, tscore;

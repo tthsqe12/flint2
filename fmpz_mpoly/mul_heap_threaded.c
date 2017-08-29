@@ -518,7 +518,7 @@ slong _fmpz_mpoly_mul_heap_threaded(fmpz ** poly1, ulong ** exp1, slong * alloc,
                  const fmpz * coeff3, const ulong * exp3, slong len3,
                                            slong N, ulong maskhi, ulong masklo)
 {
-    slong i, j, k;
+    slong i, j, k, ndivs2;
     pthread_t * threads;
     mul_heap_threaded_arg_t * args;
     mul_heap_threaded_base_t * base;
@@ -540,15 +540,17 @@ slong _fmpz_mpoly_mul_heap_threaded(fmpz ** poly1, ulong ** exp1, slong * alloc,
     base->masklo = masklo;
     base->idx = base->ndivs;    /* decremented by worker threads */
 
+    ndivs2 = base->ndivs*base->ndivs;
+
     divs    = flint_malloc(sizeof(mul_heap_threaded_div_t) * base->ndivs);
     threads = flint_malloc(sizeof(pthread_t) * base->nthreads);
     args    = flint_malloc(sizeof(mul_heap_threaded_arg_t) * base->nthreads);
 
-    for (i = 0; i < base->ndivs; i++)
+    for (i = base->ndivs - 1; i >= 0; i--)
     {
         /* divisions decrease in size so that no worker finishes too early */
-        divs[i].lower = ((i + 1)*(i + 1)*len2*len3) / (base->ndivs*base->ndivs);
-        divs[i].upper = ((i + 1)*(i + 1)*len2*len3) / (base->ndivs*base->ndivs);
+        divs[i].lower = (i + 1)*(i + 1)*len2*len3/ndivs2;
+        divs[i].upper = (i + 1)*(i + 1)*len2*len3/ndivs2;
 
         divs[i].line = NULL;
         divs[i].exp = (ulong *) flint_malloc(N*sizeof(ulong));
@@ -556,18 +558,26 @@ slong _fmpz_mpoly_mul_heap_threaded(fmpz ** poly1, ulong ** exp1, slong * alloc,
         divs[i].t2 = (slong *) flint_malloc(len2*sizeof(slong));
         divs[i].t3 = (slong *) flint_malloc(len2*sizeof(slong));
 
-        divs[i].len1   = 0;
-        if (i + 1 < base->ndivs)
+        divs[i].len1 = 0;
+        k = 0; /* avoid bogus warning */
+        if (i == base->ndivs - 1)
         {
-            /* lower divisions write to a new worker poly */
-            divs[i].alloc1 = len2 + len3/base->ndivs;
-            divs[i].exp1 = (ulong *) flint_malloc(divs[i].alloc1*N*sizeof(ulong)); 
-            divs[i].coeff1 = (fmpz *) flint_calloc(divs[i].alloc1, sizeof(fmpz));
-        } else {
             /* highest division writes to original poly */
             divs[i].alloc1 = *alloc;
             divs[i].exp1 = *exp1;
             divs[i].coeff1 = *poly1;
+            /* keep this many coeffs from original poly */
+            k = (ndivs2 - i*i)*(*alloc)/ndivs2;
+        } else {
+            /* lower divisions write to a new worker poly */
+            divs[i].alloc1 = len2 + len3/base->ndivs;
+            divs[i].exp1 = (ulong *) flint_malloc(divs[i].alloc1*N*sizeof(ulong)); 
+            divs[i].coeff1 = (fmpz *) flint_calloc(divs[i].alloc1, sizeof(fmpz));
+            /* try to take this many coeffs from original poly */
+            for (j = 0; j < divs[i].alloc1
+                   && k < *alloc
+                   && k < (ndivs2 - i*i)*(*alloc) / ndivs2; j++, k++)
+                fmpz_swap(*poly1 + k, divs[i].coeff1 + j);
         }
     }
 
@@ -579,7 +589,7 @@ slong _fmpz_mpoly_mul_heap_threaded(fmpz ** poly1, ulong ** exp1, slong * alloc,
                             divs[i].t1, divs[i].t2, divs[i].t3,
                             divs[i].lower, divs[i].lower,
                             base->exp2, base->len2, base->exp3, base->len3,
-                                     base->N, base->maskhi, base->masklo);
+                                          base->N, base->maskhi, base->masklo);
     }
 
     /* do the multiplications in parallel */
@@ -597,7 +607,7 @@ slong _fmpz_mpoly_mul_heap_threaded(fmpz ** poly1, ulong ** exp1, slong * alloc,
     pthread_mutex_destroy(&base->mutex);
 
     /* concatenate the outputs */ 
-    k = 0;
+    k = 0; /* avoid bogus warning */
     for (i = base->ndivs - 1; i >= 0; i--)
     {
         flint_free(divs[i].t3);
