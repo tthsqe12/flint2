@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2016 William Hart
+    Copyright (C) 2017 Luca De Feo
 
     This file is part of FLINT.
 
@@ -9,12 +9,12 @@
     (at your option) any later version.  See <http://www.gnu.org/licenses/>.
 */
 
+#ifdef T
+
+#include "templates.h"
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <gmp.h>
-#include "flint.h"
-#include "mpoly.h"
-#include "ulong_extras.h"
 
 int
 main(void)
@@ -22,17 +22,31 @@ main(void)
     int i;
     FLINT_TEST_INIT(state);
 
-    flint_printf("void....");
+    flint_printf("assignments... ");
     fflush(stdout);
 
-    /* Check aliasing of a and c */
-    for (i = 0; i < 1000 * flint_test_multiplier(); i++)
+    /* Check that gen does not segfault */
+    for (i = 0; i < 100 * flint_test_multiplier(); i++)
     {
+        TEMPLATE(T, ctx_t) ctx;
+        TEMPLATE(T, t) x;
+
+        TEMPLATE(T, ctx_randtest)(ctx, state);
+        
+        TEMPLATE(T, init)(x, ctx);
+
+        TEMPLATE(T, gen)(x, ctx);
+
+        TEMPLATE(T, clear)(x, ctx);
+
+        TEMPLATE(T, ctx_clear)(ctx);
     }
 
     FLINT_TEST_CLEANUP(state);
-    
     flint_printf("PASS\n");
-    return 0;
+    return EXIT_SUCCESS;
 }
 
+
+
+#endif

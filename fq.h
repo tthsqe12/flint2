@@ -69,6 +69,11 @@ FLINT_DLL void fq_ctx_randtest_reducible(fq_ctx_t ctx, flint_rand_t state);
 
 FLINT_DLL void fq_ctx_clear(fq_ctx_t ctx);
 
+FQ_INLINE const fmpz_mod_poly_struct* fq_ctx_modulus(const fq_ctx_t ctx)
+{
+    return ctx->modulus;
+}
+
 FQ_INLINE slong fq_ctx_degree(const fq_ctx_t ctx)
 {
     return ctx->modulus->length - 1;
@@ -304,6 +309,7 @@ FQ_INLINE void fq_gen(fq_t rop, const fq_ctx_t ctx)
 {
     if (ctx->modulus->length == 2)
     {
+	fmpz_poly_fit_length(rop, 1);
         fmpz_invmod(rop->coeffs, ctx->modulus->coeffs + 1, fq_ctx_prime(ctx));
         fmpz_neg(rop->coeffs, rop->coeffs);
         fmpz_mul(rop->coeffs, rop->coeffs, ctx->modulus->coeffs);
