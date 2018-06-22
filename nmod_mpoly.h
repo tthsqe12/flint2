@@ -99,17 +99,7 @@ typedef struct
 
 typedef nmod_mpoly_struct nmod_mpoly_t[1];
 
-/* sparse univariates with multivariate coefficients */
-typedef struct
-{
-   nmod_mpoly_struct * coeffs; /* multivariate coefficients */
-   ulong * exps;
-   slong alloc;
-   slong length;
-   slong var; /* univariate variable number */
-} nmod_mpoly_univar_struct;
 
-typedef nmod_mpoly_univar_struct nmod_mpoly_univar_t[1];
 
 
 /*
@@ -508,7 +498,7 @@ void nmod_mpoly_compose(nmod_mpoly_t res, nmod_mpoly_t poly1,
     nmod_mpoly_struct ** polys2, nmod_mpoly_ctx_t ctx1, nmod_mpoly_ctx_t ctx2);
 */
 /* Univariates ***************************************************************/
-
+/*
 FLINT_DLL void nmod_mpoly_univar_init(nmod_mpoly_univar_t poly,
                                                    const nmod_mpoly_ctx_t ctx);
 
@@ -562,7 +552,7 @@ FLINT_DLL void _nmod_mpoly_univar_pgcd(nmod_mpoly_univar_t poly1,
 FLINT_DLL void _nmod_mpoly_univar_pgcd_ducos(nmod_mpoly_univar_t poly1,
             const nmod_mpoly_univar_t polyP, const nmod_mpoly_univar_t polyQ,
                                                    const nmod_mpoly_ctx_t ctx);
-
+*/
 /* terms *********************************************************************/
 
 FLINT_DLL void _nmod_mpoly_radix_sort1(nmod_mpoly_t A, slong left, slong right,
@@ -699,6 +689,9 @@ FLINT_DLL int fq_nmod_mpolyd_gcd_brown_smprime(fq_nmod_mpolyd_t G,
 FLINT_DLL int nmod_mpoly_gcd_brown(nmod_mpoly_t G,
                                const nmod_mpoly_t A, const nmod_mpoly_t B,
                                                    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int nmod_mpoly_gcd_zippel(nmod_mpoly_t G, nmod_mpoly_t A,
+                                   nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
 
 /* Reduction *****************************************************************/
 

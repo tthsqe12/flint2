@@ -45,7 +45,7 @@ _nmod_mpoly_fprint_pretty(FILE * file, const mp_limb_t * coeff, const ulong * ex
         for (i = 0; i < mctx->nvars; i++)
         {
             x[i] = (char *) TMP_ALLOC(((FLINT_BITS+4)/3)*sizeof(char));
-            flint_sprintf(x[i], "x%wd", i + 1);
+            flint_sprintf(x[i], "x%wd", i);
         }
     }
 
