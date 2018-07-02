@@ -23,16 +23,25 @@ main(void)
     {
         nmod_mpoly_ctx_t ctx;
         nmod_mpoly_t a, b, g;
-        const char* vars[] = {"x","y"};
+        const char* vars[] = {"X","x1","x0"};
 
-        nmod_mpoly_ctx_init(ctx, 2, ORD_DEGREVLEX, 101);
+        nmod_mpoly_ctx_init(ctx, 3, ORD_DEGREVLEX, 101);
         nmod_mpoly_init(a, ctx);
         nmod_mpoly_init(b, ctx);
         nmod_mpoly_init(g, ctx);
-        nmod_mpoly_set_str_pretty(a, "(1+x^5+(x^4+1)*y^6)*(x+2*y+3)", vars, ctx);
-        nmod_mpoly_set_str_pretty(b, "(1+x^5+(x^4+1)*y^6)*(x+4*y+5)", vars, ctx);
+        nmod_mpoly_set_str_pretty(a, "(x0+x1)*((x0^2+x0+x1)*X^2 + (x1+2)*x0^2 + x1^5+15)*(x0^3 + X + 2*x1 + 3*x0)", vars, ctx);
+        nmod_mpoly_set_str_pretty(b, "(x0+x1)*((x0^2+x0+x1)*X^2 + (x1+2)*x0^2 + x1^5+15)*(x0^2 + X + 4*x1 + 5*x0)", vars, ctx);
 
         nmod_mpoly_gcd_zippel(g, a, b, ctx);
+        nmod_mpoly_assert_canonical(g, ctx);
+
+printf("g: "); nmod_mpoly_print_pretty(g, vars, ctx); printf("\n");
+
+        nmod_mpoly_gcd_brown(g, a, b, ctx);
+        nmod_mpoly_assert_canonical(g, ctx);
+
+printf("g: "); nmod_mpoly_print_pretty(g, vars, ctx); printf("\n");
+
 
         nmod_mpoly_clear(g, ctx);
         nmod_mpoly_clear(a, ctx);
@@ -40,7 +49,7 @@ main(void)
         nmod_mpoly_ctx_clear(ctx);
     }
 
-    for (i = 0; i < 10 * flint_test_multiplier(); i++)
+    for (i = 0; i < 0*10 * flint_test_multiplier(); i++)
     {
         nmod_mpoly_ctx_t ctx;
         nmod_mpoly_t a, b, g, ca, cb, cg, t;
@@ -92,8 +101,6 @@ flint_printf("modulus: %wu\n", modulus);
             nmod_mpoly_randtest_bits(g, state, len, FLINT_BITS, ctx);
 
             res = nmod_mpoly_gcd_zippel(g, a, b, ctx);
-
-assert(modulus != 29);
 
             if (!res)
             {

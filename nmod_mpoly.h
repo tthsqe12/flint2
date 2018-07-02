@@ -693,6 +693,87 @@ FLINT_DLL int nmod_mpoly_gcd_brown(nmod_mpoly_t G,
 FLINT_DLL int nmod_mpoly_gcd_zippel(nmod_mpoly_t G, nmod_mpoly_t A,
                                    nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
 
+
+
+
+/*
+    nmod_mpolyu_t
+    sparse univariates with nmod_mpoly_t coefficients
+*/
+typedef struct
+{
+   nmod_mpoly_struct * coeffs;
+   ulong * exps;
+   slong alloc;
+   slong length;
+   mp_bitcnt_t bits;    /* default bits to construct coeffs */
+} nmod_mpolyu_struct;
+typedef nmod_mpolyu_struct nmod_mpolyu_t[1];
+
+/*
+    nmod_mpolyn_t
+    multivariates with nmod_poly_t coefficients
+*/
+typedef struct
+{
+   nmod_poly_struct * coeffs;
+   ulong * exps;
+   slong alloc;
+   slong length;
+   slong bits;
+} nmod_mpolyn_struct;
+typedef nmod_mpolyn_struct nmod_mpolyn_t[1];
+
+/*
+    nmod_mpolyun_t
+    sparse univariates with nmod_mpolyn_t coefficients
+*/
+typedef struct
+{
+    nmod_mpolyn_struct * coeffs;
+    ulong * exps;
+    slong alloc;
+    slong length;
+    mp_bitcnt_t bits;   /* default bits to construct coeffs */
+} nmod_mpolyun_struct;
+typedef nmod_mpolyun_struct nmod_mpolyun_t[1];
+
+/*
+    info related to zippel interpolation
+*/
+typedef struct
+{
+    slong nvars;
+    slong * Adegs;
+    slong * Bdegs;
+    slong * perm;
+} mpoly_zipinfo_struct;
+typedef mpoly_zipinfo_struct mpoly_zipinfo_t[1];
+
+void mpoly_zipinfo_init(mpoly_zipinfo_t zinfo, slong nvars);
+
+void mpoly_zipinfo_clear(mpoly_zipinfo_t zinfo);
+
+int nmod_mpolyu_pgcd_zippel_rmcontent(
+    nmod_mpolyu_t G,
+    nmod_mpolyu_t A,
+    nmod_mpolyu_t B,
+    slong var,
+    nmod_mpoly_ctx_t ctx,
+    mpoly_zipinfo_t zinfo,
+    flint_rand_t randstate);
+
+int nmod_mpoly_gcd_zippel_keepbits(
+    nmod_mpoly_t G,
+    nmod_mpoly_t A,
+    nmod_mpoly_t B,
+    const nmod_mpoly_ctx_t ctx);
+
+
+
+
+
+
 /* Reduction *****************************************************************/
 
 FLINT_DLL slong

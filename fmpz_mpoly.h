@@ -827,6 +827,9 @@ FLINT_DLL int fmpz_mpoly_discriminant(fmpz_mpoly_t poly1,
 FLINT_DLL int fmpz_mpoly_gcd_brown(fmpz_mpoly_t poly1, const fmpz_mpoly_t poly2,
                          const fmpz_mpoly_t poly3, const fmpz_mpoly_ctx_t ctx);
 
+FLINT_DLL int fmpz_mpoly_gcd_zippel(fmpz_mpoly_t G, fmpz_mpoly_t A, fmpz_mpoly_t B, const fmpz_mpoly_ctx_t ctx);
+
+
 /* Reduction *****************************************************************/
 
 FLINT_DLL slong
