@@ -1871,7 +1871,7 @@ flint_printf("f: "); nmod_mpolyu_print_pretty(f, NULL, ctx); flint_printf("\n");
     l = l / (f->length - 1);
     l = FLINT_MAX(l, (f->coeffs + f->length - 1)->length);
 
-flint_printf("l: %d\n", l);
+//flint_printf("l: %d\n", l);
 
 
     alpha = (mp_limb_t *) TMP_ALLOC(var*sizeof(mp_limb_t));
@@ -1916,9 +1916,9 @@ pick_evaluation_point:
         alpha[i] = UWORD(2) + n_randint(randstate, ctx->ffinfo->mod.n - UWORD(2));
     }
 
-for (i = 0; i <var; i++) {
-flint_printf("-------------------------evaluation_point  x%d: %d\n",i,alpha[i]);
-}
+//for (i = 0; i <var; i++) {
+//flint_printf("-------------------------evaluation_point  x%d: %d\n",i,alpha[i]);
+//}
 
 
     /* store bit masks for each power of two of the non-main variables */
@@ -1946,9 +1946,9 @@ printf("entry[%d]:  off = %d  mask = %016llx  power = %d\n", i, offs[i], masks[i
     nmod_mpolyu_evalsk(Bevalsk1, B, entries, offs, masks, powers, ctx);
     nmod_mpolyu_evalsk(fevalsk1, f, entries, offs, masks, powers, ctx);
 
-printf("Aevalsk1: "); nmod_mpolyu_print_pretty(Aevalsk1, NULL, ctx); printf("\n");
-printf("Bevalsk1: "); nmod_mpolyu_print_pretty(Bevalsk1, NULL, ctx); printf("\n");
-printf("fevalsk1: "); nmod_mpolyu_print_pretty(fevalsk1, NULL, ctx); printf("\n");
+//printf("Aevalsk1: "); nmod_mpolyu_print_pretty(Aevalsk1, NULL, ctx); printf("\n");
+//printf("Bevalsk1: "); nmod_mpolyu_print_pretty(Bevalsk1, NULL, ctx); printf("\n");
+//printf("fevalsk1: "); nmod_mpolyu_print_pretty(fevalsk1, NULL, ctx); printf("\n");
 
 
     for (i = 0; i < l; i++)
@@ -1977,11 +1977,11 @@ printf("fevalsk1: "); nmod_mpolyu_print_pretty(fevalsk1, NULL, ctx); printf("\n"
         lc_ok = lc_ok && nmod_mpolyu_evalfromsk(Aeval, A, Aevalski, ctx);
         lc_ok = lc_ok && nmod_mpolyu_evalfromsk(Beval, B, Bevalski, ctx);
 
-printf("Aeval: "); nmod_poly_print_pretty(Aeval, "X"); printf("\n");
-printf("Beval: "); nmod_poly_print_pretty(Beval, "X"); printf("\n");
+//printf("Aeval: "); nmod_poly_print_pretty(Aeval, "X"); printf("\n");
+//printf("Beval: "); nmod_poly_print_pretty(Beval, "X"); printf("\n");
 
         nmod_poly_gcd(Geval, Aeval, Beval);
-printf("Geval: "); nmod_poly_print_pretty(Geval, "X"); printf("\n");
+//printf("Geval: "); nmod_poly_print_pretty(Geval, "X"); printf("\n");
 
 
         k = nmod_poly_length(Geval);
@@ -2019,7 +2019,7 @@ flint_printf("W[%d]: %d\n", j, W[j]);
 
     for (S = 0; S < f->length; S++)
     {
-flint_printf("starting S = %d\n",S);
+//flint_printf("starting S = %d\n",S);
 
         s = d[S];
         if (!ML_is_initialized[s])
@@ -2048,18 +2048,18 @@ flint_printf("starting S = %d\n",S);
 
         }
 
-flint_printf("ML[%d]:\n", s);
-nmod_mat_print_pretty(ML+s);
-printf("\n");
+//flint_printf("ML[%d]:\n", s);
+//nmod_mat_print_pretty(ML+s);
+//printf("\n");
 
 
 
         nmod_mat_rref(ML + s);
 
-printf("after rref ");
-flint_printf("ML[%d]:\n", s);
-nmod_mat_print_pretty(ML+s);
-printf("\n");
+//printf("after rref ");
+//flint_printf("ML[%d]:\n", s);
+//nmod_mat_print_pretty(ML+s);
+//printf("\n");
 
 
         for (i = 0; i < (f->coeffs + s)->length; i++)
@@ -2084,11 +2084,10 @@ printf("\n");
 
         nullity = l - nmod_mat_rref(MF);
 
-printf("rref MF:\n");
-nmod_mat_print_pretty(MF);
-printf("\n");
-
-flint_printf("nullity: %d\n",nullity);
+//printf("rref MF:\n");
+//nmod_mat_print_pretty(MF);
+//printf("\n");
+//flint_printf("nullity: %d\n",nullity);
 
 
         if (nullity == 0)
@@ -2119,9 +2118,9 @@ flint_printf("nullity: %d\n",nullity);
     nullity = nmod_mat_nullspace(Msol, MF);
     FLINT_ASSERT(nullity == 1);
 
-printf("Msol:\n");
-nmod_mat_print_pretty(Msol);
-printf("\n");
+//printf("Msol:\n");
+//nmod_mat_print_pretty(Msol);
+//printf("\n");
 
     nmod_mpolyu_set(G, f, ctx);
 
