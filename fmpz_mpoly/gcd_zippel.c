@@ -816,9 +816,54 @@ done:
 
 
 
+void fmpz_mpoly_remove_fmpz_content(fmpz_mpoly_t A, fmpz_mpoly_t B, fmpz_t g, fmpz_mpoly_ctx_t ctx)
+{
+    slong i;
+    slong N;
 
+    FLINT_ASSERT(B->bits == A->bits);
 
+    fmpz_mpoly_fit_length(A, B->length, ctx);
+    N = mpoly_words_per_exp(B->bits, ctx->minfo);
+    for (i = 0; i < B->length; i++)
+    {
+        mpoly_monomial_set(A->exps + N*i, B->exps + N*i, N);
+        fmpz_divexact(A->coeffs + i, B->coeffs + i, g);
+    }
+    A->length = B->length;
+}
 
+void fmpz_mpolyu_remove_fmpz_content(fmpz_mpolyu_t A, fmpz_mpolyu_t B, fmpz_mpoly_ctx_t ctx)
+{
+    slong i, j;
+    fmpz_t g;
+
+    FLINT_ASSERT(A->bits == B->bits);
+    fmpz_mpolyu_fit_length(A, B->length, ctx);
+
+    fmpz_init_set_si(g, WORD(0));
+
+    for (i = 0; i < B->length; i++)
+    {
+        for (j = 0; j < (B->coeffs + i)->length; j++)
+        {
+            fmpz_gcd(g, g, (B->coeffs + i)->coeffs + j);
+            if (fmpz_is_one(g))
+                break;
+        }
+    }
+
+    FLINT_ASSERT(!fmpz_is_zero(g));
+
+    for (i = 0; i < B->length; i++)
+    {
+        A->exps[i] = B->exps[i];
+        fmpz_mpoly_remove_fmpz_content(A->coeffs + i, B->coeffs + i, g, ctx);
+    }
+    A->length = B->length;
+
+    fmpz_clear(g);
+}
 
 
 void nmod_mpoly_ctx_change_modulus(nmod_mpoly_ctx_t ctx, mp_limb_t modulus)
@@ -838,7 +883,7 @@ int fmpz_mpolyu_gcd_zippel_linzipm(
     flint_rand_t randstate)
 {
     int success, changed;
-    mp_limb_t p = UWORD(100), old_p, t, gammap;
+    mp_limb_t p = UWORD(1) << (FLINT_BITS - 1), old_p, t, gammap;
     fmpz_t gamma, pp, gammapp, m;
     nmod_mpolyu_t Ap, Bp, Gp, Gform;
     fmpz_mpolyu_t H;
@@ -849,6 +894,7 @@ flint_printf("**********fmpz_mpolyu_gcd_zippel_linzipm *******\n");
 flint_printf("A: "); fmpz_mpolyu_print_pretty(A, NULL, ctx); flint_printf("\n");
 flint_printf("B: "); fmpz_mpolyu_print_pretty(B, NULL, ctx); flint_printf("\n");
 
+usleep(100000);
 
     fmpz_init(pp);
     fmpz_init(gammapp);
@@ -905,12 +951,14 @@ choose_prime:
         goto finished;
     }
 
+    printf("           Gp: "); nmod_mpolyu_print_pretty(Gp, NULL, ctxp); printf("\n");
+
     nmod_mpolyu_setform(Gform, Gp, ctxp);
     fmpz_mpolyu_set_nmod_mpolyu(H, ctx, Gp, ctxp);
     fmpz_set_ui(m, p);
 
 
-//    printf("fmpz H: "); fmpz_mpolyu_print_pretty(H, NULL, ctx); printf("\n");
+    printf("fmpz H: "); fmpz_mpolyu_print_pretty(H, NULL, ctx); printf("\n");
 
 
 choose_prime_inner:
@@ -921,6 +969,10 @@ choose_prime_inner:
         success = 0;
         goto finished;
     }
+
+flint_printf("p: %wd\n", p);
+
+usleep(100000);
 
     nmod_mpoly_ctx_change_modulus(ctxp, p);
 
@@ -938,27 +990,35 @@ choose_prime_inner:
     t = nmod_mul(t, gammap, ctxp->ffinfo->mod);
     nmod_mpolyu_scalar_mul_nmod(Gp, t, ctxp);
 
-//    printf("before fmpz H: "); fmpz_mpolyu_print_pretty(H, NULL, ctx); printf("\n");
-//    printf("before     Gp: "); nmod_mpolyu_print_pretty(Gp, NULL, ctxp); printf("\n");
+    printf("           Gp: "); nmod_mpolyu_print_pretty(Gp, NULL, ctxp); printf("\n");
+
+usleep(100000);
+
+    printf("before fmpz H: "); fmpz_mpolyu_print_pretty(H, NULL, ctx); printf("\n");
 
 
     changed = fmpz_mpolyu_CRT_nmod_mpolyu(H, ctx, m, Gp, ctxp);
 
-//    printf(" after fmpz H: "); fmpz_mpolyu_print_pretty(H, NULL, ctx); printf("\n");
+    fmpz_mul_ui(m, m, p);
+    printf(" after fmpz H: "); fmpz_mpolyu_print_pretty(H, NULL, ctx); printf("\n");
 
 
     if (changed)
         goto choose_prime_inner;
 
-//    printf("candidate G: "); fmpz_mpolyu_print_pretty(H, NULL, ctx); printf("\n");
 
-    if (!fmpz_mpolyu_divides(A, H, ctx)
-                 || !fmpz_mpolyu_divides(B, H, ctx))
+    flint_printf("nvars: %d\n", ctx->minfo->nvars);
+    flint_printf("          A: "); fmpz_mpolyu_print_pretty(A, NULL, ctx); flint_printf("\n");
+    flint_printf("          B: "); fmpz_mpolyu_print_pretty(B, NULL, ctx); flint_printf("\n");
+    flint_printf("candidate G: "); fmpz_mpolyu_print_pretty(H, NULL, ctx); printf("\n");
+
+    fmpz_mpolyu_remove_fmpz_content(G, H, ctx);
+
+    if (!fmpz_mpolyu_divides(A, G, ctx) || !fmpz_mpolyu_divides(B, G, ctx))
     {
         flint_printf("fmpz division failed\n");
         goto choose_prime_inner;
     }
-    fmpz_mpolyu_swap(G, H, ctx);
     success = 1;
     goto finished;
 
@@ -1140,7 +1200,6 @@ int fmpz_mpolyu_gcd_zippel(
     if (!success)
         return 0;
 
-
     fmpz_mpolyu_mul_mpoly(G, Gbar, content, ctx);
 
     fmpz_mpolyu_clear(Abar, ctx);
@@ -1298,6 +1357,7 @@ flint_printf("(%d) +uu+ G(%wd): ",ctx->minfo->nvars, G->bits); fmpz_mpoly_print_
     for (slong i = 0; i < ctx->minfo->nvars; i++)
     {
         zinfo->perm[i] = ctx->minfo->nvars - 1 - i;
+        zinfo->perm[i] = i;
     }
 
 

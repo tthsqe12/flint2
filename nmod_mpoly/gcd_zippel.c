@@ -2199,7 +2199,7 @@ finished:
     nmod_poly_clear(Beval);
     nmod_poly_clear(Geval);
 
-printf("    sgcd returning (%d) G: ", success); nmod_mpolyu_print_pretty(G, NULL, ctx); printf("\n");
+//printf("    sgcd returning (%d) G: ", success); nmod_mpolyu_print_pretty(G, NULL, ctx); printf("\n");
 
     TMP_END;
     return success;
@@ -3319,9 +3319,9 @@ int nmod_mpolyu_gcd_zippel_linzipp(
     FLINT_ASSERT(G->bits == A->bits);
     FLINT_ASSERT(G->bits == B->bits);
 
-//flint_printf("**********nmod_mpolyu_gcd_zippel_linzipp var = %d *********\n", var);
-//flint_printf("A: "); nmod_mpolyu_print_pretty(A, NULL, ctx); flint_printf("\n");
-//flint_printf("B: "); nmod_mpolyu_print_pretty(B, NULL, ctx); flint_printf("\n");
+flint_printf("**********nmod_mpolyu_gcd_zippel_linzipp var = %d *********\n", var);
+flint_printf("A: "); nmod_mpolyu_print_pretty(A, NULL, ctx); flint_printf("\n");
+flint_printf("B: "); nmod_mpolyu_print_pretty(B, NULL, ctx); flint_printf("\n");
 
     FLINT_ASSERT(A->length > 0);
     FLINT_ASSERT(B->length > 0);
@@ -3601,6 +3601,10 @@ finished:
     nmod_mpolyun_clear(Bn, ctx);
     nmod_mpolyun_clear(H, ctx);
     nmod_mpolyun_clear(Ht, ctx);
+
+flint_printf("**********nmod_mpolyu_gcd_zippel_linzipp var = %d *********\n", var);
+flint_printf("G: "); nmod_mpolyu_print_pretty(G, NULL, ctx); flint_printf("\n");
+
 
     return success;
 }
