@@ -43,7 +43,7 @@ _fmpz_mpoly_fprint_pretty(FILE * file, const fmpz * poly,
       for (i = 0; i < mctx->nvars; i++)
       {
          x[i] = (char *) TMP_ALLOC(22*sizeof(char));
-         flint_sprintf(x[i], "x%wd", i + 1);
+         flint_sprintf(x[i], "x%wd", i);
       }
    }
 

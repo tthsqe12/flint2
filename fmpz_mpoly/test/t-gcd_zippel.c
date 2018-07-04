@@ -29,13 +29,13 @@ main(void)
         fmpz_mpoly_init(a, ctx);
         fmpz_mpoly_init(b, ctx);
         fmpz_mpoly_init(g, ctx);
-        fmpz_mpoly_set_str_pretty(a, "-6*(1+x0)*(x1*X^2+1)*(x0^3 + X + 2*x1 + 3*x0)", vars, ctx);
-        fmpz_mpoly_set_str_pretty(b, "-4*(1+x0)*(x1*X^2+1)*(x0^2 + X + 4*x1 + 5*x0)", vars, ctx);
+        fmpz_mpoly_set_str_pretty(a, "-6*(1+x0)*(1+x1)*((x1+x0^2)*X^2-3*x0^5*x1^6+x1+200*x0)*(x0^3 + X + 2*x1 + 3*x0)", vars, ctx);
+        fmpz_mpoly_set_str_pretty(b, "-4*(1+x0)*(1+x1)*((x1+x0^2)*X^2-3*x0^5*x1^6+x1+200*x0)*(x0^2 + X + 4*x1 + 5*x0)", vars, ctx);
 
         fmpz_mpoly_gcd_zippel(g, a, b, ctx);
         fmpz_mpoly_assert_canonical(g, ctx);
 
-printf("fmpz_mpoly_gcd_zippel g: "); fmpz_mpoly_print_pretty(g, vars, ctx); printf("\n");
+printf("g: "); fmpz_mpoly_print_pretty(g, vars, ctx); printf("\n");
 
         fmpz_mpoly_gcd_brown(g, a, b, ctx);
         fmpz_mpoly_assert_canonical(g, ctx);
