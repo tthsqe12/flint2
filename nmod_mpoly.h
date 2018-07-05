@@ -374,6 +374,8 @@ int nmod_mpoly_is_one(const nmod_mpoly_t poly, const nmod_mpoly_ctx_t ctx)
    return nmod_mpoly_equal_ui(poly, 1, ctx);
 }
 
+FLINT_DLL int nmod_mpoly_is_nmod(const nmod_mpoly_t poly, const nmod_mpoly_ctx_t ctx);
+
 FLINT_DLL int nmod_mpoly_is_gen(const nmod_mpoly_t poly,
                                           slong k, const nmod_mpoly_ctx_t ctx);
 

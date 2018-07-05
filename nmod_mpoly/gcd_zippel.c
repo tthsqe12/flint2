@@ -1792,6 +1792,8 @@ int nmod_mpolyu_sgcd_zippel(
     nmod_mat_struct * M, * ML;
     nmod_mat_t MF, Mwindow, Msol;
     int lc_ok;
+    int underdeterminedcount = 0;
+    int exceededcount = 0;
     int success;
     int * ML_is_initialized;
     slong i, j, k, s, S, nullity;
@@ -1872,9 +1874,9 @@ flint_printf("    f: "); nmod_mpolyu_print_pretty(f, NULL, ctx); flint_printf("\
     }
     l = l / (f->length - 1);
     l = FLINT_MAX(l, (f->coeffs + d[f->length - 1])->length);
-
-//flint_printf("l: %d\n", l);
-
+/*
+flint_printf("l: %d\n", l);
+*/
 
     alpha = (mp_limb_t *) TMP_ALLOC(var*sizeof(mp_limb_t));
     ML = (nmod_mat_struct *) TMP_ALLOC(f->length*sizeof(nmod_mat_struct));
@@ -1911,11 +1913,11 @@ flint_printf("    f: "); nmod_mpolyu_print_pretty(f, NULL, ctx); flint_printf("\
 
 pick_evaluation_point:
 
-    FLINT_ASSERT(ctx->ffinfo->mod.n > UWORD(2));
+    FLINT_ASSERT(ctx->ffinfo->mod.n > UWORD(3));
 
     for (i = 0; i < var; i++)
     {
-        alpha[i] = UWORD(2) + n_randint(randstate, ctx->ffinfo->mod.n - UWORD(2));
+        alpha[i] = UWORD(2) + n_randint(randstate, ctx->ffinfo->mod.n - UWORD(3));
     }
 /*
 for (i = 0; i <var; i++) {
@@ -1978,13 +1980,31 @@ printf("fevalsk1: "); nmod_mpolyu_print_pretty(fevalsk1, NULL, ctx); printf("\n"
         lc_ok = 1;
         lc_ok = lc_ok && nmod_mpolyu_evalfromsk(Aeval, A, Aevalski, ctx);
         lc_ok = lc_ok && nmod_mpolyu_evalfromsk(Beval, B, Bevalski, ctx);
+/*
+printf("Aeval(%d): ",i); nmod_poly_print_pretty(Aeval, "X"); printf("\n");
+printf("Beval(%d): ",i); nmod_poly_print_pretty(Beval, "X"); printf("\n");
+*/
+        if (!lc_ok)
+        {
+//            printf("lc not ok\n");
+            goto pick_evaluation_point;
+        }
 
         nmod_poly_gcd(Geval, Aeval, Beval);
 /*
-printf("Aeval: "); nmod_poly_print_pretty(Aeval, "X"); printf("\n");
-printf("Beval: "); nmod_poly_print_pretty(Beval, "X"); printf("\n");
 printf("Geval: "); nmod_poly_print_pretty(Geval, "X"); printf("\n");
 */
+        if (f->exps[0] < nmod_poly_degree(Geval))
+        {
+//            printf("exceeded\n");
+            ++exceededcount;
+            if (exceededcount < 2)
+                goto pick_evaluation_point;
+
+            success = -1;
+            goto finished;
+        }
+
 
         k = nmod_poly_length(Geval);
         j = WORD(0);
@@ -2000,6 +2020,7 @@ printf("Geval: "); nmod_poly_print_pretty(Geval, "X"); printf("\n");
                 if (j >= f->length || f->exps[j] != k)
                 {
                     /* Geval does not fit the form f */
+//                    printf("Geval does not fit the form\n");
                     success = 0;
                     goto finished;
                 }
@@ -2007,6 +2028,7 @@ printf("Geval: "); nmod_poly_print_pretty(Geval, "X"); printf("\n");
             }
         }
     }
+
 /*
 for (j = 0; j < f->length; j++) {
 flint_printf("M[%d]:\n", j);
@@ -2018,6 +2040,8 @@ flint_printf("W[%d]: %d\n", j, W[j]);
 */
 
     nullity = -1;
+    nmod_mat_clear(MF);
+    nmod_mat_init(MF, 0, l, ctx->ffinfo->mod.n);
 
     for (S = 0; S < f->length; S++)
     {
@@ -2068,6 +2092,7 @@ printf("\n");
             if ((ML + s)->rows[i][i] != UWORD(1))
             {
                 /* evaluation points produced a singular vandermonde matrix */
+//                printf("singular eval points\n");
                 goto pick_evaluation_point;
             }
         }
@@ -2081,7 +2106,10 @@ printf("\n");
         nmod_mat_swap(MFtemp, MF);
         nmod_mat_clear(MFtemp);
         nmod_mat_window_clear(Mwindow);
-
+/*
+printf("     MF:\n");
+nmod_mat_print_pretty(MF);
+*/
 
         nullity = l - nmod_mat_rref(MF);
 /*
@@ -2110,6 +2138,11 @@ flint_printf("nullity: %d\n",nullity);
 
     if (nullity != 1)
     {
+//        printf("underdetermined\n");
+        ++underdeterminedcount;
+        if (underdeterminedcount < 2)
+            goto pick_evaluation_point;
+
         /* Gcd might have content that needs factoring out */
         success = -1;
         //assert(0 && "oh man");
@@ -2142,6 +2175,7 @@ printf("\n");
         if (!success)
         {
             /* evaluation points produced a singular vandermonde matrix */
+//            printf("singular eval points\n");
             goto pick_evaluation_point;
         }
     }
@@ -2168,7 +2202,7 @@ printf("\n");
             if (v != u)
             {
                 success = 0;
-                printf("solution not a solution\n");
+//                printf("solution not a solution\n");
                 goto finished;
             }
         }
@@ -2200,6 +2234,8 @@ finished:
     nmod_poly_clear(Geval);
 
 //printf("    sgcd returning (%d) G: ", success); nmod_mpolyu_print_pretty(G, NULL, ctx); printf("\n");
+
+//usleep(1000000);
 
     TMP_END;
     return success;
@@ -2635,8 +2671,8 @@ int nmod_mpolyu_pgcd_zippel(
     nmod_mpolyun_shift_right(An, ABminshift);
     nmod_mpolyun_shift_right(Bn, ABminshift);
 
-flint_printf("An: "); nmod_mpolyun_print_pretty(An, NULL, ctx); flint_printf("\n");
-flint_printf("Bn: "); nmod_mpolyun_print_pretty(Bn, NULL, ctx); flint_printf("\n");
+//flint_printf("An: "); nmod_mpolyun_print_pretty(An, NULL, ctx); flint_printf("\n");
+//flint_printf("Bn: "); nmod_mpolyun_print_pretty(Bn, NULL, ctx); flint_printf("\n");
 
 
     nmod_poly_t a, b, c, g;
@@ -2648,24 +2684,24 @@ flint_printf("Bn: "); nmod_mpolyun_print_pretty(Bn, NULL, ctx); flint_printf("\n
     nmod_mpolyun_content_last(a, An, ctx);
     nmod_mpolyun_content_last(b, Bn, ctx);
 
-flint_printf("a: "); nmod_poly_print_pretty(a, "v"); flint_printf("\n");
-flint_printf("b: "); nmod_poly_print_pretty(b, "v"); flint_printf("\n");
+//flint_printf("a: "); nmod_poly_print_pretty(a, "v"); flint_printf("\n");
+//flint_printf("b: "); nmod_poly_print_pretty(b, "v"); flint_printf("\n");
 
     nmod_mpolyun_divexact_last(An, a, ctx);
     nmod_mpolyun_divexact_last(Bn, b, ctx);
 
-flint_printf("An: "); nmod_mpolyun_print_pretty(An, NULL, ctx); flint_printf("\n");
-flint_printf("Bn: "); nmod_mpolyun_print_pretty(Bn, NULL, ctx); flint_printf("\n");
+//flint_printf("An: "); nmod_mpolyun_print_pretty(An, NULL, ctx); flint_printf("\n");
+//flint_printf("Bn: "); nmod_mpolyun_print_pretty(Bn, NULL, ctx); flint_printf("\n");
 
 
     nmod_poly_gcd(c, a, b);
 
-flint_printf("c: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
+//flint_printf("c: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
 
     nmod_poly_gcd(g, nmod_mpolyun_leadcoeff_ref(An, ctx),
                      nmod_mpolyun_leadcoeff_ref(Bn, ctx));
 
-flint_printf("g: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
+//flint_printf("g: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
 
     nmod_poly_t modulus, tempmod;
     nmod_poly_init(modulus, ctx->ffinfo->mod.n);
@@ -2697,7 +2733,7 @@ flint_printf("g: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
         }
         alpha--;
 
-flint_printf("------starting outer loop x%d = %d\n", var, alpha);
+//flint_printf("------starting outer loop x%d = %d\n", var, alpha);
 
 
         geval = nmod_poly_evaluate_nmod(g, alpha);
@@ -2710,7 +2746,7 @@ flint_printf("------starting outer loop x%d = %d\n", var, alpha);
 
         nmod_mpolyun_eval_last(Beval, Bn, alpha, ctx);
         success = nmod_mpolyu_pgcd_zippel(Geval, Aeval, Beval, var - 1, ctx, zinfo, randstate);
-flint_printf("********** pgcd return(%d) var = %d ", var-1, success); nmod_mpolyu_print_pretty(Geval, NULL, ctx); flint_printf("\n");
+//flint_printf("********** pgcd return(%d) var = %d ", var-1, success); nmod_mpolyu_print_pretty(Geval, NULL, ctx); flint_printf("\n");
 //flint_printf("Geval bits: %d\n", Geval->bits);
         if (!success)
             goto outer_continue;
@@ -2734,7 +2770,7 @@ flint_printf("********** pgcd return(%d) var = %d ", var-1, success); nmod_mpoly
         }
 
         /* update interpolant H */
-flint_printf("------updating H\n");
+//flint_printf("------updating H\n");
 
         temp = n_invmod(nmod_mpolyu_leadcoeff(Geval, ctx), ctx->ffinfo->mod.n);
         nmod_mpolyu_scalar_mul_nmod(Geval, nmod_mul(geval, temp, ctx->ffinfo->mod), ctx);
@@ -2767,7 +2803,7 @@ flint_printf("------updating H\n");
 //flint_printf("after modulus: "); nmod_poly_print_pretty(modulus, "v"); printf("\n");
 
 
-flint_printf("------H: "); nmod_mpolyun_print_pretty(H, NULL, ctx); flint_printf("\n");
+//flint_printf("------H: "); nmod_mpolyun_print_pretty(H, NULL, ctx); flint_printf("\n");
 
 
         nmod_mpolyu_setform_mpolyun(Gform, H, ctx);
@@ -2784,8 +2820,7 @@ flint_printf("------H: "); nmod_mpolyun_print_pretty(H, NULL, ctx); flint_printf
             }
             alpha--;
 
-flint_printf("------starting inner loop x%d = %d\n", var, alpha);
-        assert(alpha >= 80);
+//flint_printf("------starting inner loop x%d = %d\n", var, alpha);
 
             geval = nmod_poly_evaluate_nmod(g, alpha);
             if (geval == WORD(0))
@@ -2794,7 +2829,7 @@ flint_printf("------starting inner loop x%d = %d\n", var, alpha);
             nmod_mpolyun_eval_last(Aeval, An, alpha, ctx);
             nmod_mpolyun_eval_last(Beval, Bn, alpha, ctx);
             success = nmod_mpolyu_sgcd_zippel(Geval, Aeval, Beval, Gform, var, ctx, randstate);
-flint_printf("sgcd return(%d) var = %d : ", success, var); nmod_mpolyu_print_pretty(Geval, NULL, ctx); flint_printf("\n");
+//flint_printf("sgcd return(%d) var = %d : ", success, var); nmod_mpolyu_print_pretty(Geval, NULL, ctx); flint_printf("\n");
 //flint_printf("Geval bits: %d\n", Geval->bits);
 
             if (success == -1)
@@ -2897,13 +2932,20 @@ int nmod_mpolyu_content(
     slong i;
     FLINT_ASSERT(A->length > 0);
 flint_printf("starting content. bits = %wd\n", A->bits);
+usleep(100000);
+printf("content A: "); nmod_mpolyu_print_pretty(A, NULL, ctx); printf("\n");
+
 
     nmod_mpoly_set(c, A->coeffs + 0, ctx);
 flint_printf("c->bits = %wd\n", c->bits);
+flint_printf("A->length = %wd\n", A->length);
 
     FLINT_ASSERT(c->bits == A->bits);
     for (i = 1; i < A->length; i++)
     {
+flint_printf("content i = %wd\n", i, A->length);
+
+
         int success;
         success = nmod_mpoly_gcd_zippel_keepbits(c, c, A->coeffs + i, ctx);
         if (!success)
@@ -2943,9 +2985,9 @@ void nmod_mpolyu_divexact_mpoly(nmod_mpolyu_t A, nmod_mpolyu_t B, nmod_mpoly_t c
     for (slong i = 0; i < B->length; i++)
     {
 
-        flint_printf("dividing i = %d\n",i);
-        flint_printf("(B->coeffs + i)->bits: %wd\n", (B->coeffs + i)->bits);
-        flint_printf("              c->bits: %wd\n", c->bits);
+//        flint_printf("dividing i = %d\n",i);
+//        flint_printf("(B->coeffs + i)->bits: %wd\n", (B->coeffs + i)->bits);
+//        flint_printf("              c->bits: %wd\n", c->bits);
 
         poly1 = A->coeffs + i;
         poly2 = B->coeffs + i;
@@ -2964,8 +3006,8 @@ void nmod_mpolyu_divexact_mpoly(nmod_mpolyu_t A, nmod_mpolyu_t B, nmod_mpoly_t c
 
         FLINT_ASSERT(len > 0);
 
-        flint_printf("(A->coeffs + i)->bits: %wd\n", (A->coeffs + i)->bits);
-        FLINT_ASSERT((A->coeffs + i)->bits == A->bits);
+//        flint_printf("(A->coeffs + i)->bits: %wd\n", (A->coeffs + i)->bits);
+//        FLINT_ASSERT((A->coeffs + i)->bits == A->bits);
 
 
         A->exps[i] = B->exps[i];
@@ -3004,9 +3046,9 @@ void nmod_mpolyu_mul_mpoly(nmod_mpolyu_t A, nmod_mpolyu_t B, nmod_mpoly_t c, nmo
     for (slong i = 0; i < B->length; i++)
     {
 
-        flint_printf("dividing i = %d\n",i);
-        flint_printf("(B->coeffs + i)->bits: %wd\n", (B->coeffs + i)->bits);
-        flint_printf("              c->bits: %wd\n", c->bits);
+//        flint_printf("dividing i = %d\n",i);
+//        flint_printf("(B->coeffs + i)->bits: %wd\n", (B->coeffs + i)->bits);
+//        flint_printf("              c->bits: %wd\n", c->bits);
 
         poly1 = A->coeffs + i;
         poly2 = B->coeffs + i;
@@ -3025,8 +3067,8 @@ void nmod_mpolyu_mul_mpoly(nmod_mpolyu_t A, nmod_mpolyu_t B, nmod_mpoly_t c, nmo
 
         FLINT_ASSERT(len > 0);
 
-        flint_printf("(A->coeffs + i)->bits: %wd\n", (A->coeffs + i)->bits);
-        FLINT_ASSERT((A->coeffs + i)->bits == A->bits);
+//        flint_printf("(A->coeffs + i)->bits: %wd\n", (A->coeffs + i)->bits);
+//        FLINT_ASSERT((A->coeffs + i)->bits == A->bits);
 
 
         A->exps[i] = B->exps[i];
@@ -3070,6 +3112,9 @@ printf("!!!!!!!!!!!!!!!!!!!1 removing content\n");
 
     success = 1;
     success = success && nmod_mpolyu_content(Ac, A, ctx);
+
+printf("Ac: "); nmod_mpoly_print_pretty(Ac, NULL, ctx); printf("\n");
+
     success = success && nmod_mpolyu_content(Bc, B, ctx);
     if (!success)
     {
@@ -3077,7 +3122,6 @@ printf("!!!!!!!!!!!!!!!!!!!1 removing content\n");
         goto finished;
     }
 
-printf("Ac: "); nmod_mpoly_print_pretty(Ac, NULL, ctx); printf("\n");
 printf("Bc: "); nmod_mpoly_print_pretty(Bc, NULL, ctx); printf("\n");
 
 
@@ -3145,8 +3189,9 @@ int nmod_mpoly_gcd_zippel_keepbits(nmod_mpoly_t G, nmod_mpoly_t A, nmod_mpoly_t 
     FLINT_ASSERT(B->bits <= FLINT_BITS);
     FLINT_ASSERT(A->bits == B->bits);
 
-//flint_printf("**************\nnmod_mpoly_gcd_zippel: \nA(%wd): ", A->bits); nmod_mpoly_print_pretty(A, vars, ctx);
-//flint_printf("\nB(%wd): ",B->bits); nmod_mpoly_print_pretty(B, vars, ctx); flint_printf("\n");
+flint_printf("**************\nnmod_mpoly_gcd_zippel: \n");
+flint_printf("A(%wd): ", A->bits); nmod_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
+flint_printf("B(%wd): ",B->bits); nmod_mpoly_print_pretty(B, NULL, ctx); flint_printf("\n");
 
     FLINT_ASSERT(ctx->minfo->nvars > WORD(1));
     FLINT_ASSERT(!nmod_mpoly_is_zero(A, ctx));
@@ -3294,7 +3339,21 @@ flint_printf("++++ G(%wd): ", G->bits); nmod_mpoly_print_pretty(G, NULL, ctx); p
 
 
 
+slong nmod_mpolyun_lastdeg(nmod_mpolyun_t A, nmod_mpoly_ctx_t ctx)
+{
+    slong i, j;
+    slong deg = -WORD(1);
 
+    for (i = 0; i < A->length; i++)
+    {
+        for (j = 0; j < (A->coeffs + i)->length; j++)
+        {
+            deg = FLINT_MAX(deg, nmod_poly_degree((A->coeffs + i)->coeffs + j));
+        }
+    }
+    FLINT_ASSERT(deg >= 0);
+    return deg;
+}
 
 
 
@@ -3310,6 +3369,8 @@ int nmod_mpolyu_gcd_zippel_linzipp(
 {
     int divcheck_fail_count, inner_gcd_added;
     slong lastdeg;
+    slong Alastdeg;
+    slong Blastdeg;
     ulong ABminshift;
     int success = 0, changed;
 
@@ -3318,24 +3379,19 @@ int nmod_mpolyu_gcd_zippel_linzipp(
 
     FLINT_ASSERT(G->bits == A->bits);
     FLINT_ASSERT(G->bits == B->bits);
-
+/*
 flint_printf("**********nmod_mpolyu_gcd_zippel_linzipp var = %d *********\n", var);
 flint_printf("A: "); nmod_mpolyu_print_pretty(A, NULL, ctx); flint_printf("\n");
 flint_printf("B: "); nmod_mpolyu_print_pretty(B, NULL, ctx); flint_printf("\n");
-
+*/
     FLINT_ASSERT(A->length > 0);
     FLINT_ASSERT(B->length > 0);
 
     if (var == -WORD(1))
     {
+        assert(0);
         /* no more variables left to interpolate */
         return nmod_mpolyu_pgcd_zippel_univar(G, A, B, ctx);
-    }
-
-    if (var == WORD(0))
-    {
-        /* bivariate is more comfortable separated */
-        return nmod_mpolyu_pgcd_zippel_bivar(G, A, B, ctx, zinfo);
     }
 
     nmod_mpolyun_t An, Bn;
@@ -3347,6 +3403,8 @@ flint_printf("B: "); nmod_mpolyu_print_pretty(B, NULL, ctx); flint_printf("\n");
     ABminshift = FLINT_MIN(A->exps[A->length - 1], B->exps[B->length - 1]);
     nmod_mpolyun_shift_right(An, ABminshift);
     nmod_mpolyun_shift_right(Bn, ABminshift);
+    Alastdeg = nmod_mpolyun_lastdeg(An, ctx);
+    Blastdeg = nmod_mpolyun_lastdeg(Bn, ctx);
 
 //flint_printf("An: "); nmod_mpolyun_print_pretty(An, NULL, ctx); flint_printf("\n");
 //flint_printf("Bn: "); nmod_mpolyun_print_pretty(Bn, NULL, ctx); flint_printf("\n");
@@ -3372,12 +3430,12 @@ flint_printf("B: "); nmod_mpolyu_print_pretty(B, NULL, ctx); flint_printf("\n");
 
     nmod_poly_gcd(c, a, b);
 
-flint_printf("c: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
+//flint_printf("c: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
 
     nmod_poly_gcd(g, nmod_mpolyun_leadcoeff_ref(An, ctx),
                      nmod_mpolyun_leadcoeff_ref(Bn, ctx));
 
-flint_printf("g: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
+//flint_printf("g: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
 
     nmod_poly_t modulus, tempmod;
     nmod_poly_init(modulus, ctx->ffinfo->mod.n);
@@ -3395,24 +3453,37 @@ flint_printf("g: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
 
     if (nmod_poly_degree(c) > 0)
     {
+//        printf("!!!!!!!has content - nmod_mpolyu_gcd_zippel_linzipp aborted\n");
+//flint_printf("c: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
+//usleep(1000000);
         success = 0;
+        goto finished;
+    }
+
+    if (var == WORD(0))
+    {
+        /* bivariate is more comfortable separated */
+        success = nmod_mpolyu_pgcd_zippel_bivar(G, A, B, ctx, zinfo);
         goto finished;
     }
 
     nmod_poly_one(modulus);
     nmod_mpolyun_zero(H, ctx);
 
-    mp_limb_t alpha = ctx->ffinfo->mod.n;
+    mp_limb_t start_alpha = UWORD(1) + n_randint(randstate, ctx->ffinfo->mod.n - UWORD(1));
+    mp_limb_t alpha = start_alpha;
 
 
     while (1)
     {
-        if (alpha == UWORD(0))
+        if (!(--alpha))
+            alpha += ctx->ffinfo->mod.n - UWORD(1);
+
+        if (alpha == start_alpha)
         {
             success = 0;
             goto finished;
         }
-        alpha--;
 
 //flint_printf("------starting outer loop x%d = %d\n", var, alpha);
 
@@ -3421,16 +3492,19 @@ flint_printf("g: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
         if (geval == WORD(0))
             goto outer_continue;
 
+//flint_printf("g: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
+//printf("geval: %d\n", geval);
+
 //flint_printf("Aeval bits: %d\n", Aeval->bits);
 //flint_printf("   An bits: %d\n",    An->bits);
         nmod_mpolyun_eval_last(Aeval, An, alpha, ctx);
 
         nmod_mpolyun_eval_last(Beval, Bn, alpha, ctx);
         success = nmod_mpolyu_gcd_zippel_linzipp(Geval, Aeval, Beval, var - 1, ctx, zinfo, randstate);
-//flint_printf("********** pgcd return(%d) var = %d ", var-1, success); nmod_mpolyu_print_pretty(Geval, NULL, ctx); flint_printf("\n");
+//flint_printf("********** linzipp return(%d) var = %d ", var-1, success); nmod_mpolyu_print_pretty(Geval, NULL, ctx); flint_printf("\n");
 //flint_printf("Geval bits: %d\n", Geval->bits);
         if (!success)
-            goto outer_continue;
+            goto finished;
 
         if (nmod_mpolyu_is_one(Geval, ctx))
         {
@@ -3455,6 +3529,8 @@ flint_printf("g: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
 
         temp = n_invmod(nmod_mpolyu_leadcoeff(Geval, ctx), ctx->ffinfo->mod.n);
         nmod_mpolyu_scalar_mul_nmod(Geval, nmod_mul(geval, temp, ctx->ffinfo->mod), ctx);
+
+//flint_printf("Geval: "); nmod_mpolyu_print_pretty(Geval, NULL, ctx); flint_printf("\n");
 
         if (nmod_poly_degree(modulus) > 0)
         {
@@ -3493,20 +3569,26 @@ flint_printf("g: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
         inner_gcd_added = 0;
         while (1)
         {
-//flint_printf("asdf\n");
-            if (alpha == UWORD(0))
+
+            if (!(--alpha))
+                alpha += ctx->ffinfo->mod.n - UWORD(1);
+
+            if (alpha == start_alpha)
             {
                 success = 0;
                 goto finished;
             }
-            alpha--;
+
 
 //flint_printf("------starting inner loop x%d = %d\n", var, alpha);
-        assert(alpha >= 80);
 
             geval = nmod_poly_evaluate_nmod(g, alpha);
             if (geval == WORD(0))
                 goto inner_continue;
+
+
+//flint_printf("g: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
+//printf("geval: %d\n", geval);
 
             nmod_mpolyun_eval_last(Aeval, An, alpha, ctx);
             nmod_mpolyun_eval_last(Beval, Bn, alpha, ctx);
@@ -3514,9 +3596,11 @@ flint_printf("g: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
 //flint_printf("sgcd return(%d) var = %d : ", success, var); nmod_mpolyu_print_pretty(Geval, NULL, ctx); flint_printf("\n");
 //flint_printf("Geval bits: %d\n", Geval->bits);
 
+            FLINT_ASSERT(nmod_mpolyu_leadcoeff(Geval, ctx) != 0);
+
             if (success == -1)
             {
-                success = nmod_mpolyu_pgcd_zippel_rmcontent(G, A, B, var, ctx, zinfo, randstate);
+                success = 0;
                 goto finished;
             }
 
@@ -3532,6 +3616,9 @@ flint_printf("g: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
             nmod_mpolyu_scalar_mul_nmod(Geval, nmod_mul(geval, temp, ctx->ffinfo->mod), ctx);
             FLINT_ASSERT(nmod_poly_degree(modulus) > 0);
             nmod_poly_scalar_mul_nmod(modulus, modulus, n_invmod(nmod_poly_evaluate_nmod(modulus, alpha), ctx->ffinfo->mod.n));
+
+//flint_printf("Geval: "); nmod_mpolyu_print_pretty(Geval, NULL, ctx); flint_printf("\n");
+
 //flint_printf("Geval bits: %d\n", Geval->bits);
 //flint_printf("before modulus: "); nmod_poly_print_pretty(modulus, "v"); printf("\n");
 //flint_printf("before add     H: "); nmod_mpolyun_print_pretty(H, NULL, ctx); flint_printf("\n");
@@ -3540,7 +3627,7 @@ flint_printf("g: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
             changed = nmod_mpolyun_addinterp(&lastdeg, H, Ht, Geval, modulus, alpha, ctx);
             nmod_poly_set_coeff_ui(tempmod, 0, ctx->ffinfo->mod.n - alpha);
             nmod_poly_mul(modulus, modulus, tempmod);
-//flint_printf("------updated H: "); nmod_mpolyun_print_pretty(H, NULL, ctx); flint_printf("\n");
+//flint_printf("------updated H(%d): ", lastdeg); nmod_mpolyun_print_pretty(H, NULL, ctx); flint_printf("\n");
 
             inner_gcd_added = changed;
 
@@ -3551,7 +3638,7 @@ flint_printf("g: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
                 nmod_mpolyun_content_last(a, H, ctx);
                 nmod_mpolyun_mul_poly(Ht, H, c, ctx);
                 nmod_mpolyun_divexact_last(Ht, a, ctx);
-
+                nmod_mpolyun_shift_left(Ht, ABminshift);
                 nmod_mpolyu_cvtfrom_mpolyun(G, Ht, var, ctx);
 
 //printf("candidate G: "); nmod_mpolyu_print_pretty(G, NULL, ctx); printf("\n");
@@ -3560,7 +3647,7 @@ flint_printf("g: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
                              || !nmod_mpolyu_divides(B, G, ctx))
                 {
                     ++divcheck_fail_count;
-                    flint_printf("division failed %d times\n", divcheck_fail_count);
+//                    flint_printf("division failed %d times\n", divcheck_fail_count);
                     if (divcheck_fail_count >= 2)
                     {
                         nmod_poly_one(modulus);
@@ -3570,6 +3657,14 @@ flint_printf("g: "); nmod_poly_print_pretty(c, "v"); flint_printf("\n");
                 }
                 success = 1;
                 goto finished;
+            }
+
+
+            if (lastdeg > Alastdeg || lastdeg > Blastdeg)
+            {
+//                flint_printf("lastdeg: %d, %d %d\n",lastdeg, Alastdeg, Blastdeg);
+                nmod_poly_one(modulus);
+                goto outer_continue;
             }
 
 //flint_printf("after modulus: "); nmod_poly_print_pretty(modulus, "v"); printf("\n");
@@ -3601,10 +3696,12 @@ finished:
     nmod_mpolyun_clear(Bn, ctx);
     nmod_mpolyun_clear(H, ctx);
     nmod_mpolyun_clear(Ht, ctx);
-
-flint_printf("**********nmod_mpolyu_gcd_zippel_linzipp var = %d *********\n", var);
+/*
+flint_printf("**********nmod_mpolyu_gcd_zippel_linzipp var = %d returning %d *********\n", var, success);
+flint_printf("A: "); nmod_mpolyu_print_pretty(A, NULL, ctx); flint_printf("\n");
+flint_printf("B: "); nmod_mpolyu_print_pretty(B, NULL, ctx); flint_printf("\n");
 flint_printf("G: "); nmod_mpolyu_print_pretty(G, NULL, ctx); flint_printf("\n");
-
+*/
 
     return success;
 }
