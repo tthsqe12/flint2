@@ -771,7 +771,15 @@ int nmod_mpoly_gcd_zippel_keepbits(
     nmod_mpoly_t B,
     const nmod_mpoly_ctx_t ctx);
 
-
+typedef enum {
+    nmod_mpoly_sgcd_success,
+    nmod_mpoly_sgcd_form_main_degree_too_high,
+    nmod_mpoly_sgcd_form_wrong,
+    nmod_mpoly_sgcd_no_solution,
+    nmod_mpoly_sgcd_scales_not_found,
+    nmod_mpoly_sgcd_eval_point_not_found,
+    nmod_mpoly_sgcd_eval_gcd_deg_too_high,
+} nmod_mpoly_sgcd_ret_t;
 
 
 
