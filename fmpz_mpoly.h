@@ -887,8 +887,11 @@ int fmpz_mpoly_print_pretty(const fmpz_mpoly_t poly,
 
 /* Random generation *********************************************************/
 
+FLINT_DLL void fmpz_mpoly_randtest_bounds(fmpz_mpoly_t poly, flint_rand_t state,
+   slong length, mp_bitcnt_t coeff_bits, ulong * exp_bounds, const fmpz_mpoly_ctx_t ctx);
+
 FLINT_DLL void fmpz_mpoly_randtest_bound(fmpz_mpoly_t poly, flint_rand_t state,
-   slong length, mp_bitcnt_t coeff_bits, slong exp_bound, const fmpz_mpoly_ctx_t ctx);
+   slong length, mp_bitcnt_t coeff_bits, ulong exp_bound, const fmpz_mpoly_ctx_t ctx);
 
 FLINT_DLL void fmpz_mpoly_randtest_bits(fmpz_mpoly_t poly, flint_rand_t state,
    slong length, mp_bitcnt_t coeff_bits, mp_bitcnt_t exp_bits, const fmpz_mpoly_ctx_t ctx);

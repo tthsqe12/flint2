@@ -1,5 +1,4 @@
 /*
-    Copyright (C) 2017 William Hart
     Copyright (C) 2018 Daniel Schultz
 
     This file is part of FLINT.
@@ -12,8 +11,8 @@
 
 #include "fmpz_mpoly.h"
 
-void fmpz_mpoly_randtest_bound(fmpz_mpoly_t poly, flint_rand_t state,
-    slong length, mp_bitcnt_t coeff_bits, ulong exp_bound, const fmpz_mpoly_ctx_t ctx)
+void fmpz_mpoly_randtest_bounds(fmpz_mpoly_t poly, flint_rand_t state,
+    slong length, mp_bitcnt_t coeff_bits, ulong * exp_bounds, const fmpz_mpoly_ctx_t ctx)
 {
     slong i, j, nvars = ctx->minfo->nvars;
     fmpz_t c;
@@ -29,12 +28,15 @@ void fmpz_mpoly_randtest_bound(fmpz_mpoly_t poly, flint_rand_t state,
     for (i = 0; i < length; i++)
     {
         for (j = 0; j < nvars; j++)
-            exp[j] = n_randint(state, exp_bound);
+            exp[j] = n_randint(state, exp_bounds[j]);
 
         fmpz_randtest(c, state, coeff_bits);
 
-        fmpz_mpoly_set_coeff_fmpz_ui(poly, c, exp, ctx);
-    }    
+        fmpz_mpoly_pushterm_fmpz_ui(poly, c, exp, ctx);
+    }
+
+    fmpz_mpoly_sort(poly, ctx);
+    fmpz_mpoly_combine_like_terms(poly, ctx);
 
     fmpz_clear(c);
 }

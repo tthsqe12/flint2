@@ -3434,7 +3434,6 @@ flint_printf("B: "); nmod_mpolyu_print_pretty(B, NULL, ctx); flint_printf("\n");
 
     if (var == -WORD(1))
     {
-        assert(0);
         /* no more variables left to interpolate */
         return nmod_mpolyu_pgcd_zippel_univar(G, A, B, ctx);
     }
