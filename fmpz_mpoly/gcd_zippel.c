@@ -485,7 +485,7 @@ int fmpz_mpoly_gcd_zippel(fmpz_mpoly_t G,
         }
     }
 
-    if (A->bits > FLINT_BITS || A->bits > FLINT_BITS)
+    if (A->bits > FLINT_BITS || B->bits > FLINT_BITS)
         return 0;
 
     if (ctx->minfo->nvars == 1) {

@@ -137,6 +137,16 @@ nmod_mpoly_struct * _nmod_mpolyu_get_coeff(nmod_mpolyu_t A,
 }
 
 
+void nmod_mpolyu_shift_right(nmod_mpolyu_t A, ulong s)
+{
+    slong i;
+    for (i = 0; i < A->length; i++)
+    {
+        FLINT_ASSERT(A->exps[i] >= s);
+        A->exps[i] -= s;
+    }
+}
+
 void nmod_mpolyu_shift_left(nmod_mpolyu_t A, ulong s)
 {
     slong i;

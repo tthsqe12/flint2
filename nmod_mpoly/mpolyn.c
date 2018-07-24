@@ -80,7 +80,7 @@ void nmod_mpolyn_print_pretty(const nmod_mpolyn_t A,
         for (i = 0; i < ctx->minfo->nvars; i++)
         {
             x[i] = (char *) TMP_ALLOC(((FLINT_BITS+4)/3)*sizeof(char));
-            flint_sprintf(x[i], "x%wd", i);
+            flint_sprintf(x[i], "x%wd", i+1);
         }
     }
 

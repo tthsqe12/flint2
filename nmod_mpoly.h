@@ -717,9 +717,12 @@ FLINT_DLL int nmod_mpoly_gcd_brown(nmod_mpoly_t G,
                                const nmod_mpoly_t A, const nmod_mpoly_t B,
                                                    const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL int nmod_mpoly_gcd_zippel(nmod_mpoly_t G, nmod_mpoly_t A,
-                                   nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
+FLINT_DLL int nmod_mpoly_gcd_zippel(nmod_mpoly_t G, const nmod_mpoly_t A,
+                             const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
 
+FLINT_DLL int nmod_mpoly_gcd_zippel_smprime(nmod_mpoly_t G, const nmod_mpoly_t A,
+                              const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx,
+                                         int keepbits, flint_rand_t randstate);
 
 /*
     nmod_mpolyu_t
@@ -757,6 +760,8 @@ FLINT_DLL void nmod_mpolyu_fit_length(nmod_mpolyu_t A, slong length,
 FLINT_DLL nmod_mpoly_struct * _nmod_mpolyu_get_coeff(nmod_mpolyu_t A,
                                        ulong pow, const nmod_mpoly_ctx_t uctx);
 
+FLINT_DLL void nmod_mpolyu_shift_right(nmod_mpolyu_t A, ulong s);
+
 FLINT_DLL void nmod_mpolyu_shift_left(nmod_mpolyu_t A, ulong s);
 
 FLINT_DLL void nmod_mpolyu_scalar_mul_nmod(nmod_mpolyu_t A, mp_limb_t c,
@@ -791,6 +796,9 @@ FLINT_DLL void nmod_mpolyu_divexact_mpoly(nmod_mpolyu_t A, nmod_mpolyu_t B,
 
 FLINT_DLL void nmod_mpolyu_mul_mpoly(nmod_mpolyu_t A, nmod_mpolyu_t B,
                                          nmod_mpoly_t c, nmod_mpoly_ctx_t ctx);
+
+
+
 
 /*
     nmod_mpolyn_t

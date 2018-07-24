@@ -11,6 +11,93 @@
 
 #include "nmod_mpoly.h"
 
+
+
+void nmod_mpoly_to_nmod_poly_keepbits(nmod_poly_t A, slong * Ashift,
+               const nmod_mpoly_t B, slong var, const nmod_mpoly_ctx_t ctx)
+{
+    slong i, shift, off, N;
+    slong _Ashift = 0, len = B->length;
+    mp_limb_t * coeff = B->coeffs;
+    ulong * exp = B->exps;
+    mp_bitcnt_t bits = B->bits;
+
+    FLINT_ASSERT(bits <= FLINT_BITS);
+
+    N = mpoly_words_per_exp(bits, ctx->minfo);
+    mpoly_gen_offset_shift(&off, &shift, var, N, bits, ctx->minfo);
+
+    nmod_poly_zero(A);
+    if (len > 0)
+    {
+        ulong mask = (-UWORD(1)) >> (FLINT_BITS - bits);
+        _Ashift = (exp[N*(len - 1)] >> shift) & mask;
+        for (i = 0; i < len; i++)
+        {
+            ulong k = ((exp[N*i + off] >> shift) & mask) - _Ashift;
+            FLINT_ASSERT(((slong)k) >= 0);
+            nmod_poly_set_coeff_ui(A, k, coeff[i]);
+        }
+    }
+
+    *Ashift = _Ashift;
+}
+
+void nmod_mpoly_from_nmod_poly_keepbits(nmod_mpoly_t A, const nmod_poly_t B,
+                           slong Bshift, slong var, mp_bitcnt_t bits, const nmod_mpoly_ctx_t ctx)
+{
+    slong shift, off, N;
+    slong k;
+    slong Alen;
+    mp_limb_t * Acoeff;
+    ulong * Aexp;
+    slong Aalloc;
+    ulong * one;
+    TMP_INIT;
+
+    TMP_START;
+
+    FLINT_ASSERT(!nmod_poly_is_zero(B));
+    FLINT_ASSERT(Bshift >= 0);
+    FLINT_ASSERT(Bshift + nmod_poly_degree(B) >= 0);
+    FLINT_ASSERT(1 + FLINT_BIT_COUNT(Bshift + nmod_poly_degree(B)) <= bits);
+
+    N = mpoly_words_per_exp(bits, ctx->minfo);
+    one = (ulong*) TMP_ALLOC(N*sizeof(ulong));
+    mpoly_gen_oneexp_offset_shift(one, &off, &shift, var, N, bits, ctx->minfo);
+
+    nmod_mpoly_fit_bits(A, bits, ctx);
+    A->bits = bits;
+
+    Acoeff = A->coeffs;
+    Aexp = A->exps;
+    Aalloc = A->alloc;
+    Alen = 0;
+    for (k = nmod_poly_degree(B); k >= 0; k--)
+    {
+        _nmod_mpoly_fit_length(&Acoeff, &Aexp, &Aalloc, Alen + 1, N);
+        mpoly_monomial_mul_si(Aexp + N*Alen, one, N, k + Bshift);
+        Acoeff[Alen] = nmod_poly_get_coeff_ui(B, k);
+        Alen += Acoeff[Alen] != UWORD(0);
+    }
+
+    A->coeffs = Acoeff;
+    A->exps = Aexp;
+    A->alloc = Aalloc;
+    _nmod_mpoly_set_length(A, Alen, ctx);
+
+    TMP_END;
+}
+
+
+
+
+
+
+
+
+
+
 /*
     F = F + modulus*(A - F(alpha))
 */
@@ -1247,7 +1334,7 @@ int nmod_mpolyu_pgcd_zippel_bivar(
                 if (!nmod_mpolyu_divides(A, G, ctx))
                     goto outer_continue;
                 if (!nmod_mpolyu_divides(B, G, ctx))
-                    goto outer_continue;        
+                    goto outer_continue;
                 goto ret_success;
             }
 
@@ -1302,7 +1389,7 @@ int nmod_mpolyu_gcd_zippel_linzipp(
     mpoly_zipinfo_t zinfo,
     flint_rand_t randstate)
 {
-    int divcheck_fail_count, inner_gcd_added;
+    int divcheck_fail_count;
     slong lastdeg;
     slong Alastdeg;
     slong Blastdeg;
@@ -1337,8 +1424,8 @@ int nmod_mpolyu_gcd_zippel_linzipp(
     nmod_mpolyu_cvtto_mpolyun(An, A, var, ctx);
     nmod_mpolyu_cvtto_mpolyun(Bn, B, var, ctx);
     ABminshift = FLINT_MIN(A->exps[A->length - 1], B->exps[B->length - 1]);
-    nmod_mpolyun_shift_right(An, ABminshift);
-    nmod_mpolyun_shift_right(Bn, ABminshift);
+    nmod_mpolyun_shift_right(An, A->exps[A->length - 1]);
+    nmod_mpolyun_shift_right(Bn, B->exps[B->length - 1]);
     Alastdeg = nmod_mpolyun_lastdeg(An, ctx);
     Blastdeg = nmod_mpolyun_lastdeg(Bn, ctx);
 
@@ -1471,7 +1558,6 @@ int nmod_mpolyu_gcd_zippel_linzipp(
         nmod_mpolyu_setform_mpolyun(Gform, H, ctx);
 
         divcheck_fail_count = 0;
-        inner_gcd_added = 0;
         while (1)
         {
             /* get new evaluation point */
@@ -1500,8 +1586,8 @@ int nmod_mpolyu_gcd_zippel_linzipp(
                 default:
                     FLINT_ASSERT(0);
                 case nmod_mpoly_sgcd_form_main_degree_too_high:
-                    if (inner_gcd_added)
-                        nmod_poly_one(modulus);
+                    /* nmod_mpolyu_sgcd_zippel has updated degbound */
+                    nmod_poly_one(modulus);
                     goto outer_continue;
                 case nmod_mpoly_sgcd_form_wrong:
                 case nmod_mpoly_sgcd_no_solution:
@@ -1510,9 +1596,7 @@ int nmod_mpolyu_gcd_zippel_linzipp(
                 case nmod_mpoly_sgcd_scales_not_found:
                 case nmod_mpoly_sgcd_eval_point_not_found:
                 case nmod_mpoly_sgcd_eval_gcd_deg_too_high:
-                    if (inner_gcd_added)
-                        nmod_poly_one(modulus);
-                    goto outer_continue;
+                    goto inner_continue;
                 case nmod_mpoly_sgcd_success:
                     (void)(NULL);
             }
@@ -1529,8 +1613,6 @@ int nmod_mpolyu_gcd_zippel_linzipp(
             changed = nmod_mpolyun_addinterp(&lastdeg, H, Ht, Geval, modulus, alpha, ctx);
             nmod_poly_set_coeff_ui(tempmod, 0, ctx->ffinfo->mod.n - alpha);
             nmod_poly_mul(modulus, modulus, tempmod);
-
-            inner_gcd_added = 1;
 
             if (!changed)
             {
@@ -1587,6 +1669,221 @@ finished:
     nmod_mpolyun_clear(Bn, ctx);
     nmod_mpolyun_clear(H, ctx);
     nmod_mpolyun_clear(Ht, ctx);
+
+    return success;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+int nmod_mpolyu_gcd_zippel(
+    nmod_mpolyu_t G,
+    nmod_mpolyu_t A,
+    nmod_mpolyu_t B,
+    nmod_mpoly_ctx_t ctx,
+    mpoly_zipinfo_t zinfo,
+    flint_rand_t randstate)
+{
+    int success;
+    slong i;
+    slong ABminshift;
+    nmod_mpoly_t content;
+    nmod_mpolyu_t Abar, Bbar, Gbar;
+
+    FLINT_ASSERT(A->bits == B->bits);
+    FLINT_ASSERT(A->length > 0);
+    FLINT_ASSERT(B->length > 0);
+    FLINT_ASSERT(ctx->ffinfo->mod.n > UWORD(3));
+
+    nmod_mpoly_init(content, ctx);
+    nmod_mpolyu_init(Abar, A->bits, ctx);
+    nmod_mpolyu_init(Bbar, A->bits, ctx);
+    nmod_mpolyu_init(Gbar, A->bits, ctx);
+
+    nmod_mpoly_set(content, A->coeffs + 0, ctx);
+    for (i = 1; i < A->length; i++)
+    {
+        if (nmod_mpoly_is_one(content, ctx))
+            break;
+        success = nmod_mpoly_gcd_zippel_smprime(content, content, A->coeffs + i, ctx, 1, randstate);
+        if (!success)
+            return 0;
+    }
+    for (i = 0; i < B->length; i++)
+    {
+        if (nmod_mpoly_is_one(content, ctx))
+            break;
+        success = nmod_mpoly_gcd_zippel_smprime(content, content, B->coeffs + i, ctx, 1, randstate);
+        if (!success)
+            return 0;
+    }
+
+    nmod_mpolyu_divexact_mpoly(Abar, A, content, ctx);
+    nmod_mpolyu_divexact_mpoly(Bbar, B, content, ctx);
+
+    ABminshift = FLINT_MIN(Abar->exps[Abar->length - 1], Bbar->exps[Bbar->length - 1]);
+    nmod_mpolyu_shift_right(Abar, Abar->exps[Abar->length - 1]);
+    nmod_mpolyu_shift_right(Bbar, Bbar->exps[Bbar->length - 1]);
+
+    success = nmod_mpolyu_gcd_zippel_linzipp(Gbar, Abar, Bbar, ctx->minfo->nvars - 1, ctx, zinfo, randstate);
+    if (!success)
+        return 0;
+
+    nmod_mpolyu_shift_left(Gbar, ABminshift);
+    nmod_mpolyu_mul_mpoly(G, Gbar, content, ctx);
+
+    nmod_mpolyu_clear(Abar, ctx);
+    nmod_mpolyu_clear(Bbar, ctx);
+    nmod_mpolyu_clear(Gbar, ctx);
+    nmod_mpoly_clear(content, ctx);
+
+    return 1;
+}
+
+
+
+int nmod_mpoly_gcd_zippel_smprime(nmod_mpoly_t G, const nmod_mpoly_t A,
+                              const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx,
+                                         int keepbits, flint_rand_t randstate)
+{
+    slong i;
+    int ret, success = 0;
+    mpoly_zipinfo_t zinfo;
+    nmod_mpoly_ctx_t uctx;
+    nmod_mpolyu_t Au, Bu, Gu;
+    mp_bitcnt_t new_bits;
+
+    FLINT_ASSERT(ctx->ffinfo->mod.n > UWORD(3));
+    FLINT_ASSERT(A->bits <= FLINT_BITS);
+    FLINT_ASSERT(B->bits <= FLINT_BITS);
+    FLINT_ASSERT((!keepbits) || A->bits == B->bits);
+
+    FLINT_ASSERT(!nmod_mpoly_is_zero(A, ctx));
+    FLINT_ASSERT(!nmod_mpoly_is_zero(B, ctx));
+
+    if (ctx->minfo->nvars == 1) {
+        slong shiftA, shiftB;
+        nmod_poly_t a, b, g;
+        nmod_poly_init(a, ctx->ffinfo->mod.n);
+        nmod_poly_init(b, ctx->ffinfo->mod.n);
+        nmod_poly_init(g, ctx->ffinfo->mod.n);
+        nmod_mpoly_to_nmod_poly_keepbits(a, &shiftA, A, 0, ctx);
+        nmod_mpoly_to_nmod_poly_keepbits(b, &shiftB, B, 0, ctx);
+        nmod_poly_gcd(g, a, b);
+        nmod_mpoly_from_nmod_poly_keepbits(G, g, FLINT_MIN(shiftA, shiftB), 0, A->bits, ctx);
+        nmod_poly_clear(a);
+        nmod_poly_clear(b);
+        nmod_poly_clear(g);
+        return 1;
+    }
+
+    mpoly_zipinfo_init(zinfo, ctx->minfo->nvars);
+    nmod_mpoly_degrees_si(zinfo->Adegs, A, ctx);
+    nmod_mpoly_degrees_si(zinfo->Bdegs, B, ctx);
+    for (i = 0; i < ctx->minfo->nvars; i++)
+    {
+        zinfo->perm[i] = i;
+    }
+
+    new_bits = FLINT_MAX(A->bits, B->bits);
+
+    nmod_mpoly_ctx_init(uctx, ctx->minfo->nvars - 1, ORD_LEX, ctx->ffinfo->mod.n);
+    nmod_mpolyu_init(Au, new_bits, uctx);
+    nmod_mpolyu_init(Bu, new_bits, uctx);
+    nmod_mpolyu_init(Gu, new_bits, uctx);
+
+    nmod_mpoly_to_mpolyu_perm(Au, A, zinfo->perm, uctx, ctx);
+    nmod_mpoly_to_mpolyu_perm(Bu, B, zinfo->perm, uctx, ctx);
+
+    ret = nmod_mpolyu_gcd_zippel(Gu, Au, Bu, uctx, zinfo, randstate);
+    if (ret) {
+        nmod_mpoly_from_mpolyu_perm(G, Gu, keepbits, zinfo->perm, uctx, ctx);
+        nmod_mpoly_make_monic(G, G, ctx);
+        success = 1;
+    }
+
+    nmod_mpolyu_clear(Au, uctx);
+    nmod_mpolyu_clear(Bu, uctx);
+    nmod_mpolyu_clear(Gu, uctx);
+    nmod_mpoly_ctx_clear(uctx);
+
+    mpoly_zipinfo_clear(zinfo);
+
+    return success;
+}
+
+
+int nmod_mpoly_gcd_zippel(nmod_mpoly_t G, const nmod_mpoly_t A,
+                              const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx)
+{
+    int success;
+    flint_rand_t randstate;
+
+    if (nmod_mpoly_is_zero(A, ctx))
+    {
+        if (nmod_mpoly_is_zero(B, ctx))
+        {
+            nmod_mpoly_zero(G, ctx);
+        } else
+        {
+            nmod_mpoly_make_monic(G, B, ctx);
+        }
+        return 1;
+    }
+
+    if (nmod_mpoly_is_zero(B, ctx))
+    {
+        nmod_mpoly_make_monic(G, A, ctx);
+        return 1;
+    }
+
+    if (ctx->ffinfo->mod.n <= UWORD(3))
+        return 0;
+
+    if (A->bits > FLINT_BITS || B->bits > FLINT_BITS)
+        return 0;
+
+    if (ctx->minfo->nvars == 1) {
+        slong shiftA, shiftB;
+        nmod_poly_t a, b, g;
+        nmod_poly_init(a, ctx->ffinfo->mod.n);
+        nmod_poly_init(b, ctx->ffinfo->mod.n);
+        nmod_poly_init(g, ctx->ffinfo->mod.n);
+        nmod_mpoly_to_nmod_poly_keepbits(a, &shiftA, A, 0, ctx);
+        nmod_mpoly_to_nmod_poly_keepbits(b, &shiftB, B, 0, ctx);
+        nmod_poly_gcd(g, a, b);
+        nmod_mpoly_from_nmod_poly_keepbits(G, g, FLINT_MIN(shiftA, shiftB), 0, A->bits, ctx);
+        nmod_poly_clear(a);
+        nmod_poly_clear(b);
+        nmod_poly_clear(g);
+        return 1;
+    }
+
+    flint_randinit(randstate);
+    success = nmod_mpoly_gcd_zippel_smprime(G, A, B, ctx, 1, randstate);
+    success = success || nmod_mpoly_gcd_zippel_smprime(G, A, B, ctx, 1, randstate);
+
+    flint_randclear(randstate);
 
     return success;
 }
