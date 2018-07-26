@@ -20,23 +20,27 @@ main(void)
     flint_printf("gcd_zippel....\n");
     fflush(stdout);
 
-    if (0) {
+    if (1) {
+        int success;
         nmod_mpoly_ctx_t ctx;
         nmod_mpoly_t a, b, g;
         const char* vars[] = {"X","x1","x0"};
 
-        nmod_mpoly_ctx_init(ctx, 3, ORD_DEGREVLEX, 101);
+        nmod_mpoly_ctx_init(ctx, 3, ORD_DEGREVLEX, 2);
         nmod_mpoly_init(a, ctx);
         nmod_mpoly_init(b, ctx);
         nmod_mpoly_init(g, ctx);
-        nmod_mpoly_set_str_pretty(a, "(x0^2+x1+1)*(x1+x0+1)*((x0^2+x0+x1)*X^2 + (x1+2)*x0^2 + x1^2+15)*(1 + X + 2*x1 + 3*x0)", vars, ctx);
-        nmod_mpoly_set_str_pretty(b, "(x0^2+x1+1)*(x1+x0+1)*((x0^2+x0+x1)*X^2 + (x1+2)*x0^2 + x1^2+15)*(1 + X + 4*x1 + 5*x0)", vars, ctx);
+        nmod_mpoly_set_str_pretty(a, "((x0^2+x0+x1)*X^2 + (x1+1)*x0^2 + x1^2+1)*(1 + X + x1^3 + x0^3)", vars, ctx);
+        nmod_mpoly_set_str_pretty(b, "((x0^2+x0+x1)*X^2 + (x1+1)*x0^2 + x1^2+1)*(1 + X + x1^2 + x0^2)", vars, ctx);
 
-        nmod_mpoly_gcd_zippel(g, a, b, ctx);
+        success = nmod_mpoly_gcd_zippel(g, a, b, ctx);
         nmod_mpoly_assert_canonical(g, ctx);
 
+if (success) {
 printf("g: "); nmod_mpoly_print_pretty(g, vars, ctx); printf("\n");
-
+} else {
+printf("couldn't compute\n");
+}
         nmod_mpoly_clear(g, ctx);
         nmod_mpoly_clear(a, ctx);
         nmod_mpoly_clear(b, ctx);

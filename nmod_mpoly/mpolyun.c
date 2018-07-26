@@ -201,6 +201,8 @@ void nmod_mpolyun_content_last(nmod_poly_t a, nmod_mpolyun_t B,
         for (j = 0; j < (B->coeffs + i)->length; j++)
         {
             nmod_poly_gcd(a, a, (B->coeffs + i)->coeffs + j);
+            if (nmod_poly_degree(a) == 0)
+                break;
         }
     }
 }

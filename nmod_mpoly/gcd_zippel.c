@@ -651,14 +651,14 @@ cleanup:
     Try to set G to the gcd of A and B given the form f of G.
     return codes as enumerated in nmod_mpoly.h:
 
-    nmod_mpoly_sgcd_success,
-    nmod_mpoly_sgcd_form_wrong,
-    nmod_mpoly_sgcd_no_solution,
-    nmod_mpoly_sgcd_scales_not_found,
-    nmod_mpoly_sgcd_eval_point_not_found,
-    nmod_mpoly_sgcd_eval_gcd_deg_too_high
+    nmod_sgcd_success,
+    nmod_sgcd_form_wrong,
+    nmod_sgcd_no_solution,
+    nmod_sgcd_scales_not_found,
+    nmod_sgcd_eval_point_not_found,
+    nmod_sgcd_eval_gcd_deg_too_high
 */
-nmod_mpoly_sgcd_ret_t nmod_mpolyu_sgcd_zippel(
+nmod_sgcd_ret_t nmod_mpolyu_sgcd_zippel(
     nmod_mpolyu_t G,
     nmod_mpolyu_t A,
     nmod_mpolyu_t B,
@@ -669,7 +669,7 @@ nmod_mpoly_sgcd_ret_t nmod_mpolyu_sgcd_zippel(
     slong * degbound)
 {
     int eval_points_tried;
-    nmod_mpoly_sgcd_ret_t success;
+    nmod_sgcd_ret_t success;
     nmod_mpolyu_t Aevalsk1, Bevalsk1, fevalsk1, Aevalski, Bevalski, fevalski;
     nmod_poly_t Aeval, Beval, Geval;
     mp_limb_t * alpha, * b;
@@ -714,7 +714,7 @@ nmod_mpoly_sgcd_ret_t nmod_mpolyu_sgcd_zippel(
         nmod_poly_clear(a);
         nmod_poly_clear(b);
         nmod_poly_clear(g);
-        return nmod_mpoly_sgcd_success;
+        return nmod_sgcd_success;
     }
 
     if (f->length == 1)
@@ -722,16 +722,16 @@ nmod_mpoly_sgcd_ret_t nmod_mpolyu_sgcd_zippel(
         if ((f->coeffs + 0)->length > 1)
         {
             /* impossible to find scale factors in this case */
-            return nmod_mpoly_sgcd_scales_not_found;
+            return nmod_sgcd_scales_not_found;
         } else {
             /* otherwise set the coeff of the monomial to one */
             nmod_mpolyu_set(G, f, ctx);
             (G->coeffs + 0)->coeffs[0] = UWORD(1);
             if (!nmod_mpolyu_divides(A, G, ctx))
-                return nmod_mpoly_sgcd_form_wrong;
+                return nmod_sgcd_form_wrong;
             if (!nmod_mpolyu_divides(B, G, ctx))
-                return nmod_mpoly_sgcd_form_wrong;
-            return nmod_mpoly_sgcd_success;
+                return nmod_sgcd_form_wrong;
+            return nmod_sgcd_success;
         }
     }
 
@@ -812,7 +812,7 @@ pick_evaluation_point:
 
     if (++eval_points_tried > 10)
     {
-        success = nmod_mpoly_sgcd_eval_point_not_found;
+        success = nmod_sgcd_eval_point_not_found;
         goto finished;
     }
 
@@ -888,13 +888,13 @@ pick_evaluation_point:
             if (exceededcount < 2)
                 goto pick_evaluation_point;
 
-            success = nmod_mpoly_sgcd_eval_gcd_deg_too_high;
+            success = nmod_sgcd_eval_gcd_deg_too_high;
             goto finished;
         }
 
         if (f->exps[0] > nmod_poly_degree(Geval))
         {
-            success = nmod_mpoly_sgcd_form_main_degree_too_high;
+            success = nmod_sgcd_form_main_degree_too_high;
             *degbound = nmod_poly_degree(Geval);
             goto finished;
         }
@@ -912,7 +912,7 @@ pick_evaluation_point:
                 }
                 if (j >= f->length || f->exps[j] != k)
                 {
-                    success = nmod_mpoly_sgcd_form_wrong;
+                    success = nmod_sgcd_form_wrong;
                     goto finished;
                 }
                 W[l*j + i] = ck;
@@ -987,7 +987,7 @@ pick_evaluation_point:
         if (nullity == 0)
         {
             /* There is no solution for scale factors. Form f must be wrong */
-            success = nmod_mpoly_sgcd_form_wrong;
+            success = nmod_sgcd_form_wrong;
             goto finished;
         }
         if (nullity == 1)
@@ -1007,7 +1007,7 @@ pick_evaluation_point:
         if (underdeterminedcount < 2)
             goto pick_evaluation_point;
 
-        success = nmod_mpoly_sgcd_scales_not_found;
+        success = nmod_sgcd_scales_not_found;
         goto finished;
     }
 
@@ -1051,13 +1051,13 @@ pick_evaluation_point:
             u = nmod_mul(W[l*s + i], nmod_mat_get_entry(Msol, i, 0), ctx->ffinfo->mod);
             if (v != u)
             {
-                success = nmod_mpoly_sgcd_no_solution;
+                success = nmod_sgcd_no_solution;
                 goto finished;
             }
         }
     }
 
-    success = nmod_mpoly_sgcd_success;
+    success = nmod_sgcd_success;
 
 finished:
 
@@ -1380,7 +1380,7 @@ ret_fail:
 
 
 
-int nmod_mpolyu_gcd_zippel_linzipp(
+int nmod_mpolyu_pgcd_zippel(
     nmod_mpolyu_t G,
     nmod_mpolyu_t A,
     nmod_mpolyu_t B,
@@ -1497,7 +1497,7 @@ int nmod_mpolyu_gcd_zippel_linzipp(
         if (Aeval->length == 0 || Beval->length == 0)
             goto outer_continue;
 
-        success = nmod_mpolyu_gcd_zippel_linzipp(Geval, Aeval, Beval, var - 1, ctx, zinfo, randstate);
+        success = nmod_mpolyu_pgcd_zippel(Geval, Aeval, Beval, var - 1, ctx, zinfo, randstate);
         if (!success || Geval->exps[0] > degbound)
         {
             success = 0;
@@ -1585,19 +1585,19 @@ int nmod_mpolyu_gcd_zippel_linzipp(
             {
                 default:
                     FLINT_ASSERT(0);
-                case nmod_mpoly_sgcd_form_main_degree_too_high:
+                case nmod_sgcd_form_main_degree_too_high:
                     /* nmod_mpolyu_sgcd_zippel has updated degbound */
                     nmod_poly_one(modulus);
                     goto outer_continue;
-                case nmod_mpoly_sgcd_form_wrong:
-                case nmod_mpoly_sgcd_no_solution:
+                case nmod_sgcd_form_wrong:
+                case nmod_sgcd_no_solution:
                     success = 0;
                     goto finished;
-                case nmod_mpoly_sgcd_scales_not_found:
-                case nmod_mpoly_sgcd_eval_point_not_found:
-                case nmod_mpoly_sgcd_eval_gcd_deg_too_high:
+                case nmod_sgcd_scales_not_found:
+                case nmod_sgcd_eval_point_not_found:
+                case nmod_sgcd_eval_gcd_deg_too_high:
                     goto inner_continue;
-                case nmod_mpoly_sgcd_success:
+                case nmod_sgcd_success:
                     (void)(NULL);
             }
 
@@ -1681,7 +1681,19 @@ finished:
 
 
 
+int nmod_mpolyu_mgcd_zippel(
+    nmod_mpolyu_t G,
+    nmod_mpolyu_t A,
+    nmod_mpolyu_t B,
+    nmod_mpoly_ctx_t ctx,
+    mpoly_zipinfo_t zinfo,
+    flint_rand_t randstate)
+{
 
+    return nmod_mpolyu_pgcd_zippel(G, A, B, ctx->minfo->nvars - 1, ctx, zinfo, randstate);
+
+    /* TODO: incorporate fq_nmod_mpolyu_{s|p}gcd_zippel */
+}
 
 
 
@@ -1704,7 +1716,7 @@ int nmod_mpolyu_gcd_zippel(
     mpoly_zipinfo_t zinfo,
     flint_rand_t randstate)
 {
-    int success;
+    int success = 0;
     slong i;
     slong ABminshift;
     nmod_mpoly_t content;
@@ -1720,22 +1732,23 @@ int nmod_mpolyu_gcd_zippel(
     nmod_mpolyu_init(Bbar, A->bits, ctx);
     nmod_mpolyu_init(Gbar, A->bits, ctx);
 
+    /* compute the content of GCD wrt non main variables */
     nmod_mpoly_set(content, A->coeffs + 0, ctx);
     for (i = 1; i < A->length; i++)
     {
         if (nmod_mpoly_is_one(content, ctx))
             break;
-        success = nmod_mpoly_gcd_zippel_smprime(content, content, A->coeffs + i, ctx, 1, randstate);
+        success = _nmod_mpoly_gcd_zippel(content, content, A->coeffs + i, ctx, 1, randstate);
         if (!success)
-            return 0;
+            goto finished;
     }
     for (i = 0; i < B->length; i++)
     {
         if (nmod_mpoly_is_one(content, ctx))
             break;
-        success = nmod_mpoly_gcd_zippel_smprime(content, content, B->coeffs + i, ctx, 1, randstate);
+        success = _nmod_mpoly_gcd_zippel(content, content, B->coeffs + i, ctx, 1, randstate);
         if (!success)
-            return 0;
+            goto finished;
     }
 
     nmod_mpolyu_divexact_mpoly(Abar, A, content, ctx);
@@ -1745,24 +1758,28 @@ int nmod_mpolyu_gcd_zippel(
     nmod_mpolyu_shift_right(Abar, Abar->exps[Abar->length - 1]);
     nmod_mpolyu_shift_right(Bbar, Bbar->exps[Bbar->length - 1]);
 
-    success = nmod_mpolyu_gcd_zippel_linzipp(Gbar, Abar, Bbar, ctx->minfo->nvars - 1, ctx, zinfo, randstate);
+    success = nmod_mpolyu_mgcd_zippel(Gbar, Abar, Bbar, ctx, zinfo, randstate);
     if (!success)
-        return 0;
+        goto finished;
 
     nmod_mpolyu_shift_left(Gbar, ABminshift);
     nmod_mpolyu_mul_mpoly(G, Gbar, content, ctx);
+
+    success = 1;
+
+finished:
 
     nmod_mpolyu_clear(Abar, ctx);
     nmod_mpolyu_clear(Bbar, ctx);
     nmod_mpolyu_clear(Gbar, ctx);
     nmod_mpoly_clear(content, ctx);
 
-    return 1;
+    return success;
 }
 
 
 
-int nmod_mpoly_gcd_zippel_smprime(nmod_mpoly_t G, const nmod_mpoly_t A,
+int _nmod_mpoly_gcd_zippel(nmod_mpoly_t G, const nmod_mpoly_t A,
                               const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx,
                                          int keepbits, flint_rand_t randstate)
 {
@@ -1880,8 +1897,7 @@ int nmod_mpoly_gcd_zippel(nmod_mpoly_t G, const nmod_mpoly_t A,
     }
 
     flint_randinit(randstate);
-    success = nmod_mpoly_gcd_zippel_smprime(G, A, B, ctx, 1, randstate);
-    success = success || nmod_mpoly_gcd_zippel_smprime(G, A, B, ctx, 1, randstate);
+    success = _nmod_mpoly_gcd_zippel(G, A, B, ctx, 1, randstate);
 
     flint_randclear(randstate);
 

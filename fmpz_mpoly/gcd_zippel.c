@@ -21,7 +21,7 @@ void nmod_mpoly_ctx_change_modulus(nmod_mpoly_ctx_t ctx, mp_limb_t modulus)
 
 
 
-int fmpz_mpolyu_gcd_zippel_linzipm(
+int fmpz_mpolyu_mgcd_zippel(
     fmpz_mpolyu_t G,
     fmpz_mpolyu_t A,
     fmpz_mpolyu_t B,
@@ -88,7 +88,7 @@ choose_prime_outer:
     if (Ap->length == 0 || Bp->length == 0)
         goto choose_prime_outer;
 
-    success = nmod_mpolyu_gcd_zippel_linzipp(Gp, Ap, Bp, ctx->minfo->nvars - 1, ctxp, zinfo, randstate);
+    success = nmod_mpolyu_pgcd_zippel(Gp, Ap, Bp, ctx->minfo->nvars - 1, ctxp, zinfo, randstate);
 
     if (!success || Gp->exps[0] > degbound)
         goto choose_prime_outer;
@@ -141,15 +141,15 @@ choose_prime_inner:
     {
         default:
             FLINT_ASSERT(0);
-        case nmod_mpoly_sgcd_form_main_degree_too_high:
-        case nmod_mpoly_sgcd_form_wrong:
-        case nmod_mpoly_sgcd_no_solution:
+        case nmod_sgcd_form_main_degree_too_high:
+        case nmod_sgcd_form_wrong:
+        case nmod_sgcd_no_solution:
             goto choose_prime_outer;
-        case nmod_mpoly_sgcd_scales_not_found:
-        case nmod_mpoly_sgcd_eval_point_not_found:
-        case nmod_mpoly_sgcd_eval_gcd_deg_too_high:
+        case nmod_sgcd_scales_not_found:
+        case nmod_sgcd_eval_point_not_found:
+        case nmod_sgcd_eval_gcd_deg_too_high:
             goto choose_prime_inner;
-        case nmod_mpoly_sgcd_success:
+        case nmod_sgcd_success:
             NULL;
     }
 
@@ -173,7 +173,6 @@ choose_prime_inner:
 
     fmpz_mpolyu_fmpz_content(pp, H, ctx);
     fmpz_mpolyu_scalar_divexact_fmpz(G, H, pp, ctx);
-/*    fmpz_mpolyu_remove_fmpz_content(G, H, ctx);*/
 
     if (!fmpz_mpolyu_divides(A, G, ctx) || !fmpz_mpolyu_divides(B, G, ctx))
         goto choose_prime_inner;
@@ -232,7 +231,7 @@ int fmpz_mpolyu_gcd_zippel(
     {
         if (fmpz_mpoly_is_one(content, ctx))
             break;
-        success = fmpz_mpoly_gcd_zippel_keepbits(content, content, A->coeffs + i, ctx);
+        success = _fmpz_mpoly_gcd_zippel(content, content, A->coeffs + i, ctx);
         if (!success)
             return 0;
     }
@@ -240,7 +239,7 @@ int fmpz_mpolyu_gcd_zippel(
     {
         if (fmpz_mpoly_is_one(content, ctx))
             break;
-        success = fmpz_mpoly_gcd_zippel_keepbits(content, content, B->coeffs + i, ctx);
+        success = _fmpz_mpoly_gcd_zippel(content, content, B->coeffs + i, ctx);
         if (!success)
             return 0;
     }
@@ -252,7 +251,7 @@ int fmpz_mpolyu_gcd_zippel(
     fmpz_mpolyu_shift_right(Abar, Abar->exps[Abar->length - 1]);
     fmpz_mpolyu_shift_right(Bbar, Bbar->exps[Bbar->length - 1]);
 
-    success = fmpz_mpolyu_gcd_zippel_linzipm(Gbar, Abar, Bbar, ctx, zinfo, randstate);
+    success = fmpz_mpolyu_mgcd_zippel(Gbar, Abar, Bbar, ctx, zinfo, randstate);
     if (!success)
         return 0;
 
@@ -354,7 +353,7 @@ void fmpz_mpoly_from_fmpz_poly_keepbits(fmpz_mpoly_t A, const fmpz_poly_t B,
 /*
     like fmpz_mpoly_gcd_zippel, but G and A and B all have the same bits
 */
-int fmpz_mpoly_gcd_zippel_keepbits(fmpz_mpoly_t G, fmpz_mpoly_t A,
+int _fmpz_mpoly_gcd_zippel(fmpz_mpoly_t G, fmpz_mpoly_t A,
                                     fmpz_mpoly_t B, const fmpz_mpoly_ctx_t ctx)
 {
     slong i;

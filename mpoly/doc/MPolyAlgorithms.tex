@@ -1,0 +1,194 @@
+\documentclass[12pt,reqno]{amsart}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{graphicx}
+\usepackage{xtab}
+\usepackage{color}
+\usepackage{hyperref}
+
+
+\numberwithin{equation}{section}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{entry}[theorem]{Entry}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{algorithm}[theorem]{Algorithm}
+
+\addtolength{\textwidth}{1.0in}
+\addtolength{\hoffset}{-0.5in}
+%\addtolength{\textheight}{0.6in}
+%\addtolength{\voffset}{-0.3in}
+
+\newcommand\T{\rule{0pt}{4.0ex}}       % Top strut
+\newcommand\B{\rule[-2.5ex]{0pt}{0pt}} % Bottom strut
+
+\newcommand{\smat}[4] {(\begin{smallmatrix} #1 & #2 \\ #3 & #4 \end{smallmatrix} )}
+\newcommand{\mat}[4]  { \left(\begin{array}{cc} #1 & #2 \\ #3 & #4 \end{array} \right)}
+\newcommand{\schar}[2] {( \begin{smallmatrix} #1 \\ #2 \end{smallmatrix})}
+
+\newcommand{\op}[1]  { \operatorname{ #1 }}
+\newcommand{\olbbH}[0]  { \overline{\mathbb{H}}}
+\newcommand{\olbbQ}[0]  { \overline{\mathbb{Q}}}
+\newcommand{\olG}[0]  { \overline{\Gamma}}
+\newcommand{\bbH}[0]  { \mathbb{H}}
+\newcommand{\bbC}[0]  { \mathbb{C}}
+\newcommand{\bbZ}[0]  { \mathbb{Z}}
+\newcommand{\bbF}[0]  { \mathbb{F}}
+\newcommand{\bbQ}[0]  { \mathbb{Q}}
+\newcommand{\bbR}[0]  { \mathbb{R}}
+\newcommand{\gok}[0]  { \mathfrak{k}}
+\newcommand{\goe}[0]  { \mathfrak{e}}
+\newcommand{\goR}[0]  { \mathfrak{R}}
+
+\title{Algorithms for Multivariate Polynomials}
+\author{Daniel Schultz}
+
+\begin{document}
+
+\begin{abstract}
+Algorithms for multivariate polynomials in flint are discussed.
+\end{abstract}
+
+
+\maketitle
+
+\section{Introduction}
+
+A polynomial $A \in R[x_1,\dots,x_n]$ is representation as a sums of terms
+\begin{equation*}
+A = t_1 + \cdots + t_a
+\end{equation*}
+where the terms are ordered as $t_1 > t_2 > \cdots > t_a$. The basic operations of addition and subtraction are then equivalent to a merge operation and run in time proportional to the sum of the input term counts.
+
+
+\section{Multiplication}
+\subsection{Dense multiplication in $\bbZ[x_1,\dots,x_n]$ or $\bbZ_p[x_1,\dots,x_n]$}\
+
+Given $A(x_1,\dots,x_n), B(x_1,\dots,x_n) \in R[x_1,\dots,x_n]$, set $r_i = 1 + \op{deg}_{x_i}(a) + \op{deg}_{x_i}(b)$. The Kronecker substitution
+\begin{equation*}
+x_1 \to x, \quad x_2 \to x^{r_1}, \quad x_3 \to x^{r_1 r_2}, \quad \dots, \quad x_n \to x^{r_1 \cdots r_{n-1}}
+\end{equation*}
+gives two univariate polynomials to multiply in $\bbZ[x]$ or $\bbZ_p[x]$. This Kronecker substitution is chosen so that it can be reversed to find $A \cdot B \in R[x_1,\dots,x_n]$ from the univariate product. The flint functions {\tt \{nmod|fmpz\}\_mpoly\_mul\_\{dense|array\}} implement such techniques. The {\tt \{nmod|fmpz\}\_mpoly\_mul\_dense} functions use the ordinary polynomial multiplication functions {\tt \{nmod|fmpz\}\_poly\_mul} while {\tt \{nmod|fmpz\}\_mpoly\_mul\_array} use a multiply and accumulate technique that might be better for semi-sparse polynomials.
+
+
+\subsection{Sparse multiplication in $\bbZ[x_1,\dots,x_n]$ or $\bbZ_p[x_1,\dots,x_n]$}\
+
+Given $A = t_1 + \cdots + t_a, B = s_1 + \cdots + s_b, \in R[x_1,\dots,x_n]$, we need to calculate all products $t_i s_j$, sort them, and combine like terms. This is done using a heap in the functions {\tt \{nmod|fmpz\}\_mpoly\_mul\_johnson} as in \cite{Johnson}. The essential idea is to read off the product terms in order from a heap. The heap never needs to become too large if one uses the relations
+\begin{equation*}
+t_i s_j > t_{i+1} s_j, \quad t_i s_j > t_i s_{j+1}\text{.}
+\end{equation*}
+
+
+\section{Division}
+
+The techniques used for multiplication (Kronecker substitutions in the dense case and heaps in the sparse case) apply to division as well.
+
+
+\section{Powering}
+
+Implements a corrected version of an algorithm called FPS and incorrectly stated in \cite{FPS}. The basic idea is to map the problem to $R[x]$ via a Kronecker substitution and use a recursion for the coefficients of $f^k$ derived from
+\begin{equation*}
+f (f^k)' = k f' (f^k)\text{.}
+\end{equation*}
+Since solving for the coefficients of $f^k$ involves division, this requires some modification for $R=\bbZ_p$.
+
+\section{Greatest Common Divisor}
+
+\subsection{Dense GCD in $\bbZ_p[x_1,\dots,x_n]$}\
+Brown's algorithm \cite{Brown} is used here. This comes in two version - a small prime version and a large prime version. The small prime version interpolates in each variable by choosing evaluation points from $\bbZ_p$. If this fails, then interpolation continues in $\bbZ_p/(f(x_n))[x_1,\dots,x_{n-1}]$, for sufficiently many irreducible $f(x) \in \bbZ_p[x]$. Thus the large prime version uses arithmetic in finite fields. No explicit divisibility checks are performed.
+
+\subsection{Dense GCD in $\bbZ[x_1,\dots,x_n]$}\
+We simply reconstruct the GCD from its image in $\bbZ_p[x_1,\dots,x_n]$ for sufficiently many $p$. Only large $p$'s are used, and dense GCD's in $\bbZ_p[x_1,\dots,x_n]$ only use the small prime version. Each image GCD in $\bbZ_p$ is correct and Brown's coefficient bounds \cite{Brown} are used instead of a divisibility check.
+
+\subsection{Sparse GCD in $\bbZ_p[x_1,\dots,x_n]$}\
+Implements a corrected version of an algorithm incorrectly stated in \cite{SULING}. The following is a high level summary.
+
+\ \\
+{\tt nmod\_mpoly\_gcd\_zippel}($\bbZ_p[x_1,\dots,x_n]$, $n \ge 2$):\\
+\indent $\left[\begin{tabular}{l}
+split into $\bbZ_p[x_1,\dots,x_{n-1}][X]$\\
+call {\tt nmod\_mpolyu\_gcd\_zippel}
+\end{tabular}\right.$
+\ \\
+{\tt nmod\_mpolyu\_gcd\_zippel}($\bbZ_p[x_1,\dots,x_n][X]$, $n \ge 1$):\\
+\indent $\left[\begin{tabular}{l}
+remove content in $x_1,\dots,x_n$ from the GCD via {\tt nmod\_mpoly\_gcd\_zippel}\\
+call {\tt nmod\_mpolyu\_mgcd\_zippel}
+\end{tabular}\right.$
+\ \\
+{\tt nmod\_mpolyu\_mgcd\_zippel}($\bbZ_p[x_1,\dots,x_n][X]$, $n \ge 1$):\\
+\indent $\left[\begin{tabular}{l}
+call {\tt nmod\_mpolyu\_pgcd\_zippel} and return if succeeded\\
+choose several irreducibles $f(x_n) \in \bbZ_p[x_n]$\\
+compute the GCD modulo $f(x_n)$ via {\tt fq\_nmod\_mpolyu\_\{p|s\}gcd\_zippel}\\
+combine answers via CRT and check divisibility
+\end{tabular}\right.$
+
+\ \\
+The four functions {\tt [fq\_]nmod\_mpoly\_\{p|s\}gcd\_zippel} may be summarized as follows. When the prefix {\tt fq\_} is present, $q$ is a power of $p$, otherwise $q$ is $p$.
+
+\ \\
+{\tt [fq\_]nmod\_mpolyu\_pgcd\_zippel}($\bbF_q[x_1,\dots,x_n][X]$, $n \ge 1$):\\
+\indent $\left[\begin{tabular}{l}
+if the GCD has content w.r.t. $x_n$, fail\\
+pick an evaluation point $x_n \to \alpha$ for $\alpha \in \bbF_q$\\
+(1) call {\tt [fq\_]nmod\_mpolyu\_pgcd\_zippel} on the evaluated inputs in $\bbF_q[x_1,\dots,x_{n-1}][X]$\\
+record the form $f$ of the GCD obtained for step (2) below\\
+pick severial evaluation points $x_n \to \alpha$ for $\alpha \in \bbF_q$\\
+(2) call {\tt [fq\_]nmod\_mpoly\_sgcd\_zippel} on the evaluated inputs in $\bbF_q[x_1,\dots,x_{n-1}][X]$\\
+combine the answer from (1) and the answers from (2) via dense interpolation in $x_n$\\
+?? check divisibility ??
+\end{tabular}\right.$
+\ \\
+{\tt [fq\_]nmod\_mpolyu\_sgcd\_zippel}($\bbF_q[x_1,\dots,x_n][X]$, assumed form $f$):\\
+\indent $\left[\begin{tabular}{l}
+via evaluations of the form $(x_1,\dots,x_n) \to (\alpha_1,\dots,\alpha_n) \in \bbF_q^n$\\ and GCD computations in $\bbF_q[X]$, try to compute the coefficients \\of the assumed form $f$ to match the GCD of the inputs (up to scalar multiples in $\bbF_q$)
+\end{tabular}\right.$
+
+\ \\
+\subsection{Sparse GCD in $\bbZ[x_1,\dots,x_n]$}\
+Implements a corrected version of an algorithm called LINZIP and incorrectly stated in \cite{LINZIP}. The following is a high level summary.
+
+\ \\
+{\tt fmpz\_mpoly\_gcd\_zippel}($\bbZ[x_1,\dots,x_n]$, $n \ge 2$):\\
+\indent $\left[\begin{tabular}{l}
+split into $\bbZ[x_1,\dots,x_{n-1}][X]$\\
+call {\tt fmpz\_mpolyu\_gcd\_zippel}
+\end{tabular}\right.$
+
+\ \\
+{\tt fmpz\_mpolyu\_gcd\_zippel}($\bbZ[x_1,\dots,x_n][X]$, $n \ge 1$):\\
+\indent $\left[\begin{tabular}{l}
+remove content in $x_1,\dots,x_n$ from the GCD via {\tt fmpz\_mpoly\_gcd\_zippel}\\
+call {\tt fmpz\_mpolyu\_mgcd\_zippel}
+\end{tabular}\right.$
+
+\ \\
+{\tt fmpz\_mpolyu\_mgcd\_zippel}($\bbZ[x_1,\dots,x_n][X]$, $n \ge 1$):\\
+\indent $\left[\begin{tabular}{l}
+choose several primes $p$\\
+compute the GCD modulo $p$ via {\tt nmod\_mpolyu\_\{p|s\}gcd\_zippel}\\
+combine answers via CRT and check divisibility
+\end{tabular}\right.$
+
+\ \\
+\subsection{PRS}
+
+
+\section{Factorization}
+
+\begin{thebibliography}{99}
+\bibitem{Brown} W. S. Brown. On Euclid’s Algorithm and the
+Computation of Polynomial Greatest Common Divisors.
+J. ACM 18 (1971), 478-504.
+\bibitem{Johnson} Johnson, S.C., 1974. Sparse polynomial arithmetic. ACM SIGSAM Bulletin 8 (3), pp. 63--71.
+\bibitem{FPS} Monagan M., Pearce R.: Sparse polynomial powering using heaps. “Computer Algebra in Scientific Computing”, Springer, 2012, s.236-247. 
+\bibitem{LINZIP}  J. de Kleine, M. Monagan and A. Wittkopf, Algorithms for the non-monic case of the sparse
+modular GCD algorithm. Proceedings of ISSAC ’05,
+ACM Press, pp. 124--131, 2005.
+\bibitem{SULING} Yang, Suling. Computing the Greatest Common Divisor of Multivariate Polynomials over Finite Fields. http://www.cecm.sfu.ca/CAG/theses/suling.pdf
+\end{thebibliography}
+\end{document}
