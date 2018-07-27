@@ -222,3 +222,82 @@ void fq_nmod_mpolyn_set(fq_nmod_mpolyn_t A, const fq_nmod_mpolyn_t B, const fq_n
     A->length = Blen;
 }
 
+
+void fq_nmod_mpolyn_set_mpoly(fq_nmod_mpolyn_t A, const fq_nmod_mpoly_t B, const fq_nmod_mpoly_ctx_t ctx)
+{
+    slong i;
+    slong N;
+    fq_nmod_poly_struct * Acoeff;
+    fq_nmod_struct * Bcoeff;
+    ulong * Aexp, * Bexp;
+    slong Blen;
+
+    fq_nmod_mpolyn_fit_bits(A, B->bits, ctx);
+    A->bits = B->bits;
+
+    Blen = B->length;
+    fq_nmod_mpolyn_fit_length(A, Blen, ctx);
+    Acoeff = A->coeffs;
+    Bcoeff = B->coeffs;
+    Aexp = A->exps;
+    Bexp = B->exps;
+
+    N = mpoly_words_per_exp(B->bits, ctx->minfo);
+
+    for (i = 0; i < Blen; i++)
+    {
+        fq_nmod_poly_zero(Acoeff + i, ctx->fqctx);
+        fq_nmod_poly_set_coeff(Acoeff + i, 0, Bcoeff + i, ctx->fqctx);
+        mpoly_monomial_set(Aexp + N*i, Bexp + N*i, N);
+    }
+
+    /* demote remaining coefficients */
+    for (i = Blen; i < A->length; i++)
+    {
+        fq_nmod_poly_clear(Acoeff + i, ctx->fqctx);
+        fq_nmod_poly_init(Acoeff + i, ctx->fqctx);
+    }
+    A->length = Blen;
+}
+
+
+void fq_nmod_mpolyn_mul_poly(
+    fq_nmod_mpolyn_t A,
+    const fq_nmod_mpolyn_t B,
+    const fq_nmod_poly_t c,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    slong i;
+    fq_nmod_poly_struct * Acoeff, * Bcoeff;
+    ulong * Aexp, * Bexp;
+    slong Blen;
+    slong N;
+
+    fq_nmod_mpolyn_fit_bits(A, B->bits, ctx);
+    A->bits = B->bits;
+
+    Blen = B->length;
+    fq_nmod_mpolyn_fit_length(A, Blen, ctx);
+    Acoeff = A->coeffs;
+    Bcoeff = B->coeffs;
+    Aexp = A->exps;
+    Bexp = B->exps;
+
+    N = mpoly_words_per_exp(B->bits, ctx->minfo);
+
+    FLINT_ASSERT(!fq_nmod_poly_is_zero(c, ctx->fqctx));
+
+    for (i = 0; i < Blen; i++)
+    {
+        fq_nmod_poly_mul(Acoeff + i, Bcoeff + i, c, ctx->fqctx);
+        mpoly_monomial_set(Aexp + N*i, Bexp + N*i, N);
+    }
+
+    /* demote remaining coefficients */
+    for (i = Blen; i < A->length; i++)
+    {
+        fq_nmod_poly_clear(Acoeff + i, ctx->fqctx);
+        fq_nmod_poly_init(Acoeff + i, ctx->fqctx);
+    }
+    A->length = Blen;
+}

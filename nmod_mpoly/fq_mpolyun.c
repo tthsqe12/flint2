@@ -92,3 +92,135 @@ void fq_nmod_mpolyun_fit_length(fq_nmod_mpolyun_t A, slong length, const fq_nmod
         A->alloc = new_alloc;
     }
 }
+
+void fq_nmod_mpolyun_shift_right(fq_nmod_mpolyun_t A, ulong s)
+{
+    slong i;
+    for (i = 0; i < A->length; i++)
+    {
+        FLINT_ASSERT(A->exps[i] >= s);
+        A->exps[i] -= s;
+    }
+}
+
+void fq_nmod_mpolyun_shift_left(fq_nmod_mpolyun_t A, ulong s)
+{
+    slong i;
+    for (i = 0; i < A->length; i++)
+    {
+        A->exps[i] += s;
+    }
+}
+
+slong fq_nmod_mpolyun_lastdeg(fq_nmod_mpolyun_t A, fq_nmod_mpoly_ctx_t ctx)
+{
+    slong i, j;
+    slong deg = -WORD(1);
+
+    for (i = 0; i < A->length; i++)
+    {
+        for (j = 0; j < (A->coeffs + i)->length; j++)
+        {
+            deg = FLINT_MAX(deg, fq_nmod_poly_degree((A->coeffs + i)->coeffs + j, ctx->fqctx));
+        }
+    }
+    FLINT_ASSERT(deg >= 0);
+    return deg;
+}
+
+void fq_nmod_mpolyun_set(fq_nmod_mpolyun_t A, const fq_nmod_mpolyun_t B, const fq_nmod_mpoly_ctx_t ctx)
+{
+    slong i, Blen;
+    fq_nmod_mpolyn_struct * Acoeff, * Bcoeff;
+    ulong * Aexp, * Bexp;
+
+    Blen = B->length;
+    fq_nmod_mpolyun_fit_length(A, Blen, ctx);
+    Acoeff = A->coeffs;
+    Bcoeff = B->coeffs;
+    Aexp = A->exps;
+    Bexp = B->exps;
+
+    for (i = 0; i < Blen; i++)
+    {
+        fq_nmod_mpolyn_set(Acoeff + i, Bcoeff + i, ctx);
+        Aexp[i] = Bexp[i];
+    }
+
+    /* demote remaining coefficients */
+    for (i = Blen; i < A->length; i++)
+    {
+        fq_nmod_mpolyn_clear(Acoeff + i, ctx);
+        fq_nmod_mpolyn_init(Acoeff + i, A->bits, ctx);
+    }
+    A->length = Blen;
+}
+
+
+void fq_nmod_mpolyun_mul_poly(
+    fq_nmod_mpolyun_t A,
+    const fq_nmod_mpolyun_t B,
+    const fq_nmod_poly_t c,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    slong i, Blen;
+    fq_nmod_mpolyn_struct * Acoeff, * Bcoeff;
+    ulong * Aexp, * Bexp;
+
+    Blen = B->length;
+    fq_nmod_mpolyun_fit_length(A, Blen, ctx);
+    Acoeff = A->coeffs;
+    Bcoeff = B->coeffs;
+    Aexp = A->exps;
+    Bexp = B->exps;
+
+    for (i = 0; i < Blen; i++)
+    {
+        fq_nmod_mpolyn_mul_poly(Acoeff + i, Bcoeff + i, c, ctx);
+        Aexp[i] = Bexp[i];
+    }
+
+    /* demote remaining coefficients */
+    for (i = Blen; i < A->length; i++)
+    {
+        fq_nmod_mpolyn_clear(Acoeff + i, ctx);
+        fq_nmod_mpolyn_init(Acoeff + i, A->bits, ctx);
+    }
+    A->length = Blen;
+}
+
+
+void fq_nmod_mpolyun_content_last(fq_nmod_poly_t a, fq_nmod_mpolyun_t B,
+                                                          fq_nmod_mpoly_ctx_t ctx)
+{
+    slong i, j;
+
+    fq_nmod_poly_zero(a, ctx->fqctx);
+    for (i = 0; i < B->length; i++)
+    {
+        for (j = 0; j < (B->coeffs + i)->length; j++)
+        {
+            fq_nmod_poly_gcd(a, a, (B->coeffs + i)->coeffs + j, ctx->fqctx);
+            if (fq_nmod_poly_degree(a, ctx->fqctx) == 0)
+                break;
+        }
+    }
+}
+
+void fq_nmod_mpolyun_divexact_last(fq_nmod_mpolyun_t A, fq_nmod_poly_t b,
+                                                       fq_nmod_mpoly_ctx_t ctx)
+{
+    slong i, j;
+
+    fq_nmod_poly_t r;
+    fq_nmod_poly_init(r, ctx->fqctx);
+    for (i = 0; i < A->length; i++)
+    {
+        for (j = 0; j < (A->coeffs + i)->length; j++)
+        {
+            fq_nmod_poly_divrem((A->coeffs + i)->coeffs + j, r, (A->coeffs + i)->coeffs + j, b, ctx->fqctx);
+            FLINT_ASSERT(fq_nmod_poly_is_zero(r, ctx->fqctx));
+        }
+    }
+    fq_nmod_poly_clear(r, ctx->fqctx);
+}

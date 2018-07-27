@@ -1283,12 +1283,16 @@ int nmod_mpolyu_pgcd_zippel_bivar(
             goto ret_fail;
         alpha--;
 
+        /* make sure evaluation point does not kill both lc(A) and lc(B) */
         geval = nmod_poly_evaluate_nmod(g, alpha);
         if (geval == WORD(0))
             goto outer_continue;
 
+        /* make sure evaluation point does not kill either A or B */
         nmod_mpolyun_eval_last(Aeval, An, alpha, ctx);
         nmod_mpolyun_eval_last(Beval, Bn, alpha, ctx);
+        if (Aeval->length == 0 || Beval->length == 0)
+            goto outer_continue;
 
         nmod_mpolyu_pgcd_zippel_univar(Geval, Aeval, Beval, ctx);
 
@@ -1467,6 +1471,13 @@ int nmod_mpolyu_pgcd_zippel(
         success = nmod_mpolyu_pgcd_zippel_bivar(G, A, B, ctx, zinfo);
         goto finished;
     }
+
+    if (ctx->ffinfo->mod.n <= UWORD(3))
+    {
+        success = 0;
+        goto finished;
+    }
+
 
     degbound = FLINT_MIN(A->exps[0], B->exps[0]);
 
@@ -1681,6 +1692,170 @@ finished:
 
 
 
+
+
+
+
+
+/*
+void nmod_mpoly_redto_fq_mpoly(
+    fq_nmod_mpoly_t A,
+    nmod_mpoly_t B,
+    slong var,
+    fq_nmod_mpoly_ctx_t ffctx,
+    nmod_mpoly_ctx_t ctx)
+{
+    slong i;
+    slong k;
+    ulong * oneexp;
+    slong offset;
+    slong shift;
+    ulong mask;
+    slong N;
+    TMP_INIT;
+
+    FLINT_ASSERT(A->bits == B->bits);
+    FLINT_ASSERT(B->bits <= FLINT_BITS);
+    FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
+    FLINT_ASSERT(ffctx->minfo->ord == ORD_LEX);
+    FLINT_ASSERT(ffctx->minfo->nvars == ctx->minfo->nvars);
+
+    TMP_START;
+
+    N = mpoly_words_per_exp(B->bits, ctx->minfo);
+    oneexp = TMP_ALLOC(N*sizeof(ulong));
+    mask = (-UWORD(1)) >> (FLINT_BITS - B->bits);
+    mpoly_gen_oneexp_offset_shift(oneexp, &offset, &shift, var, N, B->bits, ctx->minfo);
+
+    fq_nmod_mpoly_fit_bits(A, B->bits, ffctx);
+    A->bits = B->bits;
+
+    k = 0;
+    fq_nmod_mpoly_fit_length(A, k + 1, ffctx);
+    for (i = 0; i < B->length; i++)
+    {
+        ulong c = (B->exps[N*i + offset] >> shift) & mask;
+        mpoly_monomial_msub(A->exps + N*k, B->exps + N*i, c, oneexp, N);
+
+        if (k > 0 && mpoly_monomial_equal(A->exps + N*k, A->exps + N*(k - 1), N))
+        {
+            nmod_poly_set_coeff_ui(A->coeffs + k - 1, c, B->coeffs[i]);
+        } else
+        {
+            nmod_poly_zero(A->coeffs + k);
+            nmod_poly_set_coeff_ui(A->coeffs + k, c, B->coeffs[i]);
+            k++;
+            fq_nmod_mpoly_fit_length(A, k + 1, ffctx);
+        }
+    }
+
+    for (i = 0; i < k; i++) {
+        nmod_poly_rem(A->coeffs + i, A->coeffs + i, ffctx->fqctx->modulus);
+    }
+
+    fq_nmod_mpoly_set_length(A, k, ffctx);
+    TMP_END;
+}
+void nmod_mpolyu_redto_fq_mpolyu(
+    fq_nmod_mpolyu_t A,
+    nmod_mpolyu_t B,
+    slong var,
+    fq_nmod_mpoly_ctx_t ffctx,
+    nmod_mpoly_ctx_t ctx)
+{
+    slong i, Blen;
+    fq_nmod_mpoly_struct * Acoeff;
+    nmod_mpoly_struct * Bcoeff;
+    ulong * Aexp, * Bexp;
+
+    Blen = B->length;
+    fq_nmod_mpolyu_fit_length(A, Blen, ffctx);
+    Acoeff = A->coeffs;
+    Bcoeff = B->coeffs;
+    Aexp = A->exps;
+    Bexp = B->exps;
+
+    for (i = 0; i < Blen; i++)
+    {
+        nmod_mpoly_redto_fq_mpoly(Acoeff + i, Bcoeff + i, var, ffctx, ctx);
+        Aexp[i] = Bexp[i];
+    }
+
+    for (i = Blen; i < A->length; i++)
+    {
+        fq_nmod_mpoly_clear(Acoeff + i, ffctx);
+        fq_nmod_mpoly_init(Acoeff + i, A->bits, ffctx);
+    }
+    A->length = Blen;  
+}
+*/
+void nmod_mpolyn_redto_fq_nmod_mpoly(
+    fq_nmod_mpoly_t A,
+    nmod_mpolyn_t B,
+    fq_nmod_mpoly_ctx_t ffctx,
+    nmod_mpoly_ctx_t ctx)
+{
+    slong i;
+    slong k;
+    slong N;
+
+    FLINT_ASSERT(A->bits == B->bits);
+    FLINT_ASSERT(B->bits <= FLINT_BITS);
+    FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
+    FLINT_ASSERT(ffctx->minfo->ord == ORD_LEX);
+    FLINT_ASSERT(ffctx->minfo->nvars == ctx->minfo->nvars);
+
+    N = mpoly_words_per_exp(B->bits, ctx->minfo);
+
+    k = 0;
+    fq_nmod_mpoly_fit_length(A, k + 1, ffctx);
+    for (i = 0; i < B->length; i++)
+    {
+        fq_nmod_mpoly_fit_length(A, k + 1, ffctx);
+        mpoly_monomial_set(A->exps + N*k, B->exps + N*i, N);
+        nmod_poly_rem(A->coeffs + k, B->coeffs + i, ffctx->fqctx->modulus);
+        k += !fq_nmod_is_zero(A->coeffs + k, ffctx->fqctx);
+    }
+
+    fq_nmod_mpoly_set_length(A, k, ffctx);
+}
+void nmod_mpolyun_redto_fq_nmod_mpolyu(
+    fq_nmod_mpolyu_t A,
+    nmod_mpolyun_t B,
+    fq_nmod_mpoly_ctx_t ffctx,
+    nmod_mpoly_ctx_t ctx)
+{
+    slong i, Blen;
+    fq_nmod_mpoly_struct * Acoeff;
+    nmod_mpolyn_struct * Bcoeff;
+    ulong * Aexp, * Bexp;
+
+    Blen = B->length;
+    fq_nmod_mpolyu_fit_length(A, Blen, ffctx);
+    Acoeff = A->coeffs;
+    Bcoeff = B->coeffs;
+    Aexp = A->exps;
+    Bexp = B->exps;
+
+    for (i = 0; i < Blen; i++)
+    {
+        nmod_mpolyn_redto_fq_nmod_mpoly(Acoeff + i, Bcoeff + i, ffctx, ctx);
+        Aexp[i] = Bexp[i];
+    }
+
+    for (i = Blen; i < A->length; i++)
+    {
+        fq_nmod_mpoly_clear(Acoeff + i, ffctx);
+        fq_nmod_mpoly_init(Acoeff + i, ffctx);
+        fq_nmod_mpoly_fit_bits(Acoeff + i, A->bits, ffctx);
+        (Acoeff + i)->bits = A->bits;
+    }
+    A->length = Blen;  
+}
+
+
+
+
 int nmod_mpolyu_mgcd_zippel(
     nmod_mpolyu_t G,
     nmod_mpolyu_t A,
@@ -1689,10 +1864,134 @@ int nmod_mpolyu_mgcd_zippel(
     mpoly_zipinfo_t zinfo,
     flint_rand_t randstate)
 {
+    slong degbound;
+    int success;
+    slong deg = 1;
+    nmod_mpolyun_t An, Bn, Hn;
+    fq_nmod_mpoly_ctx_t ffctx;
+    fq_nmod_mpolyu_t Aff, Bff, Gff, Gform;
+    nmod_poly_t modulus, gamma;
+    fq_nmod_t gammaff;
 
-    return nmod_mpolyu_pgcd_zippel(G, A, B, ctx->minfo->nvars - 1, ctx, zinfo, randstate);
+    FLINT_ASSERT(G->bits == A->bits);
+    FLINT_ASSERT(B->bits == A->bits);
+    
+    success = nmod_mpolyu_pgcd_zippel(G, A, B, ctx->minfo->nvars - 1, ctx, zinfo, randstate);
+    if (success)
+        return 1;
 
-    /* TODO: incorporate fq_nmod_mpolyu_{s|p}gcd_zippel */
+    FLINT_ASSERT(ctx->minfo->nvars >= 2);
+
+
+printf("A: "); nmod_mpolyu_print_pretty(A, NULL, ctx); printf("\n");
+printf("B: "); nmod_mpolyu_print_pretty(B, NULL, ctx); printf("\n");
+
+
+    nmod_mpolyun_init(An, A->bits, ctx);
+    nmod_mpolyun_init(Bn, A->bits, ctx);
+    nmod_mpolyu_cvtto_mpolyun(An, A, ctx->minfo->nvars - 1, ctx);
+printf("An: "); nmod_mpolyun_print_pretty(An, NULL, ctx); printf("\n");
+    nmod_mpolyu_cvtto_mpolyun(Bn, B, ctx->minfo->nvars - 1, ctx);
+
+printf("Bn: "); nmod_mpolyun_print_pretty(Bn, NULL, ctx); printf("\n");
+
+    FLINT_ASSERT(An->bits == B->bits);
+    FLINT_ASSERT(An->bits == G->bits);
+    FLINT_ASSERT(An->length > 0);
+    FLINT_ASSERT(Bn->length > 0);
+    FLINT_ASSERT(An->exps[A->length - 1] == 0);
+    FLINT_ASSERT(Bn->exps[B->length - 1] == 0);
+
+/*
+    fmpz_init(pp);
+    fmpz_init(gammapp);
+    fmpz_init_set_si(modulus, 1);
+    fmpz_init(gamma);
+    fmpz_gcd(gamma, fmpz_mpolyu_leadcoeff_ref(A), fmpz_mpolyu_leadcoeff_ref(B));
+*/
+    nmod_poly_init(modulus, ctx->ffinfo->mod.n);
+    nmod_poly_one(modulus);
+
+printf("modulus: "); nmod_poly_print_pretty(modulus,"v"); printf("\n");
+
+    nmod_poly_init(gamma, ctx->ffinfo->mod.n);
+    nmod_poly_gcd(gamma, nmod_mpolyun_leadcoeff_ref(An, ctx),
+                         nmod_mpolyun_leadcoeff_ref(Bn, ctx));
+
+printf("gamma: "); nmod_poly_print_pretty(gamma,"v"); printf("\n");
+
+/*
+    degbound = FLINT_MIN(A->exps[0], B->exps[0]);
+*/
+    degbound = FLINT_MIN(A->exps[0], B->exps[0]);
+
+/*
+    nmod_mpoly_ctx_init(ctxp, ctx->minfo->nvars, ORD_LEX, 2);
+
+    nmod_mpolyu_init(Ap, A->bits, ctxp);
+    nmod_mpolyu_init(Bp, A->bits, ctxp);
+    nmod_mpolyu_init(Gp, A->bits, ctxp);
+    nmod_mpolyu_init(Gform, A->bits, ctxp);
+
+    fmpz_mpolyu_init(H, A->bits, ctx);
+*/
+    fq_nmod_mpoly_ctx_init(ffctx, ctx->minfo->nvars, ctx->ffinfo->mod.n, deg);
+
+    fq_nmod_mpolyu_init(Aff, A->bits, ffctx);
+    fq_nmod_mpolyu_init(Bff, A->bits, ffctx);
+    fq_nmod_mpolyu_init(Gff, A->bits, ffctx);
+    fq_nmod_mpolyu_init(Gform, A->bits, ffctx);
+
+    nmod_mpolyun_init(Hn, A->bits, ctx);
+
+    fq_nmod_init(gammaff, ffctx->fqctx);
+
+
+choose_prime_outer:
+
+    deg++;
+    if (deg > 100)
+    {
+        /* ran out of primes */
+        success = 0;
+        goto finished;
+    }
+    fq_nmod_mpoly_ctx_change_modulus(ffctx, deg);
+
+usleep(1000000);
+
+printf("ff modulus: "); nmod_poly_print_pretty(ffctx->fqctx->modulus,"#"); printf("\n");
+
+    /* make sure reduction does not kill both lc(A) and lc(B) */
+    nmod_poly_rem(gammaff, gamma, ffctx->fqctx->modulus);
+    if (fq_nmod_is_zero(gammaff, ffctx->fqctx))
+        goto choose_prime_outer;
+
+    /* make sure reduction does not kill either A or B */
+    nmod_mpolyun_redto_fq_nmod_mpolyu(Aff, An, ffctx, ctx);
+printf("Aff: "); fq_nmod_mpolyu_print_pretty(Aff, NULL, ffctx); printf("\n");
+    nmod_mpolyun_redto_fq_nmod_mpolyu(Bff, Bn, ffctx, ctx);
+printf("Bff: "); fq_nmod_mpolyu_print_pretty(Bff, NULL, ffctx); printf("\n");
+
+    if (Aff->length == 0 || Bff->length == 0)
+        goto choose_prime_outer;
+
+printf("made it through\n");
+
+    success = fq_nmod_mpolyu_pgcd_zippel(Gff, Aff, Bff, ctx->minfo->nvars - 2, ffctx, zinfo, randstate);
+
+
+    if (!success || Gff->exps[0] > degbound)
+        goto choose_prime_outer;
+
+
+
+
+
+
+finished:
+
+    return 0;   
 }
 
 
@@ -1725,7 +2024,6 @@ int nmod_mpolyu_gcd_zippel(
     FLINT_ASSERT(A->bits == B->bits);
     FLINT_ASSERT(A->length > 0);
     FLINT_ASSERT(B->length > 0);
-    FLINT_ASSERT(ctx->ffinfo->mod.n > UWORD(3));
 
     nmod_mpoly_init(content, ctx);
     nmod_mpolyu_init(Abar, A->bits, ctx);
@@ -1790,7 +2088,6 @@ int _nmod_mpoly_gcd_zippel(nmod_mpoly_t G, const nmod_mpoly_t A,
     nmod_mpolyu_t Au, Bu, Gu;
     mp_bitcnt_t new_bits;
 
-    FLINT_ASSERT(ctx->ffinfo->mod.n > UWORD(3));
     FLINT_ASSERT(A->bits <= FLINT_BITS);
     FLINT_ASSERT(B->bits <= FLINT_BITS);
     FLINT_ASSERT((!keepbits) || A->bits == B->bits);
@@ -1873,9 +2170,6 @@ int nmod_mpoly_gcd_zippel(nmod_mpoly_t G, const nmod_mpoly_t A,
         nmod_mpoly_make_monic(G, A, ctx);
         return 1;
     }
-
-    if (ctx->ffinfo->mod.n <= UWORD(3))
-        return 0;
 
     if (A->bits > FLINT_BITS || B->bits > FLINT_BITS)
         return 0;

@@ -30,13 +30,48 @@ void fq_nmod_mpoly_ctx_clear(fq_nmod_mpoly_ctx_t ctx)
     fq_nmod_ctx_clear(ctx->fqctx);
 }
 
-void fq_nmod_mpoly_init(fq_nmod_mpoly_t A, mp_bitcnt_t bits, const fq_nmod_mpoly_ctx_t ctx)
+void fq_nmod_mpoly_ctx_change_modulus(fq_nmod_mpoly_ctx_t ctx, slong deg)
 {
+    fmpz_t P;
+    fmpz_init_set_ui(P, ctx->fqctx->mod.n);
+    fq_nmod_ctx_clear(ctx->fqctx);
+    fq_nmod_ctx_init(ctx->fqctx, P, deg, "#");
+    fmpz_clear(P);
+}
+
+void fq_nmod_mpoly_init(fq_nmod_mpoly_t A, const fq_nmod_mpoly_ctx_t ctx)
+{
+    slong bits = mpoly_fix_bits(WORD(8), ctx->minfo);
+
     A->coeffs = NULL;
     A->exps = NULL;
     A->alloc = 0;
     A->length = 0;
     A->bits = bits;
+}
+
+void fq_nmod_mpoly_init2(fq_nmod_mpoly_t poly,
+                                       slong alloc, const fq_nmod_mpoly_ctx_t ctx)
+{
+    /* default to at least 8 bits per exponent */
+    slong bits = mpoly_fix_bits(WORD(8), ctx->minfo);
+    slong N = mpoly_words_per_exp(bits, ctx->minfo);
+
+    if (alloc != 0)
+    {
+        slong i;
+        poly->coeffs = (fq_nmod_struct *) flint_malloc(alloc*sizeof(fq_nmod_struct));
+        poly->exps   = (ulong *) flint_malloc(alloc*N*sizeof(ulong));
+        for (i = 0; i < alloc; i++)
+            fq_nmod_init(poly->coeffs + i, ctx->fqctx);
+    } else
+    {
+        poly->coeffs = NULL;
+        poly->exps = NULL;
+    }
+    poly->alloc = alloc;
+    poly->length = 0;
+    poly->bits = bits;
 }
 
 void fq_nmod_mpoly_clear(fq_nmod_mpoly_t A, const fq_nmod_mpoly_ctx_t ctx)
@@ -56,6 +91,40 @@ void fq_nmod_mpoly_zero(fq_nmod_mpoly_t A, const fq_nmod_mpoly_ctx_t ctx)
         fq_nmod_init(A->coeffs + i, ctx->fqctx);
     }
     A->length = 0;
+}
+
+int fq_nmod_mpoly_is_zero(fq_nmod_mpoly_t A, const fq_nmod_mpoly_ctx_t ctx)
+{
+    return A->length == 0;
+}
+
+int fq_nmod_mpoly_is_one(const fq_nmod_mpoly_t poly, const fq_nmod_mpoly_ctx_t ctx)
+{
+    slong N;
+
+    if (poly->length != 1)
+        return 0;
+
+    N = mpoly_words_per_exp(poly->bits, ctx->minfo);
+
+    if (!mpoly_monomial_is_zero(poly->exps + N*0, N))
+        return 0;
+
+    return fq_nmod_is_one(poly->coeffs + 0, ctx->fqctx);
+}
+
+
+void fq_nmod_mpoly_swap(fq_nmod_mpoly_t poly1, fq_nmod_mpoly_t poly2)
+{
+   fq_nmod_mpoly_struct t = *poly1;
+   *poly1 = *poly2;
+   *poly2 = t;
+}
+
+void _fq_nmod_mpoly_set_length(fq_nmod_mpoly_t poly, slong newlen, 
+                                                   const fq_nmod_mpoly_ctx_t ctx)
+{
+    poly->length = newlen;
 }
 
 void fq_nmod_mpoly_print_pretty(const fq_nmod_mpoly_t A,
@@ -155,6 +224,23 @@ void fq_nmod_mpoly_fit_length(fq_nmod_mpoly_t A, slong length, const fq_nmod_mpo
     }
 }
 
+void _fq_nmod_mpoly_fit_length(fq_nmod_struct ** coeff,
+                              ulong ** exps, slong * alloc, slong len, slong N, const fq_nmod_ctx_t fqctx)
+{
+    if (len > *alloc)
+    {
+        slong i;
+        len = FLINT_MAX(len, 2*(*alloc));
+        (* coeff) = (fq_nmod_struct *) flint_realloc(* coeff, len*sizeof(mp_limb_t));
+        (* exps) = (ulong *) flint_realloc(*exps, len*N*sizeof(ulong)); 
+        for (i = *alloc; i < len; i++)
+            fq_nmod_init((* coeff) + i, fqctx);
+        (* alloc) = len;
+    }
+}
+
+
+
 void fq_nmod_mpoly_fit_bits(fq_nmod_mpoly_t A, slong bits, const fq_nmod_mpoly_ctx_t ctx)
 {
    slong N;
@@ -173,4 +259,57 @@ void fq_nmod_mpoly_fit_bits(fq_nmod_mpoly_t A, slong bits, const fq_nmod_mpoly_c
 
       A->bits = bits;
    }
+}
+
+void fq_nmod_mpoly_set_length(fq_nmod_mpoly_t A, slong newlen, const fq_nmod_mpoly_ctx_t ctx)
+{
+    if (A->length > newlen)
+    {
+        slong i;
+        for (i = newlen; i < A->length; i++)
+        {
+            fq_nmod_clear(A->coeffs + i, ctx->fqctx);
+            fq_nmod_init(A->coeffs + i, ctx->fqctx);
+        }
+    }
+    A->length = newlen;
+}
+
+
+
+
+
+void _fq_nmod_mpoly_set(fq_nmod_struct * coeff1, ulong * exps1,
+                const fq_nmod_struct * coeff2, const ulong * exps2, slong len2,
+                                               slong N, const fq_nmod_ctx_t fqctx)
+{
+    slong i;
+
+    if (coeff1 != coeff2)
+    {
+        for (i = 0; i < len2; i++)
+            fq_nmod_set(coeff1 + i, coeff2 + i, fqctx);
+    }
+
+    if (exps1 != exps2)
+    {
+        for (i = 0; i < len2; i++)
+            mpoly_monomial_set(exps1 + N*i, exps2 + N*i, N);
+    }
+}
+
+void fq_nmod_mpoly_set(fq_nmod_mpoly_t poly1, const fq_nmod_mpoly_t poly2,
+                                                 const fq_nmod_mpoly_ctx_t ctx)
+{
+    slong N;
+    N = mpoly_words_per_exp(poly2->bits, ctx->minfo);
+
+    fq_nmod_mpoly_fit_length(poly1, poly2->length, ctx);
+    fq_nmod_mpoly_fit_bits(poly1, poly2->bits, ctx);
+
+    _fq_nmod_mpoly_set(poly1->coeffs, poly1->exps,
+                   poly2->coeffs, poly2->exps, poly2->length, N, ctx->fqctx);
+
+    _fq_nmod_mpoly_set_length(poly1, poly2->length, ctx);
+    poly1->bits = poly2->bits;
 }
