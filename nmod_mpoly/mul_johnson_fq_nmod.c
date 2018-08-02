@@ -177,7 +177,10 @@ void fq_nmod_mpoly_mul_johnson(fq_nmod_mpoly_t poly1, const fq_nmod_mpoly_t poly
     ulong * exp2 = poly2->exps, * exp3 = poly3->exps;
     int free2 = 0, free3 = 0;
     TMP_INIT;
-
+/*
+printf("****************\nmul_joh first: "); fq_nmod_mpoly_print_pretty(poly2, NULL, ctx); printf("\n");
+printf("mul_joh secon: "); fq_nmod_mpoly_print_pretty(poly3, NULL, ctx); printf("\n");
+*/
     if (poly2->length == 0 || poly3->length == 0)
     {
         fq_nmod_mpoly_zero(poly1, ctx);
@@ -285,6 +288,8 @@ void fq_nmod_mpoly_mul_johnson(fq_nmod_mpoly_t poly1, const fq_nmod_mpoly_t poly
       flint_free(exp3);
 
    _fq_nmod_mpoly_set_length(poly1, len1, ctx);
-
+/*
+printf("mul_joh result: "); fq_nmod_mpoly_print_pretty(poly1, NULL, ctx); printf("\n");
+*/
    TMP_END;
 }

@@ -264,6 +264,8 @@ void fq_nmod_mpolyu_cvtfrom_poly(fq_nmod_mpolyu_t A, fq_nmod_poly_t a,
             fq_nmod_mpolyu_fit_length(A, k + 1, ctx);
             A->exps[k] = i;
             fq_nmod_mpoly_fit_length(A->coeffs + k, 1, ctx);
+            fq_nmod_mpoly_fit_bits(A->coeffs + k, A->bits, ctx);
+            (A->coeffs + k)->bits = A->bits;
             fq_nmod_set((A->coeffs + k)->coeffs + 0, c, ctx->fqctx);
             (A->coeffs + k)->length = 1;
             mpoly_monomial_zero((A->coeffs + k)->exps + N*0, N);
@@ -353,6 +355,7 @@ int fq_nmod_mpolyu_divides(fq_nmod_mpolyu_t A, fq_nmod_mpolyu_t B, const fq_nmod
 
         if (!fq_nmod_mpoly_divides_monagan_pearce(t, R->coeffs + 0, B->coeffs + 0, ctx))
             goto done;
+
         fq_nmod_mpolyu_msub(P, R, B, t, R->exps[0] - B->exps[0], ctx);
         fq_nmod_mpolyu_swap(P, R);
     }

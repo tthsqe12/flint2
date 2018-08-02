@@ -231,7 +231,7 @@ void _fq_nmod_mpoly_fit_length(fq_nmod_struct ** coeff,
     {
         slong i;
         len = FLINT_MAX(len, 2*(*alloc));
-        (* coeff) = (fq_nmod_struct *) flint_realloc(* coeff, len*sizeof(mp_limb_t));
+        (* coeff) = (fq_nmod_struct *) flint_realloc(* coeff, len*sizeof(fq_nmod_struct));
         (* exps) = (ulong *) flint_realloc(*exps, len*N*sizeof(ulong)); 
         for (i = *alloc; i < len; i++)
             fq_nmod_init((* coeff) + i, fqctx);

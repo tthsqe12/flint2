@@ -757,6 +757,8 @@ FLINT_DLL void nmod_mpolyu_print_pretty(const nmod_mpolyu_t poly,
 FLINT_DLL void nmod_mpolyu_fit_length(nmod_mpolyu_t A, slong length,
                                                   const nmod_mpoly_ctx_t uctx);
 
+FLINT_DLL void nmod_mpolyu_one(nmod_mpolyu_t A, const nmod_mpoly_ctx_t uctx);
+
 FLINT_DLL nmod_mpoly_struct * _nmod_mpolyu_get_coeff(nmod_mpolyu_t A,
                                        ulong pow, const nmod_mpoly_ctx_t uctx);
 
@@ -1105,6 +1107,9 @@ FLINT_DLL void fq_nmod_mpolyu_cvtto_poly(fq_nmod_poly_t a, fq_nmod_mpolyu_t A,
 
 FLINT_DLL void fq_nmod_mpolyu_cvtfrom_poly(fq_nmod_mpolyu_t A, fq_nmod_poly_t a,
                                                        fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void fq_nmod_mpolyu_setform(fq_nmod_mpolyu_t A, fq_nmod_mpolyu_t B, fq_nmod_mpoly_ctx_t ctx);
+
 /*
 FLINT_DLL void fq_nmod_mpolyu_msub(
     fq_nmod_mpolyu_t R,
@@ -1226,7 +1231,11 @@ FLINT_DLL int fq_nmod_mpolyu_pgcd_zippel(
     flint_rand_t randstate);
 
 
-
+int fq_nmod_mpolyu_pgcd_zippel_univar(
+    fq_nmod_mpolyu_t G,
+    fq_nmod_mpolyu_t A,
+    fq_nmod_mpolyu_t B,
+    fq_nmod_mpoly_ctx_t ctx);
 
 
 NMOD_MPOLY_INLINE fq_nmod_poly_struct *

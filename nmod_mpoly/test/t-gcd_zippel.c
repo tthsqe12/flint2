@@ -24,14 +24,14 @@ main(void)
         int success;
         nmod_mpoly_ctx_t ctx;
         nmod_mpoly_t a, b, g;
-        const char* vars[] = {"X","x1","x0"};
+        const char* vars[] = {"x1","x2","X"};
 
         nmod_mpoly_ctx_init(ctx, 3, ORD_DEGREVLEX, 2);
         nmod_mpoly_init(a, ctx);
         nmod_mpoly_init(b, ctx);
         nmod_mpoly_init(g, ctx);
-        nmod_mpoly_set_str_pretty(a, "((x0^2+x0+x1^6)*X^2 + (x1+1)*x0^2 + x1^2+1)*(1 + X + x1^1 + x0^1)", vars, ctx);
-        nmod_mpoly_set_str_pretty(b, "((x0^2+x0+x1^6)*X^2 + (x1+1)*x0^2 + x1^2+1)*(1 + X + x1^2 + x0^2)", vars, ctx);
+        nmod_mpoly_set_str_pretty(a, "((x1^2+x1+x2^6)*X^2 + (x2+1)*x1^2 + x2^2+1)*(1 + X + x2^1 + x1^1)", vars, ctx);
+        nmod_mpoly_set_str_pretty(b, "((x1^2+x1+x2^6)*X^2 + (x2+1)*x1^2 + x2^2+1)*(1 + X + x2^2 + x1^2)", vars, ctx);
 
         success = nmod_mpoly_gcd_zippel(g, a, b, ctx);
         nmod_mpoly_assert_canonical(g, ctx);
