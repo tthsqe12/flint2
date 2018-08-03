@@ -141,9 +141,12 @@ void nmod_mpolyun_set(nmod_mpolyun_t A, const nmod_mpolyun_t B, const nmod_mpoly
     Aexp = A->exps;
     Bexp = B->exps;
 
+flint_printf("Blen: %wd\n",Blen);
     for (i = 0; i < Blen; i++)
     {
+flint_printf("setting coeff %wd\n",i);
         nmod_mpolyn_set(Acoeff + i, Bcoeff + i, ctx);
+flint_printf("done setting coeff %wd\n",i);
         Aexp[i] = Bexp[i];
     }
 

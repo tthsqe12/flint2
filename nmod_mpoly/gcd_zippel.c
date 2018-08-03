@@ -2185,24 +2185,37 @@ int nmod_mpolyn_CRT_fq_nmod_mpoly(nmod_mpolyn_t H, nmod_mpoly_ctx_t ctx,
     slong N;
     int changed = 0;
     fq_nmod_t u, v;
+    nmod_poly_t w;
 
     fq_nmod_init(u, ctxp->fqctx);
     fq_nmod_init(v, ctxp->fqctx);
+    nmod_poly_init(w, ctxp->fqctx->modulus->mod.n);
 
     FLINT_ASSERT(H->length == A->length);
     FLINT_ASSERT(H->bits == A->bits);
     N = mpoly_words_per_exp(A->bits, ctx->minfo);
     for (i = 0; i < A->length; i++)
     {
+/*
+printf("*************\n");
+printf("inv_m_eval: "); nmod_poly_print_pretty(inv_m_eval,"v"); printf("\n");
+
+printf("org: "); nmod_poly_print_pretty(H->coeffs+i,"v");
+    printf(" modulo "); nmod_poly_print_pretty(m,"v"); printf("\n");
+
+printf("new: "); nmod_poly_print_pretty(A->coeffs+i,"v");
+    printf(" modulo "); nmod_poly_print_pretty(ctxp->fqctx->modulus,"v"); printf("\n");
+*/
+
         FLINT_ASSERT(mpoly_monomial_equal(H->exps + N*i, A->exps + N*i, N));
-        nmod_poly_rem(u, H->coeffs, ctxp->fqctx->modulus);
+        nmod_poly_rem(u, H->coeffs + i, ctxp->fqctx->modulus);
         fq_nmod_sub(v, A->coeffs + i, u, ctxp->fqctx);
         if (!fq_nmod_is_zero(v, ctxp->fqctx))
         {
             changed = 1;
             fq_nmod_mul(u, v, inv_m_eval, ctxp->fqctx);
-            nmod_poly_mul(v, u, m);
-            nmod_poly_add(H->coeffs + i, H->coeffs + i, v);
+            nmod_poly_mul(w, u, m);
+            nmod_poly_add(H->coeffs + i, H->coeffs + i, w);
         }
         FLINT_ASSERT(nmod_poly_degree(H->coeffs + i) < nmod_poly_degree(m)
                                                      + nmod_poly_degree(ctxp->fqctx->modulus));
@@ -2210,6 +2223,7 @@ int nmod_mpolyn_CRT_fq_nmod_mpoly(nmod_mpolyn_t H, nmod_mpoly_ctx_t ctx,
 
     fq_nmod_clear(u, ctxp->fqctx);
     fq_nmod_clear(v, ctxp->fqctx);
+    nmod_poly_clear(w);
 
     return changed;
 }
@@ -2540,6 +2554,7 @@ printf("gamma: "); nmod_poly_print_pretty(gamma,"v"); printf("\n");
 */
 
     nmod_mpolyun_init(Hn, A->bits, ctx);
+    nmod_mpolyun_init(Ht, A->bits, ctx);
 
 
     fq_nmod_mpoly_ctx_init(ffctx, ctx->minfo->nvars, ctx->ffinfo->mod.n, deg);
@@ -2577,11 +2592,9 @@ choose_prime_outer:
     fq_nmod_init(gammaff, ffctx->fqctx);
     fq_nmod_init(t, ffctx->fqctx);
 
-/*
-usleep(100000);
-*/
 
 printf("ff modulus: "); nmod_poly_print_pretty(ffctx->fqctx->modulus,"#"); printf("\n");
+usleep(1000000);
 
     /* make sure reduction does not kill both lc(A) and lc(B) */
     nmod_poly_rem(gammaff, gamma, ffctx->fqctx->modulus);
@@ -2600,9 +2613,10 @@ printf("Bff: "); fq_nmod_mpolyu_print_pretty(Bff, NULL, ffctx); printf("\n");
     if (Aff->length == 0 || Bff->length == 0)
         goto choose_prime_outer;
 
-printf("made it through\n");
 
     success = fq_nmod_mpolyu_pgcd_zippel(Gff, Aff, Bff, ctx->minfo->nvars - 2, ffctx, zinfo, randstate);
+
+printf("pgcd returned Gff: "); fq_nmod_mpolyu_print_pretty(Gff, NULL, ffctx); printf("\n");
 
     if (!success || Gff->exps[0] > degbound)
         goto choose_prime_outer;
@@ -2611,6 +2625,9 @@ printf("made it through\n");
     fq_nmod_inv(t, fq_nmod_mpolyu_leadcoeff_ref(Gff, ffctx), ffctx->fqctx);
     fq_nmod_mul(t, t, gammaff, ffctx->fqctx);
     fq_nmod_mpolyu_scalar_mul_fq_nmod(Gff, t, ffctx);
+
+printf("      scaled  Gff: "); fq_nmod_mpolyu_print_pretty(Gff, NULL, ffctx); printf("\n");
+
 
     if (Gff->length == 1 && Gff->exps[0] == 0)
     {
@@ -2623,7 +2640,15 @@ printf("made it through\n");
     }
 
     fq_nmod_mpolyu_setform(Gform, Gff, ffctx);
+
+printf("            Gform: "); fq_nmod_mpolyu_print_pretty(Gform, NULL, ffctx); printf("\n");
+
+
     nmod_mpolyun_set_fq_nmod_mpolyu(Hn, ctx, Gff, ffctx);
+
+printf("               Hn: "); nmod_mpolyun_print_pretty(Hn, NULL, ctx); printf("\n");
+
+
     nmod_poly_set(modulus, ffctx->fqctx->modulus);
 
 choose_prime_inner:
@@ -2639,15 +2664,17 @@ choose_prime_inner:
     fq_nmod_mpolyu_clear(Aff, ffctx);
     fq_nmod_mpolyu_clear(Bff, ffctx);
     fq_nmod_mpolyu_clear(Gff, ffctx);
-    fq_nmod_mpolyu_clear(Gform, ffctx);
+/*fq_nmod_mpolyu_clear(Gform, ffctx);*/
     fq_nmod_clear(gammaff, ffctx->fqctx);
 
     fq_nmod_mpoly_ctx_change_modulus(ffctx, deg);
+printf("ff modulus: "); nmod_poly_print_pretty(ffctx->fqctx->modulus,"#"); printf("\n");
+usleep(1000000);
 
     fq_nmod_mpolyu_init(Aff, A->bits, ffctx);
     fq_nmod_mpolyu_init(Bff, A->bits, ffctx);
     fq_nmod_mpolyu_init(Gff, A->bits, ffctx);
-    fq_nmod_mpolyu_init(Gform, A->bits, ffctx);
+/*fq_nmod_mpolyu_init(Gform, A->bits, ffctx);*/
     fq_nmod_init(gammaff, ffctx->fqctx);
     fq_nmod_init(t, ffctx->fqctx);
 
@@ -2671,14 +2698,19 @@ printf("Bff: "); fq_nmod_mpolyu_print_pretty(Bff, NULL, ffctx); printf("\n");
         case nmod_sgcd_form_main_degree_too_high:
         case nmod_sgcd_form_wrong:
         case nmod_sgcd_no_solution:
+printf("goto choose outer\n");
             goto choose_prime_outer;
         case nmod_sgcd_scales_not_found:
         case nmod_sgcd_eval_point_not_found:
         case nmod_sgcd_eval_gcd_deg_too_high:
+printf("goto choose inner\n");
             goto choose_prime_inner;
         case nmod_sgcd_success:
+printf("success\n");
             NULL;
     }
+
+printf("sgcd returned Gff: "); fq_nmod_mpolyu_print_pretty(Gff, NULL, ffctx); printf("\n");
 
     if (fq_nmod_is_zero(fq_nmod_mpolyu_leadcoeff_ref(Gff, ffctx), ffctx->fqctx))
         goto choose_prime_inner;
@@ -2687,9 +2719,12 @@ printf("Bff: "); fq_nmod_mpolyu_print_pretty(Bff, NULL, ffctx); printf("\n");
     fq_nmod_mul(t, t, gammaff, ffctx->fqctx);
     fq_nmod_mpolyu_scalar_mul_fq_nmod(Gff, t, ffctx);
 
-
+printf("      scaled  Gff: "); fq_nmod_mpolyu_print_pretty(Gff, NULL, ffctx); printf("\n");
+printf("          modulus: "); nmod_poly_print_pretty(modulus, "v"); printf("\n");
     changed = nmod_mpolyun_CRT_fq_nmod_mpolyu(Hn, ctx, modulus, Gff, ffctx);
     nmod_poly_mul(modulus, modulus, ffctx->fqctx->modulus);
+
+printf("               Hn: "); nmod_mpolyun_print_pretty(Hn, NULL, ctx); printf("\n");
 
     if (changed)
     {
@@ -2697,9 +2732,22 @@ printf("Bff: "); fq_nmod_mpolyu_print_pretty(Bff, NULL, ffctx); printf("\n");
         goto choose_prime_inner;
     }
 
+
+
+
+printf("did not change\nHn: "); nmod_mpolyun_print_pretty(Hn, NULL, ctx); printf("\n");
+
+
     nmod_mpolyun_content_last(hc, Hn, ctx);
+printf("hc: "); nmod_poly_print_pretty(hc, "v"); printf("\n");
+
+
     nmod_mpolyun_set(Ht, Hn, ctx);
+printf("Ht: "); nmod_mpolyun_print_pretty(Ht, NULL, ctx); printf("\n");
+
     nmod_mpolyun_divexact_last(Ht, hc, ctx);
+printf("Ht: "); nmod_mpolyun_print_pretty(Ht, NULL, ctx); printf("\n");
+
     nmod_mpolyu_cvtfrom_mpolyun(G, Ht, ctx->minfo->nvars - 1, ctx);
 
     if (!nmod_mpolyu_divides(A, G, ctx) || !nmod_mpolyu_divides(B, G, ctx))
