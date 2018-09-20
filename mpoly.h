@@ -179,14 +179,20 @@ void mpoly_ordering_print(ordering_t ord)
 
 /* Misc **********************************************************************/
 
-FLINT_DLL void mpoly_gen_offset_shift(slong * _offset, slong * _shift,
-                       slong idx, slong N, slong bits, const mpoly_ctx_t mctx);
+FLINT_DLL void mpoly_gen_offset_shift(
+                                slong * _offset, slong * _shift, slong var,
+                            slong N, mp_bitcnt_t bits, const mpoly_ctx_t mctx);
 
-FLINT_DLL void mpoly_gen_oneexp_offset_shift(ulong * oneexp, slong * offset, slong * shift,
-                       slong var, slong N, slong bits, const mpoly_ctx_t mctx);
+FLINT_DLL void mpoly_gen_oneexp_offset_shift(ulong * oneexp,
+                                slong * offset, slong * shift, slong var, 
+                            slong N, mp_bitcnt_t bits, const mpoly_ctx_t mctx);
 
-FLINT_DLL void mpoly_gen_oneexp_offset_mp(ulong * oneexp, slong * offset,
-                       slong idx, slong N, slong bits, const mpoly_ctx_t mctx);
+FLINT_DLL slong mpoly_gen_offset_mp(slong var,
+                            slong N, mp_bitcnt_t bits, const mpoly_ctx_t mctx);
+
+FLINT_DLL void mpoly_gen_oneexp_offset_mp(ulong * oneexp,
+                                        slong * offset, slong var,
+                            slong N, mp_bitcnt_t bits, const mpoly_ctx_t mctx);
 
 /*  Monomials ****************************************************************/
 
