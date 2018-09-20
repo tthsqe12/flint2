@@ -134,6 +134,9 @@ FLINT_DLL void mpoly_rbtree_clear(mpoly_rbtree_t tree, void ** dataout, slong * 
 FLINT_DLL mpoly_rbnode_struct * mpoly_rbtree_get(int * new,
                                          struct mpoly_rbtree *tree, slong rcx);
 
+FLINT_DLL mpoly_rbnode_struct * mpoly_rbtree_get_fmpz(int * new,
+                                       struct mpoly_rbtree * tree, fmpz_t rcx);
+
 
 /* Orderings *****************************************************************/
 
@@ -425,6 +428,9 @@ void mpoly_monomial_mul_ui_mp(ulong * exp2, const ulong * exp3, slong N, ulong c
 {
     mpn_mul_1(exp2, exp3, N, c);
 }
+
+FLINT_DLL void mpoly_monomial_mul_fmpz(ulong * exp2, const ulong * exp3,
+                                                            slong N, fmpz_t c);
 
 MPOLY_INLINE
 int mpoly_monomial_is_zero(const ulong * exp, slong N)
