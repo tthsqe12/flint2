@@ -68,7 +68,7 @@ static void _rbnode_clear_sp(mpoly_rbtree_t tree, mpoly_rbnode_t node,
 
 
 
-void _nmod_mpoly_evaluate_nmod_poly_sp(nmod_poly_t A, nmod_mpoly_t B,
+void _nmod_mpoly_compose_nmod_poly_sp(nmod_poly_t A, nmod_mpoly_t B,
                                    nmod_poly_struct ** C, nmod_mpoly_ctx_t ctx)
 {
     int new;
@@ -243,7 +243,7 @@ static void _rbnode_clear_mp(mpoly_rbtree_t tree, mpoly_rbnode_t node,
 
 
 
-void _nmod_mpoly_evaluate_nmod_poly_mp(nmod_poly_t A, nmod_mpoly_t B,
+void _nmod_mpoly_compose_nmod_poly_mp(nmod_poly_t A, nmod_mpoly_t B,
                                    nmod_poly_struct ** C, nmod_mpoly_ctx_t ctx)
 {
     int new;
@@ -381,7 +381,7 @@ void _nmod_mpoly_evaluate_nmod_poly_mp(nmod_poly_t A, nmod_mpoly_t B,
 }
 
 
-void nmod_mpoly_evaluate_nmod_poly(nmod_poly_t A, nmod_mpoly_t B,
+void nmod_mpoly_compose_nmod_poly(nmod_poly_t A, nmod_mpoly_t B,
                                    nmod_poly_struct ** C, nmod_mpoly_ctx_t ctx)
 {
     if (B->length == 0)
@@ -391,12 +391,12 @@ void nmod_mpoly_evaluate_nmod_poly(nmod_poly_t A, nmod_mpoly_t B,
     }
     else if (B->bits <= FLINT_BITS)
     {
-        _nmod_mpoly_evaluate_nmod_poly_sp(A, B, C, ctx);
+        _nmod_mpoly_compose_nmod_poly_sp(A, B, C, ctx);
         return;
     }
     else
     {
-        _nmod_mpoly_evaluate_nmod_poly_mp(A, B, C, ctx);
+        _nmod_mpoly_compose_nmod_poly_mp(A, B, C, ctx);
         return;
     }
 
