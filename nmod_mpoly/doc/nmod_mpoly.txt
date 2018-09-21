@@ -386,15 +386,6 @@ void nmod_mpoly_evaluate_one_ui(nmod_mpoly_t A, nmod_mpoly_t B,
     Set \code{A} to the evaluation of \code{B} where the variable of
     index \code{var} is replaced by \code{val}.
 
-void nmod_mpoly_compose(nmod_mpoly_t A, nmod_mpoly_t B,
-         nmod_mpoly_struct ** C, nmod_mpoly_ctx_t ctxB, nmod_mpoly_ctx_t ctxAC)
-
-    Set \code{A} to the evaluation of \code{B} where the variables are
-    replaced by the corresponding elements of the array \code{C}. Both
-    \code{A} and the elements of \code{C} have context object
-    \code{ctxAC}, while \code{B} has context object \code{ctxB}. Neither of
-    \code{A} and \code{B} is allowed to alias any other polynomial.
-
 void nmod_mpoly_compose_nmod_poly(nmod_poly_t A, nmod_mpoly_t B,
                                   nmod_poly_struct ** C, nmod_mpoly_ctx_t ctxB)
 
@@ -402,6 +393,15 @@ void nmod_mpoly_compose_nmod_poly(nmod_poly_t A, nmod_mpoly_t B,
     replaced by the corresponding elements of the array \code{C}. Both
     \code{A} and the elements of \code{C} should have modulus matching that of
     \code{ctxB}, which is the context object of \code{X}.
+
+void nmod_mpoly_compose_nmod_mpoly(nmod_mpoly_t A, nmod_mpoly_t B,
+         nmod_mpoly_struct ** C, nmod_mpoly_ctx_t ctxB, nmod_mpoly_ctx_t ctxAC)
+
+    Set \code{A} to the evaluation of \code{B} where the variables are
+    replaced by the corresponding elements of the array \code{C}. Both
+    \code{A} and the elements of \code{C} have context object
+    \code{ctxAC}, while \code{B} has context object \code{ctxB}. Neither of
+    \code{A} and \code{B} is allowed to alias any other polynomial.
 
 
 *******************************************************************************

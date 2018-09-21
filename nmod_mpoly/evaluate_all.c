@@ -15,6 +15,7 @@
 ulong _nmod_mpoly_evaluate_all_ui_sp(nmod_mpoly_t A,
                                             ulong * vals, nmod_mpoly_ctx_t ctx)
 {
+    ulong l;
     slong i, j, k, N, nvars = ctx->minfo->nvars;
     slong shift, off;
     ulong * ormask, * masks;
@@ -67,9 +68,9 @@ ulong _nmod_mpoly_evaluate_all_ui_sp(nmod_mpoly_t A,
         FLINT_ASSERT(k < entries);
         mpoly_gen_offset_shift(&off, &shift, i, N, bits, ctx->minfo);
         NMOD_RED(t, vals[i], ctx->ffinfo->mod);
-        for (j = 0; j < bits; j++)
+        for (l = 0; l < bits; l++)
         {
-            masks[k] = UWORD(1) << (shift + j);
+            masks[k] = UWORD(1) << (shift + l);
             if ((masks[k] & ormask[off]) != UWORD(0))
             {
                 offs[k] = off;
@@ -108,6 +109,7 @@ ulong _nmod_mpoly_evaluate_all_ui_sp(nmod_mpoly_t A,
 ulong _nmod_mpoly_evaluate_all_ui_mp(nmod_mpoly_t A,
                                             ulong * vals, nmod_mpoly_ctx_t ctx)
 {
+    ulong l;
     slong i, j, k, N, nvars = ctx->minfo->nvars;
     slong off;
     ulong * ormask, * masks;
@@ -161,14 +163,14 @@ ulong _nmod_mpoly_evaluate_all_ui_mp(nmod_mpoly_t A,
         
         off = mpoly_gen_offset_mp(i, N, bits, ctx->minfo);
         NMOD_RED(t, vals[i], ctx->ffinfo->mod);
-        for (j = 0; j < bits; j++)
+        for (l = 0; l < bits; l++)
         {
-            ulong j1 = j/FLINT_BITS;
-            ulong j2 = j%FLINT_BITS;
-            masks[k] = UWORD(1) << j2;
-            if ((masks[k] & ormask[off + j1]) != UWORD(0))
+            ulong l1 = l/FLINT_BITS;
+            ulong l2 = l%FLINT_BITS;
+            masks[k] = UWORD(1) << l2;
+            if ((masks[k] & ormask[off + l1]) != UWORD(0))
             {
-                offs[k] = off + j1;
+                offs[k] = off + l1;
                 powers[k] = t;
                 k++;
             }

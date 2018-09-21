@@ -522,11 +522,11 @@ FLINT_DLL ulong nmod_mpoly_evaluate_all_ui(nmod_mpoly_t A,
 FLINT_DLL void nmod_mpoly_evaluate_one_ui(nmod_mpoly_t A, nmod_mpoly_t B,
                                    slong var, ulong val, nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL void nmod_mpoly_compose(nmod_mpoly_t A, nmod_mpoly_t B,
-        nmod_mpoly_struct ** C, nmod_mpoly_ctx_t ctxB, nmod_mpoly_ctx_t ctxAC);
-
 FLINT_DLL void nmod_mpoly_compose_nmod_poly(nmod_poly_t A, nmod_mpoly_t B,
                                  nmod_poly_struct ** C, nmod_mpoly_ctx_t ctxB);
+
+FLINT_DLL void nmod_mpoly_compose_nmod_mpoly(nmod_mpoly_t A, nmod_mpoly_t B,
+        nmod_mpoly_struct ** C, nmod_mpoly_ctx_t ctxB, nmod_mpoly_ctx_t ctxAC);
 
 
 /* Univariates ***************************************************************/

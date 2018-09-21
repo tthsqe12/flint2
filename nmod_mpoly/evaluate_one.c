@@ -289,6 +289,7 @@ void _nmod_mpoly_evaluate_one_ui_mp(nmod_mpoly_t A, nmod_mpoly_t B,
         node->data2 = (void *) i;
         inds[i] = -WORD(1);
     }
+    fmpz_clear(main_exp);
 
     /* manually traverse tree and add node data to heap */
     heap_len = 1;
