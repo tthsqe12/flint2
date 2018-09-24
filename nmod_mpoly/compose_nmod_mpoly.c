@@ -38,7 +38,7 @@ typedef struct
     slong f;
     slong r;
     slong v_var;
-    ulong v_exp;
+    fmpz_t v_exp;   /* will be managed as stack grows / shrinks */
     int ret;
 } stack_entry_struct;
 
@@ -46,93 +46,111 @@ typedef stack_entry_struct stack_entry_t[1];
 
 
 /* A = A * X^pow */
-void _nmod_mpoly_pmul(nmod_mpoly_t A, const nmod_mpoly_t X, slong pow,
+void _nmod_mpoly_pmul(nmod_mpoly_t A, const nmod_mpoly_t X, const fmpz_t pow,
                                           nmod_mpoly_t T, nmod_mpoly_ctx_t ctx)
 {
-    FLINT_ASSERT(pow >= 1);
+    slong p;
+    FLINT_ASSERT(fmpz_sgn(pow) > 0);
 
-    if (A->length <= X->length)
+    if (!fmpz_fits_si(pow))
     {
-        nmod_mpoly_pow_si(T, X, pow, ctx);
+        nmod_mpoly_pow_fmpz(T, X, pow, ctx);
         nmod_mpoly_mul(A, A, T, ctx);
-    } else
+        return;
+    }
+
+    p = fmpz_get_si(pow);
+    
+    if (A->length/p < X->length)
     {
-        while (pow >= 1)
+        nmod_mpoly_pow_fmpz(T, X, pow, ctx);
+        nmod_mpoly_mul(A, A, T, ctx);
+        return;
+    }
+    else
+    {
+        while (p >= 1)
         {
             nmod_mpoly_mul(T, A, X, ctx);
-            if (pow == 1)
+            if (p == 1)
             {
                 nmod_mpoly_swap(A, T, ctx);
                 break;
             }
             nmod_mpoly_mul(A, T, X, ctx);
-            pow -= 2;
+            p -= 2;
         }
     }
 }
 
 /*
-    evaluate a f(xbar) at xbar = polys2,
+    evaluate a f(xbar) at xbar = C,
 */
-void _nmod_mpoly_compose_nmod_mpoly(nmod_mpoly_t res, nmod_mpoly_t poly1,
-     nmod_mpoly_struct ** polys2, nmod_mpoly_ctx_t ctx1, nmod_mpoly_ctx_t ctx2)
+void _nmod_mpoly_compose_nmod_mpoly(nmod_mpoly_t A, nmod_mpoly_t B,
+     nmod_mpoly_struct ** C, nmod_mpoly_ctx_t ctxB, nmod_mpoly_ctx_t ctxAC)
 {
     int ret;
-    slong nvars = ctx1->minfo->nvars;
+    slong nvars = ctxB->minfo->nvars;
     slong i, j, k, N, cur, next, f, r, f_prev, r_prev, v, bits;
     slong sp, rp;
     stack_entry_struct * stack;
     nmod_mpoly_struct * regs;
     nmod_mpoly_t temp;
     slong * rtypes;
-    ulong e, score;
     ulong totalcounts, maxcounts;
-    ulong * counts, * mdegs;
-    slong p_len;
-    slong * p_list;
-    mp_limb_t * p_coeff;
-    ulong * p_exp, * p_uexp;
+    ulong * counts;
+    slong Blen;
+    slong * Blist;
+    mp_limb_t * Bcoeff;
+    ulong * Bexp;
+    fmpz * Buexp;
+    fmpz * mdegs;
+    fmpz_t score, tz;
 
     TMP_INIT;
 
-    p_len = poly1->length;
-    p_coeff = poly1->coeffs;
-    p_exp = poly1->exps;
-    bits = poly1->bits;
+    Blen = B->length;
+    Bcoeff = B->coeffs;
+    Bexp = B->exps;
+    bits = B->bits;
 
-    FLINT_ASSERT(res != poly1);
-    FLINT_ASSERT(p_len > 0);
+    FLINT_ASSERT(A != B);
+    FLINT_ASSERT(Blen > 0);
 
     TMP_START;
 
-    /* unpack poly2 exponents */
-    N = mpoly_words_per_exp(bits, ctx1->minfo);
-    p_uexp = (ulong *) TMP_ALLOC(nvars*p_len*sizeof(ulong));
-    for (i = 0; i < p_len; i++)
-        mpoly_get_monomial_ui(p_uexp + nvars*i, p_exp + N*i, bits, ctx1->minfo);
+    fmpz_init(score);
+    fmpz_init(tz);
+
+    /* unpack B exponents */
+    N = mpoly_words_per_exp(bits, ctxB->minfo);
+    Buexp = _fmpz_vec_init(nvars*Blen);
+    for (i = 0; i < Blen; i++)
+        mpoly_get_monomial_ffmpz(Buexp + nvars*i, Bexp + N*i, bits, ctxB->minfo);
 
     counts = (ulong *) TMP_ALLOC(nvars*sizeof(ulong));
-    mdegs = (ulong * ) TMP_ALLOC(nvars*sizeof(ulong));
+    mdegs = _fmpz_vec_init(nvars);
 
     /* stack */
     sp = -WORD(1); /* start with empty stack */
-    stack = (stack_entry_struct *) TMP_ALLOC(nvars*(p_len + 1)*sizeof(stack_entry_struct));
-    p_list = (slong *) TMP_ALLOC(p_len*sizeof(slong));
+    stack = (stack_entry_struct *) TMP_ALLOC(nvars*(Blen + 1)*sizeof(stack_entry_struct));
+    Blist = (slong *) TMP_ALLOC(Blen*sizeof(slong));
 
     /* registers of polynomials */
     rp = 0;
     rtypes = (slong *) TMP_ALLOC((nvars + 1)*sizeof(slong));
     regs   = (nmod_mpoly_struct *) TMP_ALLOC(nvars*sizeof(nmod_mpoly_struct));
     for (i = 0; i < nvars; i++)
-        nmod_mpoly_init(regs + i, ctx2);
-    nmod_mpoly_init(temp, ctx2);
+        nmod_mpoly_init(regs + i, ctxAC);
+    nmod_mpoly_init(temp, ctxAC);
 
     /* polynomials will be stored as link lists */
-    for (i = 0; i + 1 < p_len; i++)
-        p_list[i] = i + 1;
-    p_list[i] = -WORD(1);
+    for (i = 0; i + 1 < Blen; i++)
+        Blist[i] = i + 1;
+    Blist[i] = -WORD(1);
 
     sp++;
+    fmpz_init((stack + sp)->v_exp);
     (stack + sp)->ret = 0;
     (stack + sp)->f = 0;
 HornerForm:
@@ -145,18 +163,22 @@ HornerForm:
     for (i = 0; i < nvars; i++)
     {
         counts[i] = 0;
-        mdegs[i] = -WORD(1);
+        fmpz_set_si(mdegs + i, -WORD(1));
     }
 
-    for (j = f; j != -WORD(1); j = p_list[j])
+    for (j = f; j != -WORD(1); j = Blist[j])
     {
         for (i = 0; i < nvars; i++)
         {
-            e = p_uexp[nvars*j + i];
-            if (e != 0)
+            if (!fmpz_is_zero(Buexp + nvars*j + i ))
             {
                 counts[i]++;
-                mdegs[i] = FLINT_MIN(mdegs[i], e);
+/*                mdegs[i] = FLINT_MIN(mdegs[i], Buexp[nvars*j + i]);*/
+                if (fmpz_sgn(mdegs + i) < 0
+                    || fmpz_cmp(mdegs + i, Buexp + nvars*j + i) > 0)
+                {
+                    fmpz_set(mdegs + i, Buexp + nvars*j + i);
+                }
             }
         }
     }
@@ -176,7 +198,7 @@ HornerForm:
     /* handle simple cases */
     if (totalcounts == 0)
     {
-        FLINT_ASSERT(p_list[f] == -WORD(1));    /* f should have had only one term */
+        FLINT_ASSERT(Blist[f] == -WORD(1));    /* f should have had only one term */
 
         rtypes[rp] = f;
 
@@ -184,15 +206,18 @@ HornerForm:
         
     } else if (totalcounts == 1)
     {
-        e = p_uexp[nvars*f + v];
-        FLINT_ASSERT(e != 0);             /* this term should not be a scalar */
-        nmod_mpoly_pow_si(regs + rp, polys2[v], e, ctx2);
-        nmod_mpoly_scalar_mul_ui(regs + rp, regs + rp, p_coeff[f], ctx2);
+        FLINT_ASSERT(Buexp[nvars*f + v] != 0);             /* this term should not be a scalar */
+/*        nmod_mpoly_pow_si(regs + rp, C[v], Buexp[nvars*f + v], ctxAC);*/
+        nmod_mpoly_pow_fmpz(regs + rp, C[v], Buexp + nvars*f + v, ctxAC);
 
-        if (p_list[f] != -WORD(1)) /* if f has a second term */
+        nmod_mpoly_scalar_mul_ui(regs + rp, regs + rp, Bcoeff[f], ctxAC);
+
+        if (Blist[f] != -WORD(1)) /* if f has a second term */
         {
-            FLINT_ASSERT(p_uexp[nvars*p_list[f] + v] == 0);   /* this term should be a scalar */
-            nmod_mpoly_add_ui(regs + rp, regs + rp,  p_coeff[p_list[f]], ctx2);
+            /* this term should be a scalar */
+/*            FLINT_ASSERT(Buexp[nvars*Blist[f] + v] == 0);*/
+            FLINT_ASSERT(fmpz_is_zero(Buexp + nvars*Blist[f] + v));
+            nmod_mpoly_add_ui(regs + rp, regs + rp,  Bcoeff[Blist[f]], ctxAC);
         }   
 
         rtypes[rp] = -WORD(1);
@@ -204,31 +229,48 @@ HornerForm:
     k = 0;
     if (maxcounts == 1)
     {
-        score = -WORD(1);
+/*        score = -WORD(1);*/
+        fmpz_set_si(score, -WORD(1));
         for (i = 0; i < nvars; i++)
         {
-            if (counts[i] == 1 && mdegs[i] < score)
+/*            if (counts[i] == 1 && mdegs[i] < score)*/
+            if (counts[i] == 1 && (fmpz_sgn(score) < 0
+                                   || fmpz_cmp(mdegs + i, score) < 0))
             {
-                score = mdegs[i];
+/*                score = mdegs[i];*/
+                FLINT_ASSERT(fmpz_sgn(mdegs + i) > 0);
+                fmpz_set(score, mdegs + i);
                 k = i;
             }
         }
     } else
     {
-        score = 0;
+/*        score = 0;*/
+        fmpz_zero(score);
         for (i = 0; i < nvars; i++)
         {
-            if (counts[i] > 1 && mdegs[i]*(counts[i] - 1) > score)
+/*            if (counts[i] > 1 && mdegs[i]*(counts[i] - 1) > score)
             {
                 score = mdegs[i]*(counts[i] - 1);
                 k = i;
+            }*/
+            if (counts[i] > 1)
+            {
+                FLINT_ASSERT(fmpz_sgn(mdegs + i) > 0);
+                fmpz_mul_ui(tz, mdegs + i, counts[i] - 1);
+                if (fmpz_cmp(tz, score) > 0)
+                {
+                    fmpz_swap(score, tz);
+                    k = i;
+                }
             }
         }
     }
 
     /* set variable power v */
     (stack + sp)->v_var = k;
-    (stack + sp)->v_exp = mdegs[k];
+/*    (stack + sp)->v_exp = mdegs[k];*/
+    fmpz_set((stack + sp)->v_exp, mdegs + k);
 
     /* scan f and split into q and v with f = q*v + r then set f = q */
     r = -WORD(1);
@@ -237,26 +279,30 @@ HornerForm:
     r_prev = -WORD(1);
     while (cur != -WORD(1))
     {
-        next = p_list[cur];
-        e = p_uexp[nvars*cur + k];
-        if (e == 0)
+        next = Blist[cur];
+/*        if (Buexp[nvars*cur + k] == 0)*/
+        if (fmpz_is_zero(Buexp + nvars*cur + k))
         {
             if (f_prev == -WORD(1))
-                f = p_list[cur];
+                f = Blist[cur];
             else
-                p_list[f_prev] = p_list[cur];
+                Blist[f_prev] = Blist[cur];
 
             if (r_prev == -WORD(1))
                 r = cur;
             else
-                p_list[r_prev] = cur;
+                Blist[r_prev] = cur;
 
-            p_list[cur] = -WORD(1);
+            Blist[cur] = -WORD(1);
             r_prev = cur;
         } else
         {
-            FLINT_ASSERT(e >= mdegs[k]);    /* mdegs[k] should be minimum non zero exponent */
-            p_uexp[nvars*cur + k] = e - mdegs[k];
+            /* mdegs[k] should be minimum non zero exponent */
+
+/*            FLINT_ASSERT(Buexp[nvars*cur + k] >= mdegs[k]);
+            Buexp[nvars*cur + k] -= mdegs[k];*/
+            fmpz_sub(Buexp + nvars*cur + k, Buexp + nvars*cur + k, mdegs + k);
+            FLINT_ASSERT(fmpz_sgn(Buexp + nvars*cur + k) >= 0);
             f_prev = cur;
         }
         cur = next;
@@ -266,6 +312,7 @@ HornerForm:
 
     /* convert the quotient */
     sp++;
+    fmpz_init((stack + sp)->v_exp);
     (stack + sp)->ret = 1;
     (stack + sp)->f = f;
     goto HornerForm;
@@ -286,20 +333,20 @@ HornerForm2:
         if (rtypes[rp - 1] == -WORD(1) && rtypes[rp] == -WORD(1))
         {
             /* both quotient and remainder are polynomials */
-            _nmod_mpoly_pmul(regs + rp - 1, polys2[(stack + sp)->v_var], (stack + sp)->v_exp, temp, ctx2);
-            nmod_mpoly_add(temp, regs + rp - 1, regs + rp, ctx2);
-            nmod_mpoly_swap(temp, regs + rp - 1, ctx2);
+            _nmod_mpoly_pmul(regs + rp - 1, C[(stack + sp)->v_var], (stack + sp)->v_exp, temp, ctxAC);
+            nmod_mpoly_add(temp, regs + rp - 1, regs + rp, ctxAC);
+            nmod_mpoly_swap(temp, regs + rp - 1, ctxAC);
         } else if (rtypes[rp - 1] == -WORD(1) && rtypes[rp] != -WORD(1))
         {
             /* quotient is a polynomial, remainder is a scalar */
-            _nmod_mpoly_pmul(regs + rp - 1, polys2[(stack + sp)->v_var], (stack + sp)->v_exp, temp, ctx2);
-            nmod_mpoly_add_ui(regs + rp - 1, regs + rp - 1, p_coeff[rtypes[rp]], ctx2);
+            _nmod_mpoly_pmul(regs + rp - 1, C[(stack + sp)->v_var], (stack + sp)->v_exp, temp, ctxAC);
+            nmod_mpoly_add_ui(regs + rp - 1, regs + rp - 1, Bcoeff[rtypes[rp]], ctxAC);
         } else if (rtypes[rp - 1] != -WORD(1) && rtypes[rp] == -WORD(1))
         {
             /* quotient is a scalar, remainder is a polynomial */
-            nmod_mpoly_pow_si(temp, polys2[(stack + sp)->v_var], (stack + sp)->v_exp, ctx2);
-            nmod_mpoly_scalar_mul_ui(temp, temp, p_coeff[rtypes[rp - 1]], ctx2);
-            nmod_mpoly_add(regs + rp - 1, temp, regs + rp, ctx2);
+            nmod_mpoly_pow_fmpz(temp, C[(stack + sp)->v_var], (stack + sp)->v_exp, ctxAC);
+            nmod_mpoly_scalar_mul_ui(temp, temp, Bcoeff[rtypes[rp - 1]], ctxAC);
+            nmod_mpoly_add(regs + rp - 1, temp, regs + rp, ctxAC);
         } else
         {
             /* quotient is a scalar, remainder is a scalar */
@@ -313,7 +360,7 @@ HornerForm2:
         if (rtypes[rp] == -WORD(1))
         {
             /* quotient is a polynomial */
-            _nmod_mpoly_pmul(regs + rp, polys2[(stack + sp)->v_var], (stack + sp)->v_exp, temp, ctx2);
+            _nmod_mpoly_pmul(regs + rp, C[(stack + sp)->v_var], (stack + sp)->v_exp, temp, ctxAC);
 
         } else
         {
@@ -327,6 +374,7 @@ HornerForm2:
 
 HornerFormReturn:
     ret = (stack + sp)->ret;
+    fmpz_clear((stack + sp)->v_exp);
     sp--;
     if (ret == 1) goto HornerForm1;
     if (ret == 2) goto HornerForm2;
@@ -337,15 +385,20 @@ HornerFormReturn:
 
     if (rtypes[rp] == -WORD(1))
     {
-        nmod_mpoly_swap(res, regs + rp, ctx2);
+        nmod_mpoly_swap(A, regs + rp, ctxAC);
     } else
     {
-        nmod_mpoly_set_ui(res, p_coeff[rtypes[rp]], ctx2);
+        nmod_mpoly_set_ui(A, Bcoeff[rtypes[rp]], ctxAC);
     }
 
     for (i = 0; i < nvars; i++)
-        nmod_mpoly_clear(regs + i, ctx2);
-    nmod_mpoly_clear(temp, ctx2);
+        nmod_mpoly_clear(regs + i, ctxAC);
+    nmod_mpoly_clear(temp, ctxAC);
+
+    fmpz_clear(score);
+    fmpz_clear(tz);
+    _fmpz_vec_clear(mdegs, nvars);
+    _fmpz_vec_clear(Buexp, nvars*Blen);
 
     TMP_END;
 
@@ -362,13 +415,6 @@ void nmod_mpoly_compose_nmod_mpoly(nmod_mpoly_t A, nmod_mpoly_t B,
         nmod_mpoly_zero(A, ctxAC);
         return;
     }
-    else if (B->bits <= FLINT_BITS)
-    {
-        _nmod_mpoly_compose_nmod_mpoly(A, B, C, ctxB, ctxAC);
-        return;
-    }
-    else
-    {
-        assert(0);
-    }
+    
+    _nmod_mpoly_compose_nmod_mpoly(A, B, C, ctxB, ctxAC);
 }
