@@ -45,6 +45,8 @@ static void _rbnode_clear_sp(mpoly_rbtree_t tree, mpoly_rbnode_t node,
     slong e = node->key;
     FLINT_ASSERT(e >= s);
 
+flint_printf("**********\nentered tree e = %wd\n", e);
+
     nmod_poly_init_mod(r, ctx->ffinfo->mod);
     nmod_poly_zero(r);
     if (node->right != tree->null)
@@ -54,15 +56,28 @@ static void _rbnode_clear_sp(mpoly_rbtree_t tree, mpoly_rbnode_t node,
     if (node->left != tree->null)
         _rbnode_clear_sp(tree, node->left, s, l, x, ctx);
 
+
+flint_printf("x: "); nmod_poly_print_pretty(x, "X"); flint_printf("\n");
+flint_printf("r: "); nmod_poly_print_pretty(r, "X"); flint_printf("\n");
+flint_printf("l: "); nmod_poly_print_pretty(l, "X"); flint_printf("\n");
+
     nmod_poly_init_mod(xp, ctx->ffinfo->mod);
+flint_printf("x: "); nmod_poly_print_pretty(x, "X"); flint_printf("\n");
+flint_printf("e: %wd  s: %wd\n", e, s);
     nmod_poly_pow(xp, x, e - s);
+flint_printf("xp: "); nmod_poly_print_pretty(xp, "X"); flint_printf("\n");
+
     nmod_poly_add(r, r, node->data);
     nmod_poly_mul(r, xp, r);
     nmod_poly_add(l, l, r);
 
+flint_printf("l: "); nmod_poly_print_pretty(l, "X"); flint_printf("\n");
+
+
     nmod_poly_clear(r);
     nmod_poly_clear(xp);
     nmod_poly_clear(node->data);
+    flint_free(node->data);
     flint_free(node);
 }
 
@@ -175,6 +190,10 @@ void _nmod_mpoly_compose_nmod_poly_sp(nmod_poly_t A, nmod_mpoly_t B,
         
         nmod_poly_add(t2, t, node->data);
         nmod_poly_swap(t2, node->data);
+
+
+flint_printf("exponent: %wd poly: ", node->key); nmod_poly_print_pretty(node->data, "X"); printf("\n");
+
     }
     nmod_poly_clear(t);
     nmod_poly_clear(t2);

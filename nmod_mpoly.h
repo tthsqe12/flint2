@@ -354,6 +354,19 @@ FLINT_DLL int nmod_mpoly_equal_nmod(const nmod_mpoly_t poly,
                                    const nmod_t c, const nmod_mpoly_ctx_t ctx);
 
 NMOD_MPOLY_INLINE
+slong nmod_mpoly_totaldegree_si(nmod_mpoly_t A, const nmod_mpoly_ctx_t ctx)
+{
+    return mpoly_totaldegree_si(A->exps, A->length, A->bits, ctx->minfo);
+}
+
+NMOD_MPOLY_INLINE
+void nmod_mpoly_totaldegree_fmpz(fmpz_t td,
+                                    nmod_mpoly_t A, const nmod_mpoly_ctx_t ctx)
+{
+    mpoly_totaldegree_fmpz(td, A->exps, A->length, A->bits, ctx->minfo);
+}
+
+NMOD_MPOLY_INLINE
 void nmod_mpoly_swap(nmod_mpoly_t poly1, 
                                 nmod_mpoly_t poly2, const nmod_mpoly_ctx_t ctx)
 {

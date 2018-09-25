@@ -101,7 +101,7 @@ main(void)
 
 
     /* Check addition commutes with evalall */
-    for (i = 0; i < 10 * flint_test_multiplier(); i++)
+    for (i = 0; i < 94 + 0*10 * flint_test_multiplier(); i++)
     {
         fmpz_mpoly_ctx_t ctx;
         fmpz_mpoly_t f, g, fg;

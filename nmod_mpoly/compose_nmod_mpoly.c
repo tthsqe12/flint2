@@ -61,7 +61,7 @@ void _nmod_mpoly_pmul(nmod_mpoly_t A, const nmod_mpoly_t X, const fmpz_t pow,
 
     p = fmpz_get_si(pow);
     
-    if (A->length/p < X->length)
+    if (X->length <= WORD(2) || A->length/p < X->length)
     {
         nmod_mpoly_pow_fmpz(T, X, pow, ctx);
         nmod_mpoly_mul(A, A, T, ctx);
@@ -373,6 +373,7 @@ HornerForm2:
 
 
 HornerFormReturn:
+
     ret = (stack + sp)->ret;
     fmpz_clear((stack + sp)->v_exp);
     sp--;
