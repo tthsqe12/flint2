@@ -11,7 +11,7 @@
 
 #include "nmod_mpoly.h"
 
-int nmod_mpoly_is_nmod(const nmod_mpoly_t poly, const nmod_mpoly_ctx_t ctx)
+int nmod_mpoly_is_ui(const nmod_mpoly_t poly, const nmod_mpoly_ctx_t ctx)
 {
     slong N;
 

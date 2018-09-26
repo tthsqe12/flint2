@@ -161,6 +161,73 @@ main(void)
         nmod_mpoly_ctx_clear(ctx1);
         nmod_mpoly_ctx_clear(ctx2);
     }
+
+    /* Check composition with constants matches evalall */
+    for (i = 0; i < 40*flint_test_multiplier(); i++)
+    {
+        nmod_mpoly_ctx_t ctx1, ctx2;
+        nmod_mpoly_t f, g;
+        nmod_mpoly_struct ** vals1;
+        mp_limb_t * vals2;
+        slong nvars1;
+        slong len1;
+        mp_bitcnt_t exp_bits1;
+        mp_limb_t modulus;
+
+        modulus = n_randint(state, FLINT_BITS - 1) + 1;
+        modulus = n_randbits(state, modulus);
+        nmod_mpoly_ctx_init_rand(ctx1, state, 20, modulus);
+        nmod_mpoly_ctx_init_rand(ctx2, state, 10, modulus);
+        nvars1 = ctx1->minfo->nvars;
+
+        nmod_mpoly_init(f, ctx1);
+        nmod_mpoly_init(g, ctx2);
+
+        len1 = n_randint(state, 100);
+        exp_bits1 = n_randint(state, 200) + 1;
+
+        nmod_mpoly_randtest_bits(f, state, len1, exp_bits1, ctx1);
+
+        vals1 = (nmod_mpoly_struct **) flint_malloc(nvars1
+                                                * sizeof(nmod_mpoly_struct *));
+        vals2 = (mp_limb_t *) flint_malloc(nvars1*sizeof(mp_limb_t));
+        for (v = 0; v < nvars1; v++)
+        {
+            vals1[v] = (nmod_mpoly_struct *) flint_malloc(
+                                                    sizeof(nmod_mpoly_struct)); 
+            nmod_mpoly_init(vals1[v], ctx2);
+            vals2[v] = n_randlimb(state);
+            nmod_mpoly_set_ui(vals1[v], vals2[v], ctx2);
+        }
+
+        nmod_mpoly_compose_nmod_mpoly(g, f, vals1, ctx1, ctx2);
+        nmod_mpoly_assert_canonical(g, ctx2);
+
+        if (!nmod_mpoly_is_ui(g, ctx2)
+            || nmod_mpoly_get_ui(g, ctx2) 
+                    != nmod_mpoly_evaluate_all_ui(f, vals2, ctx1))
+        {
+            printf("FAIL\n");
+            flint_printf("Check composition with constants matches evalall\ni: %wd\n", i);
+            flint_abort();
+        }
+
+        for (v = 0; v < nvars1; v++)
+        {
+            nmod_mpoly_clear(vals1[v], ctx2);
+            flint_free(vals1[v]);
+        }
+        flint_free(vals1);
+
+        flint_free(vals2);
+
+        nmod_mpoly_clear(f, ctx1);
+        nmod_mpoly_clear(g, ctx2);
+
+        nmod_mpoly_ctx_clear(ctx1);
+        nmod_mpoly_ctx_clear(ctx2);
+    }
+
     printf("PASS\n");
     FLINT_TEST_CLEANUP(state);
 

@@ -347,12 +347,6 @@ FLINT_DLL void nmod_mpoly_set_nmod(nmod_mpoly_t poly,
 FLINT_DLL int nmod_mpoly_equal_ui(const nmod_mpoly_t poly,
                                           ulong c, const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL int nmod_mpoly_equal_si(const nmod_mpoly_t poly,
-                                          slong c, const nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL int nmod_mpoly_equal_nmod(const nmod_mpoly_t poly,
-                                   const nmod_t c, const nmod_mpoly_ctx_t ctx);
-
 NMOD_MPOLY_INLINE
 slong nmod_mpoly_totaldegree_si(nmod_mpoly_t A, const nmod_mpoly_ctx_t ctx)
 {
@@ -399,7 +393,10 @@ int nmod_mpoly_is_one(const nmod_mpoly_t poly, const nmod_mpoly_ctx_t ctx)
    return nmod_mpoly_equal_ui(poly, 1, ctx);
 }
 
-FLINT_DLL int nmod_mpoly_is_nmod(const nmod_mpoly_t poly,
+FLINT_DLL int nmod_mpoly_is_ui(const nmod_mpoly_t A,
+                                                   const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL ulong nmod_mpoly_get_ui(const nmod_mpoly_t A,
                                                    const nmod_mpoly_ctx_t ctx);
 
 FLINT_DLL int nmod_mpoly_is_gen(const nmod_mpoly_t poly,

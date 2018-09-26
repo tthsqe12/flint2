@@ -378,7 +378,7 @@ done:
                 x->i = i;
                 x->j = inds[j];
                 x->next = NULL;
-                mpoly_monomial_sub(exp_array + N*i, Bexp + N*x->j,
+                mpoly_monomial_sub_mp(exp_array + N*i, Bexp + N*x->j,
                                                            main_exps + N*i, N);
                 _mpoly_heap_insert(heap, exp_array + N*i, x,
                                       &next_loc, &heap_len, N, cmpmask);
@@ -414,6 +414,7 @@ void nmod_mpoly_evaluate_one_ui(nmod_mpoly_t A, nmod_mpoly_t B,
         return;
     }
 
+    NMOD_RED(val, val, ctx->ffinfo->mod);
 
     if (B->bits <= FLINT_BITS)
     {

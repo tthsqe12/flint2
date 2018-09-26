@@ -23,7 +23,7 @@ main(void)
     fflush(stdout);
 
     /* Check composition and evalall commute */
-    for (i = 0; i < 65+0*flint_test_multiplier(); i++)
+    for (i = 0; i < 10*flint_test_multiplier(); i++)
     {
         nmod_mpoly_ctx_t ctx1;
         nmod_mpoly_t f;
@@ -40,8 +40,6 @@ main(void)
         modulus = n_randbits(state, modulus);
         nmod_mpoly_ctx_init_rand(ctx1, state, 3, modulus);
         nvars1 = ctx1->minfo->nvars;
-
-flint_printf("**********\nmodulus: %wu\n", modulus);
 
         nmod_mpoly_init(f, ctx1);
         nmod_poly_init(g, modulus);
@@ -60,13 +58,9 @@ flint_printf("**********\nmodulus: %wu\n", modulus);
                                                     sizeof(nmod_poly_struct)); 
             nmod_poly_init(vals1[v], modulus);
             nmod_poly_randtest(vals1[v], state, len2);
-
-flint_printf("x%wd: ",v+1); nmod_poly_print_pretty(vals1[v], "X"); printf("\n");
-
         }
 
         vals2 = n_randint(state, modulus);
-flint_printf("vals: %wu\n", vals2);
 
         vals3 = (mp_limb_t *) flint_malloc(nvars1*sizeof(mp_limb_t));
         for (v = 0; v < nvars1; v++)
@@ -78,14 +72,8 @@ flint_printf("vals: %wu\n", vals2);
         {
             nmod_mpoly_compose_nmod_poly(g, f, vals1, ctx1);
 
-flint_printf("f: "); nmod_mpoly_print_pretty(f, NULL, ctx1); printf("\n");
-flint_printf("g: "); nmod_poly_print_pretty(g, "X"); printf("\n");
-
             fe = nmod_mpoly_evaluate_all_ui(f, vals3, ctx1);
             ge = nmod_poly_evaluate_nmod(g, vals2);
-
-flint_printf("fe: %wu\n", fe);
-flint_printf("ge: %wu\n", ge);
 
             if (fe != ge)
             {
