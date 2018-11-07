@@ -537,6 +537,10 @@ FLINT_DLL int nmod_mpoly_integral(nmod_mpoly_t poly1,
 
 /* Divisibility **************************************************************/
 
+FLINT_DLL int nmod_mpoly_divides_heap_threaded(nmod_mpoly_t Q,
+                        const nmod_mpoly_t A, const nmod_mpoly_t B,
+                                                   const nmod_mpoly_ctx_t ctx);
+
 FLINT_DLL int nmod_mpoly_divides(nmod_mpoly_t Q,
                         const nmod_mpoly_t A, const nmod_mpoly_t B,
                                                    const nmod_mpoly_ctx_t ctx);
