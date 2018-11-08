@@ -63,6 +63,34 @@ static void Lholder_init(Lholder_t H)
     H->cmpmask = NULL;
 }
 
+static void Lchunk_clear(Lchunk_t L, Lholder_t H)
+{
+    if (L->Cinited)
+    {
+        nmod_mpoly_clear(L->polyC, H->ctx);
+    }
+}
+static void Lholder_clear(Lholder_t H)
+{
+    Lchunk_struct * L = H->head;
+    while (L != NULL)
+    {
+        Lchunk_struct * nextL = L->next;
+        Lchunk_clear(L, H);
+        flint_free(L);
+        L = nextL;
+    }
+    H->head = NULL;
+    H->tail = NULL;
+    H->cur = NULL;
+    H->polyA = NULL;
+    H->ctx = NULL;
+    H->length = 0;
+    H->N = 0;
+    H->bits = 0;
+    H->cmpmask = NULL;
+}
+
 static void Lholder_add_chunk(Lholder_t H, Lchunk_t L)
 {
 /*
@@ -417,7 +445,7 @@ flint_printf("all Q: "); nmod_mpoly_print_pretty(Q, vars, H->ctx); flint_printf(
             }
 flint_printf("pro C: "); nmod_mpoly_print_pretty(L->polyC, vars, H->ctx); flint_printf("\n");
 flint_printf("pro Q: "); nmod_mpoly_print_pretty(Q, vars, H->ctx); flint_printf("\n");
-usleep(1000000);
+usleep(100000);
 
         }
 
@@ -497,6 +525,7 @@ printf("div B: "); nmod_mpoly_print_pretty(B, vars, ctx); printf("\n");
     if (select_exps(S, zctx, Aexp, A->length, Bexp, B->length, exp_bits))
     {
         ret = 0;
+        nmod_mpoly_zero(Q, ctx);
         goto cleanup1;
     }
 
@@ -506,7 +535,6 @@ flint_printf("S: "); fmpz_mpoly_print_pretty(S, vars, zctx); flint_printf("\n");
         ulong * texps;
         mp_limb_t lc_inv;
         Lholder_t H;
-        nmod_mpoly_t Q;
         flint_rand_t randstate;
         
         Lholder_init(H);
@@ -539,10 +567,10 @@ Lholder_print(H);
 */
         texps = (ulong *) TMP_ALLOC(N*sizeof(ulong));
 
-        nmod_mpoly_init(Q, ctx);
         nmod_mpoly_fit_length(Q, 1, ctx);
         nmod_mpoly_fit_bits(Q, exp_bits, ctx);
         Q->bits = exp_bits;
+
         mpoly_monomial_sub_mp(Q->exps + N*0, A->exps + N*0, B->exps + N*0, N);
         lc_inv = nmod_inv(B->coeffs[0], ctx->ffinfo->mod);
         Q->coeffs[0] = nmod_mul(lc_inv, A->coeffs[0], ctx->ffinfo->mod);
@@ -585,6 +613,8 @@ flint_printf("**** i: %wd *********************\n", i);
 
         flint_randclear(randstate);
 
+        Lholder_clear(H);
+
     }
 
     ret = 1;
@@ -592,8 +622,6 @@ flint_printf("**** i: %wd *********************\n", i);
 cleanup1:
     fmpz_mpoly_clear(S, zctx);
     fmpz_mpoly_ctx_clear(zctx);
-
-    nmod_mpoly_zero(Q, ctx);
 
     if (freeAexp)
         flint_free(Aexp);

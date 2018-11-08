@@ -19,7 +19,7 @@ main(void)
 {
     FLINT_TEST_INIT(state);
 
-    flint_printf("totaldegree....\n");
+    flint_printf("divides_heap_threaded....\n");
     fflush(stdout);
 
     {
