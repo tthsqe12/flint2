@@ -100,7 +100,7 @@ flint_printf("first i = %wd\n", i);
 
 flint_printf("second i = %wd\n", i);
 
-            len = n_randint(state, 40);
+            len = n_randint(state, 50);
             nmod_mpoly_randtest_bound(f, state, len, 20, ctx);
             nmod_mpoly_randtest_bound(g, state, len, 20, ctx);
             nmod_mpoly_randtest_bound(p, state, len, 20, ctx);
@@ -142,7 +142,7 @@ printf("p: "); nmod_mpoly_print_pretty(p, vars, ctx); printf("\n");
 
 flint_printf("third i = %wd\n", i);
 
-            len = n_randint(state, 20);
+            len = n_randint(state, 30);
             nmod_mpoly_randtest_bound(f, state, len, 10, ctx);
             nmod_mpoly_randtest_bound(g, state, len, 10, ctx);
             nmod_mpoly_randtest_bound(p, state, len/2, 5, ctx);
