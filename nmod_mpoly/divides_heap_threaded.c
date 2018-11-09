@@ -856,7 +856,22 @@ not_exact_division:
 }
 
 
+slong Lfind_exp(ulong * exp, slong i, const Lholder_t H)
+{
+    slong N = H->N;
+    slong Alen = H->polyA->length;
+    const ulong * Aexp = H->polyA->exps;
 
+    FLINT_ASSERT(i > 0);
+    FLINT_ASSERT(mpoly_monomial_cmp(Aexp + N*(i - 1), exp, N, H->cmpmask) >= 0);
+
+    while (i < Alen
+            && mpoly_monomial_cmp(Aexp + N*i, exp, N, H->cmpmask) >= 0)
+    {
+        i++;
+    }
+    return i;
+}
 
 void tryproc(Lholder_t H, Lchunk_t L, nmod_mpoly_t Q)
 {
@@ -872,108 +887,61 @@ void tryproc(Lholder_t H, Lchunk_t L, nmod_mpoly_t Q)
         mask = (mask << H->bits) + (UWORD(1) << (H->bits - 1));
 
 
-/*
 flint_printf("tryproducer called\n");
-*/
-    if (L->Cinited == 0)
-    {
-        nmod_mpoly_init(C, H->ctx);
-        nmod_mpoly_chop(C, A, L->upperclosed, L->emax, L->emin, H);
-        L->Cinited = 1;
-    }
+
 
     FLINT_ASSERT(L->mq >= 0);
 
 
-
-/*
-    for (i = L->mq; i < Q->length; i++)
-    {
-        nmod_mpoly_t T;
-        nmod_mpoly_init2(T, 16, H->ctx);
-        nmod_mpoly_fit_bits(T, H->bits, H->ctx);
-        T->bits = H->bits;
-        nmod_mpoly_chopmulmonomial(T, B, Q, i, L, H);
-        nmod_mpoly_sub(C, C, T, H->ctx);
-        nmod_mpoly_clear(T, H->ctx);
-    }
-*/
     if (Q->length > L->mq)
     {
         nmod_mpoly_t T;
         nmod_mpoly_init2(T, 16, H->ctx);
-
         T->length = _nmod_mpoly_mul_stripe(&T->coeffs, &T->exps, &T->alloc,
                 Q->coeffs + L->mq, Q->exps + N*L->mq, Q->length - L->mq,
                 B->coeffs, B->exps, B->length,
                         L, H);
 
-        nmod_mpoly_sub(C, C, T, H->ctx);
+        if (L->Cinited)
+        {
+            nmod_mpoly_sub(C, C, T, H->ctx);
+        }
+        else
+        {
+            slong startidx, stopidx;
+            if (L->upperclosed)
+            {
+                startidx = 0;
+                stopidx = Lfind_exp(L->emin, 1, H);
+            }
+            else
+            {
+                startidx = Lfind_exp(L->emax, 1, H);
+                stopidx = Lfind_exp(L->emin, startidx, H);
+            }
+
+            L->Cinited = 1;
+            nmod_mpoly_init2(C, T->length + stopidx - startidx, H->ctx);
+            nmod_mpoly_fit_bits(C, H->bits, H->ctx);
+            C->bits = H->bits;
+
+            C->length = _nmod_mpoly_sub(C->coeffs, C->exps, 
+                        A->coeffs + startidx, A->exps + N*startidx, stopidx - startidx,
+                        T->coeffs, T->exps, T->length,
+                                        N, H->cmpmask, H->ctx->ffinfo);
+        }
         nmod_mpoly_clear(T, H->ctx);
     }
-
-
-
-
 /*
 flint_printf("all C: "); nmod_mpoly_print_pretty(C, vars, H->ctx); flint_printf("\n");
 flint_printf("all Q: "); nmod_mpoly_print_pretty(Q, vars, H->ctx); flint_printf("\n");
 */
     L->mq = Q->length;
 
-/*
     if (L->producer == 1)
     {
-        mp_limb_t * Qcoeff = Q->coeffs;
-        ulong * Qexp = Q->exps;
-        slong Qalloc =  Q->alloc;
-        slong Qlen = Q->length;
-        mp_limb_t lc_inv = nmod_inv(B->coeffs[0], H->ctx->ffinfo->mod);
-        int divides;
-        while (C->length > 0)
-        {
+        FLINT_ASSERT(L->Cinited);
 
-            _nmod_mpoly_fit_length(&Qcoeff, &Qexp, &Qalloc, Qlen + 1, N);
-            Qcoeff[Qlen] = nmod_mul(lc_inv, C->coeffs[0], H->ctx->ffinfo->mod);
-            divides = mpoly_monomial_divides(Qexp + N*Qlen, C->exps + N*0, B->exps + N*0, N, mask);
-            Q->exps = Qexp;
-            Q->coeffs = Qcoeff;
-            Q->alloc = Qalloc;
-
-            if (!divides)
-            {
-                H->failed = 1;
-                return;
-            }
-
-            Qlen++;
-            Q->length = Qlen;           
-
-            {
-                nmod_mpoly_t T;
-                nmod_mpoly_init2(T, 16, H->ctx);
-                nmod_mpoly_fit_bits(T, H->bits, H->ctx);
-                T->bits = H->bits;
-                nmod_mpoly_chopmulmonomial(T, B, Q, Qlen - 1, L, H);
-                nmod_mpoly_sub(C, C, T, H->ctx);
-                nmod_mpoly_clear(T, H->ctx);
-            }
-        }
-
-        L->producer = 0;
-        L->mq = -1;
-
-        H->length--;
-        H->cur = L->next;
-        if (H->cur != NULL)
-        {
-            H->cur->producer = 1;
-        }
-    }
-*/
-
-    if (L->producer == 1)
-    {
         if (C->length > 0)
         {
             nmod_mpoly_t T;
@@ -1026,7 +994,6 @@ flint_printf("all Q: "); nmod_mpoly_print_pretty(Q, vars, H->ctx); flint_printf(
         }
     }
 
-
     return;
 }
 
@@ -1038,7 +1005,7 @@ int nmod_mpoly_divides_heap_threaded(nmod_mpoly_t Q,
     int ret = 1;
     fmpz_mpoly_ctx_t zctx;
     fmpz_mpoly_t S;
-    slong i,j,k,N;
+    slong i, k, N;
     mp_bitcnt_t exp_bits;
     ulong * cmpmask;
     ulong * Aexp, * Bexp;
