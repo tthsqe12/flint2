@@ -12,11 +12,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "nmod_mpoly.h"
-
+#include "fmpz_mpoly.h"
+#include "profiler.h"
 
 int
 main(void)
 {
+    slong test_count = 10;
     int result, result2, i;
     FLINT_TEST_INIT(state);
 
@@ -24,27 +26,80 @@ main(void)
     fflush(stdout);
 
     {
-        nmod_mpoly_ctx_t ctx;
-        nmod_mpoly_t p, f, g, h;
+        timeit_t time;
+        fmpz_mpoly_ctx_t ctx;
+        fmpz_mpoly_t p, f, g, h;
         const char * vars[] = {"x","y","z","t","u"};
 
-        nmod_mpoly_ctx_init(ctx, 5, ORD_DEGLEX, 101);
+        fmpz_mpoly_ctx_init(ctx, 5, ORD_DEGREVLEX);
+        fmpz_mpoly_init(f, ctx);
+        fmpz_mpoly_init(g, ctx);
+        fmpz_mpoly_init(p, ctx);
+        fmpz_mpoly_init(h, ctx);
+        fmpz_mpoly_set_str_pretty(f, "(1+x+y+2*z^2+3*t^3+5*u^5)^1", vars, ctx);
+        fmpz_mpoly_set_str_pretty(g, "(1+u+t+2*z^2+3*y^3+5*x^5)^1", vars, ctx);
+timeit_start(time);
+        fmpz_mpoly_mul_johnson(p, f, g, ctx);
+timeit_stop(time);
+flint_printf("z mul time: %wd\n", time->wall);
+
+
+timeit_start(time);
+        result = fmpz_mpoly_divides_monagan_pearce(h, p, f, ctx);
+timeit_stop(time);
+flint_printf("z div time: %wd\n", time->wall);
+
+        if (result == 0 || !fmpz_mpoly_equal(h, g, ctx))
+        {
+            printf("FAIL 0\n");
+            flint_abort();
+        }
+
+        fmpz_mpoly_clear(f, ctx);
+        fmpz_mpoly_clear(g, ctx);
+        fmpz_mpoly_clear(p, ctx);
+        fmpz_mpoly_clear(h, ctx);
+        fmpz_mpoly_ctx_clear(ctx);
+    }
+
+    {
+        timeit_t time;
+        nmod_mpoly_ctx_t ctx;
+        nmod_mpoly_t p, f, g, h, h2;
+        const char * vars[] = {"x","y","z","t","u"};
+
+        nmod_mpoly_ctx_init(ctx, 5, ORD_DEGLEX, 179424691);
         nmod_mpoly_init(f, ctx);
         nmod_mpoly_init(g, ctx);
         nmod_mpoly_init(p, ctx);
         nmod_mpoly_init(h, ctx);
-        nmod_mpoly_set_str_pretty(f, "(1+x+y+2*z^2+3*t^3+5*u^5)", vars, ctx);
-        nmod_mpoly_set_str_pretty(g, "(1+u+t+2*z^2+3*y^3+5*x^5)", vars, ctx);
+        nmod_mpoly_init(h2, ctx);
+        nmod_mpoly_set_str_pretty(g, "(1+x+y+2*z^2+3*t^3+5*u^5)^5", vars, ctx);
+        nmod_mpoly_set_str_pretty(f, "(1+u+t+2*z^2+3*y^3+5*x^5)^5", vars, ctx);
+timeit_start(time);
         nmod_mpoly_mul(p, f, g, ctx);
-
-flint_printf("f: "); nmod_mpoly_print_pretty(f, vars, ctx); flint_printf("\n");
-flint_printf("g: "); nmod_mpoly_print_pretty(g, vars, ctx); flint_printf("\n");
-flint_printf("p: "); nmod_mpoly_print_pretty(p, vars, ctx); flint_printf("\n");
+timeit_stop(time);
+flint_printf(" mul time: %wd\n", time->wall);
 
 
-        result = nmod_mpoly_divides_heap_threaded(h, p, f, ctx);
+timeit_start(time);
+        result = nmod_mpoly_divides_monagan_pearce(h2, p, f, ctx);
+timeit_stop(time);
+flint_printf(" div time: %wd\n", time->wall);
+
+/*
 flint_printf("h: "); nmod_mpoly_print_pretty(h, vars, ctx); flint_printf("\n");
+*/
 
+timeit_start(time);
+        result = nmod_mpoly_divides_heap_threaded(h, p, f, ctx);
+timeit_stop(time);
+flint_printf("pdiv time: %wd\n", time->wall);
+
+flint_printf("result: %wd\n", result);
+/*
+flint_printf("h: "); nmod_mpoly_print_pretty(h, vars, ctx); flint_printf("\n");
+*/
         if (result == 0 || !nmod_mpoly_equal(h, g, ctx))
         {
             printf("FAIL 1\n");
@@ -52,6 +107,7 @@ flint_printf("h: "); nmod_mpoly_print_pretty(h, vars, ctx); flint_printf("\n");
         }
 
 printf("*******************************************\n");
+
 
         nmod_mpoly_add_ui(p, p, 1, ctx);
         result = nmod_mpoly_divides_heap_threaded(h, p, f, ctx);
@@ -63,12 +119,12 @@ flint_printf("h: "); nmod_mpoly_print_pretty(h, vars, ctx); flint_printf("\n");
             flint_abort();
         }
 
-        for (i = 0; i < 10*flint_test_multiplier(); i++)
+        for (i = 0; i < test_count*flint_test_multiplier(); i++)
         {
             slong len;
-
+/*
 flint_printf("first i = %wd\n", i);
-
+*/
             len = n_randint(state, 40);
             nmod_mpoly_randtest_bound(f, state, len, 10, ctx);
             nmod_mpoly_randtest_bound(g, state, len, 10, ctx);
@@ -94,12 +150,12 @@ flint_printf("first i = %wd\n", i);
             }
         }
 
-        for (i = 0; i < 10*flint_test_multiplier(); i++)
+        for (i = 0; i < test_count*flint_test_multiplier(); i++)
         {
             slong len;
-
+/*
 flint_printf("second i = %wd\n", i);
-
+*/
             len = n_randint(state, 50);
             nmod_mpoly_randtest_bound(f, state, len, 20, ctx);
             nmod_mpoly_randtest_bound(g, state, len, 20, ctx);
@@ -136,12 +192,12 @@ printf("p: "); nmod_mpoly_print_pretty(p, vars, ctx); printf("\n");
             }
         }
 
-        for (i = 0; i < 10*flint_test_multiplier(); i++)
+        for (i = 0; i < test_count*flint_test_multiplier(); i++)
         {
             slong len;
-
+/*
 flint_printf("third i = %wd\n", i);
-
+*/
             len = n_randint(state, 30);
             nmod_mpoly_randtest_bound(f, state, len, 10, ctx);
             nmod_mpoly_randtest_bound(g, state, len, 10, ctx);
@@ -184,6 +240,7 @@ printf("p: "); nmod_mpoly_print_pretty(p, vars, ctx); printf("\n");
         nmod_mpoly_clear(g, ctx);
         nmod_mpoly_clear(p, ctx);
         nmod_mpoly_clear(h, ctx);
+        nmod_mpoly_clear(h2, ctx);
 
         nmod_mpoly_ctx_clear(ctx);
     }
