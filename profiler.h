@@ -88,6 +88,20 @@ void timeit_stop(timeit_t t)
     t->cpu += clock() * 1000 / CLOCKS_PER_SEC;
 }
 
+static __inline__
+slong timeit_query_wall(const timeit_t t)
+{
+    struct timeval tv;
+    gettimeofday(&tv, 0);
+    return t->wall + tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
+
+static __inline__
+slong timeit_query_cpu(const timeit_t t)
+{
+    return t->cpu + clock() * 1000 / CLOCKS_PER_SEC;
+}
+
 /******************************************************************************
 
     Timer based on the cycle counter

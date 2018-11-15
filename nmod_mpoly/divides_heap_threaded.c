@@ -14,11 +14,64 @@
 #include "fmpz_mpoly.h"
 #include "profiler.h"
 
-#define WORKER_COUNT 1
+#define WORKER_COUNT 0
+
+#define PROFILE_THIS TRUE
 
 threadpool_t global_thread_pool;
 
 const char * vars[] = {"x","y","z","t","u"};
+
+
+
+#if defined(PROFILE_THIS)
+typedef struct _vec_slong_struct
+{
+    slong * array;
+    slong alloc;
+    slong length;
+} vec_slong_struct;
+
+typedef vec_slong_struct vec_slong_t[1];
+
+void vec_slong_init(vec_slong_t v)
+{
+    v->length = 0;
+    v->alloc = 16;
+    v->array = (slong *) flint_malloc(v->alloc*sizeof(slong));
+}
+
+void vec_slong_clear(vec_slong_t v)
+{
+    flint_free(v->array);
+}
+
+void vec_slong_push_back(vec_slong_t v, slong a)
+{
+    v->length++;
+    if (v->length > v->alloc)
+    {
+        v->alloc = FLINT_MAX(v->length, 2*v->alloc);
+        v->array = (slong *) flint_realloc(v->array, v->alloc*sizeof(slong));
+    }
+    v->array[v->length - 1] = a;
+}
+
+void vec_slong_print(const vec_slong_t v)
+{
+    slong i;
+    flint_printf("[");
+    for (i = 0; i < v->length; i++)
+    {
+        flint_printf("%wd",v->array[i]);
+        if (i + 1 < v->length)
+        {
+            flint_printf(",",v->array[i]);
+        }
+    }
+    flint_printf("]");
+}
+#endif
 
 
 /*
@@ -192,6 +245,9 @@ typedef struct _Lchunk_struct
     volatile slong ma;
     volatile slong mq;
     int Cinited;
+#if defined(PROFILE_THIS)
+    slong idx;
+#endif
 } Lchunk_struct;
 
 typedef Lchunk_struct Lchunk_t[1];
@@ -213,6 +269,10 @@ typedef struct
     mp_bitcnt_t bits;
     ulong * cmpmask;
     int failed;
+#if defined(PROFILE_THIS)
+    timeit_t timer;
+#endif
+
 } Lholder_struct;
 
 typedef Lholder_struct Lholder_t[1];
@@ -318,7 +378,7 @@ int select_exps(fmpz_mpoly_t S, fmpz_mpoly_ctx_t zctx,
     ulong * Sexp;
     slong Slen;
     fmpz * Scoeff;
-    slong ns = 30;
+    slong ns = 20;
     slong Astep = FLINT_MAX(Alen*2/ns, WORD(1));
     slong Bstep = FLINT_MAX(Blen*4/ns, WORD(1));
     slong tot;
@@ -555,6 +615,9 @@ typedef struct _worker_arg_struct
     nmod_mpoly_stripe_t S;
     nmod_mpoly_t polyT1;
     nmod_mpoly_t polyT2;
+#if defined(PROFILE_THIS)
+    vec_slong_t time_data;
+#endif
 } worker_arg_struct;
 
 typedef worker_arg_struct worker_arg_t[1];
@@ -987,7 +1050,6 @@ slong _nmod_mpoly_divides_stripe1(
 {
     mp_bitcnt_t bits = S->bits;
     ulong emin = S->emin[0];
-    ulong emax = S->emax[0];
     ulong cmpmask = S->cmpmask[0];
     ulong texp;
     int lt_divides;
@@ -1649,7 +1711,17 @@ void tryproc(worker_arg_t W, Lchunk_t L)
     {
         if (L->producer == 0 && q_prev_length - L->mq < 20)
             return;
+
+#if defined PROFILE_THIS
+        vec_slong_push_back(W->time_data, 4*L->idx + 0);
+        vec_slong_push_back(W->time_data, timeit_query_wall(H->timer));
+#endif 
         mulsub(W, L, q_prev_length);
+#if defined PROFILE_THIS
+        vec_slong_push_back(W->time_data, 4*L->idx + 1);
+        vec_slong_push_back(W->time_data, timeit_query_wall(H->timer));
+#endif 
+
     }
 
     if (L->producer == 1)
@@ -1658,6 +1730,11 @@ void tryproc(worker_arg_t W, Lchunk_t L)
         mp_limb_t * Rcoeff;
         ulong * Rexp;
         slong Rlen;
+
+#if defined PROFILE_THIS
+        vec_slong_push_back(W->time_data, 4*L->idx + 2);
+        vec_slong_push_back(W->time_data, timeit_query_wall(H->timer));
+#endif 
 
         /* process the remaining quotient terms */
         q_prev_length = Q->length;
@@ -1716,6 +1793,10 @@ void tryproc(worker_arg_t W, Lchunk_t L)
             }
             if (T2->length == 0)
             {
+#if defined PROFILE_THIS
+                vec_slong_push_back(W->time_data, 4*L->idx + 3);
+                vec_slong_push_back(W->time_data, timeit_query_wall(H->timer));
+#endif 
                 H->failed = 1;
                 return;
             }
@@ -1724,6 +1805,11 @@ void tryproc(worker_arg_t W, Lchunk_t L)
                 nmod_mpoly_ts_append(H->polyQ, T2->coeffs, T2->exps, T2->length, H->N);
             }
         }
+
+#if defined PROFILE_THIS
+        vec_slong_push_back(W->time_data, 4*L->idx + 3);
+        vec_slong_push_back(W->time_data, timeit_query_wall(H->timer));
+#endif 
 
         next = L->next;
         H->length--;
@@ -1908,6 +1994,9 @@ time_prod = time_add = time_div = 0;
     }
 
     {
+#if defined PROFILE_THIS
+        slong idx = 0;
+#endif
         mp_limb_t qcoeff;
         ulong * texps, * qexps;
         mp_limb_t lc_inv;
@@ -1951,6 +2040,9 @@ time_prod = time_add = time_div = 0;
             L->producer = 0;
             L->Cinited = 0;
             L->lock = -2;
+#if defined PROFILE_THIS
+            L->idx = idx++;
+#endif
             Lholder_add_chunk(H, L);
         }
 
@@ -1986,6 +2078,15 @@ time_prod = time_add = time_div = 0;
         {
             worker_arg_struct * worker_args;
             worker_args = (worker_arg_struct *) flint_malloc((num_workers + 1)*sizeof(worker_arg_t));
+
+#if defined PROFILE_THIS
+            for (i = 0; i < num_workers + 1; i++)
+            {
+                vec_slong_init((worker_args + i)->time_data);
+            }
+            timeit_start(H->timer);
+#endif
+
             for (i = 0; i < num_workers; i++)
             {
                 (worker_args + i)->H = H;
@@ -1998,8 +2099,24 @@ time_prod = time_add = time_div = 0;
                 threadpool_wait(global_thread_pool, handles[i]);
                 threadpool_giveback(global_thread_pool, handles[i]);
             }
+
+#if defined PROFILE_THIS
+            timeit_stop(H->timer);
+            flint_printf("data = [");
+            for (i = 0; i < num_workers + 1; i++)
+            {
+                flint_printf("[%wd,", i);
+                vec_slong_print((worker_args + i)->time_data);
+                flint_printf("],\n");
+                vec_slong_clear((worker_args + i)->time_data);
+
+            }
+            flint_printf("%wd]\n", H->timer->wall);
+#endif
+
             flint_free(worker_args);
         }
+
 
         threadpool_clear(global_thread_pool);
 

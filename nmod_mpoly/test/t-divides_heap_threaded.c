@@ -18,7 +18,7 @@
 int
 main(void)
 {
-    slong test_count = 10;
+    slong test_count = 0;
     int result, result2, i;
     FLINT_TEST_INIT(state);
 
@@ -106,9 +106,8 @@ flint_printf("h: "); nmod_mpoly_print_pretty(h, vars, ctx); flint_printf("\n");
             flint_abort();
         }
 
+/*
 printf("*******************************************\n");
-
-
         nmod_mpoly_add_ui(p, p, 1, ctx);
         result = nmod_mpoly_divides_heap_threaded(h, p, f, ctx);
 flint_printf("h: "); nmod_mpoly_print_pretty(h, vars, ctx); flint_printf("\n");
@@ -118,7 +117,7 @@ flint_printf("h: "); nmod_mpoly_print_pretty(h, vars, ctx); flint_printf("\n");
             printf("FAIL 2\n");
             flint_abort();
         }
-
+*/
         for (i = 0; i < test_count*flint_test_multiplier(); i++)
         {
             slong len;
