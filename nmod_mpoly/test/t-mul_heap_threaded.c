@@ -12,7 +12,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "nmod_mpoly.h"
+#include "profiler.h"
 
+#define multiplier 0
 int
 main(void)
 {
@@ -22,8 +24,50 @@ main(void)
     flint_printf("mul_heap_threaded....");
     fflush(stdout);
 
+    {
+        timeit_t time;
+        nmod_mpoly_ctx_t ctx;
+        nmod_mpoly_t p, f, g, h;
+        const char * vars[] = {"x","y","z","t","u"};
+
+flint_printf("\n******************\n");
+
+        nmod_mpoly_ctx_init(ctx, 5, ORD_DEGLEX, UWORD(2147483659));
+        nmod_mpoly_init(f, ctx);
+        nmod_mpoly_init(g, ctx);
+        nmod_mpoly_init(p, ctx);
+        nmod_mpoly_init(h, ctx);
+        nmod_mpoly_set_str_pretty(g, "(1+x+y+2*z^2+3*t^3+5*u^5)^14", vars, ctx);
+        nmod_mpoly_set_str_pretty(f, "(1+u+t+2*z^2+3*y^3+5*x^5)^14", vars, ctx);
+timeit_start(time);
+        nmod_mpoly_mul(p, f, g, ctx);
+timeit_stop(time);
+flint_printf(" mul time: %wd\n", time->wall);
+
+    for (i = 1; i <= 4; i++)
+    {
+        flint_set_num_threads(i);
+timeit_start(time);
+        nmod_mpoly_mul_heap_threaded(h, f, g, ctx);
+timeit_stop(time);
+flint_printf("pmul time(%wd): %wd\n", i, time->wall);
+
+        if (!nmod_mpoly_equal(p, h, ctx))
+        {
+            printf("FAIL\n");
+            flint_abort();
+        }
+    }
+
+        nmod_mpoly_clear(f, ctx);
+        nmod_mpoly_clear(g, ctx);
+        nmod_mpoly_clear(p, ctx);
+        nmod_mpoly_clear(h, ctx);
+        nmod_mpoly_ctx_clear(ctx);
+    }
+
     /* Check mul_heap_threaded matches mul_johnson */
-    for (i = 0; i < 10 * flint_test_multiplier(); i++)
+    for (i = 0; i < multiplier * flint_test_multiplier(); i++)
     {
         nmod_mpoly_ctx_t ctx;
         nmod_mpoly_t f, g, h, k;
@@ -82,7 +126,7 @@ main(void)
 
 
     /* Check aliasing first argument */
-    for (i = 0; i < 10 * flint_test_multiplier(); i++)
+    for (i = 0; i < multiplier * flint_test_multiplier(); i++)
     {
         nmod_mpoly_ctx_t ctx;
         nmod_mpoly_t f, g, h;
@@ -137,7 +181,7 @@ main(void)
     }
 
     /* Check aliasing second argument */
-    for (i = 0; i < 10 * flint_test_multiplier(); i++)
+    for (i = 0; i < multiplier * flint_test_multiplier(); i++)
     {
         nmod_mpoly_ctx_t ctx;
         nmod_mpoly_t f, g, h;

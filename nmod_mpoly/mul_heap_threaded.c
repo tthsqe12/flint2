@@ -14,6 +14,79 @@
 #include <pthread.h>
 #include "nmod_mpoly.h"
 
+#define PROFILE_THIS 1
+
+#if PROFILE_THIS
+
+#include "profiler.h"
+
+typedef struct _vec_slong_struct
+{
+    slong * array;
+    slong alloc;
+    slong length;
+} vec_slong_struct;
+
+typedef vec_slong_struct vec_slong_t[1];
+
+void vec_slong_init(vec_slong_t v)
+{
+    v->length = 0;
+    v->alloc = 16;
+    v->array = (slong *) flint_malloc(v->alloc*sizeof(slong));
+}
+
+void vec_slong_clear(vec_slong_t v)
+{
+    flint_free(v->array);
+}
+
+void vec_slong_push_back(vec_slong_t v, slong a)
+{
+    v->length++;
+    if (v->length > v->alloc)
+    {
+        v->alloc = FLINT_MAX(v->length, 2*v->alloc);
+        v->array = (slong *) flint_realloc(v->array, v->alloc*sizeof(slong));
+    }
+    v->array[v->length - 1] = a;
+}
+
+void vec_slong_print(const vec_slong_t v)
+{
+    slong i;
+    flint_printf("[");
+    for (i = 0; i < v->length; i++)
+    {
+        flint_printf("%wd",v->array[i]);
+        if (i + 1 < v->length)
+        {
+            flint_printf(",",v->array[i]);
+        }
+    }
+    flint_printf("]");
+}
+
+#endif
+
+
+typedef struct _nmod_mpoly_stripe_struct
+{
+    char * big_mem;
+    slong big_mem_alloc;
+    const nmod_mpoly_ctx_struct * ctx;
+    slong N;
+    mp_bitcnt_t bits;
+    nmod_t mod;
+    const ulong * cmpmask;
+    slong * startidx;
+    slong * endidx;
+    ulong * emin;
+    ulong * emax;
+    int upperclosed;
+} nmod_mpoly_stripe_struct;
+
+typedef nmod_mpoly_stripe_struct nmod_mpoly_stripe_t[1];
 
 /*
     Set poly1 to poly2*poly3 using Johnson's heap method. The function
@@ -26,9 +99,9 @@
 slong _nmod_mpoly_mul_heap_part1(mp_limb_t ** coeff1, ulong ** exp1, slong * alloc,
               const mp_limb_t * coeff2, const ulong * exp2, slong len2,
               const mp_limb_t * coeff3, const ulong * exp3, slong len3,
-               slong * start, slong * end, slong * hind, ulong maskhi,
-                                                        const nmodf_ctx_t fctx)
+               slong * start, slong * end, slong * hind, const nmod_mpoly_stripe_t S)
 {
+    const ulong cmpmask = S->cmpmask[0];
     slong i, j, len1;
     slong next_loc = len2 + 4;   /* something bigger than heap can ever be */
     slong Q_len = 0, heap_len = 1; /* heap zero index unused */
@@ -41,15 +114,26 @@ slong _nmod_mpoly_mul_heap_part1(mp_limb_t ** coeff1, ulong ** exp1, slong * all
 /*  slong * hind;   */
     ulong exp;
     mp_limb_t acc0, acc1, acc2, pp0, pp1;
-    TMP_INIT;
+    slong toff;
+    char * tbase = S->big_mem;
+    slong Blen = len2;
 
-    TMP_START;
+    FLINT_ASSERT(S->N == 1);
 
     next_loc = len2 + 4;   /* something bigger than heap can ever be */
+/*
     heap = (mpoly_heap1_s *) TMP_ALLOC((len2 + 1)*sizeof(mpoly_heap1_s));
     chain = (mpoly_heap_t *) TMP_ALLOC(len2*sizeof(mpoly_heap_t));
     Q = (slong *) TMP_ALLOC(2*len2*sizeof(slong));
-   
+*/
+
+    toff = 0;
+    Q = (slong *) (tbase + toff); toff += 2*Blen*sizeof(slong);
+    heap = (mpoly_heap1_s *)(tbase + toff); toff += (Blen + 1)*sizeof(mpoly_heap1_s);
+    chain = (mpoly_heap_t *)(tbase + toff); toff += Blen*sizeof(mpoly_heap_t);
+    FLINT_ASSERT(toff <= S->big_mem_alloc);
+
+ 
     /* space for heap indices */
 /*  hind = (slong *) TMP_ALLOC(len2*sizeof(slong)); */
     for (i = 0; i < len2; i++)
@@ -70,7 +154,7 @@ slong _nmod_mpoly_mul_heap_part1(mp_limb_t ** coeff1, ulong ** exp1, slong * all
             x->next = NULL;
             hind[x->i] = 2*(x->j+1) + 0;
             _mpoly_heap_insert1(heap, exp2[x->i] + exp3[x->j], x,
-                                                 &next_loc, &heap_len, maskhi);
+                                                &next_loc, &heap_len, cmpmask);
         }
     }
 
@@ -86,7 +170,7 @@ slong _nmod_mpoly_mul_heap_part1(mp_limb_t ** coeff1, ulong ** exp1, slong * all
         acc0 = acc1 = acc2 = 0;
         do
         {
-            x = _mpoly_heap_pop1(heap, &heap_len, maskhi);
+            x = _mpoly_heap_pop1(heap, &heap_len, cmpmask);
 
             hind[x->i] |= WORD(1);
             Q[Q_len++] = x->i;
@@ -104,7 +188,7 @@ slong _nmod_mpoly_mul_heap_part1(mp_limb_t ** coeff1, ulong ** exp1, slong * all
             }
         } while (heap_len > 1 && heap[1].exp == exp);
 
-        NMOD_RED3(p1[len1], acc2, acc1, acc0, fctx->mod);
+        NMOD_RED3(p1[len1], acc2, acc1, acc0, S->mod);
         len1 += (p1[len1] != 0);
 
         /* for each node temporarily stored */
@@ -127,7 +211,7 @@ slong _nmod_mpoly_mul_heap_part1(mp_limb_t ** coeff1, ulong ** exp1, slong * all
 
                 hind[x->i] = 2*(x->j+1) + 0;
                 _mpoly_heap_insert1(heap, exp2[x->i] + exp3[x->j], x,
-                                                 &next_loc, &heap_len, maskhi);
+                                                &next_loc, &heap_len, cmpmask);
             }
 
             /* should we go up? */
@@ -145,15 +229,14 @@ slong _nmod_mpoly_mul_heap_part1(mp_limb_t ** coeff1, ulong ** exp1, slong * all
 
                 hind[x->i] = 2*(x->j+1) + 0;
                 _mpoly_heap_insert1(heap, exp2[x->i] + exp3[x->j], x,
-                                                 &next_loc, &heap_len, maskhi);
+                                                &next_loc, &heap_len, cmpmask);
             }
         }
     }
 
     (*coeff1) = p1;
     (*exp1) = e1;
-   
-    TMP_END;
+  
 
     return len1;
 }
@@ -170,8 +253,9 @@ slong _nmod_mpoly_mul_heap_part(mp_limb_t ** coeff1, ulong ** exp1, slong * allo
                  const mp_limb_t * coeff2, const ulong * exp2, slong len2,
                  const mp_limb_t * coeff3, const ulong * exp3, slong len3,
                   slong * start, slong * end, slong * hind,
-      mp_bitcnt_t bits, slong N, const ulong * cmpmask, const nmodf_ctx_t fctx)
+      mp_bitcnt_t bits, slong N, const nmod_mpoly_stripe_t S)
 {
+    const ulong * cmpmask = S->cmpmask;
     slong i, j, len1;
     slong next_loc = len2 + 4;   /* something bigger than heap can ever be */
     slong Q_len = 0, heap_len = 1; /* heap zero index unused */
@@ -186,13 +270,6 @@ slong _nmod_mpoly_mul_heap_part(mp_limb_t ** coeff1, ulong ** exp1, slong * allo
     ulong ** exp_list;
     slong exp_next;
     TMP_INIT;
-
-    /* if exponent vectors fit in single word, call special version */
-    if (N == 1)
-        return _nmod_mpoly_mul_heap_part1(coeff1, exp1, alloc,
-                                          coeff2, exp2, len2,
-                                          coeff3, exp3, len3,
-                                           start, end, hind, cmpmask[0], fctx);
 
     TMP_START;
 
@@ -267,7 +344,7 @@ slong _nmod_mpoly_mul_heap_part(mp_limb_t ** coeff1, ulong ** exp1, slong * allo
             }
         } while (heap_len > 1 && mpoly_monomial_equal(heap[1].exp, exp, N));
 
-        NMOD_RED3(p1[len1], acc2, acc1, acc0, fctx->mod);
+        NMOD_RED3(p1[len1], acc2, acc1, acc0, S->mod);
         len1 += (p1[len1] != 0);
 
         /* for each node temporarily stored */
@@ -345,7 +422,7 @@ slong _nmod_mpoly_mul_heap_part(mp_limb_t ** coeff1, ulong ** exp1, slong * allo
 typedef struct
 {
     pthread_mutex_t mutex;
-    const nmodf_ctx_struct * fctx;
+    const nmod_mpoly_ctx_struct * ctx;
     slong nthreads;
     slong ndivs;
     const mp_limb_t * coeff2; const ulong * exp2; slong len2;
@@ -354,6 +431,10 @@ typedef struct
     mp_bitcnt_t bits;
     const ulong * cmpmask;
     volatile int idx;
+#if PROFILE_THIS
+    timeit_t timer;
+#endif
+
 }
 mul_heap_threaded_base_t;
 
@@ -370,6 +451,7 @@ mul_heap_threaded_div_t;
 
 typedef struct
 {
+    nmod_mpoly_stripe_t S;
     slong idx;
     slong time;
     mul_heap_threaded_base_t * basep;
@@ -378,6 +460,9 @@ typedef struct
     pthread_cond_t cond;
     slong * t1, * t2, * t3, * t4;
     ulong * exp;
+#if PROFILE_THIS
+    vec_slong_t time_data;
+#endif
 }
 mul_heap_threaded_arg_t;
 
@@ -397,7 +482,7 @@ mul_heap_threaded_arg_t;
 void * _nmod_mpoly_mul_heap_threaded_worker(void * arg_ptr)
 {
     mul_heap_threaded_arg_t * arg = (mul_heap_threaded_arg_t *) arg_ptr;
-
+    nmod_mpoly_stripe_struct * S = arg->S;
     mul_heap_threaded_div_t * divs;
     mul_heap_threaded_base_t * base;
     slong i, j;
@@ -414,6 +499,30 @@ void * _nmod_mpoly_mul_heap_threaded_worker(void * arg_ptr)
     t3 = (slong *) flint_malloc(base->len2*sizeof(slong));
     t4 = (slong *) flint_malloc(base->len2*sizeof(slong));
 
+    S->N = base->N;
+    S->cmpmask = base->cmpmask;
+    S->ctx = base->ctx;
+    S->mod = base->ctx->ffinfo->mod;
+
+    S->big_mem_alloc = 0;
+    if (S->N == 1)
+    {
+        slong Blen = base->len2;
+        S->big_mem_alloc += 2*Blen*sizeof(slong);
+        S->big_mem_alloc += (Blen + 1)*sizeof(mpoly_heap1_s);
+        S->big_mem_alloc += Blen*sizeof(mpoly_heap_t);
+    }
+    else
+    {
+        slong Blen = base->len2;
+        S->big_mem_alloc += 2*Blen*sizeof(slong);
+        S->big_mem_alloc += (Blen + 1)*sizeof(mpoly_heap_s);
+        S->big_mem_alloc += Blen*sizeof(mpoly_heap_t);
+        S->big_mem_alloc +=  Blen*S->N*sizeof(ulong);
+        S->big_mem_alloc +=  Blen*sizeof(ulong *);
+    }
+    S->big_mem = (char *) flint_malloc(S->big_mem_alloc);
+
     /* get index to start working on */
     if (arg->idx + 1 < base->nthreads)
     {
@@ -421,13 +530,20 @@ void * _nmod_mpoly_mul_heap_threaded_worker(void * arg_ptr)
         i = base->idx - 1;
         base->idx = i;
         pthread_mutex_unlock(&base->mutex);
-    } else
+    }
+    else
     {
         i = base->ndivs - 1;
     }
 
 
-    while (i >= 0) {
+    while (i >= 0)
+    {
+
+#if PROFILE_THIS
+        vec_slong_push_back(arg->time_data, 0);
+        vec_slong_push_back(arg->time_data, timeit_query_wall(base->timer));
+#endif 
 
         /* calculate start */
         if (i + 1 < base-> ndivs)
@@ -475,13 +591,38 @@ void * _nmod_mpoly_mul_heap_threaded_worker(void * arg_ptr)
         }
         /* t3 and t4 are free for workspace at this point */
 
+#if PROFILE_THIS
+        vec_slong_push_back(arg->time_data, 1);
+        vec_slong_push_back(arg->time_data, timeit_query_wall(base->timer));
+#endif 
+
+#if PROFILE_THIS
+        vec_slong_push_back(arg->time_data, 2);
+        vec_slong_push_back(arg->time_data, timeit_query_wall(base->timer));
+#endif 
+
         /* calculate products in [start, end) */
-        divs[i].len1 = _nmod_mpoly_mul_heap_part(
-                     &divs[i].coeff1, &divs[i].exp1, &divs[i].alloc1,
-                      base->coeff2,  base->exp2,  base->len2,
-                      base->coeff3,  base->exp3,  base->len3,
-                       start, end, t3, base->bits, base->N,
-                                       base->cmpmask, base->fctx);
+        if (S->N == 1)
+        {
+            divs[i].len1 = _nmod_mpoly_mul_heap_part1(
+                         &divs[i].coeff1, &divs[i].exp1, &divs[i].alloc1,
+                          base->coeff2,  base->exp2,  base->len2,
+                          base->coeff3,  base->exp3,  base->len3,
+                           start, end, t3, S);
+        }
+        else
+        {
+            divs[i].len1 = _nmod_mpoly_mul_heap_part(
+                         &divs[i].coeff1, &divs[i].exp1, &divs[i].alloc1,
+                          base->coeff2,  base->exp2,  base->len2,
+                          base->coeff3,  base->exp3,  base->len3,
+                           start, end, t3, base->bits, base->N, S);
+        }
+
+#if PROFILE_THIS
+        vec_slong_push_back(arg->time_data, 3);
+        vec_slong_push_back(arg->time_data, timeit_query_wall(base->timer));
+#endif 
 
         /* get next index to work on */
         pthread_mutex_lock(&base->mutex);
@@ -491,6 +632,7 @@ void * _nmod_mpoly_mul_heap_threaded_worker(void * arg_ptr)
     }
 
     /* clean up */
+    flint_free(S->big_mem);
     flint_free(t4);
     flint_free(t3);
     flint_free(t2);
@@ -508,7 +650,7 @@ void * _nmod_mpoly_mul_heap_threaded_worker(void * arg_ptr)
 slong _nmod_mpoly_mul_heap_threaded(mp_limb_t ** coeff1, ulong ** exp1, slong * alloc,
                  const mp_limb_t * coeff2, const ulong * exp2, slong len2,
                  const mp_limb_t * coeff3, const ulong * exp3, slong len3,
-      mp_bitcnt_t bits, slong N, const ulong * cmpmask, const nmodf_ctx_t fctx)
+      mp_bitcnt_t bits, slong N, const ulong * cmpmask, const nmod_mpoly_ctx_t ctx)
 {
     slong i, j, k, ndivs2;
     pthread_t * threads;
@@ -530,8 +672,11 @@ slong _nmod_mpoly_mul_heap_threaded(mp_limb_t ** coeff1, ulong ** exp1, slong * 
     base->bits = bits;
     base->N = N;
     base->cmpmask = cmpmask;
-    base->idx = base->ndivs-1;    /* decremented by worker threads */
-    base->fctx = fctx;
+    base->idx = base->ndivs - 1;    /* decremented by worker threads */
+    base->ctx = ctx;
+#if PROFILE_THIS
+    timeit_start(base->timer);
+#endif
 
     ndivs2 = base->ndivs*base->ndivs;
 
@@ -570,6 +715,11 @@ slong _nmod_mpoly_mul_heap_threaded(mp_limb_t ** coeff1, ulong ** exp1, slong * 
         args[i].idx = i;
         args[i].basep = base;
         args[i].divp = divs;
+
+#if PROFILE_THIS
+        vec_slong_init((args + i)->time_data);
+#endif
+
         if (i + 1 < base->nthreads)
         {
             pthread_create(&threads[i], NULL, _nmod_mpoly_mul_heap_threaded_worker, &args[i]);
@@ -593,10 +743,11 @@ slong _nmod_mpoly_mul_heap_threaded(mp_limb_t ** coeff1, ulong ** exp1, slong * 
     {
         if (i + 1 < base->ndivs)
         {
+            _nmod_mpoly_fit_length(&p1, &e1, alloc, k + divs[i].len1, N);
+
             /* transfer from worker poly to original poly */
             for (j = 0; j < divs[i].len1; j++)
             {
-                _nmod_mpoly_fit_length(&p1, &e1, alloc, k + 1, N);
                 p1[k] = divs[i].coeff1[j];
                 mpoly_monomial_set(e1 + N*k, divs[i].exp1 + N*j, N);
                 k++;
@@ -612,6 +763,20 @@ slong _nmod_mpoly_mul_heap_threaded(mp_limb_t ** coeff1, ulong ** exp1, slong * 
             *alloc = divs[i].alloc1;
         }
     }
+
+#if PROFILE_THIS
+    timeit_stop(base->timer);
+    flint_printf("data = [");
+    for (i = 0; i < base->nthreads; i++)
+    {
+        flint_printf("[%wd,", i);
+        vec_slong_print((args + i)->time_data);
+        flint_printf("],\n");
+        vec_slong_clear((args + i)->time_data);
+    }
+    flint_printf("%wd]\n", base->timer->wall);
+#endif
+
 
     flint_free(args);
     flint_free(threads);
@@ -703,13 +868,13 @@ void nmod_mpoly_mul_heap_threaded(nmod_mpoly_t poly1, const nmod_mpoly_t poly2,
                                     &temp->coeffs, &temp->exps, &temp->alloc,
                                       poly3->coeffs, exp3, poly3->length,
                                       poly2->coeffs, exp2, poly2->length,
-                                            exp_bits, N, cmpmask, ctx->ffinfo);
+                                            exp_bits, N, cmpmask, ctx);
         else
             len1 = _nmod_mpoly_mul_heap_threaded(
                                    &temp->coeffs, &temp->exps, &temp->alloc,
                                       poly2->coeffs, exp2, poly2->length,
                                       poly3->coeffs, exp3, poly3->length,
-                                            exp_bits, N, cmpmask, ctx->ffinfo);
+                                            exp_bits, N, cmpmask, ctx);
 
         nmod_mpoly_swap(temp, poly1, ctx);
 
@@ -726,13 +891,13 @@ void nmod_mpoly_mul_heap_threaded(nmod_mpoly_t poly1, const nmod_mpoly_t poly2,
                                 &poly1->coeffs, &poly1->exps, &poly1->alloc,
                                       poly3->coeffs, exp3, poly3->length,
                                       poly2->coeffs, exp2, poly2->length,
-                                            exp_bits, N, cmpmask, ctx->ffinfo);
+                                            exp_bits, N, cmpmask, ctx);
         else
             len1 = _nmod_mpoly_mul_heap_threaded(
                                 &poly1->coeffs, &poly1->exps, &poly1->alloc,
                                       poly2->coeffs, exp2, poly2->length,
                                       poly3->coeffs, exp3, poly3->length,
-                                            exp_bits, N, cmpmask, ctx->ffinfo);
+                                            exp_bits, N, cmpmask, ctx);
     }
 
     if (free2)
