@@ -14,7 +14,7 @@
 #include "fmpz_mpoly.h"
 #include "profiler.h"
 
-#define WORKER_COUNT 0
+#define WORKER_COUNT 3
 
 #define PROFILE_THIS TRUE
 
@@ -378,8 +378,8 @@ int select_exps(fmpz_mpoly_t S, fmpz_mpoly_ctx_t zctx,
     ulong * Sexp;
     slong Slen;
     fmpz * Scoeff;
-    slong ns = 20;
-    slong Astep = FLINT_MAX(Alen*2/ns, WORD(1));
+    slong ns = 50;
+    slong Astep = FLINT_MAX(Alen*1/ns, WORD(1));
     slong Bstep = FLINT_MAX(Blen*4/ns, WORD(1));
     slong tot;
     ulong * T0, * T1;
@@ -438,6 +438,7 @@ int select_exps(fmpz_mpoly_t S, fmpz_mpoly_ctx_t zctx,
         }
     }
 
+/*
     for (i = 0; i < Blen; i += Bstep)
     {
         mpoly_monomial_sub_mp(Sexp + N*Slen, Aexp + N*0, Bexp + N*0, N);
@@ -456,6 +457,7 @@ int select_exps(fmpz_mpoly_t S, fmpz_mpoly_ctx_t zctx,
         else
             Slen += !(mpoly_monomial_overflows_mp(Sexp + N*Slen, N, bits));
     }
+*/
 
     mpoly_monomial_zero(Sexp + N*Slen, N);
     fmpz_one(Scoeff + Slen);
