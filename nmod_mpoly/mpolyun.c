@@ -1122,3 +1122,38 @@ int nmod_mpolyun_addinterp_fq_nmod_mpolyu(slong * lastdeg,
     fq_nmod_mpoly_clear(zero, ffctx);
     return changed;    
 }
+
+
+
+
+void mpolyun_crt_coeff(
+    nmod_mpolyn_struct* out,
+    nmod_mpolyun_struct ** inputs,
+    slong targetexp,
+    slong moduli_length)
+{
+    coeff_ptr = TMP_ALLOC()
+
+    for (k = 0; k < moduli_length; k++)
+    {
+        coeff_ptr[k] = NULL;
+
+        starts[k] = 0;
+
+        for (j = 0; j < inputs[k]->length; j++)
+        {
+            if (inputs[k]->exps[j] == targetexp)
+            {
+                coeff_ptr[k] = inputs[k]->coeffs + j;
+                break;
+            }
+        }
+    }
+
+
+    
+}
+
+
+
+
