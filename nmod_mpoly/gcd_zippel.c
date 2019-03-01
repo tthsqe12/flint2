@@ -188,7 +188,7 @@ int nmod_mpolyu_gcdm_zippel_bivar(
         }
         else
         {
-            nmod_mpolyun_set_fq_nmod_mpolyu(H, ctx, Geval, ffctx);
+            nmod_mpolyun_set_fq_nmod_mpolyu(&lastdeg, H, ctx, Geval, ffctx);
             nmod_poly_set(modulus, ffctx->fqctx->modulus);
         }
 
@@ -361,7 +361,7 @@ choose_prime_outer:
     fq_nmod_mpolyu_scalar_mul_fq_nmod(Gff, t, ffctx);
 
     fq_nmod_mpolyu_setform(Gform, Gff, ffctx);
-    nmod_mpolyun_set_fq_nmod_mpolyu(Hn, ctx, Gff, ffctx);
+    nmod_mpolyun_set_fq_nmod_mpolyu(&lastdeg, Hn, ctx, Gff, ffctx);
 
     nmod_poly_set(modulus, ffctx->fqctx->modulus);
 

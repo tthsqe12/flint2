@@ -20,6 +20,33 @@ main(void)
     flint_printf("gcd_brown....");
     fflush(stdout);
 
+    /* check simple example */
+    {
+        fq_nmod_mpoly_ctx_t ctx;
+        fq_nmod_mpoly_t g, a, b;
+        /* get the coefficient of y^1*x^2*/
+        const char * vars[] = {"x", "y", "z", "w"};
+
+        fq_nmod_mpoly_ctx_init_deg(ctx, 2, ORD_LEX, 2, 2);
+        fq_nmod_mpoly_init(g, ctx);
+        fq_nmod_mpoly_init(a, ctx);
+        fq_nmod_mpoly_init(b, ctx);
+        fq_nmod_mpoly_set_str_pretty(a, "(x+y)*(x-y^2)", vars, ctx);
+        fq_nmod_mpoly_set_str_pretty(b, "(x+y)*(x^2+y)", vars, ctx);
+
+printf("a: "); fq_nmod_mpoly_print_pretty(a, vars, ctx); printf("\n");
+printf("b: "); fq_nmod_mpoly_print_pretty(b, vars, ctx); printf("\n");
+
+        fq_nmod_mpoly_gcd_brownnew(g, a, b, ctx);
+
+printf("g: "); fq_nmod_mpoly_print_pretty(g, vars, ctx); printf("\n");
+
+        fq_nmod_mpoly_clear(g, ctx);
+        fq_nmod_mpoly_clear(a, ctx);
+        fq_nmod_mpoly_clear(b, ctx);
+        fq_nmod_mpoly_ctx_clear(ctx);
+    }
+
     for (i = 0; i < 10*flint_test_multiplier(); i++)
     {
         fq_nmod_mpoly_ctx_t ctx;
@@ -47,6 +74,8 @@ main(void)
         len1 = n_randint(state, 150);
         len2 = n_randint(state, 150);
 
+flint_printf("i: %wd\n", i);
+
         degbound = 75/ctx->minfo->nvars/ctx->minfo->nvars;
 
         do {
@@ -59,11 +88,12 @@ main(void)
 
         fq_nmod_mpoly_randtest_bits(g, state, len, FLINT_BITS, ctx);
 
-        res = fq_nmod_mpoly_gcd_brown(g, a, b, ctx);
+        res = fq_nmod_mpoly_gcd_brownnew(g, a, b, ctx);
         if (!res)
         {
             printf("FAIL\n");
-            flint_printf("Could not compute gcd\ni = %wd\n", i);
+            flint_printf("Could not compute gcd\n"
+                            "i = %wd, p = %wu, d = %wd\n", i, ctx->fqctx->modulus->mod.n, ctx->fqctx->modulus->length - 1);
             flint_abort();
         }
         fq_nmod_mpoly_assert_canonical(g, ctx);
@@ -76,7 +106,7 @@ main(void)
                 flint_printf("Check zero gcd only results from zero inputs\ni = %wd\n", i);
                 flint_abort();
             }
-            continue;
+            goto break_continue;
         }
 
         if (!fq_nmod_is_one(g->coeffs + 0, ctx->fqctx))
@@ -96,7 +126,7 @@ main(void)
             flint_abort();
         }
 
-        res = fq_nmod_mpoly_gcd_brown(cg, ca, cb, ctx);
+        res = fq_nmod_mpoly_gcd_brownnew(cg, ca, cb, ctx);
         if (!res)
         {
             printf("FAIL\n");
@@ -110,6 +140,8 @@ main(void)
             flint_printf("Check cofactors are relatively prime\ni = %wd\n", i);
             flint_abort();
         }
+
+break_continue:
 
         fq_nmod_mpoly_clear(g, ctx);
         fq_nmod_mpoly_clear(a, ctx);

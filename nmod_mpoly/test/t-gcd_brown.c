@@ -20,7 +20,33 @@ main(void)
     flint_printf("gcd_brown....");
     fflush(stdout);
 
-    for (i = 0; i < 10 * flint_test_multiplier(); i++)
+    {
+        nmod_mpoly_ctx_t ctx;
+        nmod_mpoly_t g, a, b;
+        const char * vars[] = {"x","y","z","t","u"};
+
+        nmod_mpoly_ctx_init(ctx, 3, ORD_DEGLEX, 101+0*179424691);
+        nmod_mpoly_init(g, ctx);
+        nmod_mpoly_init(a, ctx);
+        nmod_mpoly_init(b, ctx);
+        nmod_mpoly_set_str_pretty(a, "(x+y+z)*(x+y-z)", vars, ctx);
+        nmod_mpoly_set_str_pretty(b, "(x+y+z)*(x-y-z)", vars, ctx);
+
+printf("a: "); nmod_mpoly_print_pretty(a, vars, ctx); printf("\n");
+printf("b: "); nmod_mpoly_print_pretty(b, vars, ctx); printf("\n");
+
+        nmod_mpoly_gcd_brownnew(g, a, b, ctx);
+
+printf("g: "); nmod_mpoly_print_pretty(g, vars, ctx); printf("\n");
+
+
+        nmod_mpoly_clear(g, ctx);
+        nmod_mpoly_clear(a, ctx);
+        nmod_mpoly_clear(b, ctx);
+        nmod_mpoly_ctx_clear(ctx);
+    }
+
+    for (i = 0; i < 1 * flint_test_multiplier(); i++)
     {
         nmod_mpoly_ctx_t ctx;
         nmod_mpoly_t a, b, g, ca, cb, cg, t;
@@ -59,11 +85,16 @@ main(void)
             nmod_mpoly_mul_johnson(a, a, t, ctx);
             nmod_mpoly_mul_johnson(b, b, t, ctx);
 
+flint_printf("i = %wd, j = %wd\n", i,j);
+
             nmod_mpoly_randtest_bits(g, state, len, FLINT_BITS, ctx);
 
-            res = nmod_mpoly_gcd_brown(g, a, b, ctx);
-            if (!res) {
-                continue;
+            res = nmod_mpoly_gcd_brownnew(g, a, b, ctx);
+            if (!res)
+            {
+                printf("FAIL\n");
+                flint_printf("Check gcd could be computed\ni = %wd, j = %wd\n", i ,j);
+                flint_abort();
             }
             nmod_mpoly_assert_canonical(g, ctx);
 
@@ -95,10 +126,14 @@ main(void)
                 flint_abort();
             }
 
-            res = nmod_mpoly_gcd_brown(cg, ca, cb, ctx);
+            res = nmod_mpoly_gcd_brownnew(cg, ca, cb, ctx);
 
             if (!res)
-                continue;
+            {
+                printf("FAIL\n");
+                flint_printf("Check cofactor gcd could be computed\ni = %wd, j = %wd\n", i ,j);
+                flint_abort();
+            }
 
             if (!nmod_mpoly_equal_ui(cg, UWORD(1), ctx))
             {

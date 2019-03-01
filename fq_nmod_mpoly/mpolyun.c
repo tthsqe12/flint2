@@ -161,6 +161,14 @@ void fq_nmod_mpolyun_set(fq_nmod_mpolyun_t A, const fq_nmod_mpolyun_t B,
     A->length = Blen;
 }
 
+void fq_nmod_mpolyun_one(fq_nmod_mpolyun_t A, const fq_nmod_mpoly_ctx_t ctx)
+{
+    fq_nmod_mpolyun_fit_length(A, 1, ctx);
+    fq_nmod_mpolyn_one(A->coeffs + 0, ctx);
+    A->exps[0] = 0;
+    A->length = 1;
+}
+
 /* take the last variable of B out */
 void fq_nmod_mpoly_cvtto_mpolyn(fq_nmod_mpolyn_t A, fq_nmod_mpoly_t B,
                                       slong var, const fq_nmod_mpoly_ctx_t ctx)
@@ -425,6 +433,20 @@ void fq_nmod_mpolyun_divexact_last(fq_nmod_mpolyun_t A, fq_nmod_poly_t b,
 }
 
 
+void fq_nmod_mpolyun_mul_last(fq_nmod_mpolyun_t A, fq_nmod_poly_t b,
+                                                 const fq_nmod_mpoly_ctx_t ctx)
+{
+    slong i, j;
+
+    for (i = 0; i < A->length; i++)
+    {
+        for (j = 0; j < (A->coeffs + i)->length; j++)
+        {
+            fq_nmod_poly_mul((A->coeffs + i)->coeffs + j, 
+                             (A->coeffs + i)->coeffs + j, b, ctx->fqctx);
+        }
+    }
+}
 
 /*
     Update H so that it does not change mod m, and is now A mod p
@@ -845,13 +867,12 @@ int fq_nmod_mpolyun_addinterp(
 
 
 /* Convert B to A using the map  F_q^n -> F_q[x] */
-void fq_nmod_mpolyn_startinterp_lgprime(
+void fq_nmod_mpolyn_startinterp_lgprime(slong * lastdeg,
                             fq_nmod_mpolyn_t A, const fq_nmod_mpoly_ctx_t ctx,
                             fq_nmod_mpoly_t B, const fq_nmod_mpoly_ctx_t ectx,
                                                     const _fq_nmod_embed_t emb)
 {
-    slong i;
-    slong N;
+    slong i, N;
 
     FLINT_ASSERT(B->bits == A->bits);
     fq_nmod_mpolyn_fit_length(A, B->length, ctx);
@@ -861,23 +882,28 @@ void fq_nmod_mpolyn_startinterp_lgprime(
         mpoly_monomial_set(A->exps + N*i, B->exps + N*i, N);
         _fq_nmod_embed_lg_to_sm(A->coeffs + i, B->coeffs + i, emb);
         FLINT_ASSERT(!fq_nmod_poly_is_zero(A->coeffs + i, ctx->fqctx));
+        lastdeg[0] = FLINT_MAX(lastdeg[0],
+                               fq_nmod_poly_degree(A->coeffs + i, ctx->fqctx));
+
     }
     A->length = B->length;
 }
 
-void fq_nmod_mpolyun_startinterp_lgprime(
+void fq_nmod_mpolyun_startinterp_lgprime(slong * lastdeg,
                            fq_nmod_mpolyun_t A, const fq_nmod_mpoly_ctx_t ctx,
                            fq_nmod_mpolyu_t B, const fq_nmod_mpoly_ctx_t ectx,
                                                     const _fq_nmod_embed_t emb)
 {
     slong i;
 
+    lastdeg[0] = -WORD(1);
+
     FLINT_ASSERT(B->bits == A->bits);
     fq_nmod_mpolyun_fit_length(A, B->length, ctx);
     for (i = 0; i < B->length; i++)
     {
         A->exps[i] = B->exps[i];
-        fq_nmod_mpolyn_startinterp_lgprime(A->coeffs + i, ctx, B->coeffs + i, ectx, emb);
+        fq_nmod_mpolyn_startinterp_lgprime(lastdeg, A->coeffs + i, ctx, B->coeffs + i, ectx, emb);
         FLINT_ASSERT(!fq_nmod_mpolyn_is_zero(A->coeffs + i, ctx));
     }
     A->length = B->length;

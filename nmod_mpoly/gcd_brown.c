@@ -16,9 +16,8 @@
     This function switches to a big primes version if needed.
     It should only really fail if the dense size of the inputs is too large.
 */
-int nmod_mpoly_gcd_brown(nmod_mpoly_t G,
-                            const nmod_mpoly_t A, const nmod_mpoly_t B,
-                                                    const nmod_mpoly_ctx_t ctx)
+int nmod_mpoly_gcd_brown(nmod_mpoly_t G, const nmod_mpoly_t A,
+                              const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx)
 {
     int success;
     nmod_mpolyd_t Ad, Bd, Gd, Abar, Bbar;
@@ -85,3 +84,108 @@ cleanup_stage0:
 
     return success;
 }
+
+
+
+
+
+void nmod_mpoly_to_nmod_poly_keepbits(nmod_poly_t A, slong * Ashift,
+               const nmod_mpoly_t B, slong var, const nmod_mpoly_ctx_t ctx);
+
+void nmod_mpoly_from_nmod_poly_keepbits(nmod_mpoly_t A, const nmod_poly_t B,
+                           slong Bshift, slong var, mp_bitcnt_t bits, const nmod_mpoly_ctx_t ctx);
+
+
+int nmod_mpoly_gcd_brownnew(nmod_mpoly_t G, const nmod_mpoly_t A,
+                              const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx)
+{
+    int success;
+    slong * perm;
+    slong i;
+    mp_bitcnt_t new_bits;
+    nmod_mpoly_ctx_t uctx;
+    nmod_mpolyu_t Au, Bu, Gu, Abaru, Bbaru;
+
+    if (nmod_mpoly_is_zero(A, ctx))
+    {
+        if (nmod_mpoly_is_zero(B, ctx))
+        {
+            nmod_mpoly_zero(G, ctx);
+        }
+        else
+        {
+            nmod_mpoly_make_monic(G, B, ctx);
+        }
+        return 1;
+    }
+
+    if (nmod_mpoly_is_zero(B, ctx))
+    {
+        nmod_mpoly_make_monic(G, A, ctx);
+        return 1;
+    }
+
+    if (A->bits > FLINT_BITS || B->bits > FLINT_BITS)
+    {
+        return 0;
+    }
+
+    if (ctx->minfo->nvars == 1)
+    {
+        slong shiftA, shiftB;
+        nmod_poly_t a, b, g;
+        nmod_poly_init(a, ctx->ffinfo->mod.n);
+        nmod_poly_init(b, ctx->ffinfo->mod.n);
+        nmod_poly_init(g, ctx->ffinfo->mod.n);
+        nmod_mpoly_to_nmod_poly_keepbits(a, &shiftA, A, 0, ctx);
+        nmod_mpoly_to_nmod_poly_keepbits(b, &shiftB, B, 0, ctx);
+        nmod_poly_gcd(g, a, b);
+        nmod_mpoly_from_nmod_poly_keepbits(G, g, FLINT_MIN(shiftA, shiftB), 0, A->bits, ctx);
+        nmod_poly_clear(a);
+        nmod_poly_clear(b);
+        nmod_poly_clear(g);
+        return 1;
+    }
+
+    perm = (slong *) flint_malloc(ctx->minfo->nvars*sizeof(slong));
+    for (i = 0; i < ctx->minfo->nvars; i++)
+    {
+        perm[i] = i;
+    }
+
+    new_bits = FLINT_MAX(A->bits, B->bits);
+
+    nmod_mpoly_ctx_init(uctx, ctx->minfo->nvars - 1, ORD_LEX, ctx->ffinfo->mod.n);
+    nmod_mpolyu_init(Au, new_bits, uctx);
+    nmod_mpolyu_init(Bu, new_bits, uctx);
+    nmod_mpolyu_init(Gu, new_bits, uctx);
+    nmod_mpolyu_init(Abaru, new_bits, uctx);
+    nmod_mpolyu_init(Bbaru, new_bits, uctx);
+
+    nmod_mpoly_to_mpolyu_perm(Au, A, perm, uctx, ctx);
+    nmod_mpoly_to_mpolyu_perm(Bu, B, perm, uctx, ctx);
+
+    success = nmod_mpolyu_gcd_brown_smprime(Gu, Abaru, Bbaru, Au, Bu, uctx->minfo->nvars - 1, uctx);
+    if (!success)
+    {
+        success = nmod_mpolyu_gcd_brown_lgprime(Gu, Abaru, Bbaru, Au, Bu, uctx->minfo->nvars - 1, uctx);
+    }
+    if (success)
+    {
+        nmod_mpoly_from_mpolyu_perm(G, Gu, 1, perm, uctx, ctx);
+        nmod_mpoly_make_monic(G, G, ctx);
+        success = 1;
+    }
+
+    nmod_mpolyu_clear(Au, uctx);
+    nmod_mpolyu_clear(Bu, uctx);
+    nmod_mpolyu_clear(Gu, uctx);
+    nmod_mpolyu_clear(Abaru, uctx);
+    nmod_mpolyu_clear(Bbaru, uctx);
+    nmod_mpoly_ctx_clear(uctx);
+
+    flint_free(perm);
+
+    return success;
+}
+

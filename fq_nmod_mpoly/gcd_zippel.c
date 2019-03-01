@@ -178,7 +178,7 @@ have_prime:
     }
     else
     {
-        fq_nmod_mpolyun_startinterp_lgprime(H, ctx, Geval, ectx, cur_emb);
+        fq_nmod_mpolyun_startinterp_lgprime(&lastdeg, H, ctx, Geval, ectx, cur_emb);
         fq_nmod_poly_set(modulus, cur_emb->h, ctx->fqctx);
     }
 
@@ -343,7 +343,7 @@ have_prime:
     fq_nmod_mpolyu_scalar_mul_fq_nmod(Geval, t, ectx);
 
     fq_nmod_mpolyu_setform(Gform, Geval, ectx);
-    fq_nmod_mpolyun_startinterp_lgprime(Hn, ctx, Geval, ectx, cur_emb);
+    fq_nmod_mpolyun_startinterp_lgprime(&lastdeg, Hn, ctx, Geval, ectx, cur_emb);
 
     fq_nmod_poly_set(modulus, cur_emb->h, ctx->fqctx);
 

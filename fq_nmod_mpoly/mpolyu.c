@@ -88,6 +88,17 @@ int fq_nmod_mpolyu_is_one(fq_nmod_mpolyu_t A, const fq_nmod_mpoly_ctx_t uctx)
     return fq_nmod_mpoly_is_one(A->coeffs + 0, uctx);
 }
 
+int fq_nmod_mpolyu_is_nonzero_fq_nmod(const fq_nmod_mpolyu_t A,
+                                                const fq_nmod_mpoly_ctx_t uctx)
+{
+    if (A->length != 1 || A->exps[0] != UWORD(0))
+    {
+        return 0;
+    }
+
+    return fq_nmod_mpoly_is_fq_nmod(A->coeffs + 0, uctx);
+}
+
 void fq_nmod_mpolyu_print_pretty(const fq_nmod_mpolyu_t poly,
                                 const char ** x, const fq_nmod_mpoly_ctx_t ctx)
 {

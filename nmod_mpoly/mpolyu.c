@@ -51,13 +51,24 @@ void nmod_mpolyu_zero(nmod_mpolyu_t A, const nmod_mpoly_ctx_t uctx)
     A->length = 0;
 }
 
-int nmod_mpolyu_is_one(nmod_mpolyu_t A, const nmod_mpoly_ctx_t uctx)
+int nmod_mpolyu_is_one(const nmod_mpolyu_t A, const nmod_mpoly_ctx_t uctx)
 {
     if (A->length != 1 || A->exps[0] != UWORD(0))
         return 0;
 
     return nmod_mpoly_is_one(A->coeffs + 0, uctx);
 }
+
+int nmod_mpolyu_is_nonzero_nmod(const nmod_mpolyu_t A, const nmod_mpoly_ctx_t uctx)
+{
+    if (A->length != 1 || A->exps[0] != UWORD(0))
+    {
+        return 0;
+    }
+
+    return nmod_mpoly_is_ui(A->coeffs + 0, uctx);
+}
+
 
 void nmod_mpolyu_print_pretty(const nmod_mpolyu_t poly,
                                    const char ** x, const nmod_mpoly_ctx_t ctx)

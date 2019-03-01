@@ -222,6 +222,23 @@ void fq_nmod_mpolyn_set(fq_nmod_mpolyn_t A, const fq_nmod_mpolyn_t B, const fq_n
     A->length = Blen;
 }
 
+void fq_nmod_mpolyn_one(fq_nmod_mpolyn_t A, const fq_nmod_mpoly_ctx_t ctx)
+{
+    fq_nmod_poly_struct * Acoeff;
+    ulong * Aexp;
+    slong N;
+
+    fq_nmod_mpolyn_fit_length(A, 1, ctx);
+    Acoeff = A->coeffs;
+    Aexp = A->exps;
+
+    N = mpoly_words_per_exp_sp(A->bits, ctx->minfo);
+
+    fq_nmod_poly_one(Acoeff + 0, ctx->fqctx);
+    mpoly_monomial_zero(Aexp + N*0, N);
+
+    A->length = 1;
+}
 
 void fq_nmod_mpolyn_mul_poly(
     fq_nmod_mpolyn_t A,
