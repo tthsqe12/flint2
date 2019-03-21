@@ -90,6 +90,42 @@ slong NMOD_DIVREM_DC_ITCH(slong lenB, nmod_t mod)
     return NMOD_DIVREM_BC_ITCH(2*lenB - 1, lenB, mod) + 2*lenB - 1;
 }
 
+
+typedef struct
+{
+    nmod_t mod;
+} nmod_ctx_struct;
+
+typedef nmod_ctx_struct nmod_ctx_t[1];
+
+NMOD_POLY_INLINE
+void nmod_ctx_init(nmod_ctx_t ctx, ulong modulus)
+{
+    ctx->mod.n = modulus;
+    ctx->mod.ninv = n_preinvert_limb(modulus);
+    count_leading_zeros(ctx->mod.norm, modulus);
+}
+
+NMOD_POLY_INLINE
+void nmod_ctx_init_mod(nmod_ctx_t ctx, nmod_t mod)
+{
+    ctx->mod = mod;
+}
+
+NMOD_POLY_INLINE
+void nmod_ctx_reset(nmod_ctx_t ctx, ulong modulus)
+{
+    ctx->mod.n = modulus;
+    ctx->mod.ninv = n_preinvert_limb(modulus);
+    count_leading_zeros(ctx->mod.norm, modulus);
+}
+
+NMOD_POLY_INLINE
+void nmod_ctx_clear(nmod_ctx_t ctx)
+{
+}
+
+
 typedef struct
 {
     mp_ptr coeffs;

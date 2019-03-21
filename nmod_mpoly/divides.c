@@ -27,8 +27,11 @@ int _nmod_mpoly_divides_try_dense(slong * Adegs, slong * Bdegs, slong nvars,
         if (hi != WORD(0) || total_dense_size <= WORD(0))
             return 0;
     }
-
-    return total_dense_size < WORD(5000000)
+/*
+flint_printf("total_dense_size: %wd\n", total_dense_size);
+flint_printf("Alen: %wd\n", Alen);
+*/
+    return total_dense_size < WORD(200000000)
             && total_dense_size/Alen < WORD(10);
 }
 

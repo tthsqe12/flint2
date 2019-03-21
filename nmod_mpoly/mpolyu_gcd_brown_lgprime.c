@@ -231,6 +231,8 @@ cleanup:
     fq_nmod_clear(gammaeval, ectx->fqctx);
     fq_nmod_clear(temp, ectx->fqctx);
 
+    fq_nmod_mpoly_ctx_clear(ectx);
+
     return success;
 
 successful:

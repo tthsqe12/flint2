@@ -28,14 +28,19 @@ static int _try_dense(int try_array, slong * Bdegs, slong * Cdegs,
         if (hi != 0 || dense_size <= 0)
             return 0;
     }
-
-    if (dense_size > WORD(5000000))
+/*
+flint_printf("dense_size: %wd\n", dense_size);
+*/
+    if (dense_size > WORD(100000000))
         return 0;
 
     umul_ppmm(hi, product_count, Blen, Clen);
 
     if (hi != 0 || product_count < 0)
         return 1;
+/*
+flint_printf("product_count: %wd\n", product_count);
+*/
 
     /*
         Assume that the running time of the dense method is linear

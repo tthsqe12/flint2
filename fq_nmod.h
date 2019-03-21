@@ -23,6 +23,7 @@
 #endif
 
 #include "nmod_poly.h"
+#include "nmod_polydr.h"
 #include "ulong_extras.h"
 
 /* Data types and context ****************************************************/
@@ -30,13 +31,13 @@
 extern "C" {
 #endif
 
-typedef nmod_poly_t fq_nmod_t;
-typedef nmod_poly_struct fq_nmod_struct;
+typedef nmod_polydr_t fq_nmod_t;
+typedef nmod_polydr_struct fq_nmod_struct;
 
 typedef struct
 {
     fmpz p;
-    nmod_t mod;
+    nmod_ctx_t fpctx;
 
     int sparse_modulus;
 
@@ -44,8 +45,8 @@ typedef struct
     slong *j;
     slong len;
 
-    nmod_poly_t modulus;
-    nmod_poly_t inv;
+    nmod_polydr_t modulus;
+    nmod_polydr_t inv;
 
     char *var;
 }
@@ -72,7 +73,7 @@ FLINT_DLL void fq_nmod_ctx_randtest_reducible(fq_nmod_ctx_t ctx, flint_rand_t st
 
 FLINT_DLL void fq_nmod_ctx_clear(fq_nmod_ctx_t ctx);
 
-FQ_NMOD_INLINE const nmod_poly_struct* fq_nmod_ctx_modulus(const fq_nmod_ctx_t ctx)
+FQ_NMOD_INLINE const nmod_polydr_struct* fq_nmod_ctx_modulus(const fq_nmod_ctx_t ctx)
 {
     return ctx->modulus;
 }
@@ -155,23 +156,24 @@ FQ_NMOD_INLINE void fq_nmod_ctx_print(const fq_nmod_ctx_t ctx)
 
 FQ_NMOD_INLINE void fq_nmod_init(fq_nmod_t rop, const fq_nmod_ctx_t ctx)
 {
-    nmod_poly_init2_preinv(rop, ctx->mod.n, ctx->mod.ninv, fq_nmod_ctx_degree(ctx));
+    nmod_polydr_init2(rop, fq_nmod_ctx_degree(ctx), ctx->fpctx);
 }
 
 FQ_NMOD_INLINE void fq_nmod_init2(fq_nmod_t rop, const fq_nmod_ctx_t ctx)
 {
-    nmod_poly_init2_preinv(rop, ctx->mod.n, ctx->mod.ninv, fq_nmod_ctx_degree(ctx));
+    nmod_polydr_init2(rop, fq_nmod_ctx_degree(ctx), ctx->fpctx);
 }
 
 FQ_NMOD_INLINE void fq_nmod_clear(fq_nmod_t rop, const fq_nmod_ctx_t ctx)
 {
-    nmod_poly_clear(rop);
+    nmod_polydr_clear(rop, ctx->fpctx);
 }
 
 FQ_NMOD_INLINE 
 void _fq_nmod_sparse_reduce(mp_limb_t *R, slong lenR, const fq_nmod_ctx_t ctx)
 {
     const slong d = ctx->j[ctx->len - 1];
+    mp_limb_t t;
 
     NMOD_VEC_NORM(R, lenR);
 
@@ -183,10 +185,8 @@ void _fq_nmod_sparse_reduce(mp_limb_t *R, slong lenR, const fq_nmod_ctx_t ctx)
         {
             for (k = ctx->len - 2; k >= 0; k--)
             {
-                
-                R[ctx->j[k] + i - d] = n_submod(R[ctx->j[k] + i - d],
-                                                n_mulmod2_preinv(R[i], ctx->a[k], ctx->mod.n, ctx->mod.ninv),
-                                                ctx->mod.n);
+                t = n_mulmod2_preinv(R[i], ctx->a[k], ctx->fpctx->mod.n, ctx->fpctx->mod.ninv);
+                R[ctx->j[k] + i - d] = n_submod(R[ctx->j[k] + i - d], t, ctx->fpctx->mod.n);
             }
             R[i] = UWORD(0);
         }
@@ -199,7 +199,7 @@ FQ_NMOD_INLINE void _fq_nmod_dense_reduce(mp_limb_t* R, slong lenR, const fq_nmo
 
     if (lenR < ctx->modulus->length)
     {
-        _nmod_vec_reduce(R, R, lenR, ctx->mod);
+        _nmod_vec_reduce(R, R, lenR, ctx->fpctx->mod);
         return;
     }
     
@@ -209,7 +209,7 @@ FQ_NMOD_INLINE void _fq_nmod_dense_reduce(mp_limb_t* R, slong lenR, const fq_nmo
     _nmod_poly_divrem_newton_n_preinv(q, r, R, lenR, 
                                       ctx->modulus->coeffs, ctx->modulus->length,
                                       ctx->inv->coeffs, ctx->inv->length,
-                                      ctx->mod);
+                                      ctx->fpctx->mod);
 
     _nmod_vec_set(R, r, ctx->modulus->length - 1);
     _nmod_vec_clear(q);
@@ -229,7 +229,7 @@ FQ_NMOD_INLINE void fq_nmod_reduce(fq_nmod_t rop, const fq_nmod_ctx_t ctx)
 {
     _fq_nmod_reduce(rop->coeffs, rop->length, ctx);
     rop->length = FLINT_MIN(rop->length, ctx->modulus->length - 1);
-    _nmod_poly_normalise(rop);
+    _nmod_polydr_normalise(rop);
 }
 
 /* Basic arithmetic **********************************************************/
@@ -275,17 +275,17 @@ FLINT_DLL void fq_nmod_randtest_not_zero(fq_nmod_t rop, flint_rand_t state, cons
 FQ_NMOD_INLINE int fq_nmod_equal(const fq_nmod_t op1, const fq_nmod_t op2,
                                     const fq_nmod_ctx_t ctx)
 {
-    return nmod_poly_equal(op1, op2);
+    return nmod_polydr_equal(op1, op2, ctx->fpctx);
 }
 
 FQ_NMOD_INLINE int fq_nmod_is_zero(const fq_nmod_t op, const fq_nmod_ctx_t ctx)
 {
-    return nmod_poly_is_zero(op);
+    return nmod_polydr_is_zero(op, ctx->fpctx);
 }
 
 FQ_NMOD_INLINE int fq_nmod_is_one(const fq_nmod_t op, const fq_nmod_ctx_t ctx)
 {
-    return nmod_poly_is_one(op);
+    return nmod_polydr_is_one(op, ctx->fpctx);
 }
 
 /* Assignments and conversions ***********************************************/
@@ -293,17 +293,16 @@ FQ_NMOD_INLINE int fq_nmod_is_one(const fq_nmod_t op, const fq_nmod_ctx_t ctx)
 FQ_NMOD_INLINE void fq_nmod_set(fq_nmod_t rop, const fq_nmod_t op,
                                    const fq_nmod_ctx_t ctx)
 {
-    nmod_poly_set(rop, op);
+    nmod_polydr_set(rop, op, ctx->fpctx);
 }
 
 FQ_NMOD_INLINE void fq_nmod_set_fmpz(fq_nmod_t rop, const fmpz_t x, const fq_nmod_ctx_t ctx)
 {
-    fmpz_t rx;
-    fmpz_init(rx);
+    mp_limb_t t;
     fmpz_mod(rx, x, fq_nmod_ctx_prime(ctx));
-    nmod_poly_zero(rop);
-    nmod_poly_set_coeff_ui(rop, 0, fmpz_get_ui(rx));
-    fmpz_clear(rx);
+    nmod_polydr_zero(rop, ctx->fpctx);
+    t = fmpz_
+    nmod_polydr_set_coeff_ui(rop, 0, fmpz_get_ui(rx));
 }
 
 FQ_NMOD_INLINE void fq_nmod_set_si(fq_nmod_t rop, const slong x, const fq_nmod_ctx_t ctx)

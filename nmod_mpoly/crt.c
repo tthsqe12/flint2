@@ -12,6 +12,7 @@
 #include "nmod_poly.h"
 #include "nmod_mpoly.h"
 
+#if 0
 void nmod_poly_crt_init(nmod_poly_crt_t P)
 {
     P->prog = NULL;
@@ -283,3 +284,5 @@ void nmod_poly_crt_run(const nmod_poly_crt_t P, nmod_poly_struct ** outputs,
         }
     }
 }
+
+#endif

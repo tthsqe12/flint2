@@ -17,7 +17,7 @@ main(void)
     slong i;
     FLINT_TEST_INIT(state);
 
-    flint_printf("gcd_brown....");
+    flint_printf("gcd_brown....\n");
     fflush(stdout);
 
     /* check simple example */
@@ -27,12 +27,12 @@ main(void)
         /* get the coefficient of y^1*x^2*/
         const char * vars[] = {"x", "y", "z", "w"};
 
-        fq_nmod_mpoly_ctx_init_deg(ctx, 2, ORD_LEX, 2, 2);
+        fq_nmod_mpoly_ctx_init_deg(ctx, 3, ORD_LEX, 2, 2);
         fq_nmod_mpoly_init(g, ctx);
         fq_nmod_mpoly_init(a, ctx);
         fq_nmod_mpoly_init(b, ctx);
-        fq_nmod_mpoly_set_str_pretty(a, "(x+y)*(x-y^2)", vars, ctx);
-        fq_nmod_mpoly_set_str_pretty(b, "(x+y)*(x^2+y)", vars, ctx);
+        fq_nmod_mpoly_set_str_pretty(a, "(x+y+z^2)*(x-y^9+z^3)", vars, ctx);
+        fq_nmod_mpoly_set_str_pretty(b, "(x+y+z^9)*(x^9+y+z^2)", vars, ctx);
 
 printf("a: "); fq_nmod_mpoly_print_pretty(a, vars, ctx); printf("\n");
 printf("b: "); fq_nmod_mpoly_print_pretty(b, vars, ctx); printf("\n");
@@ -60,7 +60,7 @@ printf("g: "); fq_nmod_mpoly_print_pretty(g, vars, ctx); printf("\n");
         pbits = 1 + n_randint(state, FLINT_BITS);
         pbits = 1 + n_randint(state, pbits);
         deg = 1 + n_randint(state, 4);
-        fq_nmod_mpoly_ctx_init_rand(ctx, state, 5, pbits, deg);
+        fq_nmod_mpoly_ctx_init_rand(ctx, state, 4, pbits, deg);
 
         fq_nmod_mpoly_init(g, ctx);
         fq_nmod_mpoly_init(a, ctx);
@@ -76,7 +76,7 @@ printf("g: "); fq_nmod_mpoly_print_pretty(g, vars, ctx); printf("\n");
 
 flint_printf("i: %wd\n", i);
 
-        degbound = 75/ctx->minfo->nvars/ctx->minfo->nvars;
+        degbound = 1 + 60/ctx->minfo->nvars/ctx->minfo->nvars;
 
         do {
             fq_nmod_mpoly_randtest_bound(t, state, len, degbound, ctx);

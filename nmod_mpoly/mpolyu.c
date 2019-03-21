@@ -126,20 +126,82 @@ void nmod_mpolyu_one(nmod_mpolyu_t A, const nmod_mpoly_ctx_t uctx)
     A->length = WORD(1);
 }
 
+
+int nmod_mpolyu_is_canonical(const nmod_mpolyu_t A, const nmod_mpoly_ctx_t ctx)
+{
+    slong i;
+
+    if (A->length > A->alloc)
+    {
+        return 0;
+    }
+
+    for (i = 0; i < A->length; i++)
+    {
+        if (!nmod_mpoly_is_canonical(A->coeffs + i, ctx))
+        {
+            return 0;
+        }
+
+        if (i > 0 && A->exps[i - 1] <= A->exps[i])
+        {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+
+
 /* if the coefficient doesn't exist, a new one is created (and set to zero) */
 nmod_mpoly_struct * _nmod_mpolyu_get_coeff(nmod_mpolyu_t A,
                                         ulong pow, const nmod_mpoly_ctx_t uctx)
 {
-    slong i, j;
+    slong i, j, a, b;
     nmod_mpoly_struct * xk;
 
-    for (i = 0; i < A->length && A->exps[i] >= pow; i++)
+    a = 0;
+    b = A->length;
+
+    if (b == 0 || pow > A->exps[0])
     {
+        i = 0;
+        goto create_new;
+    }
+
+try_again:
+
+    if (b - a < 8)
+    {
+        for (i = a; i < b && A->exps[i] >= pow; i++)
+        {
+            if (A->exps[i] == pow) 
+            {
+                return A->coeffs + i;
+            }
+        }
+        goto create_new;
+    }
+    else
+    {
+        i = a + (b - a)/2;
         if (A->exps[i] == pow) 
         {
             return A->coeffs + i;
         }
+        else if (A->exps[i] > pow)
+        {
+            a = i;
+        }
+        else
+        {
+            b = i;
+        }
+        goto try_again;
     }
+
+create_new:
 
     nmod_mpolyu_fit_length(A, A->length + 1, uctx);
 
@@ -177,8 +239,8 @@ void nmod_mpoly_to_mpolyu_perm_deflate(nmod_mpolyu_t A, const nmod_mpoly_t B,
     slong n = ctx->minfo->nvars;
     slong m = uctx->minfo->nvars;
     slong NA, NB;
-    ulong * uexps;
-    ulong * Bexps;
+    ulong * Bexps, t;
+    slong * offs, * shifts;
     nmod_mpoly_struct * Ac;
     TMP_INIT;
 
@@ -188,30 +250,43 @@ void nmod_mpoly_to_mpolyu_perm_deflate(nmod_mpolyu_t A, const nmod_mpoly_t B,
 
     TMP_START;
 
-    uexps = (ulong *) TMP_ALLOC((m + 1)*sizeof(fmpz));
-    Bexps = (ulong *) TMP_ALLOC(n*sizeof(fmpz));
+    Bexps = (ulong *) TMP_ALLOC(n*sizeof(ulong));
+
+    offs   = (slong *) TMP_ALLOC(m*sizeof(ulong));
+    shifts = (slong *) TMP_ALLOC(m*sizeof(ulong));
+    for (k = 0; k < m; k++)
+    {
+        mpoly_gen_offset_shift_sp(offs + k, shifts + k, k, A->bits, uctx->minfo);
+    }
+
 
     nmod_mpolyu_zero(A, uctx);
 
-    NA = mpoly_words_per_exp(A->bits, uctx->minfo);
-    NB = mpoly_words_per_exp(B->bits, ctx->minfo);
+    NA = mpoly_words_per_exp_sp(A->bits, uctx->minfo);
+    NB = mpoly_words_per_exp_sp(B->bits, ctx->minfo);
 
     for (j = 0; j < B->length; j++)
     {
+        ulong * e;
+
         mpoly_get_monomial_ui(Bexps, B->exps + NB*j, B->bits, ctx->minfo);
-        for (k = 0; k <= m; k++)
-        {
-            l = perm[k];
-            FLINT_ASSERT(stride[l] != UWORD(0));
-            FLINT_ASSERT(((Bexps[l] - shift[l]) % stride[l]) == UWORD(0));
-            uexps[k] = (Bexps[l] - shift[l]) / stride[l];
-        }
-        Ac = _nmod_mpolyu_get_coeff(A, uexps[m], uctx);
+        l = perm[m];
+        Ac = _nmod_mpolyu_get_coeff(A, (Bexps[l] - shift[l]) / stride[l], uctx);
         FLINT_ASSERT(Ac->bits == A->bits);
 
         nmod_mpoly_fit_length(Ac, Ac->length + 1, uctx);
         Ac->coeffs[Ac->length] = B->coeffs[j];
-        mpoly_set_monomial_ui(Ac->exps + NA*Ac->length, uexps, A->bits, uctx->minfo);
+
+        e = Ac->exps + NA*Ac->length;
+        mpoly_monomial_zero(e, NA);
+        for (k = 0; k < m; k++)
+        {
+            l = perm[k];
+            FLINT_ASSERT(stride[l] != UWORD(0));
+            FLINT_ASSERT(((Bexps[l] - shift[l]) % stride[l]) == UWORD(0));
+            t = (Bexps[l] - shift[l]) / stride[l];
+            (e)[offs[k]] += t << shifts[k];
+        }
         Ac->length++;
     }
 
