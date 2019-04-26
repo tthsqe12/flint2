@@ -136,7 +136,7 @@ FLINT_DLL void _fmpz_mod_mulN(fmpz_t a, const fmpz_t b, const fmpz_t c,
 FMPZ_MOD_INLINE void fmpz_mod_mul(fmpz_t a, const fmpz_t b, const fmpz_t c,
                                                      const fmpz_mod_ctx_t ctx)
 {
-    _fmpz_mod_mulN(a, b, c, ctx);
+    (ctx->mul_fxn)(a, b, c, ctx);
 }
 
 
