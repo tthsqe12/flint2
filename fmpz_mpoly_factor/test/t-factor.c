@@ -10,30 +10,153 @@
 */
 
 #include "fmpz_mpoly_factor.h"
+#include "profiler.h"
 
 int
 main(void)
 {
+    slong i;
     FLINT_TEST_INIT(state);
 
     flint_printf("factor....");
     fflush(stdout);
 
     {
+timeit_t timer;
         fmpz_mpoly_ctx_t ctx;
         fmpz_mpoly_t a;
         fmpz_mpoly_factor_t fac;
-        const char * vars[] = {"x", "y", "z"};
+        const char * vars[] = {"x", "y", "z", "t"};
 
-        fmpz_mpoly_ctx_init(ctx, 3, ORD_DEGLEX);
+        fmpz_mpoly_ctx_init(ctx, 4, ORD_LEX);
         fmpz_mpoly_init(a, ctx);
-        fmpz_mpoly_set_str_pretty(a, "x^9-y^9", vars, ctx);
+        fmpz_mpoly_set_str_pretty(a, "((z+y+1)*x+y^2+z+2)*((z^2+y^2+1)*x+y+z+1)", vars, ctx);
 
         printf("a: "); fmpz_mpoly_print_pretty(a, vars, ctx); printf("\n");
 
         fmpz_mpoly_factor_init(fac, ctx);
+timeit_start(timer);
         fmpz_mpoly_factor(fac, a, 1, ctx);
+timeit_stop(timer);
+        printf("fac:\n");
+        fmpz_mpoly_factor_print(fac, vars, ctx);
 
+flint_printf("factor time( length = %wd): %wd\n", a->length, timer->wall);
+
+        fmpz_mpoly_factor_clear(fac, ctx);
+        fmpz_mpoly_clear(a, ctx);
+        fmpz_mpoly_ctx_clear(ctx);
+    }
+
+    /* fateman */
+
+    for (i = 0; i <= 10; i++)
+    {
+timeit_t timer;
+        fmpz_mpoly_ctx_t ctx;
+        fmpz_mpoly_t a, b;
+        fmpz_mpoly_factor_t fac;
+        const char * vars[] = {"x", "y", "z", "t"};
+
+        fmpz_mpoly_ctx_init(ctx, 4, ORD_LEX);
+        fmpz_mpoly_init(a, ctx);
+        fmpz_mpoly_init(b, ctx);
+        fmpz_mpoly_set_str_pretty(b, "1+x+y+z+t", vars, ctx);
+        fmpz_mpoly_pow_ui(b, b, i, ctx);
+        fmpz_mpoly_add_ui(a, b, 1, ctx);
+        fmpz_mpoly_add_ui(b, b, 2, ctx);
+        fmpz_mpoly_mul(a, a, b, ctx);
+/*
+        printf("a: "); fmpz_mpoly_print_pretty(a, vars, ctx); printf("\n");
+*/
+        fmpz_mpoly_factor_init(fac, ctx);
+timeit_start(timer);
+        fmpz_mpoly_factor(fac, a, 1, ctx);
+timeit_stop(timer);
+/*
+        printf("fac:\n");
+        fmpz_mpoly_factor_print(fac, vars, ctx);
+*/
+flint_printf("factor time( length = %wd): %wd\n", a->length, timer->wall);
+
+        fmpz_mpoly_factor_clear(fac, ctx);
+        fmpz_mpoly_clear(a, ctx);
+        fmpz_mpoly_clear(b, ctx);
+        fmpz_mpoly_ctx_clear(ctx);
+    }
+
+    /* bivariate examples */
+    {
+        fmpz_mpoly_ctx_t ctx;
+        fmpz_mpoly_t a, b;
+        fmpz_mpoly_factor_t fac;
+        const char * vars[] = {"x", "y", "z1", "z2", "z3"};
+        fmpz * shift  = _fmpz_vec_init(5);
+        fmpz * stride = _fmpz_vec_init(5);
+        fmpz_mpoly_struct * sub[5];
+
+        fmpz_mpoly_ctx_init(ctx, 5, ORD_LEX);
+        fmpz_mpoly_init(a, ctx);
+        fmpz_mpoly_init(b, ctx);
+        fmpz_mpoly_factor_init(fac, ctx);
+
+        fmpz_mpoly_set_str_pretty(a, "(1+y)^9*x^9-y^9", vars, ctx);
+        printf("a: "); fmpz_mpoly_print_pretty(a, vars, ctx); printf("\n");
+        fmpz_mpoly_factor(fac, a, 1, ctx);
+        printf("fac:\n");
+        fmpz_mpoly_factor_print(fac, vars, ctx);
+
+        fmpz_mpoly_set_str_pretty(b, "(x+z1+z2+z3)"
+                                    "*(x+z1+z2-z3)"
+                                    "*(x+z1-z2+z3)"
+                                    "*(x+z1-z2-z3)"
+                                    "*(x-z1+z2+z3)"
+                                    "*(x-z1+z2-z3)"
+                                    "*(x-z1-z2+z3)"
+                                    "*(x-z1-z2-z3)", vars, ctx);
+
+        for (i = 0; i < 5; i++)
+        {
+            sub[i] = (fmpz_mpoly_struct *) flint_malloc(sizeof(fmpz_mpoly_struct));
+            fmpz_mpoly_init(sub[i], ctx);
+            fmpz_zero(shift + i);
+            fmpz_one(stride + i);
+        }
+        fmpz_set_ui(stride + 2, 2);
+        fmpz_set_ui(stride + 3, 2);
+        fmpz_set_ui(stride + 4, 2);
+        fmpz_mpoly_deflate(b, b, shift, stride, ctx);
+
+        fmpz_mpoly_set_str_pretty(sub[0], "x", vars, ctx);
+        fmpz_mpoly_set_str_pretty(sub[1], "y", vars, ctx);
+        fmpz_mpoly_set_str_pretty(sub[2], "y+1", vars, ctx);
+        fmpz_mpoly_set_str_pretty(sub[3], "y+2", vars, ctx);
+        fmpz_mpoly_set_str_pretty(sub[4], "y+3", vars, ctx);
+        fmpz_mpoly_compose_fmpz_mpoly(a, b, sub, ctx, ctx);
+        printf("**************\na: "); fmpz_mpoly_print_pretty(a, vars, ctx); printf("\n");
+        fmpz_mpoly_factor(fac, a, 1, ctx);
+        printf("fac:\n");
+        fmpz_mpoly_factor_print(fac, vars, ctx);
+
+        fmpz_mpoly_set_str_pretty(sub[0], "x", vars, ctx);
+        fmpz_mpoly_set_str_pretty(sub[1], "y", vars, ctx);
+        fmpz_mpoly_set_str_pretty(sub[2], "y", vars, ctx);
+        fmpz_mpoly_set_str_pretty(sub[3], "y+1", vars, ctx);
+        fmpz_mpoly_set_str_pretty(sub[4], "y+2", vars, ctx);
+        fmpz_mpoly_compose_fmpz_mpoly(a, b, sub, ctx, ctx);
+        printf("**************\na: "); fmpz_mpoly_print_pretty(a, vars, ctx); printf("\n");
+        fmpz_mpoly_factor(fac, a, 1, ctx);
+        printf("fac:\n");
+        fmpz_mpoly_factor_print(fac, vars, ctx);
+
+        fmpz_mpoly_set_str_pretty(sub[0], "x + y + 2", vars, ctx);
+        fmpz_mpoly_set_str_pretty(sub[1], "y", vars, ctx);
+        fmpz_mpoly_set_str_pretty(sub[2], "y+1", vars, ctx);
+        fmpz_mpoly_set_str_pretty(sub[3], "y+4", vars, ctx);
+        fmpz_mpoly_set_str_pretty(sub[4], "y+9", vars, ctx);
+        fmpz_mpoly_compose_fmpz_mpoly(a, b, sub, ctx, ctx);
+        printf("**************\na: "); fmpz_mpoly_print_pretty(a, vars, ctx); printf("\n");
+        fmpz_mpoly_factor(fac, a, 1, ctx);
         printf("fac:\n");
         fmpz_mpoly_factor_print(fac, vars, ctx);
 
