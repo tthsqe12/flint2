@@ -1296,9 +1296,9 @@ flint_printf("A: "); fmpz_mpoly_print_pretty(A, NULL, ctx); printf("\n");
 
     for (j = 1; j <= degs[m]; j++)
     {
-
-flint_printf("<_mfactor_lift> j = %wd, error (length: %wd)\n", j, e->length);/* fmpz_mpoly_print_pretty(e, NULL, ctx); printf("\n");*/
-
+/*
+flint_printf("<_mfactor_lift> j = %wd, error (length: %wd)\n", j, e->length); fmpz_mpoly_print_pretty(e, NULL, ctx); printf("\n");
+*/
         if (fmpz_mpoly_is_zero(e, ctx))
         {
             success = 1;
@@ -1400,9 +1400,9 @@ next_alpha:
             fmpz_add_ui(alpha, alpha, 1);
 
 got_alpha:
-
+/*
 printf("<_append_irreducible_bivar_factors> trying alpha = "); fmpz_print(alpha); printf("\n");
-
+*/
         fmpz_bpoly_eval(Beval, B, alpha);
 /*
 printf("Beval: "); fmpz_poly_print_pretty(Beval, "x"); printf("\n");
@@ -1415,10 +1415,10 @@ printf("Beval: "); fmpz_poly_print_pretty(Beval, "x"); printf("\n");
         fmpz_one(&Bevalfac->c);
         Bevalfac->num = 0;
         fmpz_poly_factor(Bevalfac, Beval);
-
+/*
 printf("<_append_irreducible_bivar_factors> Bevalfac:\n");
 fmpz_poly_factor_print_pretty(Bevalfac, "x");
-
+*/
         /* if multiple factors, get new alpha */
         for (i = 0; i < Bevalfac->num; i++)
         {
@@ -1822,9 +1822,9 @@ next_alpha:
 
     for (i = 0; i < n; i++)
         fmpz_add_ui(alpha + i, alpha + i, 1);
-
+/*
 printf("!!!!!!!!!!!!!!!!!!!!!! chose alphas = "); fmpz_print(alpha + 0); printf("\n");
-
+*/
 got_alpha:
 
 	/* ensure degrees do not drop under evalutaion */
@@ -2183,7 +2183,7 @@ int fmpz_mpoly_factor_matches(const fmpz_mpoly_t a, const fmpz_mpoly_factor_t f,
 
     return 1 for success, 0 for failure
 */
-int _append_squarefree_factors(fmpz_mpoly_factor_t f, fmpz_mpoly_t S, fmpz_mpoly_t Sp, slong var, const fmpz_mpoly_ctx_t ctx)
+int _append_squarefree_factors(fmpz_mpoly_factor_t f, fmpz_mpoly_t S, fmpz_mpoly_t Sp, slong var, slong pow, const fmpz_mpoly_ctx_t ctx)
 {
     slong k;
     int success;
@@ -2219,7 +2219,7 @@ int _append_squarefree_factors(fmpz_mpoly_factor_t f, fmpz_mpoly_t S, fmpz_mpoly
 
         if (!fmpz_mpoly_is_fmpz(S, ctx))
         {
-            fmpz_mpoly_factor_append(f, S, k, ctx);
+            fmpz_mpoly_factor_append(f, S, k*pow, ctx);
         }
         else
         {
@@ -2231,7 +2231,7 @@ int _append_squarefree_factors(fmpz_mpoly_factor_t f, fmpz_mpoly_t S, fmpz_mpoly
 
     if (!fmpz_mpoly_is_fmpz(Ss, ctx))
     {
-        fmpz_mpoly_factor_append(f, Ss, k, ctx);
+        fmpz_mpoly_factor_append(f, Ss, k*pow, ctx);
     }
     else
     {
@@ -2360,7 +2360,7 @@ int fmpz_mpoly_factor(fmpz_mpoly_factor_t f, const fmpz_mpoly_t A, int full, con
 
         if (v < ctx->minfo->nvars)
         {
-            success = _append_squarefree_factors(newf, f->poly + j, c, v, ctx);
+            success = _append_squarefree_factors(newf, f->poly + j, c, v, f->exp[j], ctx);
             if (!success)
                 goto cleanup;
         }

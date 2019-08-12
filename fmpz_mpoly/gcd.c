@@ -1765,23 +1765,60 @@ calculate_trivial_gcd:
         if (try_a || try_b)
         {
             fmpz_mpoly_t Q;
-            fmpz_mpoly_init(Q, ctx);
+            fmpz_mpoly_t AA, BB;
+            fmpz_t cA, cB, cG;
 
-            if (try_b && fmpz_mpoly_divides(Q, A, B, ctx))
+            fmpz_mpoly_init(Q, ctx);
+            fmpz_init(cA);
+            fmpz_init(cB);
+            fmpz_init(cG);
+
+*AA = *A;
+*BB = *B;
+
+AA->coeffs = (fmpz *) flint_calloc(A->alloc, sizeof(fmpz));
+BB->coeffs = (fmpz *) flint_calloc(B->alloc, sizeof(fmpz));
+
+_fmpz_vec_content(cA, A->coeffs, A->length);
+_fmpz_vec_content(cB, B->coeffs, B->length);
+fmpz_gcd(cG, cA, cB);
+_fmpz_vec_scalar_divexact_fmpz(AA->coeffs, A->coeffs, A->length, cA);
+_fmpz_vec_scalar_divexact_fmpz(BB->coeffs, B->coeffs, B->length, cB);
+
+
+            if (try_b && fmpz_mpoly_divides(Q, AA, BB, ctx))
             {
-                fmpz_mpoly_set(G, B, ctx);
+                fmpz_mpoly_set(G, BB, ctx);
+                fmpz_mpoly_scalar_mul_fmpz(G, G, cG, ctx);
                 fmpz_mpoly_clear(Q, ctx);
+flint_free(AA->coeffs);
+flint_free(BB->coeffs);
+fmpz_clear(cA);
+fmpz_clear(cB);
+fmpz_clear(cG);
                 goto successful;
             }
 
-            if (try_a && fmpz_mpoly_divides(Q, B, A, ctx))
+            if (try_a && fmpz_mpoly_divides(Q, BB, AA, ctx))
             {
-                fmpz_mpoly_set(G, A, ctx);
+                fmpz_mpoly_set(G, AA, ctx);
+                fmpz_mpoly_scalar_mul_fmpz(G, G, cG, ctx);
                 fmpz_mpoly_clear(Q, ctx);
+flint_free(AA->coeffs);
+flint_free(BB->coeffs);
+fmpz_clear(cA);
+fmpz_clear(cB);
+fmpz_clear(cG);
                 goto successful;
             }
 
             fmpz_mpoly_clear(Q, ctx);
+
+flint_free(AA->coeffs);
+flint_free(BB->coeffs);
+fmpz_clear(cA);
+fmpz_clear(cB);
+fmpz_clear(cG);
         }
     }
 
