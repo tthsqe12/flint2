@@ -61,6 +61,13 @@ FLINT_DLL void fmpz_mpoly_factor_print(const fmpz_mpoly_factor_t fac, const char
 
 FLINT_DLL int fmpz_mpoly_factor(fmpz_mpoly_factor_t fac, const fmpz_mpoly_t A, int full, const fmpz_mpoly_ctx_t ctx);
 
+FMPZ_MPOLY_FACTOR_INLINE void fmpz_mpoly_factor_swap(fmpz_mpoly_factor_t A, fmpz_mpoly_factor_t B, const fmpz_mpoly_ctx_t ctx)
+{
+   fmpz_mpoly_factor_struct t = *A;
+   *A = *B;
+   *B = t;
+}
+
 #ifdef __cplusplus
 }
 #endif

@@ -2122,16 +2122,6 @@ cleanup:
 
 
 
-void fmpz_mpoly_factor_swap(fmpz_mpoly_factor_t A, fmpz_mpoly_factor_t B, const fmpz_mpoly_ctx_t ctx)
-{
-   fmpz_mpoly_factor_struct t = *A;
-   *A = *B;
-   *B = t;
-}
-
-
-
-
 void fmpz_mpoly_univar_shift_right(
     fmpz_mpoly_univar_t A,
     ulong shift,
