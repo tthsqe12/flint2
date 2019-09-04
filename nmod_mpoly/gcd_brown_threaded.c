@@ -11,6 +11,7 @@
 
 #include "nmod_mpoly.h"
 #include "thread_pool.h"
+#include "profiler.h"
 
 /*
     A = crt(B[0], ...., B[count-1]) wrt to P
@@ -2187,6 +2188,7 @@ int nmod_mpolyn_gcd_brown_smprime_threaded(
 #if WANT_ASSERT
     nmod_mpolyn_t Aorg, Borg;
 #endif
+timeit_t timer;
 
     FLINT_ASSERT(var > 0);
     FLINT_ASSERT(bits <= FLINT_BITS);
@@ -2195,8 +2197,6 @@ int nmod_mpolyn_gcd_brown_smprime_threaded(
     FLINT_ASSERT(bits == Bbar->bits);
     FLINT_ASSERT(bits == A->bits);
     FLINT_ASSERT(bits == B->bits);
-
-printf("nmod_mpolyn_gcd_brown_smprime_threaded called!!!!!!!\n");
 
 #if WANT_ASSERT
     nmod_mpolyn_init(Aorg, A->bits, ctx);
@@ -2520,8 +2520,12 @@ printf("final join Bbar: "); nmod_mpolyn_print_pretty(Bbar, NULL, ctx); printf("
     {
         nmod_mpolyn_content_last(t1, G, ctx);
         nmod_mpolyn_divexact_last(G, t1, ctx);
-        success =            nmod_mpolyn_divides(T1, A, G, ctx);
-        success = success && nmod_mpolyn_divides(T2, B, G, ctx);
+timeit_start(timer);
+        success =            nmod_mpolyn_divides_threaded(T1, A, G, ctx, handles, num_handles);
+        success = success && nmod_mpolyn_divides_threaded(T2, B, G, ctx, handles, num_handles);
+timeit_stop(timer);
+flint_printf("!!!!!!!!!!!!!!!divisibility G time: %wd\n", timer->wall);
+
         if (success)
         {
             ulong temp;
@@ -2540,8 +2544,11 @@ successful_fix_lc:
     {
         nmod_mpolyn_content_last(t1, Abar, ctx);
         nmod_mpolyn_divexact_last(Abar, t1, ctx);
-        success =            nmod_mpolyn_divides(T1, A, Abar, ctx);
-        success = success && nmod_mpolyn_divides(T2, B, T1, ctx);
+timeit_start(timer);
+        success =            nmod_mpolyn_divides_threaded(T1, A, Abar, ctx, handles, num_handles);
+        success = success && nmod_mpolyn_divides_threaded(T2, B, T1, ctx, handles, num_handles);
+timeit_stop(timer);
+flint_printf("!!!!!!!!!!!!!!divisibility Abar time: %wd\n", timer->wall);
         if (success)
         {
             nmod_mpolyn_swap(T1, G);
@@ -2553,8 +2560,11 @@ successful_fix_lc:
     {
         nmod_mpolyn_content_last(t1, Bbar, ctx);
         nmod_mpolyn_divexact_last(Bbar, t1, ctx);
-        success =            nmod_mpolyn_divides(T1, B, Bbar, ctx);
-        success = success && nmod_mpolyn_divides(T2, A, T1, ctx);
+timeit_start(timer);
+        success =            nmod_mpolyn_divides_threaded(T1, B, Bbar, ctx, handles, num_handles);
+        success = success && nmod_mpolyn_divides_threaded(T2, A, T1, ctx, handles, num_handles);
+timeit_stop(timer);
+flint_printf("!!!!!!!!!!!!!!divisibility Bbar time: %wd\n", timer->wall);
         if (success)
         {
             nmod_mpolyn_swap(T1, G);
@@ -2815,8 +2825,6 @@ int new_nmod_mpoly_gcd_brown_threaded(
 
     if (!success)
     {
-flint_printf("failed with char = %wu\n", nctx->ffinfo->mod.n);
-
         nmod_mpoly_to_mpolyn_perm_deflate(An, nctx,
                                          A, ctx, perm, shift, stride, NULL, 0);
         nmod_mpoly_to_mpolyn_perm_deflate(Bn, nctx,

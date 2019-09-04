@@ -11,7 +11,7 @@
 
 #include "nmod_mpoly.h"
 #include "fq_nmod_mpoly.h"
-
+#include "profiler.h"
 
 int nmod_mpolyun_gcd_brown_smprime_bivar_ref(
     nmod_mpolyun_t G,

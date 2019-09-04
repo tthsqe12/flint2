@@ -1528,6 +1528,14 @@ FLINT_DLL int nmod_mpolyn_divides(
     const nmod_mpolyn_t B,
     const nmod_mpoly_ctx_t ctx);
 
+FLINT_DLL int nmod_mpolyn_divides_threaded(
+    nmod_mpolyn_t Q,
+    const nmod_mpolyn_t A,
+    const nmod_mpolyn_t B,
+    const nmod_mpoly_ctx_t ctx,
+    const thread_pool_handle * handles,
+    slong num_handles);
+
 FLINT_DLL int nmod_mpolyun_divides(nmod_mpolyun_t Q, const nmod_mpolyun_t A,
                            const nmod_mpolyun_t B, const nmod_mpoly_ctx_t ctx);
 
