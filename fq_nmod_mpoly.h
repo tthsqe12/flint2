@@ -1036,6 +1036,11 @@ FLINT_DLL int fq_nmod_mpolyun_is_nonzero_fq_nmod(
     const fq_nmod_mpolyun_t A,
     const fq_nmod_mpoly_ctx_t ctx);
 
+FLINT_DLL void fq_nmod_mpolyn_scalar_mul_fq_nmod(
+    fq_nmod_mpolyn_t A,
+    const fq_nmod_t c,
+    const fq_nmod_mpoly_ctx_t ctx);
+
 FLINT_DLL void fq_nmod_mpolyun_scalar_mul_fq_nmod(
     fq_nmod_mpolyun_t A,
     const fq_nmod_t c,
@@ -1049,16 +1054,36 @@ FLINT_DLL void fq_nmod_mpolyun_shift_left(
     fq_nmod_mpolyun_t A,
     ulong s);
 
+FLINT_DLL void fq_nmod_mpolyn_mul_poly(
+    fq_nmod_mpolyn_t A,
+    const fq_nmod_mpolyn_t B,
+    const fq_nmod_poly_t c,
+    fq_nmod_poly_t t, /* temp */
+    const fq_nmod_mpoly_ctx_t ctx);
+
 FLINT_DLL void fq_nmod_mpolyun_mul_poly(
     fq_nmod_mpolyun_t A,
     const fq_nmod_mpolyun_t B,
     const fq_nmod_poly_t c,
     const fq_nmod_mpoly_ctx_t ctx);
 
+FLINT_DLL void fq_nmod_mpolyn_divexact_poly(
+    fq_nmod_mpolyn_t A,
+    const fq_nmod_mpolyn_t B,
+    const fq_nmod_poly_t c,
+    fq_nmod_poly_t q, /* temp */
+    fq_nmod_poly_t r, /* temp */
+    const fq_nmod_mpoly_ctx_t ctx);
+
 FLINT_DLL void fq_nmod_mpolyun_divexact_poly(
     fq_nmod_mpolyun_t A,
     const fq_nmod_mpolyun_t B,
     const fq_nmod_poly_t c,
+    const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void fq_nmod_mpolyn_content_poly(
+    fq_nmod_poly_t g,
+    fq_nmod_mpolyn_t B,
     const fq_nmod_mpoly_ctx_t ctx);
 
 FLINT_DLL void fq_nmod_mpolyun_content_poly(
@@ -1075,6 +1100,9 @@ FLINT_DLL void _fq_nmod_mpoly_from_mpolyun_perm_inflate(
     fq_nmod_mpoly_t A, flint_bitcnt_t Abits, const fq_nmod_mpoly_ctx_t ctx,
                       fq_nmod_mpolyun_t B, const fq_nmod_mpoly_ctx_t uctx,
                 const slong * perm, const ulong * shift, const ulong * stride);
+
+FLINT_DLL slong fq_nmod_mpolyn_lastdeg(fq_nmod_mpolyn_t A,
+                                                const fq_nmod_mpoly_ctx_t ctx);
 
 FLINT_DLL slong fq_nmod_mpolyun_lastdeg(fq_nmod_mpolyun_t A,
                                                 const fq_nmod_mpoly_ctx_t ctx);
@@ -1153,6 +1181,15 @@ FLINT_DLL int fq_nmod_mpolyun_gcd_brown_smprime_bivar(
     fq_nmod_mpolyun_t B,
     const fq_nmod_mpoly_ctx_t ctx);
 
+FLINT_DLL int fq_nmod_mpolyn_gcd_brown_smprime(
+    fq_nmod_mpolyn_t G,
+    fq_nmod_mpolyn_t Abar,
+    fq_nmod_mpolyn_t Bbar,
+    fq_nmod_mpolyn_t A,
+    fq_nmod_mpolyn_t B,
+    slong var,
+    const fq_nmod_mpoly_ctx_t ctx);
+
 FLINT_DLL int fq_nmod_mpolyun_gcd_brown_smprime(
     fq_nmod_mpolyun_t G,
     fq_nmod_mpolyun_t Abar,
@@ -1181,17 +1218,39 @@ FLINT_DLL int fq_nmod_mpolyun_gcd_brown_lgprime(
 
 /* gcd_helper_eval_interp ****************************************************/
 
+FLINT_DLL void nmod_mpolyn_intp_reduce_lg_poly(
+    fq_nmod_poly_t E,
+    const fq_nmod_ctx_t fqctx,
+    const nmod_mpolyn_t A,
+    const nmod_mpoly_ctx_t ctx);
+
 FLINT_DLL void nmod_mpolyun_intp_reduce_lg_poly(
     fq_nmod_poly_t E,
     const fq_nmod_ctx_t fqctx,
     const nmod_mpolyun_t A,
     const nmod_mpoly_ctx_t ctx);
 
+FLINT_DLL void nmod_mpolyn_intp_lift_lg_poly(
+    slong * lastdeg_,
+    nmod_mpolyn_t A,
+    const nmod_mpoly_ctx_t ctx,
+    const fq_nmod_poly_t B,
+    const fq_nmod_ctx_t fqctx);
+
 FLINT_DLL void nmod_mpolyun_intp_lift_lg_poly(
     slong * lastdeg_,
     nmod_mpolyun_t A,
     const nmod_mpoly_ctx_t ctx,
     const fq_nmod_poly_t B,
+    const fq_nmod_ctx_t fqctx);
+
+FLINT_DLL int nmod_mpolyn_intp_crt_lg_poly(
+    slong * lastdeg_,
+    nmod_mpolyn_t F,
+    nmod_mpolyn_t T,
+    nmod_poly_t modulus,
+    const nmod_mpoly_ctx_t ctx,
+    fq_nmod_poly_t A,
     const fq_nmod_ctx_t fqctx);
 
 FLINT_DLL int nmod_mpolyun_intp_crt_lg_poly(
@@ -1202,6 +1261,13 @@ FLINT_DLL int nmod_mpolyun_intp_crt_lg_poly(
     const nmod_mpoly_ctx_t ctx,
     fq_nmod_poly_t A,
     const fq_nmod_ctx_t fqctx);
+
+FLINT_DLL void nmod_mpolyn_intp_reduce_lg_mpolyn(
+    fq_nmod_mpolyn_t E,
+    fq_nmod_mpoly_ctx_t ectx,
+    nmod_mpolyn_t A,
+    slong var,
+    const nmod_mpoly_ctx_t ctx);
 
 FLINT_DLL void nmod_mpolyun_intp_reduce_lg_mpolyun(
     fq_nmod_mpolyun_t E,
@@ -1218,6 +1284,14 @@ FLINT_DLL void nmod_mpolyun_intp_lift_lg_mpolyun(
     fq_nmod_mpolyun_t B,
     const fq_nmod_mpoly_ctx_t ectx);
 
+FLINT_DLL void new_nmod_mpolyn_intp_lift_lg_mpolyn(
+    slong * lastdeg,
+    nmod_mpolyn_t A,
+    slong var,
+    const nmod_mpoly_ctx_t ctx,
+    fq_nmod_mpolyn_t B,
+    const fq_nmod_mpoly_ctx_t ectx);
+
 FLINT_DLL int nmod_mpolyun_intp_crt_lg_mpolyun(
     slong * lastdeg,
     nmod_mpolyun_t F,
@@ -1226,6 +1300,16 @@ FLINT_DLL int nmod_mpolyun_intp_crt_lg_mpolyun(
     slong var,
     const nmod_mpoly_ctx_t ctx,
     fq_nmod_mpolyun_t A,
+    const fq_nmod_mpoly_ctx_t ectx);
+
+FLINT_DLL int new_nmod_mpolyn_intp_crt_lg_mpolyn(
+    slong * lastdeg_,
+    nmod_mpolyn_t F,
+    nmod_mpolyn_t T,
+    nmod_poly_t modulus,
+    slong var,
+    const nmod_mpoly_ctx_t ctx,
+    fq_nmod_mpolyn_t A,
     const fq_nmod_mpoly_ctx_t ectx);
 
 FLINT_DLL void nmod_mpolyun_intp_reduce_lg_mpolyu(
@@ -1257,15 +1341,35 @@ FLINT_DLL int nmod_mpolyun_intp_mcrt_lg_mpolyu(
     fq_nmod_mpolyu_t A,
     const fq_nmod_mpoly_ctx_t ctxp);
 
+FLINT_DLL void fq_nmod_mpolyn_intp_reduce_sm_poly(
+    fq_nmod_poly_t E,
+    const fq_nmod_mpolyn_t A,
+    const fq_nmod_t alpha,
+    const fq_nmod_mpoly_ctx_t ctx);
+
 FLINT_DLL void fq_nmod_mpolyun_intp_reduce_sm_poly(
     fq_nmod_poly_t E,
     const fq_nmod_mpolyun_t A,
     const fq_nmod_t alpha,
     const fq_nmod_mpoly_ctx_t ctx);
 
+FLINT_DLL void fq_nmod_mpolyn_intp_lift_sm_poly(
+    fq_nmod_mpolyn_t A,
+    const fq_nmod_poly_t B,
+    const fq_nmod_mpoly_ctx_t ctx);
+
 FLINT_DLL void fq_nmod_mpolyun_intp_lift_sm_poly(
     fq_nmod_mpolyun_t A,
     const fq_nmod_poly_t B,
+    const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int fq_nmod_mpolyn_intp_crt_sm_poly(
+    slong * lastdeg_,
+    fq_nmod_mpolyn_t F,
+    fq_nmod_mpolyn_t T,
+    const fq_nmod_poly_t A,
+    const fq_nmod_poly_t modulus,
+    const fq_nmod_t alpha,
     const fq_nmod_mpoly_ctx_t ctx);
 
 FLINT_DLL int fq_nmod_mpolyun_intp_crt_sm_poly(
@@ -1277,11 +1381,24 @@ FLINT_DLL int fq_nmod_mpolyun_intp_crt_sm_poly(
     const fq_nmod_t alpha,
     const fq_nmod_mpoly_ctx_t ctx);
 
+FLINT_DLL void fq_nmod_mpolyn_intp_reduce_sm_mpolyn(
+    fq_nmod_mpolyn_t E,
+    fq_nmod_mpolyn_t A,
+    slong var,
+    fq_nmod_t alpha,
+    const fq_nmod_mpoly_ctx_t ctx);
+
 FLINT_DLL void fq_nmod_mpolyun_intp_reduce_sm_mpolyun(
     fq_nmod_mpolyun_t E,
     fq_nmod_mpolyun_t A,
     slong var,
     fq_nmod_t alpha,
+    const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void fq_nmod_mpolyn_intp_lift_sm_mpolyn(
+    fq_nmod_mpolyn_t A,
+    fq_nmod_mpolyn_t B,
+    slong var,
     const fq_nmod_mpoly_ctx_t ctx);
 
 FLINT_DLL void fq_nmod_mpolyun_intp_lift_sm_mpolyun(
@@ -1295,6 +1412,16 @@ FLINT_DLL int fq_nmod_mpolyun_intp_crt_sm_mpolyun(
     fq_nmod_mpolyun_t F,
     fq_nmod_mpolyun_t T,
     fq_nmod_mpolyun_t A,
+    slong var,
+    fq_nmod_poly_t modulus,
+    const fq_nmod_t alpha,
+    const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int new_fq_nmod_mpolyn_intp_crt_sm_mpolyn(
+    slong * lastdeg_,
+    fq_nmod_mpolyn_t F,
+    fq_nmod_mpolyn_t T,
+    fq_nmod_mpolyn_t A,
     slong var,
     fq_nmod_poly_t modulus,
     const fq_nmod_t alpha,

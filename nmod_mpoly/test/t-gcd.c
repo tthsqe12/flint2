@@ -19,6 +19,8 @@ void gcd_check(nmod_mpoly_t g, nmod_mpoly_t a, nmod_mpoly_t b,
     int res;
     nmod_mpoly_t ca, cb, cg;
 
+flint_printf("%s (%wd, %wd)\n", name, i, j);
+
     nmod_mpoly_init(ca, ctx);
     nmod_mpoly_init(cb, ctx);
     nmod_mpoly_init(cg, ctx);
@@ -94,7 +96,7 @@ int
 main(void)
 {
     const slong max_threads = 5;
-    slong i, j, k, tmul = 15;
+    slong i, j, k, tmul = 10;
     FLINT_TEST_INIT(state);
 #ifdef _WIN32
     tmul = 1;

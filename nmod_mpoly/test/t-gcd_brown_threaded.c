@@ -24,11 +24,13 @@ void gcd_check(
     int res;
     nmod_mpoly_t ca, cb, cg;
 
+flint_printf("%s (%wd, %wd)\n", name, i, j);
+
     nmod_mpoly_init(ca, ctx);
     nmod_mpoly_init(cb, ctx);
     nmod_mpoly_init(cg, ctx);
 
-    res = nmod_mpoly_gcd_brown_threaded(g, a, b, ctx, thread_limit);
+    res = new_nmod_mpoly_gcd_brown_threaded(g, a, b, ctx, thread_limit);
     nmod_mpoly_assert_canonical(g, ctx);
 
     if (!res)
@@ -69,7 +71,7 @@ void gcd_check(
         flint_abort();
     }
 
-    res = nmod_mpoly_gcd_brown_threaded(cg, ca, cb, ctx, thread_limit);
+    res = new_nmod_mpoly_gcd_brown_threaded(cg, ca, cb, ctx, thread_limit);
     nmod_mpoly_assert_canonical(cg, ctx);
 
     if (!res)
@@ -100,8 +102,8 @@ int
 main(void)
 {
     slong i, j;
-    slong tmul = 5;
-    slong max_threads = 5;
+    slong tmul = 10;
+    slong max_threads = 6;
     FLINT_TEST_INIT(state);
 #ifdef _WIN32
     tmul = 1;
@@ -120,9 +122,9 @@ main(void)
         nmod_mpoly_init(b, ctx);
         nmod_mpoly_init(g, ctx);
 
-        nmod_mpoly_set_str_pretty(a, "x^4+y^4+z^4", vars, ctx);
-        nmod_mpoly_set_str_pretty(b, "x^2+y^2+z^2", vars, ctx);
-        nmod_mpoly_set_str_pretty(g, "x^3+y^3+z^3", vars, ctx);
+        nmod_mpoly_set_str_pretty(a, "x^3+y^3+z^3", vars, ctx);
+        nmod_mpoly_set_str_pretty(b, "x^5+y^5+z^5", vars, ctx);
+        nmod_mpoly_set_str_pretty(g, "x^7+y^7+z^7", vars, ctx);
         nmod_mpoly_mul(a, a, g, ctx);
         nmod_mpoly_mul(b, b, g, ctx);
 

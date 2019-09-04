@@ -27,6 +27,8 @@ void gcd_check(
     nmod_mpoly_init(cb, ctx);
     nmod_mpoly_init(cg, ctx);
 
+flint_printf("%s: i = %wd, j = %wd\n", name, i, j);
+
     res = nmod_mpoly_gcd_brown(g, a, b, ctx);
     nmod_mpoly_assert_canonical(g, ctx);
 
@@ -104,6 +106,27 @@ main(void)
 
     flint_printf("gcd_brown....");
     fflush(stdout);
+
+    {
+        nmod_mpoly_ctx_t ctx;
+        nmod_mpoly_t a, b, g;
+        const char * vars[] = {"x", "y", "z", "t"};
+
+        nmod_mpoly_ctx_init(ctx, 4, ORD_LEX, 2);
+        nmod_mpoly_init(a, ctx);
+        nmod_mpoly_init(b, ctx);
+        nmod_mpoly_init(g, ctx);
+
+        nmod_mpoly_set_str_pretty(a, "(1+x+y^2+z^3+t^4)*(x^4+y^3+z^2+t)", vars, ctx);
+        nmod_mpoly_set_str_pretty(b, "(1+x+y^2+z^3+t^4)*(x^4+y^3+z^2+t^3)", vars, ctx);
+
+        gcd_check(g, a, b, ctx, 0, 0, "example");
+
+        nmod_mpoly_clear(g, ctx);
+        nmod_mpoly_clear(a, ctx);
+        nmod_mpoly_clear(b, ctx);
+        nmod_mpoly_ctx_clear(ctx);
+    }
 
     for (i = 0; i < tmul * flint_test_multiplier(); i++)
     {

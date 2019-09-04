@@ -187,6 +187,25 @@ int fq_nmod_mpolyun_is_nonzero_fq_nmod(
 }
 
 
+void fq_nmod_mpolyn_scalar_mul_fq_nmod(
+    fq_nmod_mpolyn_t A,
+    const fq_nmod_t c,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    slong i;
+
+    FLINT_ASSERT(!fq_nmod_is_zero(c, ctx->fqctx));
+
+    if (fq_nmod_is_one(c, ctx->fqctx))
+        return;
+
+    for (i = 0; i < A->length; i++)
+    {
+        fq_nmod_poly_scalar_mul_fq_nmod(A->coeffs + i,
+                                        A->coeffs + i, c, ctx->fqctx);
+    }
+}
+
 void fq_nmod_mpolyun_scalar_mul_fq_nmod(
     fq_nmod_mpolyun_t A,
     const fq_nmod_t c,
@@ -395,6 +414,28 @@ void fq_nmod_mpolyun_divexact_poly(
 }
 
 
+void fq_nmod_mpolyn_content_poly(
+    fq_nmod_poly_t g,
+    fq_nmod_mpolyn_t B,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    slong i;
+    fq_nmod_poly_t t;
+
+    fq_nmod_poly_zero(g, ctx->fqctx);
+    fq_nmod_poly_init(t, ctx->fqctx);
+
+    for (i = 0; i < B->length; i++)
+    {
+        fq_nmod_poly_gcd(t, g, B->coeffs + i, ctx->fqctx);
+        fq_nmod_poly_swap(t, g, ctx->fqctx);
+        if (fq_nmod_poly_degree(g, ctx->fqctx) == 0)
+            break;
+    }
+
+    fq_nmod_poly_clear(t, ctx->fqctx);
+}
+
 void fq_nmod_mpolyun_content_poly(
     fq_nmod_poly_t g,
     fq_nmod_mpolyun_t B,
@@ -448,6 +489,20 @@ void _fq_nmod_mpoly_from_mpolyun_perm_inflate(
     return;
 }
 
+slong fq_nmod_mpolyn_lastdeg(
+    fq_nmod_mpolyn_t A,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    slong i;
+    slong deg = -WORD(1);
+
+    for (i = 0; i < A->length; i++)
+    {
+        deg = FLINT_MAX(deg, fq_nmod_poly_degree(A->coeffs + i, ctx->fqctx));
+    }
+
+    return deg;
+}
 
 slong fq_nmod_mpolyun_lastdeg(
     fq_nmod_mpolyun_t A,
@@ -464,7 +519,7 @@ slong fq_nmod_mpolyun_lastdeg(
             deg = FLINT_MAX(deg, fq_nmod_poly_degree(Ai->coeffs + j, ctx->fqctx));
         }
     }
-    FLINT_ASSERT(deg >= 0);
+
     return deg;
 }
 
