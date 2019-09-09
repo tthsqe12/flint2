@@ -1245,14 +1245,15 @@ int fmpz_mod_bma_mpoly_get_fmpz_mpolyu(
 
 
 
-ulong fmpz_mod_mpolyun_bidegree(const fmpz_mod_mpolyun_t A)
+ulong fmpz_mod_mpolyn_bidegree(const fmpz_mod_mpolyn_t A)
 {
     ulong degx, degy;
 
     FLINT_ASSERT(A->length > 0);
+    FLINT_ASSERT(A->bits == FLINT_BITS/2);
 
-    degx = A->exps[0];
-    degy = fmpz_mod_poly_degree((A->coeffs + 0)->coeffs + 0);
+    degx = (A->exps + 1*0)[0] >> (FLINT_BITS/2);
+    degy = fmpz_mod_poly_degree(A->coeffs + 0);
 
     FLINT_ASSERT(FLINT_BIT_COUNT(degx) < FLINT_BITS/2);
     FLINT_ASSERT(FLINT_BIT_COUNT(degy) < FLINT_BITS/2);
@@ -1260,14 +1261,15 @@ ulong fmpz_mod_mpolyun_bidegree(const fmpz_mod_mpolyun_t A)
     return (degx << (FLINT_BITS/2)) + degy;
 }
 
-ulong nmod_mpolyun_bidegree(const nmod_mpolyun_t A)
+ulong nmod_mpolyn_bidegree(const nmod_mpolyn_t A)
 {
     ulong degx, degy;
 
     FLINT_ASSERT(A->length > 0);
+    FLINT_ASSERT(A->bits == FLINT_BITS/2);
 
-    degx = A->exps[0];
-    degy = nmod_poly_degree((A->coeffs + 0)->coeffs + 0);
+    degx = A->exps[0] >> (FLINT_BITS/2);
+    degy = nmod_poly_degree(A->coeffs + 0);
 
     FLINT_ASSERT(FLINT_BIT_COUNT(degx) < FLINT_BITS/2);
     FLINT_ASSERT(FLINT_BIT_COUNT(degy) < FLINT_BITS/2);
@@ -1384,19 +1386,62 @@ void fmpz_mpolyu_symmetrize_coeffs(
 }
 
 
+
+void fmpz_mpolyuu_eval_nmod(
+    nmod_mpolyn_t E,
+    const nmod_mpoly_ctx_t ctx_sp,
+    const fmpz_mpolyu_t A,
+    const mp_limb_t * alpha,
+    const fmpz_mpoly_ctx_t ctx)
+{
+    slong i;
+    slong xexp, yexp;
+    mp_limb_t eval;
+
+    FLINT_ASSERT(E->bits == FLINT_BITS/2);
+    FLINT_ASSERT(1 == mpoly_words_per_exp_sp(E->bits, ctx_sp->minfo));
+
+    E->length = 0;
+    for (i = 0; i < A->length; i++)
+    {
+        eval = fmpz_mpoly_eval_nmod(ctx_sp->ffinfo, A->coeffs + i, alpha, ctx);
+        if (eval == 0)
+        {
+            continue;
+        }
+
+        xexp = A->exps[i] >> (FLINT_BITS/2);
+        yexp = A->exps[i] & (-UWORD(1) >> (FLINT_BITS - FLINT_BITS/2));
+
+        if (E->length > 0 && (E->exps[E->length - 1] >> (FLINT_BITS/2)) == xexp)
+        {
+            nmod_poly_set_coeff_ui(E->coeffs + E->length - 1, yexp, eval);
+        }
+        else
+        {
+            nmod_mpolyn_fit_length(E, E->length + 1, ctx_sp);
+            nmod_poly_zero(E->coeffs + E->length);
+            nmod_poly_set_coeff_ui(E->coeffs + E->length, yexp, eval);
+            E->exps[E->length] = xexp << (FLINT_BITS/2);
+            E->length++;
+        }
+    }
+}
+
 void fmpz_mpolyuu_eval_fmpz_mod(
-    fmpz_mod_mpolyun_t E,
+    fmpz_mod_mpolyn_t E,
+    const fmpz_mpoly_ctx_t ctx_mp,
     const fmpz_mpolyu_t A,
     const fmpz * alpha,
     const fmpz_mpoly_ctx_t ctx,
     const fmpz_mod_ctx_t fpctx)
 {
-    slong N = mpoly_words_per_exp_sp(A->bits, ctx->minfo);
     slong i;
     slong xexp, yexp;
     fmpz_t eval;
 
-    FLINT_ASSERT(E->bits == A->bits);
+    FLINT_ASSERT(E->bits == FLINT_BITS/2);
+    FLINT_ASSERT(1 == mpoly_words_per_exp_sp(E->bits, ctx_mp->minfo));
 
     fmpz_init(eval);
 
@@ -1412,19 +1457,16 @@ void fmpz_mpolyuu_eval_fmpz_mod(
         xexp = A->exps[i] >> (FLINT_BITS/2);
         yexp = A->exps[i] & (-UWORD(1) >> (FLINT_BITS - FLINT_BITS/2));
 
-        if (E->length > 0 && E->exps[E->length - 1] == xexp)
+        if (E->length > 0 && (E->exps[E->length - 1] >> (FLINT_BITS/2)) == xexp)
         {
-            fmpz_mod_poly_set_coeff_fmpz(E->coeffs[E->length-1].coeffs + 0, yexp, eval);
+            fmpz_mod_poly_set_coeff_fmpz(E->coeffs + E->length - 1, yexp, eval);
         }
         else
         {
-            fmpz_mod_mpolyun_fit_length(E, E->length + 1, ctx, fpctx);
-            fmpz_mod_mpolyn_fit_length(E->coeffs + E->length, 1, ctx, fpctx);
-            (E->coeffs + E->length)->length = 1;
-            mpoly_monomial_zero((E->coeffs + E->length)->exps, N);
-            fmpz_mod_poly_zero((E->coeffs + E->length)->coeffs + 0);
-            fmpz_mod_poly_set_coeff_fmpz((E->coeffs + E->length)->coeffs + 0, yexp, eval);
-            E->exps[E->length] = xexp;
+            fmpz_mod_mpolyn_fit_length(E, E->length + 1, ctx, fpctx);
+            fmpz_mod_poly_zero(E->coeffs + E->length);
+            fmpz_mod_poly_set_coeff_fmpz(E->coeffs + E->length, yexp, eval);
+            E->exps[E->length] = xexp << (FLINT_BITS/2);
             E->length++;
         }
     }
@@ -1512,50 +1554,6 @@ mp_limb_t fmpz_mpoly_eval_nmod(
     return eval;
 }
 
-
-void fmpz_mpolyuu_eval_nmod(
-    nmod_mpolyun_t E,
-    const nmod_mpoly_ctx_t ctx_sp,
-    const fmpz_mpolyu_t A,
-    const mp_limb_t * alpha,
-    const fmpz_mpoly_ctx_t ctx)
-{
-    slong N = mpoly_words_per_exp_sp(A->bits, ctx->minfo);
-    slong i;
-    slong xexp, yexp;
-    mp_limb_t eval;
-
-    FLINT_ASSERT(E->bits == A->bits);
-
-    E->length = 0;
-    for (i = 0; i < A->length; i++)
-    {
-        eval = fmpz_mpoly_eval_nmod(ctx_sp->ffinfo, A->coeffs + i, alpha, ctx);
-        if (eval == 0)
-        {
-            continue;
-        }
-
-        xexp = A->exps[i] >> (FLINT_BITS/2);
-        yexp = A->exps[i] & (-UWORD(1) >> (FLINT_BITS - FLINT_BITS/2));
-
-        if (E->length > 0 && E->exps[E->length - 1] == xexp)
-        {
-            nmod_poly_set_coeff_ui(E->coeffs[E->length-1].coeffs + 0, yexp, eval);
-        }
-        else
-        {
-            nmod_mpolyun_fit_length(E, E->length + 1, ctx_sp);
-            nmod_mpolyn_fit_length(E->coeffs + E->length, 1, ctx_sp);
-            (E->coeffs + E->length)->length = 1;
-            mpoly_monomial_zero((E->coeffs + E->length)->exps, N);
-            nmod_poly_zero((E->coeffs + E->length)->coeffs + 0);
-            nmod_poly_set_coeff_ui((E->coeffs + E->length)->coeffs + 0, yexp, eval);
-            E->exps[E->length] = xexp;
-            E->length++;
-        }
-    }
-}
 
 
 
@@ -2548,11 +2546,11 @@ typedef enum {
 random_check_ret_t static _random_check_sp(
     ulong * GevaldegXY,
     ulong GdegboundXY,
-    nmod_mpolyun_t Aeval_sp,
-    nmod_mpolyun_t Beval_sp,
-    nmod_mpolyun_t Geval_sp,
-    nmod_mpolyun_t Abareval_sp,
-    nmod_mpolyun_t Bbareval_sp,
+    nmod_mpolyn_t Aeval_sp,
+    nmod_mpolyn_t Beval_sp,
+    nmod_mpolyn_t Geval_sp,
+    nmod_mpolyn_t Abareval_sp,
+    nmod_mpolyn_t Bbareval_sp,
     mp_limb_t * checkalpha_sp,
     const fmpz_mpolyu_t H,
     const fmpz_mpolyu_t A,
@@ -2581,8 +2579,8 @@ random_check_ret_t static _random_check_sp(
 
         /* make sure that evaluation did not kill either lc(A) or lc(B) */
         if ( Aeval_sp->length == 0 || Beval_sp->length == 0 
-            || nmod_mpolyun_bidegree(Aeval_sp) != A->exps[0]
-            || nmod_mpolyun_bidegree(Beval_sp) != B->exps[0])
+            || nmod_mpolyn_bidegree(Aeval_sp) != A->exps[0]
+            || nmod_mpolyn_bidegree(Beval_sp) != B->exps[0])
         {
             continue;
         }
@@ -2592,16 +2590,16 @@ random_check_ret_t static _random_check_sp(
                                                            checkalpha_sp, ctx);
         FLINT_ASSERT(Gammaeval_sp != 0);
 
-        success = nmod_mpolyun_gcd_brown_smprime_bivar(Geval_sp,
+        success = nmod_mpolyn_gcd_brown_smprime_bivar(Geval_sp,
                   Abareval_sp, Bbareval_sp, Aeval_sp, Beval_sp, ctx_sp, Sp_sp);
         if (!success)
         {
             continue;
         }
-        nmod_mpolyun_scalar_mul_nmod(Geval_sp, Gammaeval_sp, ctx_sp);
+        nmod_mpolyn_scalar_mul_nmod(Geval_sp, Gammaeval_sp, ctx_sp);
 
         FLINT_ASSERT(Geval_sp->length > 0);
-        *GevaldegXY = nmod_mpolyun_bidegree(Geval_sp);
+        *GevaldegXY = nmod_mpolyn_bidegree(Geval_sp);
 
         if (GdegboundXY < *GevaldegXY)
         {
@@ -2615,7 +2613,7 @@ random_check_ret_t static _random_check_sp(
         /* reuse Bbareval for Heval */
         fmpz_mpolyuu_eval_nmod(Bbareval_sp, ctx_sp, H, checkalpha_sp, ctx);
 
-        if (!nmod_mpolyun_equal(Bbareval_sp, Geval_sp, ctx_sp))
+        if (!nmod_mpolyn_equal(Bbareval_sp, Geval_sp, ctx_sp))
         {
             return random_check_image_no_match;
         }
@@ -2629,11 +2627,11 @@ random_check_ret_t static _random_check_sp(
 random_check_ret_t static _random_check(
     ulong * GevaldegXY,
     ulong GdegboundXY,
-    fmpz_mod_mpolyun_t Aeval,
-    fmpz_mod_mpolyun_t Beval,
-    fmpz_mod_mpolyun_t Geval,
-    fmpz_mod_mpolyun_t Abareval,
-    fmpz_mod_mpolyun_t Bbareval,
+    fmpz_mod_mpolyn_t Aeval,
+    fmpz_mod_mpolyn_t Beval,
+    fmpz_mod_mpolyn_t Geval,
+    fmpz_mod_mpolyn_t Abareval,
+    fmpz_mod_mpolyn_t Bbareval,
     fmpz_t Gammaeval,
     fmpz * checkalpha,
     const fmpz_mpolyu_t H,
@@ -2641,7 +2639,7 @@ random_check_ret_t static _random_check(
     const fmpz_mpolyu_t B,
     const fmpz_mpoly_t Gamma,
     const fmpz_mpoly_ctx_t ctx,
-    const fmpz_mod_ctx_t fpctx,
+    const fmpz_mod_mpoly_ctx_t ctx_mp,
     flint_rand_t randstate)
 {
     int success;
@@ -2656,13 +2654,13 @@ random_check_ret_t static _random_check(
         {
             fmpz_randm(checkalpha + i, randstate, fmpz_mod_ctx_modulus(fpctx));
         }
-        fmpz_mpolyuu_eval_fmpz_mod(Aeval, A, checkalpha, ctx, fpctx);
-        fmpz_mpolyuu_eval_fmpz_mod(Beval, B, checkalpha, ctx, fpctx);
+        fmpz_mpolyuu_eval_fmpz_mod(Aeval, ctx_mp, A, checkalpha, ctx, fpctx);
+        fmpz_mpolyuu_eval_fmpz_mod(Beval, ctx_mp, B, checkalpha, ctx, fpctx);
 
         /* make sure that evaluation did not kill either lc(A) or lc(B) */
         if ( Aeval->length == 0 || Beval->length == 0 
-            || fmpz_mod_mpolyun_bidegree(Aeval) != A->exps[0]
-            || fmpz_mod_mpolyun_bidegree(Beval) != B->exps[0])
+            || fmpz_mod_mpolyn_bidegree(Aeval) != A->exps[0]
+            || fmpz_mod_mpolyn_bidegree(Beval) != B->exps[0])
         {
             continue;
         }
@@ -2671,13 +2669,13 @@ random_check_ret_t static _random_check(
         fmpz_mpoly_eval_fmpz_mod(Gammaeval, Gamma, checkalpha, ctx, fpctx);
         FLINT_ASSERT(!fmpz_is_zero(Gammaeval));
 
-        success = fmpz_mod_mpolyun_gcd_brown_bivar(Geval, Abareval, Bbareval,
+        success = fmpz_mod_mpolyn_gcd_brown_bivar(Geval, Abareval, Bbareval,
                                                      Aeval, Beval, ctx, fpctx);
         if (!success)
         {
             continue;
         }
-        fmpz_mod_mpolyun_scalar_mul_fmpz_mod(Geval, Gammaeval, ctx, fpctx);
+        fmpz_mod_mpolyn_scalar_mul_fmpz_mod(Geval, Gammaeval, ctx, fpctx);
 
         FLINT_ASSERT(Geval->length > 0);
         *GevaldegXY = fmpz_mod_mpolyun_bidegree(Geval);
@@ -2762,11 +2760,12 @@ int fmpz_mpolyuu_gcd_berlekamp_massey(
     mpoly_bma_interpolate_ctx_t Ictx;
     fmpz_mod_ctx_t fpctx;
     nmod_mpoly_ctx_t ctx_sp;
+    fmpz_mpoly_ctx_t ctx_mp;
     fmpz_mpolyu_t H, Abar, Bbar;
     fmpz_mpoly_t Hcontent;
     /* multi precision workspace */
     fmpz_mod_bma_mpoly_t Lambda;
-    fmpz_mod_mpolyun_t Aeval, Beval, Geval, Abareval, Bbareval;
+    fmpz_mod_mpolyn_t Aeval, Beval, Geval, Abareval, Bbareval;
     fmpz_mpolycu_t Ainc, Acur, Binc, Bcur, Ared, Bred;
     fmpz_mpolyc_t Gammainc, Gammacur, Gammared;
     fmpz_t p, pm1, sshift, last_unlucky_sshift_plus_1, image_count;
@@ -2774,7 +2773,7 @@ int fmpz_mpolyuu_gcd_berlekamp_massey(
     /* single precision workspace */
     nmod_poly_stack_t Sp_sp;
     nmod_bma_mpoly_t Lambda_sp;
-    nmod_mpolyun_t Aeval_sp, Beval_sp, Geval_sp, Abareval_sp, Bbareval_sp;
+    nmod_mpolyn_t Aeval_sp, Beval_sp, Geval_sp, Abareval_sp, Bbareval_sp;
     nmod_mpolycu_t Ainc_sp, Acur_sp, Binc_sp, Bcur_sp, Ared_sp, Bred_sp;
     nmod_mpolyc_t Gammainc_sp, Gammacur_sp, Gammared_sp;
     mp_limb_t p_sp, sshift_sp, last_unlucky_sshift_plus_1_sp, image_count_sp;
@@ -2823,13 +2822,14 @@ int fmpz_mpolyuu_gcd_berlekamp_massey(
     /* multiprecision workspace */
     fmpz_set_ui(p, 2);    /* modulus no care */
     fmpz_mod_ctx_init(fpctx, p);
+    fmpz_mpoly_ctx_init(ctx_mp, 2, ORD_LEX);
     fmpz_mod_bma_mpoly_init(Lambda);
 
-    fmpz_mod_mpolyun_init(Aeval, bits, ctx, fpctx);
-    fmpz_mod_mpolyun_init(Beval, bits, ctx, fpctx);
-    fmpz_mod_mpolyun_init(Geval, bits, ctx, fpctx);
-    fmpz_mod_mpolyun_init(Abareval, bits, ctx, fpctx);
-    fmpz_mod_mpolyun_init(Bbareval, bits, ctx, fpctx);
+    fmpz_mod_mpolyn_init(Aeval, bits, ctx, fpctx);
+    fmpz_mod_mpolyn_init(Beval, bits, ctx, fpctx);
+    fmpz_mod_mpolyn_init(Geval, bits, ctx, fpctx);
+    fmpz_mod_mpolyn_init(Abareval, bits, ctx, fpctx);
+    fmpz_mod_mpolyn_init(Bbareval, bits, ctx, fpctx);
     fmpz_mpolyc_init(Gammainc);
     fmpz_mpolyc_init(Gammacur);
     fmpz_mpolyc_init(Gammared);
@@ -2846,7 +2846,7 @@ int fmpz_mpolyuu_gcd_berlekamp_massey(
     }
 
     /* machine precision workspace "sp" */
-    nmod_mpoly_ctx_init(ctx_sp, ctx->minfo->nvars, ctx->minfo->ord, 2); /* modulus no care */
+    nmod_mpoly_ctx_init(ctx_sp, 2, ORD_LEX, 2); /* modulus no care */
     nmod_poly_stack_init(Sp_sp, bits, ctx_sp);
     nmod_bma_mpoly_init(Lambda_sp);
 
@@ -3438,11 +3438,11 @@ pick_zip_prime:
     nmod_mpoly_ctx_set_modulus(ctx_sp, p_sp);
     /* unfortunate nmod_poly's need mod set */
     nmod_poly_stack_set_ctx(Sp_sp, ctx_sp);
-    nmod_mpolyun_set_mod(Aeval_sp, ctx_sp->ffinfo->mod);
-    nmod_mpolyun_set_mod(Beval_sp, ctx_sp->ffinfo->mod);
-    nmod_mpolyun_set_mod(Geval_sp, ctx_sp->ffinfo->mod);
-    nmod_mpolyun_set_mod(Abareval_sp, ctx_sp->ffinfo->mod);
-    nmod_mpolyun_set_mod(Bbareval_sp, ctx_sp->ffinfo->mod);
+    nmod_mpolyn_set_mod(Aeval_sp, ctx_sp->ffinfo->mod);
+    nmod_mpolyn_set_mod(Beval_sp, ctx_sp->ffinfo->mod);
+    nmod_mpolyn_set_mod(Geval_sp, ctx_sp->ffinfo->mod);
+    nmod_mpolyn_set_mod(Abareval_sp, ctx_sp->ffinfo->mod);
+    nmod_mpolyn_set_mod(Bbareval_sp, ctx_sp->ffinfo->mod);
 
     FLINT_ASSERT(p_sp > 3);
     for (i = 0; i < ctx->minfo->nvars; i++)
@@ -3602,11 +3602,11 @@ cleanup:
 
     /* machine precision workspace */
     flint_free(checkalpha_sp);
-    nmod_mpolyun_clear(Aeval_sp, ctx_sp);
-    nmod_mpolyun_clear(Beval_sp, ctx_sp);
-    nmod_mpolyun_clear(Geval_sp, ctx_sp);
-    nmod_mpolyun_clear(Abareval_sp, ctx_sp);
-    nmod_mpolyun_clear(Bbareval_sp, ctx_sp);
+    nmod_mpolyn_clear(Aeval_sp, ctx_sp);
+    nmod_mpolyn_clear(Beval_sp, ctx_sp);
+    nmod_mpolyn_clear(Geval_sp, ctx_sp);
+    nmod_mpolyn_clear(Abareval_sp, ctx_sp);
+    nmod_mpolyn_clear(Bbareval_sp, ctx_sp);
     nmod_mpolyc_clear(Gammainc_sp);
     nmod_mpolyc_clear(Gammacur_sp);
     nmod_mpolyc_clear(Gammared_sp);
@@ -3626,11 +3626,11 @@ cleanup:
         fmpz_clear(checkalpha + i);
     }
     flint_free(checkalpha);
-    fmpz_mod_mpolyun_clear(Aeval, ctx, fpctx);
-    fmpz_mod_mpolyun_clear(Beval, ctx, fpctx);
-    fmpz_mod_mpolyun_clear(Geval, ctx, fpctx);
-    fmpz_mod_mpolyun_clear(Abareval, ctx, fpctx);
-    fmpz_mod_mpolyun_clear(Bbareval, ctx, fpctx);
+    fmpz_mod_mpolyn_clear(Aeval, ctx, fpctx);
+    fmpz_mod_mpolyn_clear(Beval, ctx, fpctx);
+    fmpz_mod_mpolyn_clear(Geval, ctx, fpctx);
+    fmpz_mod_mpolyn_clear(Abareval, ctx, fpctx);
+    fmpz_mod_mpolyn_clear(Bbareval, ctx, fpctx);
     fmpz_mpolyc_clear(Gammainc);
     fmpz_mpolyc_clear(Gammacur);
     fmpz_mpolyc_clear(Gammared);

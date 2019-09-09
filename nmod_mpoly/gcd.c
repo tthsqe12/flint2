@@ -475,11 +475,10 @@ cleanup:
 }
 
 
-
 typedef struct
 {
-    nmod_mpolyun_struct * Pn;
-    const nmod_mpoly_ctx_struct * uctx;
+    nmod_mpolyn_struct * Pn;
+    const nmod_mpoly_ctx_struct * nctx;
     const nmod_mpoly_struct * P;
     const nmod_mpoly_ctx_struct * ctx;
     const slong * perm;
@@ -495,158 +494,11 @@ static void _worker_convertn(void * varg)
 {
     _convertn_arg_struct * arg = (_convertn_arg_struct *) varg;
 
-    nmod_mpoly_to_mpolyun_perm_deflate(arg->Pn, arg->uctx, arg->P, arg->ctx,
-           arg->perm, arg->shift, arg->stride, arg->handles, arg->num_handles);
-}
-
-static int _try_brown(
-    nmod_mpoly_t G,
-    flint_bitcnt_t Gbits,
-    const nmod_mpoly_t A,
-    const nmod_mpoly_t B,
-    mpoly_gcd_info_t I,
-    const nmod_mpoly_ctx_t ctx,
-    const thread_pool_handle * handles,
-    slong num_handles)
-{
-    int success;
-    slong m = I->mvars;
-    flint_bitcnt_t ABbits;
-    nmod_mpoly_ctx_t uctx;
-    nmod_mpolyun_t An, Bn, Gn, Abarn, Bbarn;
-    nmod_poly_stack_t Sp;
-timeit_t timer;
-
-    if (!I->can_use_brown)
-        return 0;
-
-    FLINT_ASSERT(m >= 2);
-    FLINT_ASSERT(A->bits <= FLINT_BITS);
-    FLINT_ASSERT(B->bits <= FLINT_BITS);
-    FLINT_ASSERT(A->length > 0);
-    FLINT_ASSERT(B->length > 0);
-
-    ABbits = FLINT_MAX(A->bits, B->bits);
-
-    nmod_mpoly_ctx_init(uctx, m - 1, ORD_LEX, ctx->ffinfo->mod.n);
-    nmod_poly_stack_init(Sp, ABbits, uctx);
-    nmod_mpolyun_init(An, ABbits, uctx);
-    nmod_mpolyun_init(Bn, ABbits, uctx);
-    nmod_mpolyun_init(Gn, ABbits, uctx);
-    nmod_mpolyun_init(Abarn, ABbits, uctx);
-    nmod_mpolyun_init(Bbarn, ABbits, uctx);
-
-timeit_start(timer);
-
-    if (num_handles > 0)
-    {
-        slong s = mpoly_divide_threads(num_handles, A->length, B->length);
-        _convertn_arg_t arg;
-
-        FLINT_ASSERT(s >= 0);
-        FLINT_ASSERT(s < num_handles);
-
-        arg->Pn = Bn;
-        arg->uctx = uctx;
-        arg->P = B;
-        arg->ctx = ctx;
-        arg->perm = I->brown_perm;
-        arg->shift = I->Bmin_exp;
-        arg->stride = I->Gstride;
-        arg->handles = handles + (s + 1);
-        arg->num_handles = num_handles - (s + 1);
-
-        thread_pool_wake(global_thread_pool, handles[s], _worker_convertn, arg);
-
-        nmod_mpoly_to_mpolyun_perm_deflate(An, uctx, A, ctx,
-                                   I->brown_perm, I->Amin_exp, I->Gstride,
-                                                               handles + 0, s);
-
-        thread_pool_wait(global_thread_pool, handles[s]);
-    }
-    else
-    {
-        nmod_mpoly_to_mpolyun_perm_deflate(An, uctx, A, ctx,
-                              I->brown_perm, I->Amin_exp, I->Gstride, NULL, 0);
-        nmod_mpoly_to_mpolyun_perm_deflate(Bn, uctx, B, ctx,
-                              I->brown_perm, I->Bmin_exp, I->Gstride, NULL, 0);
-    }
-
-timeit_stop(timer);
-flint_printf("old brown conversion: %wd\n", timer->wall);
-
-    FLINT_ASSERT(An->bits == ABbits);
-    FLINT_ASSERT(Bn->bits == ABbits);
-    FLINT_ASSERT(An->length > 1);
-    FLINT_ASSERT(Bn->length > 1);
-
-timeit_start(timer);
-
-    success = (num_handles > 0)
-        ? nmod_mpolyun_gcd_brown_smprime_threaded(Gn, Abarn, Bbarn, An, Bn,
-                                          m - 2, uctx, I, handles, num_handles)
-        : nmod_mpolyun_gcd_brown_smprime(Gn, Abarn, Bbarn, An, Bn,
-                                                           m - 2, uctx, I, Sp);
-
-timeit_stop(timer);
-flint_printf("old brown           : %wd\n", timer->wall);
-
-    if (!success)
-    {
-        nmod_mpoly_to_mpolyun_perm_deflate(An, uctx, A, ctx,
-                              I->brown_perm, I->Amin_exp, I->Gstride, NULL, 0);
-        nmod_mpoly_to_mpolyun_perm_deflate(Bn, uctx, B, ctx,
-                              I->brown_perm, I->Bmin_exp, I->Gstride, NULL, 0);
-        success = nmod_mpolyun_gcd_brown_lgprime(Gn, Abarn, Bbarn, An, Bn,
-                                                                  m - 2, uctx);
-    }
-
-    if (!success)
-        goto cleanup;
-
-    nmod_mpoly_from_mpolyun_perm_inflate(G, Gbits, ctx, Gn, uctx,
-                                       I->brown_perm, I->Gmin_exp, I->Gstride);
-    success = 1;
-
-cleanup:
-
-    nmod_mpolyun_clear(An, uctx);
-    nmod_mpolyun_clear(Bn, uctx);
-    nmod_mpolyun_clear(Gn, uctx);
-    nmod_mpolyun_clear(Abarn, uctx);
-    nmod_mpolyun_clear(Bbarn, uctx);
-    nmod_poly_stack_clear(Sp);
-    nmod_mpoly_ctx_clear(uctx);
-
-    return success;
-}
-
-
-
-typedef struct
-{
-    nmod_mpolyn_struct * Pn;
-    const nmod_mpoly_ctx_struct * nctx;
-    const nmod_mpoly_struct * P;
-    const nmod_mpoly_ctx_struct * ctx;
-    const slong * perm;
-    const ulong * shift, * stride;
-    const thread_pool_handle * handles;
-    slong num_handles;
-}
-_new_convertn_arg_struct;
-
-typedef _new_convertn_arg_struct _new_convertn_arg_t[1];
-
-static void _new_worker_convertn(void * varg)
-{
-    _new_convertn_arg_struct * arg = (_new_convertn_arg_struct *) varg;
-
     nmod_mpoly_to_mpolyn_perm_deflate(arg->Pn, arg->nctx, arg->P, arg->ctx,
            arg->perm, arg->shift, arg->stride, arg->handles, arg->num_handles);
 }
 
-static int _new_try_brown(
+static int _try_brown(
     nmod_mpoly_t G,
     flint_bitcnt_t Gbits,
     const nmod_mpoly_t A,
@@ -687,7 +539,7 @@ timeit_start(timer);
     if (num_handles > 0)
     {
         slong s = mpoly_divide_threads(num_handles, A->length, B->length);
-        _new_convertn_arg_t arg;
+        _convertn_arg_t arg;
 
         FLINT_ASSERT(s >= 0);
         FLINT_ASSERT(s < num_handles);
@@ -702,7 +554,7 @@ timeit_start(timer);
         arg->handles = handles + (s + 1);
         arg->num_handles = num_handles - (s + 1);
 
-        thread_pool_wake(global_thread_pool, handles[s], _new_worker_convertn, arg);
+        thread_pool_wake(global_thread_pool, handles[s], _worker_convertn, arg);
 
         nmod_mpoly_to_mpolyn_perm_deflate(An, nctx, A, ctx,
                                    I->brown_perm, I->Amin_exp, I->Gstride,
@@ -1105,7 +957,7 @@ calculate_trivial_gcd:
     }
     else
     {
-        if (_new_try_brown(G, Gbits, A, B, I, ctx, handles, num_handles))
+        if (_try_brown(G, Gbits, A, B, I, ctx, handles, num_handles))
             goto successful;
 
         if (_try_zippel(G, Gbits, A, B, I, ctx))

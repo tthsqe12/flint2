@@ -39,29 +39,6 @@ void fmpz_mod_mpolyn_clear(
         flint_free(A->exps);
 }
 
-void fmpz_mod_mpolyn_swap(fmpz_mod_mpolyn_t A, fmpz_mod_mpolyn_t B)
-{
-   fmpz_mod_mpolyn_struct t = *A;
-   *A = *B;
-   *B = t;
-}
-
-void fmpz_mod_mpolyn_zero(
-    fmpz_mod_mpolyn_t A,
-    const fmpz_mpoly_ctx_t ctx,
-    const fmpz_mod_ctx_t fpctx)
-{
-    A->length = 0;
-}
-
-int fmpz_mod_mpolyn_is_zero(
-    fmpz_mod_mpolyn_t A,
-    const fmpz_mpoly_ctx_t ctx,
-    const fmpz_mod_ctx_t fpctx)
-{
-    return A->length == 0;
-}
-
 void fmpz_mod_mpolyn_print_pretty(
     const fmpz_mod_mpolyn_t A,
     const char ** x_in,

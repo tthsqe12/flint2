@@ -14,6 +14,7 @@
 #include "thread_pool.h"
 #include "fmpq.h"
 
+#if 0
 
 typedef struct
 {
@@ -660,12 +661,12 @@ static slong _divide_master_threads(fmpq * v, slong n, slong m)
 }
 
 /* inputs A and B are modified */
-int fmpz_mpolyu_gcd_brown_threaded(
-    fmpz_mpolyu_t G,
-    fmpz_mpolyu_t Abar,
-    fmpz_mpolyu_t Bbar,
-    fmpz_mpolyu_t A,
-    fmpz_mpolyu_t B,
+int fmpz_mpolyl_gcd_brown_threaded(
+    fmpz_mpoly_t G,
+    fmpz_mpoly_t Abar,
+    fmpz_mpoly_t Bbar,
+    fmpz_mpoly_t A,
+    fmpz_mpoly_t B,
     const fmpz_mpoly_ctx_t ctx,
     const mpoly_gcd_info_t I,
     const thread_pool_handle * handles,
@@ -1288,4 +1289,30 @@ cleanup1:
     flint_free(stride);
 
     return success;
+}
+
+#endif
+
+int fmpz_mpolyl_gcd_brown_threaded(
+    fmpz_mpoly_t G,
+    fmpz_mpoly_t Abar,
+    fmpz_mpoly_t Bbar,
+    fmpz_mpoly_t A,
+    fmpz_mpoly_t B,
+    const fmpz_mpoly_ctx_t ctx,
+    const mpoly_gcd_info_t I,
+    const thread_pool_handle * handles,
+    slong num_handles)
+{
+    return 0;
+}
+
+int fmpz_mpoly_gcd_brown_threaded(
+    fmpz_mpoly_t G,
+    const fmpz_mpoly_t A,
+    const fmpz_mpoly_t B,
+    const fmpz_mpoly_ctx_t ctx,
+    slong thread_limit)
+{
+    return 0;
 }

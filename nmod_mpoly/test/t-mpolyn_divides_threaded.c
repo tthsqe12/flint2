@@ -209,7 +209,7 @@ main(void)
         nmod_mpoly_ctx_t ctx;
         nmod_mpoly_t a, b, c;
         slong len1, len2, len3;
-        flint_bitcnt_t exp_bits;
+        flint_bitcnt_t exp_bits, exp_bits2;
         mp_limb_t modulus;
 
         modulus = n_randint(state, (i % 10 == 0) ? 4: FLINT_BITS - 1) + 1;
@@ -227,12 +227,13 @@ main(void)
         len3 = n_randint(state, 30);
 
         exp_bits = n_randint(state, 7) + 3;
+        exp_bits2 = n_randint(state, 8) + 4;
 
         for (j = 0; j < 4; j++)
         {
             nmod_mpoly_randtest_bits(a, state, len1, exp_bits, ctx);
             nmod_mpoly_randtest_bits(b, state, len2, exp_bits, ctx);
-            nmod_mpoly_randtest_bits(c, state, len3, exp_bits, ctx);
+            nmod_mpoly_randtest_bits(c, state, len3, exp_bits2, ctx);
             nmod_mpoly_mul(a, a, b, ctx);
             nmod_mpoly_add(a, a, c, ctx);
             _divides_check(a, b, ctx, i, j, "check (a*b + c)/b", state);
