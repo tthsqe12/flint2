@@ -15,10 +15,10 @@
 /* max = max abs coeffs(A) */
 void fmpz_mpoly_height(
     fmpz_t max,
-    const fmpz_mpolyu_t A,
+    const fmpz_mpoly_t A,
     const fmpz_mpoly_ctx_t ctx)
 {
-    slong i, j;
+    slong i;
     fmpz_t t;
 
     fmpz_init(t);
@@ -41,7 +41,7 @@ void fmpz_mpoly_heights(
     const fmpz_mpoly_t A,
     const fmpz_mpoly_ctx_t ctx)
 {
-    slong i, j;
+    slong i;
     fmpz_t t;
 
     fmpz_init(t);
@@ -91,7 +91,7 @@ int fmpz_mpolyl_gcd_brown(
     FLINT_ASSERT(bits == G->bits);
     FLINT_ASSERT(bits == Abar->bits);
     FLINT_ASSERT(bits == Bbar->bits);
-    FLINT_ASSERT(ctx->ord == ORD_LEX);
+    FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
 
     mpoly_gen_offset_shift_sp(&offset, &shift, ctx->minfo->nvars - 1, bits, ctx->minfo);
 
@@ -112,15 +112,15 @@ int fmpz_mpolyl_gcd_brown(
     fmpz_init(cG);
     fmpz_init(cAbar);
     fmpz_init(cBbar);
-    fmpz_mpoly_content_fmpz(cA, A, ctx);
-    fmpz_mpoly_content_fmpz(cB, B, ctx);
+    _fmpz_vec_content(cA, A->coeffs, A->length);
+    _fmpz_vec_content(cB, B->coeffs, A->length);
     fmpz_gcd(cG, cA, cB);
     fmpz_divexact(cAbar, cA, cG);
     fmpz_divexact(cBbar, cB, cG);
 
     /* remove content from inputs */
-    fmpz_mpoly_divexact_fmpz(A, A, cA, ctx);
-    fmpz_mpoly_divexact_fmpz(B, B, cB, ctx);
+    fmpz_mpoly_scalar_divexact_fmpz(A, A, cA, ctx);
+    fmpz_mpoly_scalar_divexact_fmpz(B, B, cB, ctx);
 
     fmpz_gcd(gamma, A->coeffs + 0, B->coeffs + 0);
 
@@ -196,7 +196,7 @@ choose_prime:
         slong k;
         FLINT_ASSERT(G->length > 0);
 
-        slong k = nmod_poly_degree(Gp->coeffs + 0);
+        k = nmod_poly_degree(Gp->coeffs + 0);
         cmp = mpoly_monomial_cmp_nomask_extra(G->exps + N*0,
                                         Gp->exps + N*0, N, offset, k << shift);
         if (cmp < 0)
@@ -220,9 +220,9 @@ choose_prime:
     }
     else
     {
-        new_fmpz_mpoly_intp_lift_p_mpolyn(G, ctx, Gp, pctx);
-        new_fmpz_mpoly_intp_lift_p_mpolyn(Abar, ctx, Abarp, pctx);
-        new_fmpz_mpoly_intp_lift_p_mpolyn(Bbar, ctx, Bbarp, pctx);
+        fmpz_mpoly_intp_lift_p_mpolyn(G, ctx, Gp, pctx);
+        fmpz_mpoly_intp_lift_p_mpolyn(Abar, ctx, Abarp, pctx);
+        fmpz_mpoly_intp_lift_p_mpolyn(Bbar, ctx, Bbarp, pctx);
     }
 
     fmpz_mul_ui(modulus, modulus, p);
@@ -256,18 +256,18 @@ choose_prime:
 
 successful:
 
-    FLINT_ASSERT(fmpz_equal(gamma, fmpz_mpolyu_leadcoeff(G)));
+    FLINT_ASSERT(fmpz_equal(gamma, G->coeffs + 0));
 
-    fmpz_mpoly_content_fmpz(temp, G, ctx);
-    fmpz_mpoly_divexact_fmpz(G, G, temp, ctx);
-    fmpz_mpoly_divexact_fmpz(Abar, Abar, G->coeffs + 0, ctx);
-    fmpz_mpoly_divexact_fmpz(Bbar, Bbar, G->coeffs + 0, ctx);
+    _fmpz_vec_content(temp, G->coeffs, G->length);
+    fmpz_mpoly_scalar_divexact_fmpz(G, G, temp, ctx);
+    fmpz_mpoly_scalar_divexact_fmpz(Abar, Abar, G->coeffs + 0, ctx);
+    fmpz_mpoly_scalar_divexact_fmpz(Bbar, Bbar, G->coeffs + 0, ctx);
 
 successful_put_content:
 
-    fmpz_mpoly_mul_fmpz(G, G, cG, ctx);
-    fmpz_mpoly_mul_fmpz(Abar, Abar, cAbar, ctx);
-    fmpz_mpoly_mul_fmpz(Bbar, Bbar, cBbar, ctx);
+    fmpz_mpoly_scalar_mul_fmpz(G, G, cG, ctx);
+    fmpz_mpoly_scalar_mul_fmpz(Abar, Abar, cAbar, ctx);
+    fmpz_mpoly_scalar_mul_fmpz(Bbar, Bbar, cBbar, ctx);
 
     success = 1;
 
@@ -386,11 +386,11 @@ int fmpz_mpoly_gcd_brown(
     new_bits = FLINT_MAX(A->bits, B->bits);
 
     fmpz_mpoly_ctx_init(lctx, ctx->minfo->nvars, ORD_LEX);
-    fmpz_mpoly_init(Al, 0, new_bits, lctx);
-    fmpz_mpoly_init(Bl, 0, new_bits, lctx);
-    fmpz_mpoly_init(Gl, 0, new_bits, lctx);
-    fmpz_mpoly_init(Abarl, 0, new_bits, lctx);
-    fmpz_mpoly_init(Bbarl, 0, new_bits, lctx);
+    fmpz_mpoly_init3(Al, 0, new_bits, lctx);
+    fmpz_mpoly_init3(Bl, 0, new_bits, lctx);
+    fmpz_mpoly_init3(Gl, 0, new_bits, lctx);
+    fmpz_mpoly_init3(Abarl, 0, new_bits, lctx);
+    fmpz_mpoly_init3(Bbarl, 0, new_bits, lctx);
 
     fmpz_mpoly_to_mpoly_perm_deflate(Al, lctx, A, ctx,
                                                  perm, shift, stride, NULL, 0);
@@ -400,7 +400,7 @@ int fmpz_mpoly_gcd_brown(
     success = fmpz_mpolyl_gcd_brown(Gl, Abarl, Bbarl, Al, Bl, lctx, NULL);
     if (success)
     {
-        fmpz_mpoly_from_mpolyu_perm_inflate(G, new_bits, ctx, Gl, lctx,
+        fmpz_mpoly_from_mpoly_perm_inflate(G, new_bits, ctx, Gl, lctx,
                                                           perm, shift, stride);
         if (fmpz_sgn(G->coeffs + 0) < 0)
             fmpz_mpoly_neg(G, G, ctx);

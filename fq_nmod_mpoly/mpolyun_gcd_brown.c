@@ -340,10 +340,8 @@ choose_prime:   /* prime is v - alpha */
     FLINT_ASSERT(Beval->length > 0);
 
     fq_nmod_poly_gcd(Geval, Aeval, Beval, ctx->fqctx);
-    fq_nmod_poly_divrem(Abareval, trem, Aeval, Geval, ctx->fqctx);
-    FLINT_ASSERT(fq_nmod_poly_is_zero(trem, ctx->fqctx));
-    fq_nmod_poly_divrem(Bbareval, trem, Beval, Geval, ctx->fqctx);
-    FLINT_ASSERT(fq_nmod_poly_is_zero(trem, ctx->fqctx));
+    fq_nmod_poly_divrem(Abareval, trem, Aeval, Geval, ctx->fqctx); FLINT_ASSERT(fq_nmod_poly_is_zero(trem, ctx->fqctx));
+    fq_nmod_poly_divrem(Bbareval, trem, Beval, Geval, ctx->fqctx); FLINT_ASSERT(fq_nmod_poly_is_zero(trem, ctx->fqctx));
 
     FLINT_ASSERT(Geval->length > 0);
     FLINT_ASSERT(Abareval->length);

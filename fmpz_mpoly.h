@@ -1224,13 +1224,13 @@ FLINT_DLL int fmpz_mpolyu_intp_mcrt_p(
     const nmod_mpolyu_t A,
     const nmod_mpoly_ctx_t ctxp);
 
-FLINT_DLL void fmpz_mpolyu_intp_reduce_p_mpolyun(
-    nmod_mpolyun_t E,
+FLINT_DLL void fmpz_mpoly_intp_reduce_p_mpolyn(
+    nmod_mpolyn_t E,
     const nmod_mpoly_ctx_t pctx,
-    const fmpz_mpolyu_t A,
+    const fmpz_mpoly_t A,
     const fmpz_mpoly_ctx_t ctx);
 
-FLINT_DLL void new_fmpz_mpoly_intp_lift_p_mpolyn(
+FLINT_DLL void fmpz_mpoly_intp_lift_p_mpolyn(
     fmpz_mpoly_t A,
     const fmpz_mpoly_ctx_t ctx,
     const nmod_mpolyn_t B,
@@ -1247,7 +1247,7 @@ FLINT_DLL int new_fmpz_mpoly_intp_crt_p_mpolyn(
     fmpz_mpoly_t T,
     const fmpz_mpoly_ctx_t ctx,
     fmpz_t modulus,
-    nmod_mpolyn_t A,
+    const nmod_mpolyn_t A,
     const nmod_mpoly_ctx_t pctx);
 
 FLINT_DLL int fmpz_mpolyu_intp_crt_p_mpolyun(
@@ -1257,96 +1257,6 @@ FLINT_DLL int fmpz_mpolyu_intp_crt_p_mpolyun(
     fmpz_t modulus,
     nmod_mpolyun_t A,
     const nmod_mpoly_ctx_t pctx);
-
-/* fmpz_mod_mpoly types - should be in a separate module *********************/
-
-/*
-    fmpz_mod_mpolyn_t
-    sparse multivariates with fmpz_mod_poly_t coefficients
-        with LEX ordering
-*/
-typedef struct
-{
-   fmpz_mod_poly_struct * coeffs;
-   ulong * exps;
-   slong alloc;
-   slong length;
-   slong bits;
-} fmpz_mod_mpolyn_struct;
-
-typedef fmpz_mod_mpolyn_struct fmpz_mod_mpolyn_t[1];
-
-/*
-    fmpz_mod_mpolyun_t
-    sparse univariates with fmpz_mod_mpolyn_t coefficients
-        with uniform bits and LEX ordering
-*/
-typedef struct
-{
-    fmpz_mod_mpolyn_struct * coeffs;
-    ulong * exps;
-    slong alloc;
-    slong length;
-    flint_bitcnt_t bits;   /* default bits to construct coeffs */
-} fmpz_mod_mpolyun_struct;
-
-typedef fmpz_mod_mpolyun_struct fmpz_mod_mpolyun_t[1];
-
-FLINT_DLL void fmpz_mod_mpolyn_fit_length(fmpz_mod_mpolyn_t A,
-         slong length, const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mod_mpolyun_fit_length(fmpz_mod_mpolyun_t A,
-         slong length, const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mod_mpolyun_swap(fmpz_mod_mpolyun_t A, fmpz_mod_mpolyun_t B);
-
-FLINT_DLL fmpz_mod_poly_struct * fmpz_mod_mpolyun_leadcoeff_ref(
-                        fmpz_mod_mpolyun_t A,
-                       const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mod_mpolyun_content_last(
-                       fmpz_mod_poly_t a, const fmpz_mod_mpolyun_t B,
-                       const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mod_mpolyun_divexact_last(
-                        fmpz_mod_mpolyun_t A, const fmpz_mod_poly_t b,
-                       const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL slong fmpz_mod_mpolyun_lastdeg(const fmpz_mod_mpolyun_t A,
-                       const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mod_mpolyun_init(fmpz_mod_mpolyun_t A, flint_bitcnt_t bits,
-                       const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mod_mpolyun_clear(fmpz_mod_mpolyun_t A,
-                       const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL fmpz * fmpz_mod_mpolyun_leadcoeff_last_ref(const fmpz_mod_mpolyun_t A,
-                       const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mod_mpolyun_one(fmpz_mod_mpolyun_t A,
-                       const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mod_mpolyun_mul_last(fmpz_mod_mpolyun_t A, fmpz_mod_poly_t b,
-                       const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mod_mpolyun_set_modulus(fmpz_mod_mpolyun_t A,
-                                                   const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mod_mpolyun_scalar_mul_fmpz_mod(fmpz_mod_mpolyun_t A,
-       const fmpz_t c, const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL int fmpz_mod_mpolyun_equal(
-                    const fmpz_mod_mpolyun_t A, const fmpz_mod_mpolyun_t B,
-                       const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL int fmpz_mod_mpolyun_gcd_brown_bivar(
-    fmpz_mod_mpolyun_t G, fmpz_mod_mpolyun_t Abar, fmpz_mod_mpolyun_t Bbar,
-    fmpz_mod_mpolyun_t A, fmpz_mod_mpolyun_t B,
-                       const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mod_mpolyun_print_pretty(const fmpz_mod_mpolyun_t poly,
-      const char ** x, const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
 
 /* geobuckets ****************************************************************/
 typedef struct fmpz_mpoly_geobucket
@@ -1414,24 +1324,6 @@ FLINT_DLL int fmpz_mpoly_geobucket_divides_inplace(fmpz_mpoly_geobucket_t B1,
 
 /* Helpers for gcd_berlekamp_massey ******************************************/
 
-typedef struct
-{
-    slong * degbounds;
-    ulong * subdegs;
-    fmpz_mod_discrete_log_pohlig_hellman_t dlogenv;
-    nmod_discrete_log_pohlig_hellman_t dlogenv_sp;
-} mpoly_bma_interpolate_ctx_struct;
-typedef mpoly_bma_interpolate_ctx_struct mpoly_bma_interpolate_ctx_t[1];
-
-FLINT_DLL void mpoly_bma_interpolate_ctx_init(mpoly_bma_interpolate_ctx_t Ictx,
-                                                                  slong nvars);
-
-FLINT_DLL void mpoly_bma_interpolate_ctx_clear(mpoly_bma_interpolate_ctx_t Ictx);
-
-FLINT_DLL int nmod_mpoly_bma_get_fmpz_mpoly(fmpz_mpoly_t A,
-     const fmpz_mpoly_ctx_t ctx, ulong alphashift, nmod_berlekamp_massey_t I,
-              const mpoly_bma_interpolate_ctx_t Ictx, const nmodf_ctx_t fpctx);
-
 /*
     nmod_mpoly "skeletons" - just the coefficients
 */
@@ -1466,7 +1358,7 @@ FLINT_DLL void nmod_mpolycu_clear(nmod_mpolycu_t A);
 FLINT_DLL void nmod_mpolycu_fit_length(nmod_mpolycu_t A, slong length);
 
 /*
-    fmpz_mod_mpoly "skeletons" - just the coefficients
+    fmpz_mpoly "skeletons" - just the coefficients
 */
 
 typedef struct
@@ -1498,138 +1390,6 @@ FLINT_DLL void fmpz_mpolycu_init(fmpz_mpolycu_t A);
 FLINT_DLL void fmpz_mpolycu_clear(fmpz_mpolycu_t A);
 
 FLINT_DLL void fmpz_mpolycu_fit_length(fmpz_mpolycu_t A, slong length);
-
-FLINT_DLL void nmod_mpoly_bma_interpolate_alpha_powers(mp_limb_t * out,
-  ulong w, const mpoly_bma_interpolate_ctx_t Ictx, const nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL void fmpz_mod_mpoly_bma_interpolate_alpha_powers(fmpz * out,
-                     const fmpz_t w, const mpoly_bma_interpolate_ctx_t Ictx,
-                       const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mpoly_set_skel(fmpz_mpolyc_t M, const fmpz_mpoly_t A,
-   const fmpz * alpha, const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mpolyu_set_skel(fmpz_mpolycu_t M, const fmpz_mpolyu_t A,
-   const fmpz * alpha, const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mpoly_copy_skel(fmpz_mpolyc_t M, const fmpz_mpolyc_t S);
-
-FLINT_DLL void fmpz_mpolyu_copy_skel(fmpz_mpolycu_t M, const fmpz_mpolycu_t S);
-
-FLINT_DLL void fmpz_mpoly_red_skel(fmpz_mpolyc_t Ared, const fmpz_mpoly_t A,
-                                                   const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mpolyu_red_skel(fmpz_mpolycu_t Ared, const fmpz_mpolyu_t A,
-                                                   const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mpoly_use_skel_mul(fmpz_t eval, fmpz_mpolyc_t Ared,
-           fmpz_mpolyc_t M, const fmpz_mpolyc_t S, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mpolyuu_use_skel_mul(fmpz_mod_mpolyun_t E,
-                           const fmpz_mpolyu_t A, fmpz_mpolycu_t Ared,
-                           fmpz_mpolycu_t M, const fmpz_mpolycu_t S,
-                       const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL int fmpz_mod_bma_get_fmpz_mpoly(fmpz_mpoly_t A,
-          const fmpz_t alphashift, fmpz_mod_berlekamp_massey_t I,
-          const mpoly_bma_interpolate_ctx_t Ictx, const fmpz_mpoly_ctx_t ctx,
-                                                   const fmpz_mod_ctx_t fpctx);
-
-typedef struct {
-    nmod_berlekamp_massey_struct * coeffs;
-    ulong * exps;
-    slong length;
-    slong alloc;
-    slong pointcount;
-} nmod_bma_mpoly_struct;
-
-typedef nmod_bma_mpoly_struct nmod_bma_mpoly_t[1];
-
-FLINT_DLL void nmod_bma_mpoly_init(nmod_bma_mpoly_t A);
-
-FLINT_DLL void nmod_bma_mpoly_reset_prime(nmod_bma_mpoly_t A,
-                                                      const nmodf_ctx_t fpctx);
-
-FLINT_DLL void nmod_bma_mpoly_clear(nmod_bma_mpoly_t A);
-
-FLINT_DLL void nmod_bma_mpoly_print(const nmod_bma_mpoly_t A);
-
-FLINT_DLL void nmod_bma_mpoly_fit_length(nmod_bma_mpoly_t A, slong length,
-                                                      const nmodf_ctx_t fpctx);
-
-FLINT_DLL void nmod_bma_mpoly_zero(nmod_bma_mpoly_t L);
-
-FLINT_DLL int nmod_bma_mpoly_reduce(nmod_bma_mpoly_t L);
-
-FLINT_DLL void nmod_bma_mpoly_add_point(nmod_bma_mpoly_t L,
-                              const nmod_mpolyun_t A, const nmodf_ctx_t fpctx);
-
-FLINT_DLL int nmod_bma_mpoly_get_fmpz_mpolyu(fmpz_mpolyu_t A,
-      const fmpz_mpoly_ctx_t ctx, ulong alphashift, const nmod_bma_mpoly_t L,
-              const mpoly_bma_interpolate_ctx_t Ictx, const nmodf_ctx_t fpctx);
-
-typedef struct {
-    fmpz_mod_berlekamp_massey_struct * coeffs;
-    ulong * exps;
-    slong length;
-    slong alloc;
-    slong pointcount;
-} fmpz_mod_bma_mpoly_struct;
-
-typedef fmpz_mod_bma_mpoly_struct fmpz_mod_bma_mpoly_t[1];
-
-FLINT_DLL void fmpz_mod_bma_mpoly_init(fmpz_mod_bma_mpoly_t A);
-
-FLINT_DLL void fmpz_mod_bma_mpoly_reset_prime(
-    fmpz_mod_bma_mpoly_t A,
-    const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mod_bma_mpoly_clear(fmpz_mod_bma_mpoly_t A);
-
-FLINT_DLL void fmpz_mod_bma_mpoly_print(
-    fmpz_mod_bma_mpoly_t A,
-    const mpoly_bma_interpolate_ctx_t Ictx);
-
-FLINT_DLL void fmpz_mod_bma_mpoly_fit_length(
-    fmpz_mod_bma_mpoly_t A,
-    slong length,
-    const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mod_bma_mpoly_zero(fmpz_mod_bma_mpoly_t L);
-
-FLINT_DLL int fmpz_mod_bma_mpoly_reduce(fmpz_mod_bma_mpoly_t L);
-
-FLINT_DLL void fmpz_mod_bma_mpoly_add_point(fmpz_mod_bma_mpoly_t L,
-                    const fmpz_mod_mpolyun_t A, const fmpz_mpoly_ctx_t ctx,
-                                                   const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL int fmpz_mod_bma_mpoly_get_fmpz_mpolyu(fmpz_mpolyu_t A,
-            const fmpz_t alphashift, const fmpz_mod_bma_mpoly_t L,
-          const mpoly_bma_interpolate_ctx_t Ictx, const fmpz_mpoly_ctx_t ctx,
-                                                   const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL ulong fmpz_mod_mpolyn_bidegree(const fmpz_mod_mpolyn_t A);
-
-FLINT_DLL ulong nmod_mpolyn_bidegree(const nmod_mpolyn_t A);
-
-FLINT_DLL void fmpz_mpoly_eval_fmpz_mod(fmpz_t eval, const fmpz_mpoly_t A,
-   const fmpz * alpha, const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mpolyu_symmetrize_coeffs(fmpz_mpolyu_t A,
-                       const fmpz_mpoly_ctx_t ctx, const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL void fmpz_mpolyuu_eval_fmpz_mod(fmpz_mod_mpolyn_t E,
-                         const fmpz_mpoly_ctx_t ctx_mp, const fmpz_mpolyu_t A,
-                             const fmpz * alpha, const fmpz_mpoly_ctx_t ctx,
-                                                   const fmpz_mod_ctx_t fpctx);
-
-FLINT_DLL mp_limb_t fmpz_mpoly_eval_nmod(const nmodf_ctx_t fpctx,
-                            const fmpz_mpoly_t A, const mp_limb_t * alpha,
-                                                   const fmpz_mpoly_ctx_t ctx);
-
-FLINT_DLL void fmpz_mpolyuu_eval_nmod(nmod_mpolyn_t E,
-                     const nmod_mpoly_ctx_t ctx_sp, const fmpz_mpolyu_t A,
-                          const mp_limb_t * alpha, const fmpz_mpoly_ctx_t ctx);
 
 typedef struct {
     slong mlength;
@@ -1669,10 +1429,6 @@ FLINT_DLL void nmod_zip_mpolyu_fit_length(nmod_zip_mpolyu_t A, slong length);
 FLINT_DLL void nmod_zip_mpolyu_fit_poly(nmod_zip_mpolyu_t Z, fmpz_mpolyu_t H,
                                                             slong eval_length);
 
-FLINT_DLL void nmod_mpoly_set_skel(nmod_mpolyc_t S,
-                     const nmod_mpoly_ctx_t ctx_sp, const fmpz_mpoly_t A,
-                          const mp_limb_t * alpha, const fmpz_mpoly_ctx_t ctx);
-
 FLINT_DLL void nmod_zip_mpolyu_set_skel(nmod_zip_mpolyu_t Z,
                        const nmod_mpoly_ctx_t ctx_sp, const fmpz_mpolyu_t A,
                           const mp_limb_t * alpha, const fmpz_mpoly_ctx_t ctx);
@@ -1680,34 +1436,7 @@ FLINT_DLL void nmod_zip_mpolyu_set_skel(nmod_zip_mpolyu_t Z,
 FLINT_DLL void nmod_zip_mpolyuu_print(const nmod_zip_mpolyu_t A);
 
 FLINT_DLL int nmod_zip_mpolyuu_add_point(nmod_zip_mpolyu_t L,
-                                                       const nmod_mpolyun_t A);
-
-FLINT_DLL void nmod_mpolyu_set_skel(nmod_mpolycu_t S,
-                        const nmod_mpoly_ctx_t ctx_sp, const fmpz_mpolyu_t A,
-                          const mp_limb_t * alpha, const fmpz_mpoly_ctx_t ctx);
-
-FLINT_DLL void nmod_mpoly_red_skel(nmod_mpolyc_t Ared, const fmpz_mpoly_t A,
-                                                      const nmodf_ctx_t fpctx);
-
-FLINT_DLL void nmod_mpolyu_red_skel(nmod_mpolycu_t Ared, const fmpz_mpolyu_t A,
-                                                      const nmodf_ctx_t fpctx);
-
-FLINT_DLL void nmod_mpoly_copy_skel(nmod_mpolyc_t M, const nmod_mpolyc_t S);
-
-FLINT_DLL void nmod_mpolyu_copy_skel(nmod_mpolycu_t M, const nmod_mpolycu_t S);
-
-FLINT_DLL void nmod_mpoly_pow_skel(nmod_mpolyc_t M, const nmod_mpolyc_t S,
-                                          ulong k, const nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL void nmod_mpolyu_pow_skel(nmod_mpolycu_t M, const nmod_mpolycu_t S,
-                                          ulong k, const nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL mp_limb_t nmod_mpoly_use_skel_mul(const nmod_mpolyc_t Ared,
-  nmod_mpolyc_t Acur, const nmod_mpolyc_t Ainc, const nmod_mpoly_ctx_t ctx_sp);
-
-FLINT_DLL void nmod_mpolyuu_use_skel_mul(nmod_mpolyun_t E,
-     const fmpz_mpolyu_t A, const nmod_mpolycu_t Ared, nmod_mpolycu_t Acur,
-                     const nmod_mpolycu_t Ainc, const nmod_mpoly_ctx_t ctx_sp);
+                                                        const nmod_mpolyn_t A);
 
 typedef enum {
     nmod_zip_find_coeffs_good,
