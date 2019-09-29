@@ -1027,7 +1027,6 @@ compute_split:
     joinbase->gptrs = gptrs;
     joinbase->abarptrs = abarptrs;
     joinbase->bbarptrs = bbarptrs;
-    joinbase->ctx = ctx;
     joinbase->G = G;
     joinbase->Abar = Abar;
     joinbase->Bbar = Bbar;

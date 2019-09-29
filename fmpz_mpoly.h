@@ -1162,11 +1162,11 @@ FLINT_DLL int fmpz_mpolyu_content_mpoly(fmpz_mpoly_t g, const fmpz_mpolyu_t A,
                                                    const fmpz_mpoly_ctx_t ctx,
                         const thread_pool_handle * handles, slong num_handles);
 
-FLINT_DLL void fmpz_mpolyu_height(fmpz_t max,
-                            const fmpz_mpolyu_t A, const fmpz_mpoly_ctx_t ctx);
+FLINT_DLL void fmpz_mpoly_height(fmpz_t max,
+                             const fmpz_mpoly_t A, const fmpz_mpoly_ctx_t ctx);
 
-FLINT_DLL void fmpz_mpolyu_heights(fmpz_t max, fmpz_t sum,
-                            const fmpz_mpolyu_t A, const fmpz_mpoly_ctx_t ctx);
+FLINT_DLL void fmpz_mpoly_heights(fmpz_t max, fmpz_t sum,
+                             const fmpz_mpoly_t A, const fmpz_mpoly_ctx_t ctx);
 
 FLINT_DLL int fmpz_mpolyl_gcd_brown(fmpz_mpoly_t G, fmpz_mpoly_t Abar,
                     fmpz_mpoly_t Bbar, fmpz_mpoly_t A, fmpz_mpoly_t B,
