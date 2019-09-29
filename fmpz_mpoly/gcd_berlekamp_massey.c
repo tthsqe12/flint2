@@ -2816,6 +2816,8 @@ int fmpz_mpolyuu_gcd_berlekamp_massey(
     FLINT_ASSERT(bits == G->bits);
     FLINT_ASSERT(bits == Gamma->bits);
 
+FLINT_ASSERT(0);
+
     /* let's initialize everything at once to avoid complicated cleanup */
 
     ABtotal_length = 0;
@@ -2843,11 +2845,11 @@ int fmpz_mpolyuu_gcd_berlekamp_massey(
     fmpz_mod_mpoly_ctx_init(ctx_mp, 2, ORD_LEX, p); /* modulus no care */
     fmpz_mod_bma_mpoly_init(Lambda);
 
-    fmpz_mod_mpolyn_init(Aeval, bits, ctx_mp);
-    fmpz_mod_mpolyn_init(Beval, bits, ctx_mp);
-    fmpz_mod_mpolyn_init(Geval, bits, ctx_mp);
-    fmpz_mod_mpolyn_init(Abareval, bits, ctx_mp);
-    fmpz_mod_mpolyn_init(Bbareval, bits, ctx_mp);
+    fmpz_mod_mpolyn_init(Aeval, FLINT_BITS/2, ctx_mp);
+    fmpz_mod_mpolyn_init(Beval, FLINT_BITS/2, ctx_mp);
+    fmpz_mod_mpolyn_init(Geval, FLINT_BITS/2, ctx_mp);
+    fmpz_mod_mpolyn_init(Abareval, FLINT_BITS/2, ctx_mp);
+    fmpz_mod_mpolyn_init(Bbareval, FLINT_BITS/2, ctx_mp);
     fmpz_mpolyc_init(Gammainc);
     fmpz_mpolyc_init(Gammacur);
     fmpz_mpolyc_init(Gammared);
@@ -2865,14 +2867,14 @@ int fmpz_mpolyuu_gcd_berlekamp_massey(
 
     /* machine precision workspace "sp" */
     nmod_mpoly_ctx_init(ctx_sp, 2, ORD_LEX, 2); /* modulus no care */
-    nmod_poly_stack_init(Sp_sp, bits, ctx_sp);
+    nmod_poly_stack_init(Sp_sp, FLINT_BITS/2, ctx_sp);
     nmod_bma_mpoly_init(Lambda_sp);
 
-    nmod_mpolyn_init(Aeval_sp, bits, ctx_sp);
-    nmod_mpolyn_init(Beval_sp, bits, ctx_sp);
-    nmod_mpolyn_init(Geval_sp, bits, ctx_sp);
-    nmod_mpolyn_init(Abareval_sp, bits, ctx_sp);
-    nmod_mpolyn_init(Bbareval_sp, bits, ctx_sp);
+    nmod_mpolyn_init(Aeval_sp, FLINT_BITS/2, ctx_sp);
+    nmod_mpolyn_init(Beval_sp, FLINT_BITS/2, ctx_sp);
+    nmod_mpolyn_init(Geval_sp, FLINT_BITS/2, ctx_sp);
+    nmod_mpolyn_init(Abareval_sp, FLINT_BITS/2, ctx_sp);
+    nmod_mpolyn_init(Bbareval_sp, FLINT_BITS/2, ctx_sp);
     nmod_mpolyc_init(Gammainc_sp);
     nmod_mpolyc_init(Gammacur_sp);
     nmod_mpolyc_init(Gammared_sp);

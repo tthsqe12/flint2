@@ -27,6 +27,8 @@ void gcd_check(
     fmpz_mpoly_init(cb, ctx);
     fmpz_mpoly_init(cg, ctx);
 
+flint_printf("%s %wd %wd\n", name, i, j);
+
     res = fmpz_mpoly_gcd_berlekamp_massey(g, a, b, ctx);
     fmpz_mpoly_assert_canonical(g, ctx);
 

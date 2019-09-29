@@ -113,7 +113,7 @@ int fmpz_mpolyl_gcd_brown(
     fmpz_init(cAbar);
     fmpz_init(cBbar);
     _fmpz_vec_content(cA, A->coeffs, A->length);
-    _fmpz_vec_content(cB, B->coeffs, A->length);
+    _fmpz_vec_content(cB, B->coeffs, B->length);
     fmpz_gcd(cG, cA, cB);
     fmpz_divexact(cAbar, cA, cG);
     fmpz_divexact(cBbar, cB, cG);

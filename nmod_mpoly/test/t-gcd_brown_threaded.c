@@ -24,13 +24,11 @@ void gcd_check(
     int res;
     nmod_mpoly_t ca, cb, cg;
 
-flint_printf("%s (%wd, %wd)\n", name, i, j);
-
     nmod_mpoly_init(ca, ctx);
     nmod_mpoly_init(cb, ctx);
     nmod_mpoly_init(cg, ctx);
 
-    res = new_nmod_mpoly_gcd_brown_threaded(g, a, b, ctx, thread_limit);
+    res = nmod_mpoly_gcd_brown_threaded(g, a, b, ctx, thread_limit);
     nmod_mpoly_assert_canonical(g, ctx);
 
     if (!res)
@@ -71,7 +69,7 @@ flint_printf("%s (%wd, %wd)\n", name, i, j);
         flint_abort();
     }
 
-    res = new_nmod_mpoly_gcd_brown_threaded(cg, ca, cb, ctx, thread_limit);
+    res = nmod_mpoly_gcd_brown_threaded(cg, ca, cb, ctx, thread_limit);
     nmod_mpoly_assert_canonical(cg, ctx);
 
     if (!res)
@@ -154,9 +152,9 @@ main(void)
         nmod_mpoly_init(a, ctx);
         nmod_mpoly_init(b, ctx);
 
-        len = n_randint(state, 30) + 1;
-        len1 = n_randint(state, 40);
-        len2 = n_randint(state, 40);
+        len = n_randint(state, 40) + 1;
+        len1 = n_randint(state, 80);
+        len2 = n_randint(state, 80);
 
         degbound = 1 + 20/ctx->minfo->nvars;
 

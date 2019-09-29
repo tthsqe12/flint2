@@ -243,6 +243,7 @@ int fmpz_mod_mpolyn_gcd_brown_bivar(
     slong deggamma, ldegG, ldegAbar, ldegBbar, ldegA, ldegB;
     fmpz_mod_poly_t cA, cB, cG, cAbar, cBbar, gamma, r;
     fmpz_mod_poly_t modulus, modulus2;
+    slong N, off, shift;
 #if WANT_ASSERT
     fmpz_mod_poly_t leadA, leadB;
 #endif
@@ -250,11 +251,11 @@ int fmpz_mod_mpolyn_gcd_brown_bivar(
     fmpz_init(alpha);
     fmpz_init(temp);
     fmpz_init(gammaeval);
-
+/*
 printf("fmpz_mod_mpolyn_gcd_bivar called\n");
 printf("A: "); fmpz_mod_mpolyn_print_pretty(A, NULL, ctx); printf("\n");
 printf("B: "); fmpz_mod_mpolyn_print_pretty(B, NULL, ctx); printf("\n");
-
+*/
 
 #if WANT_ASSERT
     fmpz_mod_poly_init(leadA, fmpz_mod_ctx_modulus(ctx->ffinfo));
@@ -262,6 +263,9 @@ printf("B: "); fmpz_mod_mpolyn_print_pretty(B, NULL, ctx); printf("\n");
     fmpz_mod_poly_set(leadA, fmpz_mod_mpolyn_leadcoeff_poly(A, ctx));
     fmpz_mod_poly_set(leadB, fmpz_mod_mpolyn_leadcoeff_poly(B, ctx));
 #endif
+
+    N = mpoly_words_per_exp_sp(A->bits, ctx->minfo);
+    mpoly_gen_offset_shift_sp(&off, &shift, 0, A->bits, ctx->minfo);
 
     fmpz_mod_poly_init(r, fmpz_mod_ctx_modulus(ctx->ffinfo));
     fmpz_mod_poly_init(cA, fmpz_mod_ctx_modulus(ctx->ffinfo));
@@ -342,11 +346,11 @@ choose_prime: /* prime is v - alpha */
     if (fmpz_mod_poly_degree(modulus) > 0)
     {
         FLINT_ASSERT(G->length > 0);
-        if (fmpz_mod_poly_degree(Geval) > G->exps[0])
+        if (fmpz_mod_poly_degree(Geval) > ((G->exps + N*0)[off]>>shift))
         {
             goto choose_prime;
         }
-        else if (fmpz_mod_poly_degree(Geval) < G->exps[0])
+        else if (fmpz_mod_poly_degree(Geval) < ((G->exps + N*0)[off]>>shift))
         {
             fmpz_mod_poly_set_ui(modulus, 1);
         }
@@ -381,6 +385,7 @@ choose_prime: /* prime is v - alpha */
     {
         goto choose_prime;
     }
+
 
     FLINT_ASSERT(ldegG >= 0);
     FLINT_ASSERT(ldegAbar >= 0);

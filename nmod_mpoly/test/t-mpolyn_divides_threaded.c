@@ -31,8 +31,6 @@ void _divides_check(
     thread_pool_handle * handles;
     slong num_workers, max_num_workers;
 
-flint_printf("%s (%wd, %wd)\n", name, ii, jj);
-
     if (   A->bits > FLINT_BITS
         || B->bits > FLINT_BITS
         || A->length == 0
@@ -81,13 +79,6 @@ flint_printf("%s (%wd, %wd)\n", name, ii, jj);
     nmod_mpoly_to_mpolyn_perm_deflate(Bn, nctx, B, ctx,
                                            perm, shift, stride, NULL, 0);
 
-
-
-
-/*
-    ndivides = nmod_mpolyn_divides(Qn, An, Bn, nctx);
-*/
-    /*****************************/
     handles = NULL;
     num_workers = 0;
     if (global_thread_pool_initialized)
@@ -111,8 +102,6 @@ flint_printf("%s (%wd, %wd)\n", name, ii, jj);
 
     if (handles)
         flint_free(handles);
-    /*****************************************/
-
 
     divides = nmod_mpoly_divides(Q, A, B, ctx);
 
@@ -209,7 +198,7 @@ main(void)
         nmod_mpoly_ctx_t ctx;
         nmod_mpoly_t a, b, c;
         slong len1, len2, len3;
-        flint_bitcnt_t exp_bits, exp_bits2;
+        ulong exp_bound, exp_bound2;
         mp_limb_t modulus;
 
         modulus = n_randint(state, (i % 10 == 0) ? 4: FLINT_BITS - 1) + 1;
@@ -226,14 +215,14 @@ main(void)
         len2 = n_randint(state, 20);
         len3 = n_randint(state, 30);
 
-        exp_bits = n_randint(state, 7) + 3;
-        exp_bits2 = n_randint(state, 8) + 4;
+        exp_bound = 1 + 200/ctx->minfo->nvars;
+        exp_bound2 = 1 + 100/ctx->minfo->nvars;
 
         for (j = 0; j < 4; j++)
         {
-            nmod_mpoly_randtest_bits(a, state, len1, exp_bits, ctx);
-            nmod_mpoly_randtest_bits(b, state, len2, exp_bits, ctx);
-            nmod_mpoly_randtest_bits(c, state, len3, exp_bits2, ctx);
+            nmod_mpoly_randtest_bound(a, state, len1, exp_bound, ctx);
+            nmod_mpoly_randtest_bound(b, state, len2, exp_bound, ctx);
+            nmod_mpoly_randtest_bound(c, state, len3, exp_bound2, ctx);
             nmod_mpoly_mul(a, a, b, ctx);
             nmod_mpoly_add(a, a, c, ctx);
             _divides_check(a, b, ctx, i, j, "check (a*b + c)/b", state);

@@ -1758,8 +1758,6 @@ int nmod_mpolyn_divides_threaded(
         return nmod_mpolyn_divides(Q, A, B, ctx);
     }
 
-flint_printf("nmod_mpolyn_divides_threaded num_handles = %wd\n", num_handles);
-
     TMP_START;
 
     nmod_poly_init_mod(qcoeff, ctx->ffinfo->mod);

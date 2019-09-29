@@ -11,8 +11,6 @@
 
 #include "nmod_mpoly.h"
 #include "thread_pool.h"
-#include "profiler.h"
-
 
 typedef struct
 {
@@ -834,7 +832,6 @@ int nmod_mpolyn_gcd_brown_smprime_threaded(
 #if WANT_ASSERT
     nmod_mpolyn_t Aorg, Borg;
 #endif
-timeit_t timer;
 
     FLINT_ASSERT(var > 0);
     FLINT_ASSERT(bits <= FLINT_BITS);
@@ -1115,10 +1112,7 @@ compute_split:
             idxs[type] += joinbase->chunks[i].poly->length;
 
             ldegGs_Abars_Bbars[type] = FLINT_MAX(ldegGs_Abars_Bbars[type],
-                                                 joinbase->chunks[i].lastdeg);    
-/*
-flint_printf("chunk[%wd]: type = %d, poly = ", i, type); nmod_mpolyn_print_pretty(joinbase->chunks[i].poly, NULL, ctx); printf("\n");
-*/
+                                                 joinbase->chunks[i].lastdeg);
         }
 
         nmod_mpolyn_fit_length(G, idxs[0], ctx);
@@ -1140,11 +1134,7 @@ flint_printf("chunk[%wd]: type = %d, poly = ", i, type); nmod_mpolyn_print_prett
     {
         thread_pool_wait(global_thread_pool, handles[i]);
     }
-/*
-printf("final join G: "); nmod_mpolyn_print_pretty(G, NULL, ctx); printf("\n");
-printf("final join Abar: "); nmod_mpolyn_print_pretty(Abar, NULL, ctx); printf("\n");
-printf("final join Bbar: "); nmod_mpolyn_print_pretty(Bbar, NULL, ctx); printf("\n");
-*/
+
     FLINT_ASSERT(nmod_mpolyn_is_canonical(G, ctx));
     FLINT_ASSERT(nmod_mpolyn_is_canonical(Abar, ctx));
     FLINT_ASSERT(nmod_mpolyn_is_canonical(Bbar, ctx));
@@ -1165,12 +1155,8 @@ printf("final join Bbar: "); nmod_mpolyn_print_pretty(Bbar, NULL, ctx); printf("
     {
         nmod_mpolyn_content_last(t1, G, ctx);
         nmod_mpolyn_divexact_last(G, t1, ctx);
-timeit_start(timer);
         success =            nmod_mpolyn_divides_threaded(T1, A, G, ctx, handles, num_handles);
         success = success && nmod_mpolyn_divides_threaded(T2, B, G, ctx, handles, num_handles);
-timeit_stop(timer);
-flint_printf("!!!!!!!!!!!!!!!divisibility G time: %wd\n", timer->wall);
-
         if (success)
         {
             ulong temp;
@@ -1189,11 +1175,8 @@ successful_fix_lc:
     {
         nmod_mpolyn_content_last(t1, Abar, ctx);
         nmod_mpolyn_divexact_last(Abar, t1, ctx);
-timeit_start(timer);
         success =            nmod_mpolyn_divides_threaded(T1, A, Abar, ctx, handles, num_handles);
         success = success && nmod_mpolyn_divides_threaded(T2, B, T1, ctx, handles, num_handles);
-timeit_stop(timer);
-flint_printf("!!!!!!!!!!!!!!divisibility Abar time: %wd\n", timer->wall);
         if (success)
         {
             nmod_mpolyn_swap(T1, G);
@@ -1205,11 +1188,8 @@ flint_printf("!!!!!!!!!!!!!!divisibility Abar time: %wd\n", timer->wall);
     {
         nmod_mpolyn_content_last(t1, Bbar, ctx);
         nmod_mpolyn_divexact_last(Bbar, t1, ctx);
-timeit_start(timer);
         success =            nmod_mpolyn_divides_threaded(T1, B, Bbar, ctx, handles, num_handles);
         success = success && nmod_mpolyn_divides_threaded(T2, A, T1, ctx, handles, num_handles);
-timeit_stop(timer);
-flint_printf("!!!!!!!!!!!!!!divisibility Bbar time: %wd\n", timer->wall);
         if (success)
         {
             nmod_mpolyn_swap(T1, G);
@@ -1225,8 +1205,6 @@ flint_printf("!!!!!!!!!!!!!!divisibility Bbar time: %wd\n", timer->wall);
             goto successful;
         }
     }
-
-printf("divisibility test failed\n");
 
     /* divisibility test failed - try again */
     best_est = bound;
@@ -1323,7 +1301,7 @@ static void _new_worker_convertn(void * varg)
                                                arg->handles, arg->num_handles);
 }
 
-int new_nmod_mpoly_gcd_brown_threaded(
+int nmod_mpoly_gcd_brown_threaded(
     nmod_mpoly_t G,
     const nmod_mpoly_t A,
     const nmod_mpoly_t B,

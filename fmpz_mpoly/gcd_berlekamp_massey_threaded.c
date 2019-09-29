@@ -1813,6 +1813,8 @@ int fmpz_mpolyuu_gcd_berlekamp_massey_threaded(
 
     w->bits = A->bits;
 
+FLINT_ASSERT(0);
+
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
     FLINT_ASSERT(w->bits == A->bits);
     FLINT_ASSERT(w->bits == B->bits);

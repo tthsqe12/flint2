@@ -19,8 +19,6 @@ void gcd_check(nmod_mpoly_t g, nmod_mpoly_t a, nmod_mpoly_t b,
     int res;
     nmod_mpoly_t ca, cb, cg;
 
-flint_printf("%s (%wd, %wd)\n", name, i, j);
-
     nmod_mpoly_init(ca, ctx);
     nmod_mpoly_init(cb, ctx);
     nmod_mpoly_init(cg, ctx);

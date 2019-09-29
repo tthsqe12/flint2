@@ -677,7 +677,7 @@ typedef struct
     fmpz_mpoly_struct * G, * Abar, * Bbar;
     _new_joinworker_arg_struct * chunks;
     slong chunks_length;
-    ulong num_threads;
+    ulong num_images;
 }
 _new_joinbase_struct;
 
@@ -701,7 +701,7 @@ static void _new_joinworker(void * varg)
 
     TMP_START;
 
-    input = (fmpz **) TMP_ALLOC(base->num_threads * sizeof(fmpz *));
+    input = (fmpz **) TMP_ALLOC(base->num_images * sizeof(fmpz *));
     output = (fmpz *) TMP_ALLOC(ls*sizeof(fmpz));
     for (i = 0; i < ls; i++)
         fmpz_init(output + i);
@@ -724,19 +724,19 @@ static void _new_joinworker(void * varg)
         if (base->chunks[i].GAB == 0)
         {
             _new_fmpz_mpoly_crt(base->CRT, base->chunks + i, base->gptrs,
-                                  base->num_threads, output, input, base->ctx);
+                                  base->num_images, output, input, base->ctx);
         }
         else if (base->chunks[i].GAB == 1)
         {
             _new_fmpz_mpoly_crt(base->CRT, base->chunks + i, base->abarptrs,
-                                  base->num_threads, output, input, base->ctx);
+                                  base->num_images, output, input, base->ctx);
         }
         else
         {
             FLINT_ASSERT(base->chunks[i].GAB == 2);
 
             _new_fmpz_mpoly_crt(base->CRT, base->chunks + i, base->bbarptrs,
-                                  base->num_threads, output, input, base->ctx);
+                                  base->num_images, output, input, base->ctx);
         }
     }
 
@@ -1119,7 +1119,7 @@ compute_split:
                                      (const fmpz * const *) mptrs, num_images);
     FLINT_ASSERT(success);
 
-    joinbase->num_threads = num_threads;
+    joinbase->num_images = num_images;
     joinbase->gptrs = gptrs;
     joinbase->abarptrs = abarptrs;
     joinbase->bbarptrs = bbarptrs;
@@ -1137,6 +1137,12 @@ compute_split:
         joinargs[i].base = joinbase;
         joinargs[i].thread_idx = i;
     }
+
+    joinbase->chunks_length = 3*num_threads;
+    joinbase->chunks = (_new_joinworker_arg_struct *) flint_malloc(
+                   joinbase->chunks_length*sizeof(_new_joinworker_arg_struct));
+
+    FLINT_ASSERT(joinbase->chunks_length >= 3);
 
     for (i = 0; i < 3; i++)
     {
@@ -1240,10 +1246,6 @@ compute_split:
         thread_pool_wait(global_thread_pool, handles[i]);
     }
 
-printf("final join G: "); fmpz_mpoly_print_pretty(G, NULL, ctx); printf("\n");
-printf("final join Abar: "); fmpz_mpoly_print_pretty(Abar, NULL, ctx); printf("\n");
-printf("final join Bbar: "); fmpz_mpoly_print_pretty(Bbar, NULL, ctx); printf("\n");
-
     FLINT_ASSERT(fmpz_mpoly_is_canonical(G, ctx));
     FLINT_ASSERT(fmpz_mpoly_is_canonical(Abar, ctx));
     FLINT_ASSERT(fmpz_mpoly_is_canonical(Bbar, ctx));
@@ -1280,15 +1282,11 @@ printf("final join Bbar: "); fmpz_mpoly_print_pretty(Bbar, NULL, ctx); printf("\
             fmpz_swap(temp, temp2);
         fmpz_mul_2exp(temp, temp, 1);
         if (fmpz_cmp(temp, modulus) >= 0)
-            goto divisibility_check_failed;
+        {
+            fmpz_mul_2exp(bound, modulus, 2*FLINT_BITS);
+            goto compute_split;
+        }
     }
-
-    goto successful;
-
-divisibility_check_failed:
-
-    fmpz_mul_2exp(bound, modulus, 2*FLINT_BITS);
-    goto compute_split;
 
 successful:
 

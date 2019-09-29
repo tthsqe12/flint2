@@ -27,8 +27,6 @@ void gcd_check(
     nmod_mpoly_init(cb, ctx);
     nmod_mpoly_init(cg, ctx);
 
-flint_printf("%s: i = %wd, j = %wd\n", name, i, j);
-
     res = nmod_mpoly_gcd_brown(g, a, b, ctx);
     nmod_mpoly_assert_canonical(g, ctx);
 

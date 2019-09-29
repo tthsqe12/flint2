@@ -10,7 +10,6 @@
 */
 
 #include "nmod_mpoly.h"
-#include "profiler.h"
 
 /*
     For each j, set out[j] to the evaluation of A at x_i = alpha[i] (i != j)
@@ -514,7 +513,6 @@ static int _try_brown(
     nmod_mpoly_ctx_t nctx;
     nmod_mpolyn_t An, Bn, Gn, Abarn, Bbarn;
     nmod_poly_stack_t Sp;
-timeit_t timer;
 
     if (!I->can_use_brown)
         return 0;
@@ -535,7 +533,6 @@ timeit_t timer;
     nmod_mpolyn_init(Abarn, ABbits, nctx);
     nmod_mpolyn_init(Bbarn, ABbits, nctx);
 
-timeit_start(timer);
     if (num_handles > 0)
     {
         slong s = mpoly_divide_threads(num_handles, A->length, B->length);
@@ -570,24 +567,16 @@ timeit_start(timer);
                               I->brown_perm, I->Bmin_exp, I->Gstride, NULL, 0);
     }
 
-timeit_stop(timer);
-flint_printf("new brown conversion: %wd\n", timer->wall);
-
     FLINT_ASSERT(An->bits == ABbits);
     FLINT_ASSERT(Bn->bits == ABbits);
     FLINT_ASSERT(An->length > 1);
     FLINT_ASSERT(Bn->length > 1);
-
-timeit_start(timer);
 
     success = (num_handles > 0)
         ? nmod_mpolyn_gcd_brown_smprime_threaded(Gn, Abarn, Bbarn, An, Bn,
                                           m - 1, nctx, I, handles, num_handles)
         : nmod_mpolyn_gcd_brown_smprime(Gn, Abarn, Bbarn, An, Bn,
                                                            m - 1, nctx, I, Sp);
-
-timeit_stop(timer);
-flint_printf("new brown           : %wd\n", timer->wall);
 
     if (!success)
     {

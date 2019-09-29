@@ -397,8 +397,8 @@ void fmpz_mpolyu_intp_lift_p_mpolyun(
 */
 
 int new_fmpz_mpoly_intp_crt_p_mpolyn(
-    fmpz_mpoly_t T,
     fmpz_mpoly_t F,
+    fmpz_mpoly_t T,
     const fmpz_mpoly_ctx_t ctx,
     fmpz_t modulus,
     const nmod_mpolyn_t A,
@@ -429,6 +429,9 @@ int new_fmpz_mpoly_intp_crt_p_mpolyn(
     FLINT_ASSERT(T->bits == A->bits);
     FLINT_ASSERT(F->bits == A->bits);
     FLINT_ASSERT(pctx->minfo->nvars == ctx->minfo->nvars);
+
+    FLINT_ASSERT(fmpz_mpoly_is_canonical(F, ctx));
+    FLINT_ASSERT(nmod_mpolyn_is_canonical(A, pctx));
 
     mpoly_gen_offset_shift_sp(&offset, &shift, pctx->minfo->nvars - 1, A->bits, ctx->minfo);
 
