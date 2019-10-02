@@ -305,10 +305,10 @@ FLINT_DLL int fmpz_mod_bma_get_fmpz_mpoly(fmpz_mpoly_t A,
            const mpoly_bma_interpolate_ctx_t Ictx, const fmpz_mod_ctx_t fpctx);
 
 
-
-
 FLINT_DLL void nmod_mpoly_bma_interpolate_alpha_powers(mp_limb_t * out,
-  ulong w, const mpoly_bma_interpolate_ctx_t Ictx, const nmod_mpoly_ctx_t ctx);
+                            ulong w, const mpoly_bma_interpolate_ctx_t Ictx,
+                          const fmpz_mpoly_ctx_t ctx, const nmodf_ctx_t fpctx);
+
 
 FLINT_DLL void fmpz_mod_mpoly_bma_interpolate_alpha_powers(fmpz * out,
                      const fmpz_t w, const mpoly_bma_interpolate_ctx_t Ictx,

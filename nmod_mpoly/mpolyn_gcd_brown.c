@@ -33,6 +33,7 @@ int nmod_mpolyn_gcd_brown_smprime_bivar(
     nmod_poly_struct * modulus, * modulus2, * alphapow, * r;
     int gstab, astab, bstab, use_stab;
     slong N, off, shift;
+    flint_bitcnt_t bits = A->bits;
 #if WANT_ASSERT
     nmod_poly_t leadA, leadB;
     const slong Sp_size_poly = nmod_poly_stack_size_poly(Sp);
@@ -41,7 +42,13 @@ int nmod_mpolyn_gcd_brown_smprime_bivar(
 
     FLINT_ASSERT(Sp->ctx->ffinfo->mod.n == ctx->ffinfo->mod.n);
     FLINT_ASSERT(Sp->ctx->minfo->nvars == ctx->minfo->nvars);
-    FLINT_ASSERT(Sp->bits == A->bits);
+    FLINT_ASSERT(Sp->bits == bits);
+    FLINT_ASSERT(A->bits == bits);
+    FLINT_ASSERT(B->bits == bits);
+    FLINT_ASSERT(G->bits == bits);
+    FLINT_ASSERT(Abar->bits == bits);
+    FLINT_ASSERT(Bbar->bits == bits);
+
 
 #if WANT_ASSERT
     nmod_poly_init(leadA, ctx->ffinfo->mod.n);
@@ -50,8 +57,8 @@ int nmod_mpolyn_gcd_brown_smprime_bivar(
     nmod_poly_set(leadB, nmod_mpolyn_leadcoeff_poly(B, ctx));
 #endif
 
-    N = mpoly_words_per_exp_sp(A->bits, ctx->minfo);
-    mpoly_gen_offset_shift_sp(&off, &shift, 0, A->bits, ctx->minfo);
+    N = mpoly_words_per_exp_sp(bits, ctx->minfo);
+    mpoly_gen_offset_shift_sp(&off, &shift, 0, bits, ctx->minfo);
 
     nmod_poly_stack_fit_request_poly(Sp, 20);
     cA          = nmod_poly_stack_take_top_poly(Sp);

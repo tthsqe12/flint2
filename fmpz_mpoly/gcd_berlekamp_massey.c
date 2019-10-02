@@ -355,13 +355,14 @@ void nmod_mpoly_bma_interpolate_alpha_powers(
     mp_limb_t * out,
     ulong w,
     const mpoly_bma_interpolate_ctx_t Ictx,
-    const nmod_mpoly_ctx_t ctx)
+    const fmpz_mpoly_ctx_t ctx,
+    const nmodf_ctx_t fpctx)
 {
     slong j = ctx->minfo->nvars - 1;
-    out[j] = nmod_pow_ui(Ictx->dlogenv_sp->alpha, w, ctx->ffinfo->mod);
+    out[j] = nmod_pow_ui(Ictx->dlogenv_sp->alpha, w, fpctx->mod);
     for (; j > 0; j--)
     {
-        out[j - 1] = nmod_pow_ui(out[j], Ictx->subdegs[j], ctx->ffinfo->mod);
+        out[j - 1] = nmod_pow_ui(out[j], Ictx->subdegs[j], fpctx->mod);
     }
 }
 
@@ -2386,8 +2387,7 @@ int fmpz_mpolyuu_eval_all_but_one_nmod(
     for (i = 0; i < A->length; i++)
     {
         t = nmod_pow_ui(values[0], Aexp[i] >> (FLINT_BITS/2), out->mod);
-        t1 = nmod_pow_ui(values[1],
-             Aexp[i] & ((-UWORD(1)) >> (FLINT_BITS - FLINT_BITS/2)), out->mod);
+        t1 = nmod_pow_ui(values[1], Aexp[i] & LOW_HALF_MASK, out->mod);
         t = nmod_mul(t, t1, out->mod);
         this_success = fmpz_mpoly_eval_all_but_one_nmod(&this_deg, temp, Acoeff + i, var, values + 2, ctx);
         deg = FLINT_MAX(deg, this_deg);
@@ -2722,6 +2722,35 @@ random_check_ret_t static _random_check(
     return random_check_point_not_found;
 }
 
+#if 0
+void nmod_mpoly_skel_print(nmod_mpolyc_t P)
+{
+    slong i;
+    printf("(");
+    for (i = 0; i < P->length; i++)
+    {
+        flint_printf("%wu", P->coeffs[i]);
+        if (i + 1 < P->length)
+            printf(" ");
+        
+    }
+    printf(")");
+}
+
+void nmod_mpolyu_skel_print(nmod_mpolycu_t P)
+{
+    slong i;
+    printf("(");
+    for (i = 0; i < P->length; i++)
+    {
+        nmod_mpoly_skel_print(P->coeffs + i);
+        if (i + 1 < P->length)
+            printf(" ");
+        
+    }
+    printf(")");
+}
+#endif
 
 /*
 Assumptions:
@@ -2815,8 +2844,6 @@ int fmpz_mpolyuu_gcd_berlekamp_massey(
     FLINT_ASSERT(bits == B->bits);
     FLINT_ASSERT(bits == G->bits);
     FLINT_ASSERT(bits == Gamma->bits);
-
-FLINT_ASSERT(0);
 
     /* let's initialize everything at once to avoid complicated cleanup */
 
@@ -3014,7 +3041,7 @@ got_ksub:
     fmpz_one(subprod);
     for (i = 0; i < ctx->minfo->nvars; i++)
     {
-        if ((slong)(Ictx->subdegs[i]) <= 0)
+        if ((slong)(Ictx->subdegs[i]) < 0)
         {
             /* ksub has overflown - absolute falure */
             success = 0;
@@ -3093,7 +3120,7 @@ pick_bma_prime:
 
         FLINT_ASSERT(sshift_sp == 1);
         nmod_mpoly_bma_interpolate_alpha_powers(checkalpha_sp, sshift_sp,
-                                                                 Ictx, ctx_sp);
+                                                    Ictx, ctx, ctx_sp->ffinfo);
 
         /* set evaluation of monomials */
         nmod_mpoly_set_skel(Gammainc_sp, ctx_sp, Gamma, checkalpha_sp, ctx);
@@ -3155,6 +3182,7 @@ pick_bma_prime:
         FLINT_ASSERT(Geval_sp->length > 0);
         GevaldegXY = nmod_mpolyn_bidegree(Geval_sp);
         nmod_mpolyn_scalar_mul_nmod(Geval_sp, Gammaeval_sp, ctx_sp);
+
 
         FLINT_ASSERT(Gammaeval_sp == nmod_mpolyn_leadcoeff(Geval_sp, ctx_sp));
 

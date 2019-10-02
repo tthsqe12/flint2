@@ -244,15 +244,22 @@ int fmpz_mod_mpolyn_gcd_brown_bivar(
     fmpz_mod_poly_t cA, cB, cG, cAbar, cBbar, gamma, r;
     fmpz_mod_poly_t modulus, modulus2;
     slong N, off, shift;
+    flint_bitcnt_t bits = A->bits;
 #if WANT_ASSERT
     fmpz_mod_poly_t leadA, leadB;
 #endif
+
+    FLINT_ASSERT(A->bits == bits);
+    FLINT_ASSERT(B->bits == bits);
+    FLINT_ASSERT(G->bits == bits);
+    FLINT_ASSERT(Abar->bits == bits);
+    FLINT_ASSERT(Bbar->bits == bits);
 
     fmpz_init(alpha);
     fmpz_init(temp);
     fmpz_init(gammaeval);
 /*
-printf("fmpz_mod_mpolyn_gcd_bivar called\n");
+flint_printf("fmpz_mod_mpolyn_gcd_bivar called: nvars = %wd, bits = %wu\n", ctx->minfo->nvars, A->bits);
 printf("A: "); fmpz_mod_mpolyn_print_pretty(A, NULL, ctx); printf("\n");
 printf("B: "); fmpz_mod_mpolyn_print_pretty(B, NULL, ctx); printf("\n");
 */
@@ -264,9 +271,10 @@ printf("B: "); fmpz_mod_mpolyn_print_pretty(B, NULL, ctx); printf("\n");
     fmpz_mod_poly_set(leadB, fmpz_mod_mpolyn_leadcoeff_poly(B, ctx));
 #endif
 
-    N = mpoly_words_per_exp_sp(A->bits, ctx->minfo);
-    mpoly_gen_offset_shift_sp(&off, &shift, 0, A->bits, ctx->minfo);
+    N = mpoly_words_per_exp_sp(bits, ctx->minfo);
+    mpoly_gen_offset_shift_sp(&off, &shift, 0, bits, ctx->minfo);
 
+    fmpz_mod_mpolyn_init(T, bits, ctx);
     fmpz_mod_poly_init(r, fmpz_mod_ctx_modulus(ctx->ffinfo));
     fmpz_mod_poly_init(cA, fmpz_mod_ctx_modulus(ctx->ffinfo));
     fmpz_mod_poly_init(cB, fmpz_mod_ctx_modulus(ctx->ffinfo));
@@ -281,7 +289,6 @@ printf("B: "); fmpz_mod_mpolyn_print_pretty(B, NULL, ctx); printf("\n");
     fmpz_mod_poly_init(Bbareval, fmpz_mod_ctx_modulus(ctx->ffinfo));
     fmpz_mod_poly_init(modulus, fmpz_mod_ctx_modulus(ctx->ffinfo));
     fmpz_mod_poly_init(modulus2, fmpz_mod_ctx_modulus(ctx->ffinfo));
-    fmpz_mod_mpolyn_init(T, A->bits, ctx);
 
     fmpz_mod_mpolyn_content_poly(cA, A, ctx);
     fmpz_mod_mpolyn_content_poly(cB, B, ctx);
@@ -306,7 +313,10 @@ printf("B: "); fmpz_mod_mpolyn_print_pretty(B, NULL, ctx); printf("\n");
     fmpz_sub_ui(alpha, fmpz_mod_ctx_modulus(ctx->ffinfo), 1);
 
 choose_prime: /* prime is v - alpha */
-
+/*
+printf("alpha: "); fmpz_print(alpha); printf("\n");
+usleep(1000000);
+*/
     fmpz_sub_ui(alpha, alpha, 1);
     if (fmpz_sgn(alpha) <= 0)
     {
@@ -334,7 +344,9 @@ choose_prime: /* prime is v - alpha */
     FLINT_ASSERT(Geval->length > 0);
     FLINT_ASSERT(Abareval->length > 0);
     FLINT_ASSERT(Bbareval->length > 0);
-
+/*
+printf("Geval: "); fmpz_mod_poly_print_pretty(Geval, "v"); printf("\n");
+*/
     if (fmpz_mod_poly_degree(Geval) == 0)
     {
         fmpz_mod_mpolyn_one(G, ctx);
@@ -345,9 +357,18 @@ choose_prime: /* prime is v - alpha */
 
     if (fmpz_mod_poly_degree(modulus) > 0)
     {
+/*
+printf("G: "); fmpz_mod_mpolyn_print_pretty(G, NULL, ctx); printf("\n");
+flint_printf("Gbits: %wu\n", G->bits);
+flint_printf("N: %wd\n", N);
+flint_printf("off: %wd, shift: %wd\n", off, shift);
+flint_printf("Glength: %wd\n", G->length);
+printf("Gexp: %016llx\n", (G->exps + N*0)[0]);
+*/
         FLINT_ASSERT(G->length > 0);
         if (fmpz_mod_poly_degree(Geval) > ((G->exps + N*0)[off]>>shift))
         {
+            printf("unlucky\n");
             goto choose_prime;
         }
         else if (fmpz_mod_poly_degree(Geval) < ((G->exps + N*0)[off]>>shift))
@@ -380,6 +401,13 @@ choose_prime: /* prime is v - alpha */
     fmpz_mod_poly_scalar_mul_fmpz(modulus2, modulus, alpha);
     fmpz_mod_poly_shift_left(modulus, modulus, 1);
     fmpz_mod_poly_sub(modulus, modulus, modulus2);
+/*
+printf("modulus: "); fmpz_mod_poly_print_pretty(modulus, "v"); printf("\n");
+printf("   G: "); fmpz_mod_mpolyn_print_pretty(G, NULL, ctx); printf("\n");
+printf("Abar: "); fmpz_mod_mpolyn_print_pretty(Abar, NULL, ctx); printf("\n");
+printf("Bbar: "); fmpz_mod_mpolyn_print_pretty(Bbar, NULL, ctx); printf("\n");
+*/
+
 
     if (fmpz_mod_poly_degree(modulus) < bound)
     {
@@ -456,5 +484,11 @@ cleanup:
     fmpz_clear(temp);
     fmpz_clear(gammaeval);
 
+/*
+printf("fmpz_mod_mpolyn_gcd_bivar returning(%d)\n", success);
+printf("   G: "); fmpz_mod_mpolyn_print_pretty(G, NULL, ctx); printf("\n");
+printf("Abar: "); fmpz_mod_mpolyn_print_pretty(Abar, NULL, ctx); printf("\n");
+printf("Bbar: "); fmpz_mod_mpolyn_print_pretty(Bbar, NULL, ctx); printf("\n");
+*/
     return success;
 }

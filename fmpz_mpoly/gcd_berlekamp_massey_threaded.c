@@ -365,7 +365,7 @@ void _base_set_num_images_sp(_base_struct * w, slong len)
 
         for (i = w->evals_sp_alloc; i < w->num_images_sp; i++)
         {
-            nmod_mpolyn_init(w->evals_sp[i].Geval_sp, w->bits, w->ctx_sp);
+            nmod_mpolyn_init(w->evals_sp[i].Geval_sp, FLINT_BITS/2, w->ctx_sp);
         }
         w->evals_sp_alloc = w->num_images_sp;
     }
@@ -388,7 +388,7 @@ void _base_set_num_images_mp(_base_struct * w, slong len)
 
         for (i = w->evals_mp_alloc; i < w->num_images_mp; i++)
         {
-            fmpz_mod_mpolyn_init(w->evals_mp[i].Geval_mp, w->bits, w->ctx_mp);
+            fmpz_mod_mpolyn_init(w->evals_mp[i].Geval_mp, FLINT_BITS/2, w->ctx_mp);
         }
         w->evals_mp_alloc = w->num_images_mp;
     }
@@ -727,7 +727,6 @@ static void _eval_mp_worker(void * varg)
 
         /* the evaluation killed neither lc(A) nor lc(B) */
         FLINT_ASSERT(!fmpz_is_zero(Gammaeval_mp));
-
         ret->success = fmpz_mod_mpolyn_gcd_brown_bivar(arg->Geval_mp,
                                    arg->Abareval_mp, arg->Bbareval_mp,
                                       arg->Aeval_mp, arg->Beval_mp, w->ctx_mp);
@@ -1175,7 +1174,7 @@ static bma_loop_ret_t _bma_loop_sp(
             and the alpha chosen as a generator of F_p*.
     */
     nmod_mpoly_bma_interpolate_alpha_powers(w->alphas_sp,
-                                                  1, w->Ictx, w->ctx_sp);
+                                        1, w->Ictx, w->ctx, w->ctx_sp->ffinfo);
 
     /* set skeletons for evaluation */
     _set_skels_sp(w, args, handles);
@@ -1813,8 +1812,6 @@ int fmpz_mpolyuu_gcd_berlekamp_massey_threaded(
 
     w->bits = A->bits;
 
-FLINT_ASSERT(0);
-
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
     FLINT_ASSERT(w->bits == A->bits);
     FLINT_ASSERT(w->bits == B->bits);
@@ -1859,15 +1856,15 @@ FLINT_ASSERT(0);
     fmpz_mod_bma_mpoly_init(w->Lambda_mp);
 
     eval_mp_args = (_eval_mp_worker_arg_struct *) flint_malloc(
-                         w->num_threads*sizeof(_eval_mp_worker_arg_struct));
+                            w->num_threads*sizeof(_eval_mp_worker_arg_struct));
     for (i = 0; i < w->num_threads; i++)
     {
         eval_mp_args[i].w = w;
-        fmpz_mod_mpolyn_init(eval_mp_args[i].Aeval_mp, w->bits, w->ctx_mp);
-        fmpz_mod_mpolyn_init(eval_mp_args[i].Beval_mp, w->bits, w->ctx_mp);
-        fmpz_mod_mpolyn_init(eval_mp_args[i].Geval_mp, w->bits, w->ctx_mp);
-        fmpz_mod_mpolyn_init(eval_mp_args[i].Abareval_mp, w->bits, w->ctx_mp);
-        fmpz_mod_mpolyn_init(eval_mp_args[i].Bbareval_mp, w->bits, w->ctx_mp);
+        fmpz_mod_mpolyn_init(eval_mp_args[i].Aeval_mp, FLINT_BITS/2, w->ctx_mp);
+        fmpz_mod_mpolyn_init(eval_mp_args[i].Beval_mp, FLINT_BITS/2, w->ctx_mp);
+        fmpz_mod_mpolyn_init(eval_mp_args[i].Geval_mp, FLINT_BITS/2, w->ctx_mp);
+        fmpz_mod_mpolyn_init(eval_mp_args[i].Abareval_mp, FLINT_BITS/2, w->ctx_mp);
+        fmpz_mod_mpolyn_init(eval_mp_args[i].Bbareval_mp, FLINT_BITS/2, w->ctx_mp);
         fmpz_mpolycu_init(eval_mp_args[i].Acur_mp);
         fmpz_mpolycu_init(eval_mp_args[i].Bcur_mp);
         fmpz_mpolyc_init(eval_mp_args[i].Gammacur_mp);
@@ -1902,15 +1899,15 @@ FLINT_ASSERT(0);
     for (i = 0; i < w->num_threads; i++)
     {
         eval_sp_args[i].w = w;
-        nmod_mpolyn_init(eval_sp_args[i].Aeval_sp, w->bits, w->ctx_sp);
-        nmod_mpolyn_init(eval_sp_args[i].Beval_sp, w->bits, w->ctx_sp);
-        nmod_mpolyn_init(eval_sp_args[i].Geval_sp, w->bits, w->ctx_sp);
-        nmod_mpolyn_init(eval_sp_args[i].Abareval_sp, w->bits, w->ctx_sp);
-        nmod_mpolyn_init(eval_sp_args[i].Bbareval_sp, w->bits, w->ctx_sp);
+        nmod_mpolyn_init(eval_sp_args[i].Aeval_sp, FLINT_BITS/2, w->ctx_sp);
+        nmod_mpolyn_init(eval_sp_args[i].Beval_sp, FLINT_BITS/2, w->ctx_sp);
+        nmod_mpolyn_init(eval_sp_args[i].Geval_sp, FLINT_BITS/2, w->ctx_sp);
+        nmod_mpolyn_init(eval_sp_args[i].Abareval_sp, FLINT_BITS/2, w->ctx_sp);
+        nmod_mpolyn_init(eval_sp_args[i].Bbareval_sp, FLINT_BITS/2, w->ctx_sp);
         nmod_mpolycu_init(eval_sp_args[i].Acur_sp);
         nmod_mpolycu_init(eval_sp_args[i].Bcur_sp);
         nmod_mpolyc_init(eval_sp_args[i].Gammacur_sp);
-        nmod_poly_stack_init(eval_sp_args[i].Sp_sp, w->bits, w->ctx_sp);
+        nmod_poly_stack_init(eval_sp_args[i].Sp_sp, FLINT_BITS/2, w->ctx_sp);
     }
 
     nmod_mpolyc_init(w->Gammaone_sp);
