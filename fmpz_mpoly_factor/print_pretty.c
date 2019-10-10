@@ -11,17 +11,19 @@
 
 #include "fmpz_mpoly_factor.h"
 
-void fmpz_mpoly_factor_print(const fmpz_mpoly_factor_t fac, const char ** vars, const fmpz_mpoly_ctx_t ctx)
+void fmpz_mpoly_factor_print_pretty(
+    const fmpz_mpoly_factor_t f,
+    const char ** vars,
+    const fmpz_mpoly_ctx_t ctx)
 {
     slong i;
 
-    flint_printf("content: ");
-    fmpz_print(fac->content);
-    flint_printf("\n");
-    for (i = 0; i < fac->length; i++)
+    fmpz_print(f->content);
+    for (i = 0; i < f->length; i++)
     {
-        flint_printf("factor[%wd]: ", i);
-        fmpz_mpoly_print_pretty(fac->poly + i, vars, ctx);
-        flint_printf(" ^ %wd\n", fac->exp[i]);
+        flint_printf("\n*(", i);
+        fmpz_mpoly_print_pretty(f->poly + i, vars, ctx);
+		flint_printf(")^");
+        fmpz_print(f->exp + i);
     }
 }

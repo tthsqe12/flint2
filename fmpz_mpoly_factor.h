@@ -36,7 +36,7 @@
 typedef struct {
     fmpz_t content;
     fmpz_mpoly_struct * poly;
-    slong * exp;
+    fmpz * exp;
     slong length;
     slong alloc;
 } fmpz_mpoly_factor_struct;
@@ -55,9 +55,11 @@ FLINT_DLL void fmpz_mpoly_factor_clear(fmpz_mpoly_factor_t fac, const fmpz_mpoly
 
 FLINT_DLL void fmpz_mpoly_factor_set(fmpz_mpoly_factor_t res, const fmpz_mpoly_factor_t fac, const fmpz_mpoly_ctx_t ctx);
 
-FLINT_DLL void fmpz_mpoly_factor_append(fmpz_mpoly_factor_t fac, const fmpz_mpoly_t p, slong exp, const fmpz_mpoly_ctx_t ctx);
+FLINT_DLL void fmpz_mpoly_factor_append_ui(fmpz_mpoly_factor_t f, const fmpz_mpoly_t A, ulong e, const fmpz_mpoly_ctx_t ctx);
 
-FLINT_DLL void fmpz_mpoly_factor_print(const fmpz_mpoly_factor_t fac, const char ** vars, const fmpz_mpoly_ctx_t ctx);
+FLINT_DLL void fmpz_mpoly_factor_append_fmpz(fmpz_mpoly_factor_t f, const fmpz_mpoly_t A, const fmpz_t e, const fmpz_mpoly_ctx_t ctx);
+
+FLINT_DLL void fmpz_mpoly_factor_print_pretty(const fmpz_mpoly_factor_t f, const char ** vars, const fmpz_mpoly_ctx_t ctx);
 
 FLINT_DLL int fmpz_mpoly_factor(fmpz_mpoly_factor_t fac, const fmpz_mpoly_t A, int full, const fmpz_mpoly_ctx_t ctx);
 
@@ -67,6 +69,14 @@ FMPZ_MPOLY_FACTOR_INLINE void fmpz_mpoly_factor_swap(fmpz_mpoly_factor_t A, fmpz
    *A = *B;
    *B = t;
 }
+
+FLINT_DLL void fmpz_mpoly_factor_sort(fmpz_mpoly_factor_t f, const fmpz_mpoly_ctx_t ctx);
+
+void subset_first(fmpz_t a, slong n, slong r);
+
+int subset_next(fmpz_t a, const fmpz_t b, slong n);
+
+void subset_print(const fmpz_t a, slong n);
 
 #ifdef __cplusplus
 }

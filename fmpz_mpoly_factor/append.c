@@ -11,13 +11,29 @@
 
 #include "fmpz_mpoly_factor.h"
 
-void fmpz_mpoly_factor_append(fmpz_mpoly_factor_t fac, const fmpz_mpoly_t p, slong exp, const fmpz_mpoly_ctx_t ctx)
+void fmpz_mpoly_factor_append_fmpz(
+    fmpz_mpoly_factor_t f,
+    const fmpz_mpoly_t A,
+    const fmpz_t e,
+    const fmpz_mpoly_ctx_t ctx)
 {
-    slong i = fac->length;
-
-    fmpz_mpoly_factor_fit_length(fac, i + 1, ctx);
-
-    fmpz_mpoly_set(fac->poly + i, p, ctx);
-    fac->exp[i] = exp;
-    fac->length = i + 1;
+    slong i = f->length;
+    fmpz_mpoly_factor_fit_length(f, i + 1, ctx);
+    fmpz_mpoly_set(f->poly + i, A, ctx);
+    fmpz_set(f->exp + i, e);
+    f->length = i + 1;
 }
+
+void fmpz_mpoly_factor_append_ui(
+    fmpz_mpoly_factor_t f,
+    const fmpz_mpoly_t A,
+    ulong e,
+    const fmpz_mpoly_ctx_t ctx)
+{
+    slong i = f->length;
+    fmpz_mpoly_factor_fit_length(f, i + 1, ctx);
+    fmpz_mpoly_set(f->poly + i, A, ctx);
+    fmpz_set_ui(f->exp + i, e);
+    f->length = i + 1;
+}
+
