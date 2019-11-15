@@ -9,30 +9,30 @@
     (at your option) any later version.  See <http://www.gnu.org/licenses/>.
 */
 
-#include "nmod_mpoly_factor.h"
+#include "fq_nmod_mpoly_factor.h"
 
-void nmod_mpoly_factor_append_ui(
-    nmod_mpoly_factor_t f,
-    const nmod_mpoly_t A,
+void fq_nmod_mpoly_factor_append_ui(
+    fq_nmod_mpoly_factor_t f,
+    const fq_nmod_mpoly_t A,
     ulong e,
-    const nmod_mpoly_ctx_t ctx)
+    const fq_nmod_mpoly_ctx_t ctx)
 {
     slong i = f->length;
-    nmod_mpoly_factor_fit_length(f, i + 1, ctx);
-    nmod_mpoly_set(f->poly + i, A, ctx);
+    fq_nmod_mpoly_factor_fit_length(f, i + 1, ctx);
+    fq_nmod_mpoly_set(f->poly + i, A, ctx);
     fmpz_set_ui(f->exp + i, e);
     f->length = i + 1;
 }
 
-void nmod_mpoly_factor_append_fmpz(
-    nmod_mpoly_factor_t f,
-    const nmod_mpoly_t A,
+void fq_nmod_mpoly_factor_append_fmpz(
+    fq_nmod_mpoly_factor_t f,
+    const fq_nmod_mpoly_t A,
     const fmpz_t e,
-    const nmod_mpoly_ctx_t ctx)
+    const fq_nmod_mpoly_ctx_t ctx)
 {
     slong i = f->length;
-    nmod_mpoly_factor_fit_length(f, i + 1, ctx);
-    nmod_mpoly_set(f->poly + i, A, ctx);
+    fq_nmod_mpoly_factor_fit_length(f, i + 1, ctx);
+    fq_nmod_mpoly_set(f->poly + i, A, ctx);
     fmpz_set(f->exp + i, e);
     f->length = i + 1;
 }

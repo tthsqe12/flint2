@@ -18,26 +18,10 @@ void nmod_mpoly_factor_print_pretty(const nmod_mpoly_factor_t fac, const char **
     flint_printf("%wu", fac->content);
     for (i = 0; i < fac->length; i++)
     {
-        flint_printf("*(", i);
+        flint_printf("\n*(", i);
         nmod_mpoly_print_pretty(fac->poly + i, vars, ctx);
 		flint_printf(")^");
         fmpz_print(fac->exp + i);
     }
 }
 
-/*
-void nmod_mpoly_factor_print_pretty(const nmod_mpoly_factor_t fac, const char ** vars, const nmod_mpoly_ctx_t ctx)
-{
-    slong i;
-
-    flint_printf("content: %wu\n", fac->content);
-    for (i = 0; i < fac->length; i++)
-    {
-        flint_printf("exp[%wd]: ", i);
-        fmpz_print(fac->exp + i);
-        flint_printf(" factor[%wd]: ", i);
-        nmod_mpoly_print_pretty(fac->poly + i, vars, ctx);
-		flint_printf("\n");
-    }
-}
-*/
