@@ -87,6 +87,36 @@ void fmpz_poly_factor_mignotte(fmpz_t B, const fmpz_poly_t f)
     _fmpz_poly_factor_mignotte(B, f->coeffs, f->length - 1);
 }
 
+/*
+    len is the length of pos.
+    When factoring a polynomial in Z[x] of degree len - 1, we can add
+    possible degrees for the factors over Z[x] from a factorization mod p_i.
+    If a degree k factor is possible from this factorization mod p_i,
+    then bit i of pos[k] should be set. Bit i of pos[0] is always set.
+
+    If multiple primes p_0, p_1, ... are tried, then a degree k factor over Z[x]
+    is impossible if pos[k] != pos[0] because some p_i has excluded this degree.
+*/
+static void add_possibilities(unsigned int * pos, slong len, int i,
+                                                  const nmod_poly_factor_t fac)
+{
+    slong n, j, d;
+
+    FLINT_ASSERT(i < 8*sizeof(int));
+
+    pos[0] |= 1 << i;
+
+    for (n = 0; n < fac->num; n++)
+    {
+        d = nmod_poly_degree(fac->p + n);
+        for (j = len - d - 1; j >= 0; j--)
+        {
+            if (pos[j] & (1 << i))
+                pos[j + d] |= (1 << i);
+        }
+    }
+}
+
 void _fmpz_poly_factor_zassenhaus(fmpz_poly_factor_t final_fac, 
                slong exp, const fmpz_poly_t f, slong cutoff, int use_van_hoeij)
 {
@@ -109,11 +139,15 @@ void _fmpz_poly_factor_zassenhaus(fmpz_poly_factor_t final_fac,
         nmod_poly_t d, g, t;
         nmod_poly_factor_t fac;
 
+        unsigned int * possible_degs = (unsigned int *) flint_calloc(lenF + 1,
+                                                         sizeof(unsigned int));
+
         nmod_poly_factor_init(fac);
         nmod_poly_init_preinv(t, 1, 0);
         nmod_poly_init_preinv(d, 1, 0);
         nmod_poly_init_preinv(g, 1, 0);
 
+        /* try three good primes */
         for (i = 0; i < 3; i++)
         {
             for ( ; ; p = n_nextprime(p, 0))
@@ -138,6 +172,8 @@ void _fmpz_poly_factor_zassenhaus(fmpz_poly_factor_t final_fac,
                         nmod_poly_factor_init(temp_fac);
                         nmod_poly_factor(temp_fac, t);
 
+                        add_possibilities(possible_degs, lenF, i, temp_fac);
+
                         if (temp_fac->num <= r)
                         {
                             r = temp_fac->num;
@@ -153,6 +189,14 @@ void _fmpz_poly_factor_zassenhaus(fmpz_poly_factor_t final_fac,
         nmod_poly_clear(d);
         nmod_poly_clear(g);
         nmod_poly_clear(t);
+
+        #if TRACE_ZASSENHAUS == 1
+        for (i = 0; i < lenF; i++)
+        {
+            if (possible_degs[i] == possible_degs[0])
+                flint_printf("degree %wd is possible\n", i);
+        }
+        #endif
 
         p = (fac->p + 0)->mod.n;
             
@@ -204,7 +248,8 @@ void _fmpz_poly_factor_zassenhaus(fmpz_poly_factor_t final_fac,
                 fmpz_set_ui(P, p);
                 fmpz_pow_ui(P, P, a);
 
-                fmpz_poly_factor_zassenhaus_recombination(final_fac, lifted_fac, f, P, exp);
+                fmpz_poly_factor_zassenhaus_recombination(final_fac,
+                                         possible_degs, lifted_fac, f, P, exp);
 
                 fmpz_clear(P);
             }
@@ -212,6 +257,9 @@ void _fmpz_poly_factor_zassenhaus(fmpz_poly_factor_t final_fac,
             fmpz_poly_factor_clear(lifted_fac);
         }
         nmod_poly_factor_clear(fac);
+
+flint_free(possible_degs);
+
     }
 }
 

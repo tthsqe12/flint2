@@ -16,11 +16,18 @@
 
 #define TRACE 0
 
-void fmpz_poly_factor_zassenhaus_recombination(fmpz_poly_factor_t final_fac, 
+/*
+    A degree k factor should not be considered if
+        possible_degs[k] != possible_degs[0]
+*/
+void fmpz_poly_factor_zassenhaus_recombination(
+    fmpz_poly_factor_t final_fac,
+    const unsigned int * possible_degs,
 	const fmpz_poly_factor_t lifted_fac, 
     const fmpz_poly_t F, const fmpz_t P, slong exp)
 {
     const slong r = lifted_fac->num;
+    slong tryme_deg;
 
     slong k, *used_arr, *sub_arr;
     fmpz_poly_t f, Q, tryme;
@@ -65,6 +72,14 @@ void fmpz_poly_factor_zassenhaus_recombination(fmpz_poly_factor_t final_fac,
                         break;
                 }
 
+                /* try this degree only if it is possible */
+                tryme_deg = 0;
+                for (l = 0; l < k; l++)
+                    tryme_deg += fmpz_poly_degree(lifted_fac->p + sub_arr[l]);
+
+                if (possible_degs[tryme_deg] != possible_degs[0])
+                    goto skip;
+
              /* Need to involve leadF, perhaps set coeff 0 to leadF and do 
                 leadF * rest and check if under M_bits... here I'm using a 
                 trial division... */
@@ -91,7 +106,7 @@ void fmpz_poly_factor_zassenhaus_recombination(fmpz_poly_factor_t final_fac,
                  /* If r - count = k then the rest are irreducible.  
                     TODO: Add a test for that case */
                 }
-
+skip:
                 indx = k - 1;
             }
         }

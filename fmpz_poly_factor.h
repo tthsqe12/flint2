@@ -59,7 +59,7 @@ FLINT_DLL void fmpz_poly_factor_concat(fmpz_poly_factor_t res,
 FLINT_DLL void fmpz_poly_factor_print(const fmpz_poly_factor_t fac);
 
 FLINT_DLL void fmpz_poly_factor_zassenhaus_recombination(fmpz_poly_factor_t final_fac, 
-	const fmpz_poly_factor_t lifted_fac, 
+	const unsigned int * possible_degs, const fmpz_poly_factor_t lifted_fac, 
                                const fmpz_poly_t F, const fmpz_t P, slong exp);
     
 FLINT_DLL void fmpz_poly_factor_squarefree(fmpz_poly_factor_t fac, 
