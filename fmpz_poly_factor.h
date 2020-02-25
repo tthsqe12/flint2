@@ -37,6 +37,8 @@
  extern "C" {
 #endif
 
+#define FMPZ_POLY_FACTOR_USE_SELF_RECIPROCAL 1
+
 FLINT_DLL void fmpz_poly_factor_init(fmpz_poly_factor_t fac);
 
 FLINT_DLL void fmpz_poly_factor_init2(fmpz_poly_factor_t fac, slong alloc);
@@ -82,6 +84,10 @@ FLINT_DLL int fmpz_poly_factor_van_hoeij_check_if_solved(fmpz_mat_t M,
 
 FLINT_DLL void fmpz_poly_factor_van_hoeij(fmpz_poly_factor_t final_fac, 
         const nmod_poly_factor_t fac, const fmpz_poly_t f, slong exp, ulong p);
+
+FLINT_DLL void _fmpz_poly_factor_irreducible(fmpz_poly_factor_t final_fac,
+                        slong exp, const fmpz_poly_t f, unsigned int options,
+                             slong * search_degrees, slong num_search_degrees);
 
 FLINT_DLL void fmpz_poly_factor(fmpz_poly_factor_t fac, const fmpz_poly_t G);
 
