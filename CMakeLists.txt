@@ -58,6 +58,7 @@ set(BUILD_DIRS
     fq_zech fq_zech_vec fq_zech_mat fq_zech_poly fq_zech_poly_factor 
     thread_pool fmpz_mod 
     mpoly fmpz_mpoly fmpq_mpoly nmod_mpoly fq_nmod_mpoly fmpz_mod_mpoly 
+    ui_factor fmpz_mpoly_factor fmpq_mpoly_factor nmod_mpoly_factor fq_nmod_mpoly_factor
     flintxx
 )
 
