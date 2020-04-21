@@ -25,7 +25,7 @@ void ui_factor_mulpow_inplace(ui_factor_t f, const ui_factor_t g, ulong p)
     {
         while (1)
         {
-            if ((fi >= fn))
+            if (unlikely(fi >= fn))
             {
                 ui_factor_fit_length(f, fi + gn - gi);
                 fd = f->data;
@@ -44,7 +44,7 @@ void ui_factor_mulpow_inplace(ui_factor_t f, const ui_factor_t g, ulong p)
             fi++;
         }
 
-        if ((fd[fi].base > gd[gi].base))
+        if (unlikely(fd[fi].base > gd[gi].base))
         {
             ui_factor_entry t1, t2;
             ui_factor_fit_length(f, fn + 1);
