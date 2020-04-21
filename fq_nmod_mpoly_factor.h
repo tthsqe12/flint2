@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2019 Daniel Schultz
+    Copyright (C) 2020 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -25,7 +25,7 @@
 #include <gmp.h>
 #define ulong mp_limb_t
 
-#include "flint/fq_nmod_mpoly.h"
+#include "fq_nmod_mpoly.h"
 
 #ifdef __cplusplus
  extern "C" {
