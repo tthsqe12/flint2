@@ -12,19 +12,15 @@
 #include "fmpz_mpoly_factor.h"
 
 
-void fmpz_mpoly_factor_print_pretty(
-    const fmpz_mpoly_factor_t f,
-    const char ** vars,
+void fmpz_mpoly_factor_gen(
+    fmpz_mpoly_factor_t A,
+    slong v,
     const fmpz_mpoly_ctx_t ctx)
 {
-    slong i;
-
-    fmpz_print(f->content);
-    for (i = 0; i < f->length; i++)
-    {
-        flint_printf("*(", i);
-        fmpz_mpoly_print_pretty(f->poly + i, vars, ctx);
-		flint_printf(")^");
-        fmpz_print(f->exp + i);
-    }
+    fmpz_one(A->content);
+    fmpz_mpoly_factor_fit_length(A, 1, ctx);
+    fmpz_mpoly_gen(A->poly + 0, v, ctx);
+    fmpz_one(A->exp + 0);
+    A->length = 1;
 }
+
