@@ -12,19 +12,22 @@
 #include "fmpz_mpoly_factor.h"
 
 
-void fmpz_mpoly_factor_set(fmpz_mpoly_factor_t res, const fmpz_mpoly_factor_t fac, const fmpz_mpoly_ctx_t ctx)
+void fmpz_mpoly_factor_set(
+    fmpz_mpoly_factor_t A,
+    const fmpz_mpoly_factor_t B,
+    const fmpz_mpoly_ctx_t ctx)
 {
     slong i;
 
-    if (res == fac)
+    if (A == B)
         return;
 
-    fmpz_mpoly_factor_fit_length(res, fac->length, ctx);
-    fmpz_set(res->content, fac->content);
-    for (i = 0; i < fac->length; i++)
+    fmpz_mpoly_factor_fit_length(A, B->length, ctx);
+    fmpz_set(A->content, B->content);
+    for (i = 0; i < B->length; i++)
     {
-        fmpz_mpoly_set(res->poly + i, fac->poly + i, ctx);
-        res->exp[i] = fac->exp[i];
+        fmpz_mpoly_set(A->poly + i, B->poly + i, ctx);
+        fmpz_set(A->exp + i, B->exp + i);
     }
-    res->length = fac->length;
+    A->length = B->length;
 }

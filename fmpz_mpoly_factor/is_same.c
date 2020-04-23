@@ -12,19 +12,27 @@
 #include "fmpz_mpoly_factor.h"
 
 
-void fmpz_mpoly_factor_print_pretty(
-    const fmpz_mpoly_factor_t f,
-    const char ** vars,
+int fmpz_mpoly_factor_is_same(
+    const fmpz_mpoly_factor_t A,
+    const fmpz_mpoly_factor_t B,
     const fmpz_mpoly_ctx_t ctx)
 {
     slong i;
 
-    fmpz_print(f->content);
-    for (i = 0; i < f->length; i++)
+    if (!fmpz_equal(A->content, B->content))
+        return 0;
+
+    if (A->length != B->length)
+        return 0;
+
+    for (i = 0; i < A->length; i++)
     {
-        flint_printf("*(", i);
-        fmpz_mpoly_print_pretty(f->poly + i, vars, ctx);
-		flint_printf(")^");
-        fmpz_print(f->exp + i);
+        if (!fmpz_equal(A->exp + i, B->exp + i))
+            return 0;
+
+        if (!fmpz_mpoly_equal(A->poly + i, B->poly + i, ctx))
+            return 0;
     }
+
+    return 1;
 }

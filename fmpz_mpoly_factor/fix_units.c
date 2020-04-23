@@ -12,19 +12,24 @@
 #include "fmpz_mpoly_factor.h"
 
 
-void fmpz_mpoly_factor_print_pretty(
-    const fmpz_mpoly_factor_t f,
-    const char ** vars,
+int fmpz_mpoly_factor_fix_units(
+    fmpz_mpoly_factor_t A,
     const fmpz_mpoly_ctx_t ctx)
 {
+    int changed = 0;
     slong i;
-
-    fmpz_print(f->content);
-    for (i = 0; i < f->length; i++)
+    for (i = 0; i < A->length; i++)
     {
-        flint_printf("*(", i);
-        fmpz_mpoly_print_pretty(f->poly + i, vars, ctx);
-		flint_printf(")^");
-        fmpz_print(f->exp + i);
+        fmpz_mpoly_struct * Ai = A->poly + i;
+        if (Ai->length > 0 && fmpz_sgn(Ai->coeffs + 0) < 0)
+        {
+            changed = 1;
+            fmpz_mpoly_neg(Ai, Ai, ctx);
+            if (fmpz_is_odd(A->exp + i))
+                fmpz_neg(A->content, A->content);
+        }
     }
+
+    return changed;
 }
+
