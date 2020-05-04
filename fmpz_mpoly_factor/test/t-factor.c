@@ -13,15 +13,13 @@
 #include "profiler.h"
 
 
-
-
 /* check factoration matches f within reason */
 void check_same(fmpz_mpoly_factor_t f, const fmpz_mpoly_ctx_t ctx)
 {
     fmpz_mpoly_factor_t g;
     fmpz_mpoly_t p;
 
-    flint_printf("checking same: "); fmpz_mpoly_factor_print_pretty(f, NULL, ctx); printf("\n");
+flint_printf("checking same: "); fmpz_mpoly_factor_print_pretty(f, NULL, ctx); printf("\n");
 
     fmpz_mpoly_factor_init(g, ctx);
     fmpz_mpoly_init(p, ctx);
@@ -69,12 +67,12 @@ void check_omega(slong lower, slong upper, const fmpz_mpoly_t p, const fmpz_mpol
     fmpz_mpoly_factor_t g;
     fmpz_t omega;
 
-    flint_printf("checking %wd <= # <= %wd: ", lower, upper);
-    if (p->length < 20)
-        fmpz_mpoly_print_pretty(p, NULL, ctx);
-    else
-        flint_printf("length %wd in %wd vars", p->length, ctx->minfo->nvars);
-    flint_printf("\n");
+flint_printf("checking %wd <= # <= %wd: ", lower, upper);
+if (p->length < 20)
+    fmpz_mpoly_print_pretty(p, NULL, ctx);
+else
+    flint_printf("length %wd in %wd vars", p->length, ctx->minfo->nvars);
+flint_printf("\n");
 
     fmpz_init(omega);
     fmpz_mpoly_factor_init(g, ctx);
@@ -223,7 +221,7 @@ main(void)
     check_omega_str(2, 2, "x y z", "x^9-y^9*z^3");
 
     /* check random factors */
-    for (i = 0; i < 20 * flint_test_multiplier(); i++)
+    for (i = 0; i < 100 * flint_test_multiplier(); i++)
     {
         slong lower;
         fmpz_mpoly_ctx_t ctx;
@@ -245,7 +243,7 @@ main(void)
         for (j = 0; j < nfacs; j++)
         {
             do {
-                len = 1 + n_randint(state, 10);
+                len = 1 + n_randint(state, 7);
                 coeff_bits = 2 + n_randint(state, 100)/nfacs;
                 fmpz_mpoly_randtest_bound(t, state, len, coeff_bits, expbound, ctx);
             } while (t->length == 0);
@@ -253,6 +251,7 @@ main(void)
             fmpz_mpoly_mul(a, a, t, ctx);
         }
 
+flint_printf("%wd ", i);
         check_omega(lower, 999, a, ctx);
 
         fmpz_mpoly_clear(t, ctx);
@@ -348,9 +347,19 @@ main(void)
         fmpz_mpoly_compose_fmpz_mpoly(a, b, sub, ctx, ctx);
         check_omega(1, 1, a, ctx);
 
+        for (i = 0; i < 5; i++)
+        {
+            fmpz_mpoly_clear(sub[i], ctx);
+            flint_free(sub[i]);
+        }
+
         fmpz_mpoly_factor_clear(fac, ctx);
+        fmpz_mpoly_clear(b, ctx);
         fmpz_mpoly_clear(a, ctx);
         fmpz_mpoly_ctx_clear(ctx);
+
+        _fmpz_vec_clear(shift, 5);
+        _fmpz_vec_clear(stride, 5);
     }
 
     FLINT_TEST_CLEANUP(state);
