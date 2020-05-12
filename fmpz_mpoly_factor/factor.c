@@ -1307,13 +1307,13 @@ timeit_start(timer);
 */
     FLINT_ASSERT(I->r == 2);
 
-    fmpz_mod_poly_init(t, I->p);
-    fmpz_mod_poly_init(t1, I->p);
-    fmpz_mod_bpoly_init(btilde, I->p);
+    fmpz_mod_poly_init(t, I->pk);
+    fmpz_mod_poly_init(t1, I->pk);
+    fmpz_mod_bpoly_init(btilde, I->pk);
     fmpz_mod_bpoly_reverse_vars(btilde, I->Btilde);
     for (k = 0; k < I->r; k++)
     {
-        fmpz_mod_bpoly_init(newbitilde + k, I->p);
+        fmpz_mod_bpoly_init(newbitilde + k, I->pk);
         fmpz_mod_bpoly_reverse_vars(newbitilde + k, I->newBitilde + k);
         fmpz_mod_bpoly_fit_length(newbitilde + k, I->lifting_prec);
         FLINT_ASSERT((newbitilde + k)->length == 1);
