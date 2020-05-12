@@ -212,6 +212,7 @@ main(void)
 
     flint_printf("factor....");
 
+    check_same_str("x1 x2", "(31817160*x1^2-41372*x1*x2^2-60738379*x2)*(65106225*x1^2*x2^2-39335377)");
     check_same_str("x y", "(x+y)*(x-y)*(x^2-x*y+y^2)*(x^2+x*y+y^2)");
     check_same_str("x y z", "((y*z+1)*x+y+z+1)*(x^2+y^2+z^2+2)*(x^3+y^3+z^3+3)");
     check_same_str("x y z", "(x^2+y+1)*(x+y^2+1)^2*(x*y+1)^13*(x*y+2)^14*(x+y+1)^113");
@@ -235,7 +236,7 @@ main(void)
         fmpz_mpoly_init(a, ctx);
         fmpz_mpoly_init(t, ctx);
 
-        nfacs = 2 + (5 + n_randint(state, 5))/ctx->minfo->nvars;
+        nfacs = 1 + (5 + n_randint(state, 5))/ctx->minfo->nvars;
         expbound = 3 + 20/ctx->minfo->nvars/nfacs;
 
         lower = 0;
