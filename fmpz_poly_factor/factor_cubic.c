@@ -11,6 +11,171 @@
 
 #include "fmpz_poly_factor.h"
 
+/* f(x) = x^3 - 3*a*x - b */
+static void evalf(fmpz_t f, const fmpz_t x, const fmpz_t a, const fmpz_t b)
+{
+    fmpz_t t;
+    fmpz_init(t);
+    fmpz_mul(t, x, x);
+    fmpz_submul_ui(t, a, 3);
+    fmpz_mul(f, t, x);
+    fmpz_sub(f, f, b);
+    fmpz_clear(t);
+}
+
+/* f'(x) = 3*x^2 - 3*a */
+static void evalfp(fmpz_t f, const fmpz_t x, const fmpz_t a, const fmpz_t b)
+{
+    fmpz_mul(f, x, x);
+    fmpz_sub(f, f, a);
+    fmpz_mul_ui(f, f, 3);
+}
+
+/*
+    It is assumed that newton iteration (when performed over RR) never
+    overshoots a root when starting from
+            x = right (dir > 0) or
+            x = left (dir < 0)
+    and of course (left, right) contains a unique root.
+*/
+static int find_cubic_root(fmpz_t r,
+    fmpz_t left, fmpz_t right,
+    const fmpz_t a, const fmpz_t b,
+    int dir)
+{
+    int ret;
+    fmpz_t fleft, fright, fmid;
+    fmpz_t fpleft, fpright, fpmid;
+    fmpz_t t1, t2, d, mid;
+
+    fmpz_init(t1);
+    fmpz_init(t2);
+    fmpz_init(d);
+    fmpz_init(mid);
+    fmpz_init(fleft);
+    fmpz_init(fright);
+    fmpz_init(fmid);
+    fmpz_init(fpleft);
+    fmpz_init(fpright);
+    fmpz_init(fpmid);
+
+    evalf(fleft, left, a, b);
+    evalf(fright, right, a, b);
+
+/*
+printf("find_cubic_root\n");
+printf("     a: "); fmpz_print(a); printf("\n");
+printf("     b: "); fmpz_print(b); printf("\n");
+printf("  left: "); fmpz_print(left); printf("\n");
+printf(" right: "); fmpz_print(right); printf("\n");
+printf(" fleft: "); fmpz_print(fleft); printf("\n");
+printf("fright: "); fmpz_print(fright); printf("\n");
+*/
+
+    fmpz_mul(d, fright, fleft);
+    FLINT_ASSERT(fmpz_sgn(d) < 0);
+
+    fmpz_sub(d, right, left);
+    FLINT_ASSERT(fmpz_sgn(d) > 0);
+
+    if (fmpz_cmp_ui(d, 10) < 0)
+    {
+        while (fmpz_add_ui(left, left, 1), fmpz_cmp(left, right) < 0)
+        {
+            evalf(fleft, left, a, b);
+            if (fmpz_is_zero(fleft))
+            {
+                fmpz_swap(r, left);
+                ret = 1;
+                goto cleanup;
+            }
+        }
+        ret = 0;
+        goto cleanup;
+    }
+    else if (dir > 0)
+    {
+        evalfp(fpright, right, a, b);
+        fmpz_cdiv_q(mid, fright, fpright);
+        FLINT_ASSERT(fmpz_sgn(mid) > 0);
+        fmpz_sub(mid, right, mid);
+
+        if (fmpz_cmp(mid, left) <= 0)
+        {
+            ret = 0;
+            goto cleanup;
+        }
+
+        evalf(fmid, mid, a, b);
+
+        if (fmpz_sgn(fmid) == 0)
+        {
+            fmpz_swap(r, mid);
+            ret = 1;
+            goto cleanup;
+        }
+        if (fmpz_sgn(fmid) == fmpz_sgn(fright))
+        {
+            ret = find_cubic_root(r, left, mid, a, b, dir);
+            goto cleanup;
+        }
+        else
+        {
+            ret = 0;
+            goto cleanup;
+        }
+    }
+    else
+    {
+        evalfp(fpleft, left, a, b);
+        fmpz_fdiv_q(mid, fleft, fpleft);
+        FLINT_ASSERT(fmpz_sgn(mid) < 0);
+        fmpz_sub(mid, left, mid);
+
+        evalf(fmid, mid, a, b);
+
+        if (fmpz_cmp(mid, right) >= 0)
+        {
+            ret = 0;
+            goto cleanup;
+        }
+
+        if (fmpz_sgn(fmid) == 0)
+        {
+            fmpz_swap(r, mid);
+            ret = 1;
+            goto cleanup;
+        }
+        if (fmpz_sgn(fmid) == fmpz_sgn(fleft))
+        {
+            ret = find_cubic_root(r, mid, right, a, b, dir);
+            goto cleanup;
+        }
+        else
+        {
+            ret = 0;
+            goto cleanup;
+        }
+    }
+
+cleanup:
+
+    fmpz_clear(t1);
+    fmpz_clear(t2);
+    fmpz_clear(d);
+    fmpz_clear(mid);
+    fmpz_clear(fleft);
+    fmpz_clear(fright);
+    fmpz_clear(fmid);
+    fmpz_clear(fpleft);
+    fmpz_clear(fpright);
+    fmpz_clear(fpmid);
+
+    return ret;
+}
+
+
+
 /*
     write the integer roots of f(x) = x^3 - 3*a*x - b to r
     return 0: irreducible cubic
@@ -25,11 +190,11 @@ int _fmpz_cubic_roots(fmpz * r, fmpz_t a, fmpz_t b)
 {
     int ret, sign_a, sign_b, sign_d;
     fmpz_t d, t1, t2, t3, t4;
-
+/*
 printf("---------cubic roots called-----------\n");
 printf("a: "); fmpz_print(a); printf("\n");
 printf("b: "); fmpz_print(b); printf("\n");
-
+*/
     FLINT_ASSERT(a != b);
 
     sign_a = fmpz_sgn(a);
@@ -86,18 +251,32 @@ printf("b: "); fmpz_print(b); printf("\n");
     fmpz_mul(t2, t1, a);
     fmpz_submul_ui(d, t2, 4);
 
+/*printf("d: "); fmpz_print(d); printf("\n");*/
+
     sign_d = fmpz_sgn(d);
     if (sign_d == 0)
     {
         FLINT_ASSERT(fmpz_divisible(b, a));
         fmpz_divexact(r + 0, b, a);
+        FLINT_ASSERT(fmpz_is_even(r + 0));
         fmpz_divexact_si(r + 1, r + 0, -2);
         ret = 3;
         goto cleanup;
     }
     else if (sign_d > 0)
     {
-        /* we have a formula for the real root */
+        /*
+            An interval containing the real root is (0, max(a,b)).
+            Unfortunately newton converges too slowly starting from x = max(a,b).
+            Luckily, we have a formula for the real root,
+
+                cbrt(4b + sqrt(4*d)) + cbrt(4b - sqrt(4*d))
+                -------------------------------------------,
+                                     2
+
+            which is calculated here by rounding to zero.
+        */
+
         if (sign_a == 0)
         {
             fmpz_root(r + 0, b, 3);
@@ -108,6 +287,7 @@ printf("b: "); fmpz_print(b); printf("\n");
             fmpz_add(t4, b, t3);
             fmpz_mul_ui(t4, t4, 4);
             fmpz_root(t1, t4, 3);
+            /* TODO check if fmpz_root(,,3) is correct on negatives and avoid this if */
             if (sign_a > 0)
             {
                 fmpz_sub(t4, b, t3);
@@ -166,7 +346,105 @@ printf("b: "); fmpz_print(b); printf("\n");
     }
     else
     {
-        FLINT_ASSERT(0);
+        /*
+            Three real roots. The observations
+                    f(-2*sqrt(a)) < 0,   f(-sqrt(a)) > 0
+                    f(-b/(2*a)) > 0,     f(-b/(3*a)) < 0
+                    f(sqrt(a)) < 0,      f(2*sqrt(a)) > 0
+            give intervals on which newton coverges quickly.
+        */
+
+        FLINT_ASSERT(fmpz_cmp_ui(a, 2) > 0);
+
+        fmpz_sqrt(t1, a);
+        fmpz_add_ui(t2, t1, 1);
+        fmpz_mul_ui(t2, t2, 2);
+
+/*printf("finding positive real root\n");*/
+        if (find_cubic_root(r + 0, t1, t2, a, b, +1))
+        {
+            fmpz_mul_ui(a, a, 4);
+            fmpz_submul(a, r + 0, r + 0);
+            fmpz_mul_ui(a, a, 3);
+            if (fmpz_is_square(a))
+            {
+                fmpz_sqrt(t1, a);
+                fmpz_sub(r + 1, t1, r + 0);
+                fmpz_add(r + 2, t1, r + 0);
+                FLINT_ASSERT(fmpz_is_even(r + 1));
+                FLINT_ASSERT(fmpz_is_even(r + 2));
+                fmpz_divexact_ui(r + 1, r + 1, 2);
+                fmpz_divexact_si(r + 2, r + 2, -2);
+                ret = 2;
+                goto cleanup;
+            }
+            else
+            {
+                ret = 1;
+                goto cleanup;
+            }
+        }
+
+        /* the positive root is irrational, check the two negative ones */
+
+        fmpz_sqrt(t1, a);
+        fmpz_neg(t1, t1);
+
+/*printf("t1: "); fmpz_print(t1); printf("\n");*/
+
+        fmpz_sub_ui(t2, t1, 1);
+        fmpz_mul_ui(t2, t2, 2);
+
+        evalf(t3, t1, a, b);
+
+/*printf("t3: "); fmpz_print(t3); printf("\n");*/
+
+        if (fmpz_is_zero(t3))
+        {
+            fmpz_swap(r + 0, t1);
+            ret = 1;
+            goto cleanup;
+        }
+        else if (fmpz_sgn(t3) < 0)
+        {
+            fmpz_sub_ui(t1, t1, 1);
+            evalf(t3, t1, a, b);
+            if (fmpz_is_zero(t3))
+            {
+                fmpz_swap(r + 0, t1);
+                ret = 1;
+                goto cleanup;
+            }
+            else if (fmpz_sgn(t3) < 0)
+            {
+                ret = 0;
+                goto cleanup;
+            }
+        }
+
+        /* f(t1) > 0, f(t2) < 0 now */
+/*printf("finding most negative real root\n");*/
+        if (find_cubic_root(r + 0, t2, t1, a, b, -1))
+        {
+            ret = 1;
+            goto cleanup;
+        }
+
+        fmpz_mul_ui(t3, a, 3);
+        fmpz_fdiv_q(t4, b, t3);
+        fmpz_neg(t4, t4);
+
+        fmpz_mul_ui(t3, a, 2);
+        fmpz_cdiv_q(t2, b, t3);
+        fmpz_neg(t2, t2);
+
+        if (fmpz_cmp(t2, t1) < 0)
+            fmpz_swap(t2, t1);
+
+        /* f(t2) > 0, f(t4) < 0 now */
+/*printf("finding slightly negative real root\n");*/
+        ret = find_cubic_root(r + 0, t2, t4, a, b, +1);
+        goto cleanup;
     }
 
 cleanup:
@@ -178,12 +456,12 @@ cleanup:
         fmpz_neg(r + 2, r + 2);
     }
 
-
+/*
 printf("returning %d\n", ret);
 printf("r[0]: "); fmpz_print(r + 0); printf("\n");
 printf("r[1]: "); fmpz_print(r + 1); printf("\n");
 printf("r[2]: "); fmpz_print(r + 2); printf("\n");
-
+*/
 
     fmpz_clear(d);
     fmpz_clear(t1);
@@ -197,6 +475,7 @@ printf("r[2]: "); fmpz_print(r + 2); printf("\n");
 void _fmpz_poly_factor_cubic(fmpz_poly_factor_t fac, 
                                               const fmpz_poly_t f, slong exp)
 {
+    slong i;
     fmpz_t A,B,b2,T,ac;
     fmpz r[3];
     const fmpz *a, *b, *c, *d;
@@ -237,7 +516,6 @@ void _fmpz_poly_factor_cubic(fmpz_poly_factor_t fac,
     switch (_fmpz_cubic_roots(r, A, B))
     {
         case 4:
-printf("case 4\n");
             fmpz_mul_ui(p->coeffs + 1, a, 3);
             fmpz_sub(p->coeffs + 0, b, r + 0);
             fmpz_gcd(T, p->coeffs + 0, p->coeffs + 1);
@@ -248,8 +526,6 @@ printf("case 4\n");
             break;
 
         case 3:
-printf("case 3\n");
-
             fmpz_mul_ui(p->coeffs + 1, a, 3);
             fmpz_sub(p->coeffs + 0, b, r + 0);
             fmpz_gcd(T, p->coeffs + 0, p->coeffs + 1);
@@ -268,21 +544,34 @@ printf("case 3\n");
 
             break;
 
+        case 2:
+            for (i = 0; i < 3; i++)
+            {
+                fmpz_mul_ui(p->coeffs + 1, a, 3);
+                fmpz_sub(p->coeffs + 0, b, r + i);
+                fmpz_gcd(T, p->coeffs + 0, p->coeffs + 1);
+                fmpz_divexact(p->coeffs + 0, p->coeffs + 0, T);
+                fmpz_divexact(p->coeffs + 1, p->coeffs + 1, T);
+                _fmpz_poly_set_length(p, 2);
+                fmpz_poly_factor_insert(fac, p, 1*exp);
+            }
+
+            break;
 
         case 1:
-printf("case 1\n");
-
+            fmpz_mul_ui(p->coeffs + 1, a, 3);
+            fmpz_sub(p->coeffs + 0, b, r + 0);
+            fmpz_gcd(T, p->coeffs + 0, p->coeffs + 1);
+            fmpz_divexact(p->coeffs + 0, p->coeffs + 0, T);
+            fmpz_divexact(p->coeffs + 1, p->coeffs + 1, T);
+            _fmpz_poly_set_length(p, 2);
+            fmpz_poly_factor_insert(fac, p, 1*exp);
+            fmpz_poly_divides(p, f, p);
+            fmpz_poly_factor_insert(fac, p, 1*exp);
             break;
-        case 2: 
-printf("case 2\n");
-
-            break;
-
 
         default:
-printf("default case\n");
             fmpz_poly_factor_insert(fac, f, exp);
- 
     }
      
     fmpz_clear(A);
@@ -293,4 +582,6 @@ printf("default case\n");
     fmpz_clear(r + 0);
     fmpz_clear(r + 1);
     fmpz_clear(r + 2);
+
+    fmpz_poly_clear(p);
 }
