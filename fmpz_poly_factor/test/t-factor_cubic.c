@@ -139,14 +139,12 @@ main(void)
         check_factorization(fac, f, 2);
 
         /* (degree 3) */
-/*
         do {
            fmpz_poly_randtest(g, state, 4, n_randint(state, max_bits) + 2);
         } while (g->length != 4);
         fmpz_poly_set(f, g);
         fmpz_poly_factor(fac, f);
         check_factorization(fac, f, 1);
-*/
 
         fmpz_poly_clear(f);
         fmpz_poly_clear(g);
