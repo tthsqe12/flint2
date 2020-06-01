@@ -23,11 +23,7 @@ static void check_factorization(
     slong omega;
     fmpz_t c;
     fmpz_poly_t h, t;
-/*
-printf("----------------\n");
-printf("f: "); fmpz_poly_print_pretty(f, "x"); printf("\n");
-printf("fac: "); fmpz_poly_factor_print(fac); printf("\n");
-*/
+
     fmpz_init(c);
     fmpz_poly_init(h);
     fmpz_poly_init(t);
@@ -74,8 +70,8 @@ printf("fac: "); fmpz_poly_factor_print(fac); printf("\n");
 int
 main(void)
 {
-    flint_bitcnt_t max_bits = 1000;
-    slong i, tmul = 1000;
+    flint_bitcnt_t max_bits = 100;
+    slong i, tmul = 100;
     FLINT_TEST_INIT(state);
 
     flint_printf("factor_cubic....");
@@ -152,7 +148,7 @@ main(void)
     }
 
     FLINT_TEST_CLEANUP(state);
-    
+
     flint_printf("PASS\n");
     return 0;
 }
