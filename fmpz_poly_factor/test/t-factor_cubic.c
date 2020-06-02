@@ -70,8 +70,8 @@ static void check_factorization(
 int
 main(void)
 {
-    flint_bitcnt_t max_bits = 100;
-    slong i, tmul = 100;
+    flint_bitcnt_t max_bits = 1000;
+    slong i, tmul = 200;
     FLINT_TEST_INIT(state);
 
     flint_printf("factor_cubic....");
