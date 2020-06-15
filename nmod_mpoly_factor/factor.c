@@ -543,7 +543,6 @@ void nmod_bpoly_print(nmod_bpoly_t A, const char * xvar, const char * yvar)
     {
         if (nmod_poly_is_zero(A->coeffs + i))
         {
-            FLINT_ASSERT(i < A->length - 1);
             continue;
         }
 
@@ -751,7 +750,7 @@ void fq_nmod_bpoly_make_monic(fq_nmod_bpoly_t A, slong order, const fq_nmod_ctx_
     fq_nmod_poly_clear(lcinv, ctx);
 }
 
-void nmod_bpoly_mul(nmod_bpoly_t A, const nmod_bpoly_t B, const nmod_bpoly_t C, slong order)
+void nmod_bpoly_mullow(nmod_bpoly_t A, const nmod_bpoly_t B, const nmod_bpoly_t C, slong order)
 {
     slong i, j;
     nmod_poly_t t;
@@ -779,7 +778,7 @@ void nmod_bpoly_mul(nmod_bpoly_t A, const nmod_bpoly_t B, const nmod_bpoly_t C, 
     nmod_poly_clear(t);
 }
 
-void fq_nmod_bpoly_mul(
+void fq_nmod_bpoly_mullow(
     fq_nmod_bpoly_t A,
     const fq_nmod_bpoly_t B,
     const fq_nmod_bpoly_t C,
@@ -814,7 +813,7 @@ void fq_nmod_bpoly_mul(
     fq_nmod_poly_clear(t, ectx);
 }
 
-void nmod_bpoly_mul_mod(nmod_bpoly_t A, const nmod_bpoly_t B, const nmod_bpoly_t C, const nmod_poly_t m)
+void nmod_bpoly_mullow_mod(nmod_bpoly_t A, const nmod_bpoly_t B, const nmod_bpoly_t C, const nmod_poly_t m)
 {
     slong i, j;
     nmod_poly_t t;
@@ -1923,10 +1922,10 @@ flint_printf("  I->P[%wd]: ", i); nmod_poly_print_pretty(I->P + i, "x"); printf(
         nmod_bpoly_init(tp1, I->modulus);
         nmod_bpoly_init(error, I->modulus);
 
-        nmod_bpoly_mul(tp, I->newBitilde + 0, I->newBitilde + 1, Blengthy);
+        nmod_bpoly_mullow(tp, I->newBitilde + 0, I->newBitilde + 1, Blengthy);
         for (i = 2; i < I->r; i++)
         {
-            nmod_bpoly_mul(tp1, tp, I->newBitilde + i, Blengthy);
+            nmod_bpoly_mullow(tp1, tp, I->newBitilde + i, Blengthy);
             nmod_bpoly_swap(tp1, tp);
         }
 
@@ -1953,10 +1952,10 @@ flint_printf("error: "); nmod_bpoly_print(error, "x", "y"); printf("\n");
                 nmod_bpoly_add_poly_shift(I->newBitilde + i, tt, j);
             }
 
-            nmod_bpoly_mul(tp, I->newBitilde + 0, I->newBitilde + 1, Blengthy);
+            nmod_bpoly_mullow(tp, I->newBitilde + 0, I->newBitilde + 1, Blengthy);
             for (i = 2; i < I->r; i++)
             {
-                nmod_bpoly_mul(tp1, tp, I->newBitilde + i, Blengthy);
+                nmod_bpoly_mullow(tp1, tp, I->newBitilde + i, Blengthy);
                 nmod_bpoly_swap(tp1, tp);
             }
             nmod_bpoly_sub(error, I->Btilde, tp);
@@ -2027,7 +2026,7 @@ flint_printf("I->newBitilde[%wd]: ", i); nmod_bpoly_print(I->newBitilde + i, "x"
                         nmod_bpoly_set_polyy(tryme, leadf);
                         for (l = 0; l < kk; l++)
                         {
-                            nmod_bpoly_mul(trymet, tryme, I->newBitilde + sub_arr[l], Blengthy);
+                            nmod_bpoly_mullow(trymet, tryme, I->newBitilde + sub_arr[l], Blengthy);
                             nmod_bpoly_swap(trymet, tryme);
                         }
 
@@ -2207,10 +2206,10 @@ got_alpha:
         fq_nmod_bpoly_init(tp1, ctx->fqctx);
         fq_nmod_bpoly_init(error, ctx->fqctx);
 
-        fq_nmod_bpoly_mul(tp, I->newBitilde + 0, I->newBitilde + 1, Blengthy, ctx->fqctx);
+        fq_nmod_bpoly_mullow(tp, I->newBitilde + 0, I->newBitilde + 1, Blengthy, ctx->fqctx);
         for (i = 2; i < I->r; i++)
         {
-            fq_nmod_bpoly_mul(tp1, tp, I->newBitilde + i, Blengthy, ctx->fqctx);
+            fq_nmod_bpoly_mullow(tp1, tp, I->newBitilde + i, Blengthy, ctx->fqctx);
             fq_nmod_bpoly_swap(tp1, tp);
         }
 
@@ -2240,10 +2239,10 @@ got_alpha:
                 fq_nmod_bpoly_add_poly_shift(I->newBitilde + i, tt, j, ctx->fqctx);
             }
 
-            fq_nmod_bpoly_mul(tp, I->newBitilde + 0, I->newBitilde + 1, Blengthy, ctx->fqctx);
+            fq_nmod_bpoly_mullow(tp, I->newBitilde + 0, I->newBitilde + 1, Blengthy, ctx->fqctx);
             for (i = 2; i < I->r; i++)
             {
-                fq_nmod_bpoly_mul(tp1, tp, I->newBitilde + i, Blengthy, ctx->fqctx);
+                fq_nmod_bpoly_mullow(tp1, tp, I->newBitilde + i, Blengthy, ctx->fqctx);
                 fq_nmod_bpoly_swap(tp1, tp);
             }
             fq_nmod_bpoly_sub(error, I->Btilde, tp, ctx->fqctx);
@@ -2312,7 +2311,7 @@ flint_printf("I->newBitilde[%wd]: ", i); fq_nmod_bpoly_print_pretty(I->newBitild
                         fq_nmod_bpoly_set_polyy(tryme, leadf, ctx->fqctx);
                         for (l = 0; l < kk; l++)
                         {
-                            fq_nmod_bpoly_mul(trymet, tryme, I->newBitilde + sub_arr[l], Blengthy, ctx->fqctx);
+                            fq_nmod_bpoly_mullow(trymet, tryme, I->newBitilde + sub_arr[l], Blengthy, ctx->fqctx);
                             fq_nmod_bpoly_swap(trymet, tryme);
                         }
 
@@ -2668,10 +2667,10 @@ flint_printf("  I->P[%wd]: ", i); nmod_poly_print_pretty(I->P + i, "x"); printf(
         nmod_bpoly_init(tp1, ectx->modulus->mod);
         nmod_bpoly_init(error, ectx->modulus->mod);
 
-        nmod_bpoly_mul_mod(tp, I->newBitilde + 0, I->newBitilde + 1, finalmpow);
+        nmod_bpoly_mullow_mod(tp, I->newBitilde + 0, I->newBitilde + 1, finalmpow);
         for (i = 2; i < I->r; i++)
         {
-            nmod_bpoly_mul_mod(tp1, tp, I->newBitilde + i, finalmpow);
+            nmod_bpoly_mullow_mod(tp1, tp, I->newBitilde + i, finalmpow);
             nmod_bpoly_swap(tp1, tp);
         }
 
@@ -2715,10 +2714,10 @@ flint_printf("I->newBitilde[%wd]: ", i); nmod_bpoly_print(I->newBitilde + i, "x"
 */
             }
 
-            nmod_bpoly_mul_mod(tp, I->newBitilde + 0, I->newBitilde + 1, finalmpow);
+            nmod_bpoly_mullow_mod(tp, I->newBitilde + 0, I->newBitilde + 1, finalmpow);
             for (i = 2; i < I->r; i++)
             {
-                nmod_bpoly_mul_mod(tp1, tp, I->newBitilde + i, finalmpow);
+                nmod_bpoly_mullow_mod(tp1, tp, I->newBitilde + i, finalmpow);
                 nmod_bpoly_swap(tp1, tp);
             }
             nmod_bpoly_sub(error, I->Btilde, tp);
@@ -2788,7 +2787,7 @@ flint_printf(" I->newBitilde[%wd]: ", i); nmod_bpoly_print(I->newBitilde + i, "x
                         nmod_bpoly_set_polyy(tryme, leadf);
                         for (l = 0; l < kk; l++)
                         {
-                            nmod_bpoly_mul_mod(trymet, tryme, I->newBitilde + sub_arr[l], finalmpow);
+                            nmod_bpoly_mullow_mod(trymet, tryme, I->newBitilde + sub_arr[l], finalmpow);
                             nmod_bpoly_swap(trymet, tryme);
                         }
 
