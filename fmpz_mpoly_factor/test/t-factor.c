@@ -202,27 +202,35 @@ void check_omega_str(slong lower, slong upper, const char * s, const char * poly
 
 
 
+void test_new_stuff();
 
 int
 main(void)
 {
-    slong i, j, k;
+    slong i, j, k, tmul = 0;
+    timeit_t timer;
 
     FLINT_TEST_INIT(state);
 
     flint_printf("factor....");
 
+    check_same_str("x1 x2 x3", "(3*x1*x2*x3^3 + 4*x3^4 + 3)"
+                              "*(6*x1^3*x3^2 + 2*x2*x3^4 + 3*x1^2*x2^2 + 3)"
+                              "*(3*x1^3*x3 + 2*x2^3 + 4*x1 + 4)");
+
     check_same_str("x1 x2", "(31817160*x1^2-41372*x1*x2^2-60738379*x2)*(65106225*x1^2*x2^2-39335377)");
     check_same_str("x y", "(x+y)*(x-y)*(x^2-x*y+y^2)*(x^2+x*y+y^2)");
     check_same_str("x y z", "((y*z+1)*x+y+z+1)*(x^2+y^2+z^2+2)*(x^3+y^3+z^3+3)");
-    check_same_str("x y z", "(x^2+y+1)*(x+y^2+1)^2*(x*y+1)^13*(x*y+2)^14*(x+y+1)^113");
+
+    check_same_str("x y z", "(x^2+y+1)*(x+y^2+1)^2*(x*y+1)^13*(x*y+2)^14*(x+y+1)^33");
+
     check_same_str("x y", "-2*x^2*y^4*(2*x^2*y^2-9)*(3*x^2*y-1)*(10*x*y^3-6*x*y^2+1)*(4*x^2+5*y-9)*(7*x^3 + y^2)");
 
     check_omega_str(3, 3, "x y", "(1+y)^9*x^9-y^9");
     check_omega_str(2, 2, "x y z", "x^9-y^9*z^3");
 
     /* check random factors */
-    for (i = 0; i < 100 * flint_test_multiplier(); i++)
+    for (i = 0; i < tmul * flint_test_multiplier(); i++)
     {
         slong lower;
         fmpz_mpoly_ctx_t ctx;
@@ -245,7 +253,7 @@ main(void)
         {
             do {
                 len = 1 + n_randint(state, 7);
-                coeff_bits = 2 + n_randint(state, 100)/nfacs;
+                coeff_bits = 10 + n_randint(state, 100)/nfacs;
                 fmpz_mpoly_randtest_bound(t, state, len, coeff_bits, expbound, ctx);
             } while (t->length == 0);
             lower += !fmpz_mpoly_is_fmpz(t, ctx);
@@ -261,7 +269,7 @@ flint_printf("%wd ", i);
     }
 
     /* fateman */
-    for (i = 0; i <= 15; i++)
+    for (i = 0; i <= ((tmul > 0) ? 15 : -1); i++)
     {
         fmpz_mpoly_ctx_t ctx;
         fmpz_mpoly_t a, b;
@@ -281,7 +289,10 @@ flint_printf("%wd ", i);
             if ((j%2) != 0 && (i%j) == 0)
                 k++;
 
+timeit_start(timer);
         check_omega(k, k, a, ctx);
+timeit_stop(timer);
+flint_printf("time: %wd\n", timer->cpu);
 
         fmpz_mpoly_clear(a, ctx);
         fmpz_mpoly_clear(b, ctx);
@@ -289,6 +300,7 @@ flint_printf("%wd ", i);
     }
 
     /* bivariate examples */
+    if (tmul > 0)
     {
         fmpz_mpoly_ctx_t ctx;
         fmpz_mpoly_t a, b;
@@ -362,6 +374,8 @@ flint_printf("%wd ", i);
         _fmpz_vec_clear(shift, 5);
         _fmpz_vec_clear(stride, 5);
     }
+
+    test_new_stuff();
 
     FLINT_TEST_CLEANUP(state);
     
