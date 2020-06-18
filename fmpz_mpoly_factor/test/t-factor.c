@@ -214,6 +214,10 @@ main(void)
 
     flint_printf("factor....");
 
+    check_same_str("x y z w", "(x^3+y^4+z^5+111111111111111111111111111*w^3)"
+                              "*(x^2+3*y^3+4*z^4*(w+1)+2*w^4)");
+
+/*
     check_same_str("x1 x2 x3", "(3*x1*x2*x3^3 + 4*x3^4 + 3)"
                               "*(6*x1^3*x3^2 + 2*x2*x3^4 + 3*x1^2*x2^2 + 3)"
                               "*(3*x1^3*x3 + 2*x2^3 + 4*x1 + 4)");
@@ -228,7 +232,7 @@ main(void)
 
     check_omega_str(3, 3, "x y", "(1+y)^9*x^9-y^9");
     check_omega_str(2, 2, "x y z", "x^9-y^9*z^3");
-
+*/
     /* check random factors */
     for (i = 0; i < tmul * flint_test_multiplier(); i++)
     {
@@ -374,9 +378,9 @@ flint_printf("time: %wd\n", timer->cpu);
         _fmpz_vec_clear(shift, 5);
         _fmpz_vec_clear(stride, 5);
     }
-
+/*
     test_new_stuff();
-
+*/
     FLINT_TEST_CLEANUP(state);
     
     flint_printf("PASS\n");
