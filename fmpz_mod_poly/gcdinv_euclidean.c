@@ -145,9 +145,9 @@ slong _fmpz_mod_poly_gcdinv_euclidean(fmpz *G, fmpz *S,
 }
 
 void 
-fmpz_mod_poly_gcdinv_euclidean(fmpz_mod_poly_t G, 
-                             fmpz_mod_poly_t S,
-                             const fmpz_mod_poly_t A, const fmpz_mod_poly_t B)
+fmpz_mod_poly_gcdinv_euclidean(fmpz_mod_poly_t G, fmpz_mod_poly_t S,
+                             const fmpz_mod_poly_t A, const fmpz_mod_poly_t B,
+                                                      const fmpz_mod_ctx_t ctx)
 {
     const slong lenA = A->length, lenB = B->length;
     fmpz_t inv;
@@ -161,9 +161,9 @@ fmpz_mod_poly_gcdinv_euclidean(fmpz_mod_poly_t G,
     {
         fmpz_mod_poly_t T;
 
-        fmpz_mod_poly_init(T, &A->p);
-        fmpz_mod_poly_rem(T, A, B);
-        fmpz_mod_poly_gcdinv_euclidean(G, S, T, B);
+        fmpz_mod_poly_init(T);
+        fmpz_mod_poly_rem(T, A, B, ctx);
+        fmpz_mod_poly_gcdinv_euclidean(G, S, T, B, ctx);
         fmpz_mod_poly_clear(T);
         return;
     }
@@ -198,9 +198,9 @@ fmpz_mod_poly_gcdinv_euclidean(fmpz_mod_poly_t G,
             s = S->coeffs;
         }
 
-        fmpz_invmod(inv, fmpz_mod_poly_lead(A), &A->p);
+        fmpz_invmod(inv, fmpz_mod_poly_lead(A), fmpz_mod_ctx_modulus(ctx));
         lenG = _fmpz_mod_poly_gcdinv_euclidean(g, s, 
-        A->coeffs, lenA, B->coeffs, lenB, inv, &B->p);
+        A->coeffs, lenA, B->coeffs, lenB, inv, fmpz_mod_ctx_modulus(ctx));
 
         if (G == A || G == B)
         {
@@ -221,9 +221,9 @@ fmpz_mod_poly_gcdinv_euclidean(fmpz_mod_poly_t G,
 
         if (!fmpz_is_one(fmpz_mod_poly_lead(G)))
         {
-            fmpz_invmod(inv, fmpz_mod_poly_lead(G), &A->p);
-            fmpz_mod_poly_scalar_mul_fmpz(G, G, inv);
-            fmpz_mod_poly_scalar_mul_fmpz(S, S, inv);
+            fmpz_invmod(inv, fmpz_mod_poly_lead(G), fmpz_mod_ctx_modulus(ctx));
+            fmpz_mod_poly_scalar_mul_fmpz(G, G, inv, ctx);
+            fmpz_mod_poly_scalar_mul_fmpz(S, S, inv, ctx);
         }
         fmpz_clear(inv);
     }

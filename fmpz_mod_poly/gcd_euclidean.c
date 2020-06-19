@@ -76,13 +76,12 @@ slong _fmpz_mod_poly_gcd_euclidean(fmpz *G, const fmpz *A, slong lenA,
     }
 }
 
-void fmpz_mod_poly_gcd_euclidean(fmpz_mod_poly_t G, 
-                                 const fmpz_mod_poly_t A,
-                                 const fmpz_mod_poly_t B)
+void fmpz_mod_poly_gcd_euclidean(fmpz_mod_poly_t G, const fmpz_mod_poly_t A,
+                             const fmpz_mod_poly_t B, const fmpz_mod_ctx_t ctx)
 {
     if (A->length < B->length)
     {
-        fmpz_mod_poly_gcd_euclidean(G, B, A);
+        fmpz_mod_poly_gcd_euclidean(G, B, A, ctx);
     }
     else /* lenA >= lenB >= 0 */
     {
@@ -96,7 +95,7 @@ void fmpz_mod_poly_gcd_euclidean(fmpz_mod_poly_t G,
         } 
         else if (lenB == 0) /* lenA > lenB = 0 */
         {
-            fmpz_mod_poly_make_monic(G, A);
+            fmpz_mod_poly_make_monic(G, A, ctx);
         }
         else /* lenA >= lenB >= 1 */
         {
@@ -113,9 +112,9 @@ void fmpz_mod_poly_gcd_euclidean(fmpz_mod_poly_t G,
             }
 
             fmpz_init(invB);
-            fmpz_invmod(invB, fmpz_mod_poly_lead(B), &(B->p));
+            fmpz_invmod(invB, fmpz_mod_poly_lead(B), fmpz_mod_ctx_modulus(ctx));
             lenG = _fmpz_mod_poly_gcd_euclidean(g, A->coeffs, lenA,
-                                               B->coeffs, lenB, invB, &(B->p));
+                             B->coeffs, lenB, invB, fmpz_mod_ctx_modulus(ctx));
             fmpz_clear(invB);
 
             if (G == A || G == B)
@@ -130,7 +129,7 @@ void fmpz_mod_poly_gcd_euclidean(fmpz_mod_poly_t G,
             if (lenG == 1)
                 fmpz_one(G->coeffs);
             else
-                fmpz_mod_poly_make_monic(G, G);
+                fmpz_mod_poly_make_monic(G, G, ctx);
         }
     }
 }

@@ -59,7 +59,7 @@ void _fmpz_mod_poly_radix_init(fmpz **Rpow, fmpz **Rinv,
 }
 
 void fmpz_mod_poly_radix_init(fmpz_mod_poly_radix_t D, 
-                              const fmpz_mod_poly_t R, slong degF)
+                 const fmpz_mod_poly_t R, slong degF, const fmpz_mod_ctx_t ctx)
 {
     const slong degR = R->length - 1;
 
@@ -90,10 +90,10 @@ void fmpz_mod_poly_radix_init(fmpz_mod_poly_radix_t D,
         }
 
         fmpz_init(&(D->invL));
-        fmpz_invmod(&(D->invL), R->coeffs + degR, &(R->p));
+        fmpz_invmod(&(D->invL), R->coeffs + degR, fmpz_mod_ctx_modulus(ctx));
 
         _fmpz_mod_poly_radix_init(D->Rpow, D->Rinv, R->coeffs, degR + 1, 
-                                  k, &(D->invL), &(R->p));
+                                     k, &(D->invL), fmpz_mod_ctx_modulus(ctx));
 
         D->k = k;
         D->degR = degR;
@@ -144,9 +144,8 @@ void _fmpz_mod_poly_radix(fmpz **B, const fmpz *F, fmpz **Rpow, fmpz **Rinv,
     }
 }
 
-void fmpz_mod_poly_radix(fmpz_mod_poly_struct **B, 
-                         const fmpz_mod_poly_t F, 
-                         const fmpz_mod_poly_radix_t D)
+void fmpz_mod_poly_radix(fmpz_mod_poly_struct **B, const fmpz_mod_poly_t F, 
+                       const fmpz_mod_poly_radix_t D, const fmpz_mod_ctx_t ctx)
 {
     const slong lenF = F->length;
     const slong degF = F->length - 1;
@@ -198,7 +197,8 @@ void fmpz_mod_poly_radix(fmpz_mod_poly_struct **B,
 
         W = _fmpz_vec_init(lenG);
 
-        _fmpz_mod_poly_radix(C, G, D->Rpow, D->Rinv, degR, 0, k-1, W, &(F->p));
+        _fmpz_mod_poly_radix(C, G, D->Rpow, D->Rinv, degR, 0, k-1, W,
+                                                    fmpz_mod_ctx_modulus(ctx));
 
         _fmpz_vec_clear(W, lenG);
 

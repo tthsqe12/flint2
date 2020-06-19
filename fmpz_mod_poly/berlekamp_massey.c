@@ -55,39 +55,30 @@ typedef fmpz_mod_berlekamp_massey_struct nmod_berlekamp_massey_t[1];
 */
 void fmpz_mod_berlekamp_massey_init(
     fmpz_mod_berlekamp_massey_t B,
-    const fmpz_t p)
+    const fmpz_mod_ctx_t ctx)
 {
-    fmpz_mod_poly_init(B->V0, p);
-    fmpz_mod_poly_init(B->R0, p);
-    fmpz_mod_poly_set_ui(B->R0, 1);
-    fmpz_mod_poly_init(B->V1, p);
-    fmpz_mod_poly_set_ui(B->V1, 1);
-    fmpz_mod_poly_init(B->R1, p);
-    fmpz_mod_poly_init(B->rt, p);
-    fmpz_mod_poly_init(B->qt, p);
-    fmpz_mod_poly_init(B->points, p);
+    fmpz_mod_poly_init(B->V0);
+    fmpz_mod_poly_init(B->R0);
+    fmpz_mod_poly_set_ui(B->R0, 1, ctx);
+    fmpz_mod_poly_init(B->V1);
+    fmpz_mod_poly_set_ui(B->V1, 1, ctx);
+    fmpz_mod_poly_init(B->R1);
+    fmpz_mod_poly_init(B->rt);
+    fmpz_mod_poly_init(B->qt);
+    fmpz_mod_poly_init(B->points);
     B->npoints = 0;
     B->points->length = 0;
 }
 
-void fmpz_mod_berlekamp_massey_init_ui(
-    fmpz_mod_berlekamp_massey_t B,
-    ulong p)
-{
-    fmpz_t pp;
-    fmpz_init_set_ui(pp, p);
-    fmpz_mod_berlekamp_massey_init(B, pp);
-    fmpz_clear(pp);
-}
-
 void fmpz_mod_berlekamp_massey_start_over(
-    fmpz_mod_berlekamp_massey_t B)
+    fmpz_mod_berlekamp_massey_t B,
+    const fmpz_mod_ctx_t ctx)
 {
     B->npoints = 0;
     B->points->length = 0;
     fmpz_mod_poly_zero(B->V0);
-    fmpz_mod_poly_set_ui(B->R0, 1);
-    fmpz_mod_poly_set_ui(B->V1, 1);
+    fmpz_mod_poly_set_ui(B->R0, 1, ctx);
+    fmpz_mod_poly_set_ui(B->V1, 1, ctx);
     fmpz_mod_poly_zero(B->R1);
 }
 
@@ -101,21 +92,6 @@ void fmpz_mod_berlekamp_massey_clear(
     fmpz_mod_poly_clear(B->rt);
     fmpz_mod_poly_clear(B->qt);
     fmpz_mod_poly_clear(B->points);
-}
-
-/* setting the prime also starts over */
-void fmpz_mod_berlekamp_massey_set_prime(
-    fmpz_mod_berlekamp_massey_t B,
-    const fmpz_t p)
-{
-    fmpz_set(&B->V0->p, p);
-    fmpz_set(&B->R0->p, p);
-    fmpz_set(&B->V1->p, p);
-    fmpz_set(&B->R1->p, p);
-    fmpz_set(&B->rt->p, p);
-    fmpz_set(&B->qt->p, p);
-    fmpz_set(&B->points->p, p);
-    fmpz_mod_berlekamp_massey_start_over(B);
 }
 
 void fmpz_mod_berlekamp_massey_print(
@@ -134,13 +110,15 @@ void fmpz_mod_berlekamp_massey_print(
 void fmpz_mod_berlekamp_massey_add_points(
     fmpz_mod_berlekamp_massey_t B,
     const fmpz * a,
-    slong count)
+    slong count,
+    const fmpz_mod_ctx_t ctx)
 {
     slong i;
     slong old_length = B->points->length;
     fmpz_mod_poly_fit_length(B->points, old_length + count);
     for (i = 0; i < count; i++)
     {
+        FLINT_ASSERT(fmpz_mod_is_canonical(a + i, ctx));
         fmpz_set(B->points->coeffs + old_length + i, a + i);
     }
     B->points->length = old_length + count;
@@ -148,7 +126,8 @@ void fmpz_mod_berlekamp_massey_add_points(
 
 void fmpz_mod_berlekamp_massey_add_zeros(
     fmpz_mod_berlekamp_massey_t B,
-    slong count)
+    slong count,
+    const fmpz_mod_ctx_t ctx)
 {
     slong i;
     slong old_length = B->points->length;
@@ -162,27 +141,32 @@ void fmpz_mod_berlekamp_massey_add_zeros(
 
 void fmpz_mod_berlekamp_massey_add_point(
     fmpz_mod_berlekamp_massey_t B,
-    const fmpz_t a)
+    const fmpz_t a,
+    const fmpz_mod_ctx_t ctx)
 {
     slong old_length = B->points->length;
     fmpz_mod_poly_fit_length(B->points, old_length + 1);
+    FLINT_ASSERT(fmpz_mod_is_canonical(a, ctx));
     fmpz_set(B->points->coeffs + old_length, a);
     B->points->length = old_length + 1;
 }
 
 void fmpz_mod_berlekamp_massey_add_point_ui(
     fmpz_mod_berlekamp_massey_t B,
-    ulong a)
+    ulong a,
+    const fmpz_mod_ctx_t ctx)
 {
     slong old_length = B->points->length;
     fmpz_mod_poly_fit_length(B->points, old_length + 1);
+    FLINT_ASSERT(fmpz_cmp_ui(fmpz_mod_ctx_modulus(ctx), a) > 0);
     fmpz_set_ui(B->points->coeffs + old_length, a);
     B->points->length = old_length + 1;
 }
 
 /* return 1 if reduction changed the master poly, 0 otherwise */
 int fmpz_mod_berlekamp_massey_reduce(
-    fmpz_mod_berlekamp_massey_t B)
+    fmpz_mod_berlekamp_massey_t B,
+    const fmpz_mod_ctx_t ctx)
 {
     slong i, l, k, queue_len, queue_lo, queue_hi;
 
@@ -199,17 +183,17 @@ int fmpz_mod_berlekamp_massey_reduce(
     for (i = 0; i < queue_len; i++)
     {
         fmpz_mod_poly_set_coeff_fmpz(B->rt, queue_len - i - 1,
-                                       B->points->coeffs + queue_lo + i);
+                                        B->points->coeffs + queue_lo + i, ctx);
     }
     B->npoints = queue_hi;
 
     /* Ri = Ri * x^queue_len + Vi*rt */
-    fmpz_mod_poly_mul(B->qt, B->V0, B->rt);
+    fmpz_mod_poly_mul(B->qt, B->V0, B->rt, ctx);
     fmpz_mod_poly_shift_left(B->R0, B->R0, queue_len);
-    fmpz_mod_poly_add(B->R0, B->R0, B->qt);
-    fmpz_mod_poly_mul(B->qt, B->V1, B->rt);
+    fmpz_mod_poly_add(B->R0, B->R0, B->qt, ctx);
+    fmpz_mod_poly_mul(B->qt, B->V1, B->rt, ctx);
     fmpz_mod_poly_shift_left(B->R1, B->R1, queue_len);
-    fmpz_mod_poly_add(B->R1, B->R1, B->qt);
+    fmpz_mod_poly_add(B->R1, B->R1, B->qt, ctx);
 
     /* now start reducing R0, R1 */
     if (2*fmpz_mod_poly_degree(B->R1) < B->npoints)
@@ -219,11 +203,11 @@ int fmpz_mod_berlekamp_massey_reduce(
     }
 
     /* one iteration of euclid to get deg(R0) >= B->npoints/2 */
-    fmpz_mod_poly_divrem(B->qt, B->rt, B->R0, B->R1);
+    fmpz_mod_poly_divrem(B->qt, B->rt, B->R0, B->R1, ctx);
     fmpz_mod_poly_swap(B->R0, B->R1);
     fmpz_mod_poly_swap(B->R1, B->rt);
-    fmpz_mod_poly_mul(B->rt, B->qt, B->V1);
-    fmpz_mod_poly_sub(B->qt, B->V0, B->rt);
+    fmpz_mod_poly_mul(B->rt, B->qt, B->V1, ctx);
+    fmpz_mod_poly_sub(B->qt, B->V0, B->rt, ctx);
     fmpz_mod_poly_swap(B->V0, B->V1);
     fmpz_mod_poly_swap(B->V1, B->qt);
 
@@ -241,11 +225,11 @@ int fmpz_mod_berlekamp_massey_reduce(
     {
         while (B->npoints <= 2*fmpz_mod_poly_degree(B->R1))
         {
-            fmpz_mod_poly_divrem(B->qt, B->rt, B->R0, B->R1);
+            fmpz_mod_poly_divrem(B->qt, B->rt, B->R0, B->R1, ctx);
             fmpz_mod_poly_swap(B->R0, B->R1);
             fmpz_mod_poly_swap(B->R1, B->rt);
-            fmpz_mod_poly_mul(B->rt, B->qt, B->V1);
-            fmpz_mod_poly_sub(B->qt, B->V0, B->rt);
+            fmpz_mod_poly_mul(B->rt, B->qt, B->V1, ctx);
+            fmpz_mod_poly_sub(B->qt, B->V0, B->rt, ctx);
             fmpz_mod_poly_swap(B->V0, B->V1);
             fmpz_mod_poly_swap(B->V1, B->qt);
         }
@@ -255,11 +239,11 @@ int fmpz_mod_berlekamp_massey_reduce(
         /* TODO: get hgcd working in this branch */
         while (B->npoints <= 2*fmpz_mod_poly_degree(B->R1))
         {
-            fmpz_mod_poly_divrem(B->qt, B->rt, B->R0, B->R1);
+            fmpz_mod_poly_divrem(B->qt, B->rt, B->R0, B->R1, ctx);
             fmpz_mod_poly_swap(B->R0, B->R1);
             fmpz_mod_poly_swap(B->R1, B->rt);
-            fmpz_mod_poly_mul(B->rt, B->qt, B->V1);
-            fmpz_mod_poly_sub(B->qt, B->V0, B->rt);
+            fmpz_mod_poly_mul(B->rt, B->qt, B->V1, ctx);
+            fmpz_mod_poly_sub(B->qt, B->V0, B->rt, ctx);
             fmpz_mod_poly_swap(B->V0, B->V1);
             fmpz_mod_poly_swap(B->V1, B->qt);
         }

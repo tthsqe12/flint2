@@ -240,11 +240,12 @@ slong _fmpz_mod_poly_xgcd_hgcd(fmpz *G, fmpz *S, fmpz *T,
 
 void
 fmpz_mod_poly_xgcd_hgcd(fmpz_mod_poly_t G, fmpz_mod_poly_t S, fmpz_mod_poly_t T,
-                         const fmpz_mod_poly_t A, const fmpz_mod_poly_t B)
+                         const fmpz_mod_poly_t A, const fmpz_mod_poly_t B,
+                                                      const fmpz_mod_ctx_t ctx)
 {
     if (A->length < B->length)
     {
-        fmpz_mod_poly_xgcd_hgcd(G, T, S, B, A);
+        fmpz_mod_poly_xgcd_hgcd(G, T, S, B, A, ctx);
     }
     else  /* lenA >= lenB >= 0 */
     {
@@ -262,19 +263,19 @@ fmpz_mod_poly_xgcd_hgcd(fmpz_mod_poly_t G, fmpz_mod_poly_t S, fmpz_mod_poly_t T,
         }
         else if (lenB == 0)  /* lenA > lenB = 0 */
         {
-            fmpz_invmod(inv, A->coeffs + lenA - 1, &A->p);
-            fmpz_mod_poly_scalar_mul_fmpz(G, A, inv);
+            fmpz_invmod(inv, A->coeffs + lenA - 1, fmpz_mod_ctx_modulus(ctx));
+            fmpz_mod_poly_scalar_mul_fmpz(G, A, inv, ctx);
             fmpz_mod_poly_zero(T);
-            fmpz_mod_poly_set_coeff_fmpz(S, 0, inv);
+            fmpz_mod_poly_set_coeff_fmpz(S, 0, inv, ctx);
             _fmpz_mod_poly_set_length(S, 1);
         }
         else if (lenB == 1)  /* lenA >= lenB = 1 */
         {
             fmpz_mod_poly_fit_length(T, 1);
             _fmpz_mod_poly_set_length(T, 1);
-            fmpz_invmod(inv, B->coeffs + 0, &A->p);
+            fmpz_invmod(inv, B->coeffs + 0, fmpz_mod_ctx_modulus(ctx));
             fmpz_set(T->coeffs + 0, inv);
-            fmpz_mod_poly_set_coeff_ui(G, 0, 1);
+            fmpz_mod_poly_set_coeff_ui(G, 0, 1, ctx);
             _fmpz_mod_poly_set_length(G, 1);
             fmpz_mod_poly_zero(S);
         }
@@ -313,10 +314,10 @@ fmpz_mod_poly_xgcd_hgcd(fmpz_mod_poly_t G, fmpz_mod_poly_t S, fmpz_mod_poly_t T,
 
             if (lenA >= lenB)
                 lenG = _fmpz_mod_poly_xgcd_hgcd(g, s, t, A->coeffs, lenA,
-                                                          B->coeffs, lenB, &A->p);
+                                   B->coeffs, lenB, fmpz_mod_ctx_modulus(ctx));
             else
                 lenG = _fmpz_mod_poly_xgcd_hgcd(g, t, s, B->coeffs, lenB,
-                                                          A->coeffs, lenA, &A->p);
+                                   A->coeffs, lenA, fmpz_mod_ctx_modulus(ctx));
 
             if (G == A || G == B)
             {
@@ -348,10 +349,10 @@ fmpz_mod_poly_xgcd_hgcd(fmpz_mod_poly_t G, fmpz_mod_poly_t S, fmpz_mod_poly_t T,
             
             if (!fmpz_is_one(G->coeffs + lenG - 1))
             {
-                fmpz_invmod(inv, G->coeffs + lenG - 1, &A->p);
-                fmpz_mod_poly_scalar_mul_fmpz(G, G, inv);
-                fmpz_mod_poly_scalar_mul_fmpz(S, S, inv);
-                fmpz_mod_poly_scalar_mul_fmpz(T, T, inv);
+                fmpz_invmod(inv, G->coeffs + lenG - 1, fmpz_mod_ctx_modulus(ctx));
+                fmpz_mod_poly_scalar_mul_fmpz(G, G, inv, ctx);
+                fmpz_mod_poly_scalar_mul_fmpz(S, S, inv, ctx);
+                fmpz_mod_poly_scalar_mul_fmpz(T, T, inv, ctx);
             }
         }
 

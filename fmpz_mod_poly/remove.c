@@ -14,19 +14,20 @@
 
 #include "fmpz_mod_poly.h"
 
-ulong fmpz_mod_poly_remove(fmpz_mod_poly_t f, const fmpz_mod_poly_t g)
+ulong fmpz_mod_poly_remove(fmpz_mod_poly_t f, const fmpz_mod_poly_t g,
+                                                      const fmpz_mod_ctx_t ctx)
 {
     fmpz_mod_poly_t q, r;
     ulong i = 0;
 
-    fmpz_mod_poly_init(q, &g->p);
-    fmpz_mod_poly_init(r, &g->p);
+    fmpz_mod_poly_init(q);
+    fmpz_mod_poly_init(r);
 
     while (1)
     {
         if (f->length < g->length)
             break;
-        fmpz_mod_poly_divrem(q, r, f, g);
+        fmpz_mod_poly_divrem(q, r, f, g, ctx);
         if (r->length == 0)
             fmpz_mod_poly_swap(q, f);
         else

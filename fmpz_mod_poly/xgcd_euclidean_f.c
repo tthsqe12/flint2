@@ -125,13 +125,13 @@ cleanup2:
 }
 
 void 
-fmpz_mod_poly_xgcd_euclidean_f(fmpz_t f, fmpz_mod_poly_t G, 
-                             fmpz_mod_poly_t S, fmpz_mod_poly_t T,
-                             const fmpz_mod_poly_t A, const fmpz_mod_poly_t B)
+fmpz_mod_poly_xgcd_euclidean_f(fmpz_t f, fmpz_mod_poly_t G, fmpz_mod_poly_t S,
+          fmpz_mod_poly_t T, const fmpz_mod_poly_t A, const fmpz_mod_poly_t B,
+                                                      const fmpz_mod_ctx_t ctx)
 {
     if (A->length < B->length)
     {
-        fmpz_mod_poly_xgcd_euclidean_f(f, G, T, S, B, A);
+        fmpz_mod_poly_xgcd_euclidean_f(f, G, T, S, B, A, ctx);
     }
     else  /* lenA >= lenB >= 0 */
     {
@@ -148,17 +148,17 @@ fmpz_mod_poly_xgcd_euclidean_f(fmpz_t f, fmpz_mod_poly_t G,
         }
         else if (lenB == 0)  /* lenA > lenB = 0 */
         {
-            fmpz_gcdinv(f, inv, fmpz_mod_poly_lead(A), &A->p);
-            fmpz_mod_poly_scalar_mul_fmpz(G, A, inv);
+            fmpz_gcdinv(f, inv, fmpz_mod_poly_lead(A), fmpz_mod_ctx_modulus(ctx));
+            fmpz_mod_poly_scalar_mul_fmpz(G, A, inv, ctx);
             fmpz_mod_poly_zero(T);
-            fmpz_mod_poly_set_fmpz(S, inv);
+            fmpz_mod_poly_set_fmpz(S, inv, ctx);
         }
         else  /* lenA >= lenB >= 1 */
         {
             fmpz *g, *s, *t;
             slong lenG;
 
-            fmpz_gcdinv(f, inv, fmpz_mod_poly_lead(B), &B->p);
+            fmpz_gcdinv(f, inv, fmpz_mod_poly_lead(B), fmpz_mod_ctx_modulus(ctx));
             
             if (!fmpz_is_one(f))
                goto cleanup;
@@ -191,8 +191,8 @@ fmpz_mod_poly_xgcd_euclidean_f(fmpz_t f, fmpz_mod_poly_t G,
                 t = T->coeffs;
             }
 
-            lenG = _fmpz_mod_poly_xgcd_euclidean_f(f, g, s, t, 
-                 A->coeffs, lenA, B->coeffs, lenB, inv, &B->p);
+            lenG = _fmpz_mod_poly_xgcd_euclidean_f(f, g, s, t, A->coeffs, lenA,
+                              B->coeffs, lenB, inv, fmpz_mod_ctx_modulus(ctx));
 
             if (G == A || G == B)
             {
@@ -224,10 +224,10 @@ fmpz_mod_poly_xgcd_euclidean_f(fmpz_t f, fmpz_mod_poly_t G,
 
             if (!fmpz_is_one(fmpz_mod_poly_lead(G)))
             {
-                fmpz_gcdinv(f, inv, fmpz_mod_poly_lead(G), &A->p);
-                fmpz_mod_poly_scalar_mul_fmpz(G, G, inv);
-                fmpz_mod_poly_scalar_mul_fmpz(S, S, inv);
-                fmpz_mod_poly_scalar_mul_fmpz(T, T, inv);
+                fmpz_gcdinv(f, inv, fmpz_mod_poly_lead(G), fmpz_mod_ctx_modulus(ctx));
+                fmpz_mod_poly_scalar_mul_fmpz(G, G, inv, ctx);
+                fmpz_mod_poly_scalar_mul_fmpz(S, S, inv, ctx);
+                fmpz_mod_poly_scalar_mul_fmpz(T, T, inv, ctx);
             }
         }
 

@@ -174,7 +174,8 @@ _fmpz_mod_poly_powers_mod_preinv_threaded_pool(fmpz ** res, const fmpz * f,
 
 void
 fmpz_mod_poly_powers_mod_bsgs(fmpz_mod_poly_struct * res,
-		     const fmpz_mod_poly_t f, slong n, const fmpz_mod_poly_t g)
+		     const fmpz_mod_poly_t f, slong n, const fmpz_mod_poly_t g,
+                                                      const fmpz_mod_ctx_t ctx)
 {
     slong i;
 
@@ -192,7 +193,7 @@ fmpz_mod_poly_powers_mod_bsgs(fmpz_mod_poly_struct * res,
     if (fmpz_mod_poly_length(f) == 0 || fmpz_mod_poly_length(g) == 1)
     {
         if (n > 0)
-           fmpz_mod_poly_one(res + 0);
+           fmpz_mod_poly_one(res + 0, ctx);
 
         for (i = 1; i < n; i++)
            fmpz_mod_poly_zero(res + i);
@@ -204,11 +205,11 @@ fmpz_mod_poly_powers_mod_bsgs(fmpz_mod_poly_struct * res,
     {
         fmpz_mod_poly_t q, r;
 
-        fmpz_mod_poly_init(q, &f->p);
-        fmpz_mod_poly_init(r, &f->p);
+        fmpz_mod_poly_init(q);
+        fmpz_mod_poly_init(r);
 
-        fmpz_mod_poly_divrem(q, r, f, g);
-        fmpz_mod_poly_powers_mod_naive(res, r, n, g);
+        fmpz_mod_poly_divrem(q, r, f, g, ctx);
+        fmpz_mod_poly_powers_mod_naive(res, r, n, g, ctx);
 
         fmpz_mod_poly_clear(q);
         fmpz_mod_poly_clear(r);
@@ -217,7 +218,7 @@ fmpz_mod_poly_powers_mod_bsgs(fmpz_mod_poly_struct * res,
     }
 
     res_arr = (fmpz **) flint_malloc(n*sizeof(fmpz *));
-    fmpz_mod_poly_init(ginv, &g->p);
+    fmpz_mod_poly_init(ginv);
 
     for (i = 0; i < n; i++)
     {
@@ -227,13 +228,13 @@ fmpz_mod_poly_powers_mod_bsgs(fmpz_mod_poly_struct * res,
     }
 
     fmpz_mod_poly_reverse(ginv, g, fmpz_mod_poly_length(g));
-    fmpz_mod_poly_inv_series(ginv, ginv, fmpz_mod_poly_length(g));
+    fmpz_mod_poly_inv_series(ginv, ginv, fmpz_mod_poly_length(g), ctx);
 
     num_threads = flint_request_threads(&threads, flint_get_num_threads());
 
     _fmpz_mod_poly_powers_mod_preinv_threaded_pool(res_arr, f->coeffs,
-		       f->length, n, g->coeffs, g->length, ginv->coeffs,
-		                    ginv->length, &g->p, threads, num_threads);
+		       f->length, n, g->coeffs, g->length, ginv->coeffs, ginv->length,
+                              fmpz_mod_ctx_modulus(ctx), threads, num_threads);
 
     flint_give_back_threads(threads, num_threads);
 

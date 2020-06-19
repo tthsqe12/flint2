@@ -21,7 +21,7 @@ unity_zpq_p_unity(const unity_zpq f)
 
     for (i = 0; i < f->p; i++)
     {
-        if (fmpz_equal_ui(f->polys[i]->coeffs + i, 1))
+        if (fmpz_is_one(f->polys[i]->coeffs + i))
         {
             if (is_punity != f->p)
                 return 0;
@@ -48,7 +48,7 @@ unity_zpq_is_p_unity_generator(const unity_zpq f)
     slong upow = unity_zpq_p_unity(f);
 
     if (upow != f->p && upow != 0)
-            return 1;
+        return 1;
 
     return 0;
 }

@@ -47,7 +47,8 @@ slong _fmpz_mod_poly_gcdinv_f(fmpz_t f, fmpz *G, fmpz *S,
 }
 
 void fmpz_mod_poly_gcdinv_f(fmpz_t f, fmpz_mod_poly_t G, fmpz_mod_poly_t S, 
-                          const fmpz_mod_poly_t A, const fmpz_mod_poly_t B)
+                            const fmpz_mod_poly_t A, const fmpz_mod_poly_t B,
+                                                      const fmpz_mod_ctx_t ctx)
 {
     const slong lenA = A->length, lenB = B->length;
 
@@ -60,11 +61,11 @@ void fmpz_mod_poly_gcdinv_f(fmpz_t f, fmpz_mod_poly_t G, fmpz_mod_poly_t S,
     {
         fmpz_mod_poly_t T;
 
-        fmpz_mod_poly_init(T, &A->p);
-        fmpz_mod_poly_rem_f(f, T, A, B);
+        fmpz_mod_poly_init(T);
+        fmpz_mod_poly_rem_f(f, T, A, B, ctx);
 
         if (fmpz_is_one(f))
-           fmpz_mod_poly_gcdinv_f(f, G, S, T, B);
+           fmpz_mod_poly_gcdinv_f(f, G, S, T, B, ctx);
 
         fmpz_mod_poly_clear(T);
 
@@ -101,8 +102,8 @@ void fmpz_mod_poly_gcdinv_f(fmpz_t f, fmpz_mod_poly_t G, fmpz_mod_poly_t S,
             s = S->coeffs;
         }
 
-        lenG = _fmpz_mod_poly_gcdinv_f(f, g, s, 
-                                      A->coeffs, lenA, B->coeffs, lenB, &A->p);
+        lenG = _fmpz_mod_poly_gcdinv_f(f, g, s, A->coeffs, lenA,
+                                   B->coeffs, lenB, fmpz_mod_ctx_modulus(ctx));
 
         if (G == A || G == B)
         {
@@ -128,9 +129,9 @@ void fmpz_mod_poly_gcdinv_f(fmpz_t f, fmpz_mod_poly_t G, fmpz_mod_poly_t S,
                fmpz_t inv;
 
                fmpz_init(inv);
-               fmpz_gcdinv(f, inv, fmpz_mod_poly_lead(G), &A->p);
-               fmpz_mod_poly_scalar_mul_fmpz(G, G, inv);
-               fmpz_mod_poly_scalar_mul_fmpz(S, S, inv);
+               fmpz_gcdinv(f, inv, fmpz_mod_poly_lead(G), fmpz_mod_ctx_modulus(ctx));
+               fmpz_mod_poly_scalar_mul_fmpz(G, G, inv, ctx);
+               fmpz_mod_poly_scalar_mul_fmpz(S, S, inv, ctx);
                fmpz_clear(inv);
             }
         }

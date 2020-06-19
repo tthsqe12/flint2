@@ -13,7 +13,8 @@
 #include "fmpz.h"
 #include "fmpz_mod_poly.h"
 
-void fmpz_mod_poly_make_monic(fmpz_mod_poly_t res, const fmpz_mod_poly_t poly)
+void fmpz_mod_poly_make_monic(fmpz_mod_poly_t res, const fmpz_mod_poly_t poly,
+                                                      const fmpz_mod_ctx_t ctx)
 {
     const slong len = poly->length;
     fmpz_t inv;
@@ -25,13 +26,13 @@ void fmpz_mod_poly_make_monic(fmpz_mod_poly_t res, const fmpz_mod_poly_t poly)
     }
 
     fmpz_init(inv);
-    fmpz_invmod(inv, fmpz_mod_poly_lead(poly), &(poly->p));
+    fmpz_invmod(inv, fmpz_mod_poly_lead(poly), fmpz_mod_ctx_modulus(ctx));
 
     fmpz_mod_poly_fit_length(res, len);
     _fmpz_mod_poly_set_length(res, len);
 
-    _fmpz_mod_poly_scalar_mul_fmpz(res->coeffs, 
-                                   poly->coeffs, len, inv, &(poly->p));
+    _fmpz_mod_poly_scalar_mul_fmpz(res->coeffs, poly->coeffs, len,
+                                               inv, fmpz_mod_ctx_modulus(ctx));
 
     fmpz_clear(inv);
 }

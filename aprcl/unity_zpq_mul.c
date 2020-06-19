@@ -20,12 +20,10 @@ unity_zpq_mul(unity_zpq f, const unity_zpq g, const unity_zpq h)
 
     q = f->q;
     p = f->p;
-    fmpz_mod_poly_init(temp, f->n);
+    fmpz_mod_poly_init(temp);
 
     for (i = 0; i < p; i++)
-    {
         fmpz_mod_poly_zero(f->polys[i]);
-    }
 
     for (i = 0; i < p; i++)
     {
@@ -34,7 +32,7 @@ unity_zpq_mul(unity_zpq f, const unity_zpq g, const unity_zpq h)
             ulong qpow;
 
             qpow = n_addmod(i, j, p);
-            fmpz_mod_poly_mul(temp, g->polys[i], h->polys[j]);
+            fmpz_mod_poly_mul(temp, g->polys[i], h->polys[j], f->ctx);
 
             if (temp->length == 0)
                 continue;
@@ -44,11 +42,12 @@ unity_zpq_mul(unity_zpq f, const unity_zpq g, const unity_zpq h)
                 fmpz_add(temp->coeffs + k - q,
                         temp->coeffs + k - q, temp->coeffs + k);
                 fmpz_set_ui(temp->coeffs + k, 0);
-                fmpz_mod(temp->coeffs + k - q, temp->coeffs + k - q, f->n);
+                fmpz_mod(temp->coeffs + k - q, temp->coeffs + k - q,
+                                                 fmpz_mod_ctx_modulus(f->ctx));
             }
             _fmpz_mod_poly_normalise(temp);
 
-            fmpz_mod_poly_add(f->polys[qpow], f->polys[qpow], temp);
+            fmpz_mod_poly_add(f->polys[qpow], f->polys[qpow], temp, f->ctx);
         }
     }
 

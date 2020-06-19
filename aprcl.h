@@ -39,10 +39,10 @@ typedef _aprcl_config aprcl_config[1];
 /* Z[unity_root_q, unity_root_p]/(n) struct */
 typedef struct
 {
-    fmpz_mod_poly_t *polys;
+    fmpz_mod_poly_t * polys; /* TODO change this to fmpz_mod_poly_struct * */
     ulong p;
     ulong q;
-    fmpz_t n;
+    fmpz_mod_ctx_t ctx;      /* and get rid of this redundant modulus */
 } _unity_zpq;
 
 typedef _unity_zpq unity_zpq[1];
@@ -53,7 +53,7 @@ typedef struct
     fmpz_mod_poly_t poly;
     ulong p;
     ulong exp;
-    fmpz_t n;
+    fmpz_mod_ctx_t ctx;     /* and get rid of this redundant modulus too */
 } _unity_zp;
 
 typedef _unity_zp unity_zp[1];

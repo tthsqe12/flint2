@@ -16,8 +16,9 @@
 #include "fmpz_mod_poly.h"
 
 void
-fmpz_mod_poly_frobenius_powers_2exp_precomp(fmpz_mod_poly_frobenius_powers_2exp_t pow, 
-                      const fmpz_mod_poly_t f, const fmpz_mod_poly_t finv, ulong m)
+fmpz_mod_poly_frobenius_powers_2exp_precomp(
+           fmpz_mod_poly_frobenius_powers_2exp_t pow, const fmpz_mod_poly_t f,
+                 const fmpz_mod_poly_t finv, ulong m, const fmpz_mod_ctx_t ctx)
 {
     slong i, l = 0;
 
@@ -32,15 +33,20 @@ fmpz_mod_poly_frobenius_powers_2exp_precomp(fmpz_mod_poly_frobenius_powers_2exp_
     if ((WORD(1) << l) == m)
        l++;
 
-    pow->pow = (fmpz_mod_poly_struct *) flint_malloc(l*sizeof(fmpz_mod_poly_struct));
+    pow->pow = (fmpz_mod_poly_struct *) flint_malloc(
+                                               l*sizeof(fmpz_mod_poly_struct));
 
     for (i = 0; i < l; i++)
-       fmpz_mod_poly_init(pow->pow + i, &f->p);
+       fmpz_mod_poly_init(pow->pow + i);
 
     pow->len = l;
 
-    fmpz_mod_poly_powmod_x_fmpz_preinv(pow->pow + 0, &f->p, f, finv);
+    fmpz_mod_poly_powmod_x_fmpz_preinv(pow->pow + 0,
+                                      fmpz_mod_ctx_modulus(ctx), f, finv, ctx);
 
     for (i = 1; i < l; i++)
-       fmpz_mod_poly_compose_mod(pow->pow + i, pow->pow + i - 1, pow->pow + i - 1, f);
+    {
+       fmpz_mod_poly_compose_mod(pow->pow + i, pow->pow + i - 1,
+                                                     pow->pow + i - 1, f, ctx);
+    }
 }

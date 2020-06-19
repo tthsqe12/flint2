@@ -31,7 +31,8 @@ void _fmpz_mod_poly_divrem_f(fmpz_t f, fmpz *Q, fmpz *R,
 }
 
 void fmpz_mod_poly_divrem_f(fmpz_t f, fmpz_mod_poly_t Q, fmpz_mod_poly_t R, 
-                            const fmpz_mod_poly_t A, const fmpz_mod_poly_t B)
+                            const fmpz_mod_poly_t A, const fmpz_mod_poly_t B,
+                                                      const fmpz_mod_ctx_t ctx)
 {
     const slong lenA = A->length;
     const slong lenB = B->length;
@@ -41,7 +42,7 @@ void fmpz_mod_poly_divrem_f(fmpz_t f, fmpz_mod_poly_t Q, fmpz_mod_poly_t R,
     fmpz_t invB;
 
     fmpz_init(invB);
-    fmpz_gcdinv(f, invB, fmpz_poly_lead(B), &(B->p));
+    fmpz_gcdinv(f, invB, fmpz_poly_lead(B), fmpz_mod_ctx_modulus(ctx));
 
     if (!fmpz_is_one(f))
     {
@@ -52,7 +53,7 @@ void fmpz_mod_poly_divrem_f(fmpz_t f, fmpz_mod_poly_t Q, fmpz_mod_poly_t R,
     if (lenB == 0)
     {
         fmpz_clear(invB);
-	flint_printf("Exception (fmpz_mod_poly_divrem_f). Division by zero.\n");
+	    flint_printf("Exception (fmpz_mod_poly_divrem_f). Division by zero.\n");
         flint_abort();
     }
 
@@ -85,7 +86,7 @@ void fmpz_mod_poly_divrem_f(fmpz_t f, fmpz_mod_poly_t Q, fmpz_mod_poly_t R,
     }
 
     _fmpz_mod_poly_divrem_divconquer(q, r, A->coeffs, lenA, 
-                                           B->coeffs, lenB, invB, &(B->p));
+                             B->coeffs, lenB, invB, fmpz_mod_ctx_modulus(ctx));
 
     if (Q == A || Q == B)
     {

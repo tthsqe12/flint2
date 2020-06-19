@@ -53,13 +53,14 @@ _fmpz_mod_poly_discriminant(fmpz_t d, const fmpz *poly, slong len, const fmpz_t 
 }
 
 void
-fmpz_mod_poly_discriminant(fmpz_t d, const fmpz_mod_poly_t f)
+fmpz_mod_poly_discriminant(fmpz_t d, const fmpz_mod_poly_t f,
+                                                      const fmpz_mod_ctx_t ctx)
 {
     const slong len = f->length;
     
     if (len <= 1)
         fmpz_zero(d);
     else
-       _fmpz_mod_poly_discriminant(d, f->coeffs, len, &f->p);
+       _fmpz_mod_poly_discriminant(d, f->coeffs, len, fmpz_mod_ctx_modulus(ctx));
 }
 

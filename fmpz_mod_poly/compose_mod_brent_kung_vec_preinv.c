@@ -106,13 +106,15 @@ _fmpz_mod_poly_compose_mod_brent_kung_vec_preinv(fmpz_mod_poly_struct * res,
     fmpz_mat_clear(C);
 }
 
-void
-fmpz_mod_poly_compose_mod_brent_kung_vec_preinv(fmpz_mod_poly_struct * res,
-                                                const fmpz_mod_poly_struct *
-                                                polys, slong len1, slong n,
-                                                const fmpz_mod_poly_t g,
-                                                const fmpz_mod_poly_t poly,
-                                                const fmpz_mod_poly_t polyinv)
+void fmpz_mod_poly_compose_mod_brent_kung_vec_preinv(
+    fmpz_mod_poly_struct * res,
+    const fmpz_mod_poly_struct * polys,
+    slong len1,
+    slong n,
+    const fmpz_mod_poly_t g,
+    const fmpz_mod_poly_t poly,
+    const fmpz_mod_poly_t polyinv,
+    const fmpz_mod_ctx_t ctx)
 {
     slong len2 = poly->length;
     slong len3, i;
@@ -168,7 +170,7 @@ fmpz_mod_poly_compose_mod_brent_kung_vec_preinv(fmpz_mod_poly_struct * res,
                                                      poly->coeffs, len2,
                                                      polyinv->coeffs,
                                                      polyinv->length,
-                                                     &poly->p);
+                                                     fmpz_mod_ctx_modulus(ctx));
 
     for (i = 0; i < n; i++)
         _fmpz_mod_poly_normalise(res + i);

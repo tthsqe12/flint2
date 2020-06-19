@@ -67,8 +67,8 @@ void _fmpz_mod_poly_div_basecase(fmpz *Q, fmpz *R,
 	TMP_END;
 }
 
-void fmpz_mod_poly_div_basecase(fmpz_mod_poly_t Q, 
-    const fmpz_mod_poly_t A, const fmpz_mod_poly_t B)
+void fmpz_mod_poly_div_basecase(fmpz_mod_poly_t Q, const fmpz_mod_poly_t A,
+                             const fmpz_mod_poly_t B, const fmpz_mod_ctx_t ctx)
 {
     const slong lenA = A->length, lenB = B->length, lenQ = lenA - lenB + 1;
     fmpz *q;
@@ -76,11 +76,12 @@ void fmpz_mod_poly_div_basecase(fmpz_mod_poly_t Q,
 
     if (lenB == 0)
     {
-        if (fmpz_is_one(fmpz_mod_poly_modulus(B)))
+        if (fmpz_is_one(fmpz_mod_ctx_modulus(ctx)))
         {
             fmpz_mod_poly_set(Q, A);
             return;
-        } else
+        }
+        else
         {
             flint_printf("Exception (fmpz_mod_poly_div_basecase). Division by zero.\n");
             flint_abort();
@@ -94,7 +95,7 @@ void fmpz_mod_poly_div_basecase(fmpz_mod_poly_t Q,
     }
 
     fmpz_init(invB);
-    fmpz_invmod(invB, B->coeffs + (lenB - 1), &(B->p));
+    fmpz_invmod(invB, B->coeffs + (lenB - 1), fmpz_mod_ctx_modulus(ctx));
 
     if (Q == A || Q == B)
     {
@@ -107,7 +108,7 @@ void fmpz_mod_poly_div_basecase(fmpz_mod_poly_t Q,
     }
 
     _fmpz_mod_poly_div_basecase(q, NULL, A->coeffs, lenA,
-                                         B->coeffs, lenB, invB, &(B->p));
+                             B->coeffs, lenB, invB, fmpz_mod_ctx_modulus(ctx));
 
     if (Q == A || Q == B)
     {

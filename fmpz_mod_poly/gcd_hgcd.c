@@ -91,12 +91,12 @@ slong _fmpz_mod_poly_gcd_hgcd(fmpz *G, const fmpz *A, slong lenA,
     return lenG;
 }
 
-void fmpz_mod_poly_gcd_hgcd(fmpz_mod_poly_t G, 
-                             const fmpz_mod_poly_t A, const fmpz_mod_poly_t B)
+void fmpz_mod_poly_gcd_hgcd(fmpz_mod_poly_t G, const fmpz_mod_poly_t A,
+                             const fmpz_mod_poly_t B, const fmpz_mod_ctx_t ctx)
 {
     if (A->length < B->length)
     {
-        fmpz_mod_poly_gcd_hgcd(G, B, A);
+        fmpz_mod_poly_gcd_hgcd(G, B, A, ctx);
     }
     else /* lenA >= lenB >= 0 */
     {
@@ -110,13 +110,13 @@ void fmpz_mod_poly_gcd_hgcd(fmpz_mod_poly_t G,
         } 
         else if (lenB == 0) /* lenA > lenB = 0 */
         {
-            fmpz_mod_poly_make_monic(G, A);
+            fmpz_mod_poly_make_monic(G, A, ctx);
         }
         else /* lenA >= lenB >= 1 */
         {
             if (G == A || G == B)
             {
-                fmpz_mod_poly_init2(tG, &A->p, FLINT_MIN(lenA, lenB));
+                fmpz_mod_poly_init2(tG, FLINT_MIN(lenA, lenB));
                 g = tG->coeffs;
             }
             else
@@ -126,7 +126,7 @@ void fmpz_mod_poly_gcd_hgcd(fmpz_mod_poly_t G,
             }
 
             lenG = _fmpz_mod_poly_gcd_hgcd(g, A->coeffs, lenA,
-                                               B->coeffs, lenB, &A->p);
+                                   B->coeffs, lenB, fmpz_mod_ctx_modulus(ctx));
 
             if (G == A || G == B)
             {
@@ -138,7 +138,7 @@ void fmpz_mod_poly_gcd_hgcd(fmpz_mod_poly_t G,
             if (G->length == 1)
                 fmpz_one(G->coeffs + 0);
             else
-                fmpz_mod_poly_make_monic(G, G);
+                fmpz_mod_poly_make_monic(G, G, ctx);
         }
     }
 }

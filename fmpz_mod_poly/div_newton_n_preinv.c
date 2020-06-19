@@ -46,8 +46,8 @@ void _fmpz_mod_poly_div_newton_n_preinv (fmpz* Q, const fmpz* A, slong lenA,
 
 
 void fmpz_mod_poly_div_newton_n_preinv(fmpz_mod_poly_t Q,
-                               const fmpz_mod_poly_t A, const fmpz_mod_poly_t B,
-                               const fmpz_mod_poly_t Binv)
+                          const fmpz_mod_poly_t A, const fmpz_mod_poly_t B,
+                          const fmpz_mod_poly_t Binv, const fmpz_mod_ctx_t ctx)
 {
     const slong lenA = A->length, lenB = B->length, lenQ = lenA - lenB + 1,
                 lenBinv = Binv->length;
@@ -55,11 +55,12 @@ void fmpz_mod_poly_div_newton_n_preinv(fmpz_mod_poly_t Q,
 
     if (lenB == 0)
     {
-        if (fmpz_is_one(fmpz_mod_poly_modulus(B)))
+        if (fmpz_is_one(fmpz_mod_ctx_modulus(ctx)))
         {
             fmpz_mod_poly_set(Q, A);
             return;
-        } else
+        }
+        else
         {
             flint_printf("Exception (fmpz_mod_poly_div_newton_n_preinv). Division by zero.\n");
             flint_abort();
@@ -75,6 +76,7 @@ void fmpz_mod_poly_div_newton_n_preinv(fmpz_mod_poly_t Q,
     if (lenA > 2 * lenB - 2)
     {
         flint_printf ("Exception (fmpz_mod_poly_div_newton_n_preinv).\n");
+        flint_abort();
     }
 
     if (Q == A || Q == B || Q == Binv)
@@ -88,7 +90,7 @@ void fmpz_mod_poly_div_newton_n_preinv(fmpz_mod_poly_t Q,
     }
 
     _fmpz_mod_poly_div_newton_n_preinv (q, A->coeffs, lenA, B->coeffs, lenB,
-                                    Binv->coeffs, lenBinv, &(B->p));
+                             Binv->coeffs, lenBinv, fmpz_mod_ctx_modulus(ctx));
 
     if (Q == A || Q == B || Q == Binv)
     {
