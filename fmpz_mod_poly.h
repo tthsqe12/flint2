@@ -86,6 +86,7 @@ typedef struct
     fmpz_mod_poly_struct * poly1;
     fmpz_mod_poly_struct * poly2;
     fmpz_mod_poly_struct * poly2inv;
+    const fmpz_mod_ctx_struct * ctx;
 }
 fmpz_mod_poly_matrix_precompute_arg_t;
 
@@ -96,6 +97,7 @@ typedef struct
     fmpz_mod_poly_struct * poly1;
     fmpz_mod_poly_struct * poly3;
     fmpz_mod_poly_struct * poly3inv;
+    const fmpz_mod_ctx_struct * ctx;
 }
 fmpz_mod_poly_compose_mod_precomp_preinv_arg_t;
 

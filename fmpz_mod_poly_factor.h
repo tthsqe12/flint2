@@ -54,6 +54,7 @@ typedef struct
     fmpz_mod_poly_struct * H;
     fmpz_mod_poly_struct * v;
     fmpz_mod_poly_struct * vinv;
+    const fmpz_mod_ctx_struct * ctx;
     fmpz * tmp;
     slong m;
 }
@@ -79,17 +80,15 @@ void fmpz_mod_poly_factor_swap(fmpz_mod_poly_factor_t a, fmpz_mod_poly_factor_t 
 }
 
 FLINT_DLL void fmpz_mod_poly_factor_insert(fmpz_mod_poly_factor_t fac,
-                                 const fmpz_mod_poly_t poly, slong exp,
-                                                     const fmpz_mod_ctx_t ctx);
+                                        const fmpz_mod_poly_t poly, slong exp);
 
 FLINT_DLL void fmpz_mod_poly_factor_print(const fmpz_mod_poly_factor_t fac,
                                                      const fmpz_mod_ctx_t ctx);
 
 FLINT_DLL void fmpz_mod_poly_factor_concat(fmpz_mod_poly_factor_t res,
-                   const fmpz_mod_poly_factor_t fac, const fmpz_mod_ctx_t ctx);
+                                             const fmpz_mod_poly_factor_t fac);
 
-FLINT_DLL void fmpz_mod_poly_factor_pow(fmpz_mod_poly_factor_t fac, slong exp,
-                                                     const fmpz_mod_ctx_t ctx);
+FLINT_DLL void fmpz_mod_poly_factor_pow(fmpz_mod_poly_factor_t fac, slong exp);
 
 FLINT_DLL int fmpz_mod_poly_is_irreducible(const fmpz_mod_poly_t f,
                                                      const fmpz_mod_ctx_t ctx);

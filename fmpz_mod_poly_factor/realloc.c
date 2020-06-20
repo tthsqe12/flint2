@@ -16,9 +16,6 @@
 void
 fmpz_mod_poly_factor_realloc(fmpz_mod_poly_factor_t fac, slong alloc)
 {
-    fmpz_t p;
-    fmpz_init_set_ui(p, 5);
-
     if (alloc == 0)             /* Clear up, reinitialise */
     {
         fmpz_mod_poly_factor_clear(fac);
@@ -48,7 +45,7 @@ fmpz_mod_poly_factor_realloc(fmpz_mod_poly_factor_t fac, slong alloc)
 
             for (i = fac->alloc; i < alloc; i++)
             {
-                fmpz_mod_poly_init(fac->poly + i, p);
+                fmpz_mod_poly_init(fac->poly + i);
                 fac->exp[i] = WORD(0);
             }
             fac->alloc = alloc;
@@ -62,9 +59,8 @@ fmpz_mod_poly_factor_realloc(fmpz_mod_poly_factor_t fac, slong alloc)
         fac->exp = flint_calloc(alloc, sizeof(slong));
 
         for (i = 0; i < alloc; i++)
-            fmpz_mod_poly_init(fac->poly + i, p);
+            fmpz_mod_poly_init(fac->poly + i);
         fac->num = 0;
         fac->alloc = alloc;
     }
-    fmpz_clear(p);
 }

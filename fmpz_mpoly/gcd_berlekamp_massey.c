@@ -606,13 +606,15 @@ void fmpz_mod_mpolyuu_use_skel_mul(
 
         if (E->length > 0 && (E->exps[E->length - 1] >> (FLINT_BITS/2)) == xexp)
         {
-            fmpz_mod_poly_set_coeff_fmpz(E->coeffs + E->length - 1, yexp, eval);
+            fmpz_mod_poly_set_coeff_fmpz(E->coeffs + E->length - 1,
+                                                   yexp, eval, ctx_mp->ffinfo);
         }
         else
         {
             fmpz_mod_mpolyn_fit_length(E, E->length + 1, ctx_mp);
             fmpz_mod_poly_zero(E->coeffs + E->length);
-            fmpz_mod_poly_set_coeff_fmpz(E->coeffs + E->length, yexp, eval);
+            fmpz_mod_poly_set_coeff_fmpz(E->coeffs + E->length, yexp, eval,
+                                                               ctx_mp->ffinfo);
             E->exps[E->length] = xexp << (FLINT_BITS/2);
             E->length++;
         }
@@ -654,14 +656,14 @@ int fmpz_mod_bma_get_fmpz_mpoly(
 
     fmpz_tdiv_q_2exp(halfp, fmpz_mod_ctx_modulus(fpctx), 1);
 
-    fmpz_mod_berlekamp_massey_reduce(I);
+    fmpz_mod_berlekamp_massey_reduce(I, fpctx);
     t = fmpz_mod_poly_degree(I->V1);
     FLINT_ASSERT(t > 0);
     FLINT_ASSERT(I->points->length >= t);
 
     fmpz_mod_poly_fit_length(I->rt, t);
     I->rt->length = t;
-    success = fmpz_mod_poly_find_distinct_nonzero_roots(I->rt->coeffs, I->V1);
+    success = fmpz_mod_poly_find_distinct_nonzero_roots(I->rt->coeffs, I->V1, fpctx);
     if (!success)
     {
         goto cleanup;
@@ -1025,11 +1027,13 @@ void fmpz_mod_bma_mpoly_reset_prime(
     fmpz_mod_bma_mpoly_t A,
     const fmpz_mod_ctx_t fpctx)
 {
+#if 0
     slong i;
     for (i = 0; i < A->alloc; i++)
     {
         fmpz_mod_berlekamp_massey_set_prime(A->coeffs + i, fmpz_mod_ctx_modulus(fpctx));
     }
+#endif
 }
 
 
@@ -1090,7 +1094,7 @@ void fmpz_mod_bma_mpoly_fit_length(
 
         for (i = old_alloc; i < new_alloc; i++)
         {
-            fmpz_mod_berlekamp_massey_init(A->coeffs + i, fmpz_mod_ctx_modulus(fpctx));
+            fmpz_mod_berlekamp_massey_init(A->coeffs + i, fpctx);
         }
         A->alloc = new_alloc;
     }
@@ -1102,7 +1106,7 @@ void fmpz_mod_bma_mpoly_zero(fmpz_mod_bma_mpoly_t L)
     L->pointcount = 0;
 }
 
-int fmpz_mod_bma_mpoly_reduce(fmpz_mod_bma_mpoly_t L)
+int fmpz_mod_bma_mpoly_reduce(fmpz_mod_bma_mpoly_t L, const fmpz_mod_ctx_t fpctx)
 {
     slong i;
     int changed;
@@ -1112,7 +1116,7 @@ int fmpz_mod_bma_mpoly_reduce(fmpz_mod_bma_mpoly_t L)
     for (i = 0; i < L->length; i++)
     {
         FLINT_ASSERT(L->pointcount == fmpz_mod_berlekamp_massey_point_count(L->coeffs + i));
-        changed |= fmpz_mod_berlekamp_massey_reduce(L->coeffs + i);
+        changed |= fmpz_mod_berlekamp_massey_reduce(L->coeffs + i, fpctx);
     }
 
     return changed;
@@ -1167,7 +1171,7 @@ void fmpz_mod_bma_mpoly_add_point(
             /* L term present, A term present */
 add_same_exp:
             fmpz_mod_berlekamp_massey_add_point(Lcoeff + Li,
-                                                   (Acoeff + Ai)->coeffs + ai);
+                                   (Acoeff + Ai)->coeffs + ai, ctx_mp->ffinfo);
             Li++;
             do {
                 ai--;
@@ -1194,7 +1198,7 @@ add_same_exp:
         else if (Li < Llen && (Ai >= Alen || Lexp[Li] > Aexp))
         {
             /* L term present, A term missing */
-            fmpz_mod_berlekamp_massey_add_zeros(Lcoeff + Li, 1);
+            fmpz_mod_berlekamp_massey_add_zeros(Lcoeff + Li, 1, ctx_mp->ffinfo);
             Li++;
         }
         else
@@ -1220,8 +1224,8 @@ add_same_exp:
                 Lcoeff[Li] = tcoeff;
             }
 
-            fmpz_mod_berlekamp_massey_start_over(Lcoeff + Li);
-            fmpz_mod_berlekamp_massey_add_zeros(Lcoeff + Li, L->pointcount);
+            fmpz_mod_berlekamp_massey_start_over(Lcoeff + Li, ctx_mp->ffinfo);
+            fmpz_mod_berlekamp_massey_add_zeros(Lcoeff + Li, L->pointcount, ctx_mp->ffinfo);
             Lexp[Li] = Aexp;
             Llen++;
             L->length = Llen;
@@ -1474,13 +1478,13 @@ void fmpz_mpolyuu_eval_fmpz_mod(
 
         if (E->length > 0 && (E->exps[E->length - 1] >> (FLINT_BITS/2)) == xexp)
         {
-            fmpz_mod_poly_set_coeff_fmpz(E->coeffs + E->length - 1, yexp, eval);
+            fmpz_mod_poly_set_coeff_fmpz(E->coeffs + E->length - 1, yexp, eval, ctx_mp->ffinfo);
         }
         else
         {
             fmpz_mod_mpolyn_fit_length(E, E->length + 1, ctx_mp);
             fmpz_mod_poly_zero(E->coeffs + E->length);
-            fmpz_mod_poly_set_coeff_fmpz(E->coeffs + E->length, yexp, eval);
+            fmpz_mod_poly_set_coeff_fmpz(E->coeffs + E->length, yexp, eval, ctx_mp->ffinfo);
             E->exps[E->length] = xexp << (FLINT_BITS/2);
             E->length++;
         }
@@ -3337,7 +3341,7 @@ pick_bma_prime:
             goto next_bma_image;
         }
 
-        changed = fmpz_mod_bma_mpoly_reduce(Lambda);
+        changed = fmpz_mod_bma_mpoly_reduce(Lambda, ctx_mp->ffinfo);
         if (changed)
         {
             goto next_bma_image;

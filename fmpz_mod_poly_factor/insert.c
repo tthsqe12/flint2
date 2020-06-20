@@ -21,7 +21,6 @@ fmpz_mod_poly_factor_insert(fmpz_mod_poly_factor_t fac,
                             const fmpz_mod_poly_t poly, slong exp)
 {
     slong i;
-    fmpz_t p;
 
     if (poly->length <= 1)
         return;
@@ -43,16 +42,13 @@ fmpz_mod_poly_factor_insert(fmpz_mod_poly_factor_t fac,
             flint_realloc(fac->poly, sizeof(fmpz_mod_poly_struct) * new_size);
         fac->exp = flint_realloc(fac->exp, sizeof(slong) * new_size);
 
-        fmpz_init_set_ui(p, 5);
         for (i = fac->alloc; i < new_size; i++)
-            fmpz_mod_poly_init(fac->poly + i, p);
-        fmpz_clear(p);
+            fmpz_mod_poly_init(fac->poly + i);
 
         fac->alloc = new_size;
     }
 
     fmpz_mod_poly_set(fac->poly + fac->num, poly);
-    fmpz_set(&(fac->poly + fac->num)->p, &poly->p);
     fac->exp[fac->num] = exp;
     fac->num++;
 }

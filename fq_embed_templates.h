@@ -95,7 +95,10 @@ void TEMPLATE(T, modulus_pow_series_inv)(TEMPLATE(B, poly_t) res,
     TEMPLATE(B, poly_reverse)(res, 
                               TEMPLATE(T, ctx_modulus)(ctx), 
                               TEMPLATE(T, ctx_degree)(ctx) + 1);
+#if B == fmpz_mod
+#else
     TEMPLATE(B, poly_inv_series)(res, res, trunc);
+#endif
 }
 
 #ifdef __cplusplus

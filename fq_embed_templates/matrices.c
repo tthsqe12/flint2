@@ -25,15 +25,23 @@ void TEMPLATE(T, embed_mono_to_dual_matrix)(TEMPLATE(B, mat_t) res,
     TEMPLATE(B, poly_t) ctx_inv_rev, d_ctx;
     const TEMPLATE(B, poly_struct) *modulus = TEMPLATE(T, ctx_modulus)(ctx);
 
+#if B == fmpz_mod
+    
+#else
     TEMPLATE(B, poly_init)(ctx_inv_rev, TEMPLATE(B, poly_modulus)(modulus));
     TEMPLATE(B, poly_init)(d_ctx, TEMPLATE(B, poly_modulus)(modulus));
+#endif
 
     /* Half of this is precomputed in ctx. Maybe a call to some
        internal Newton stuff could be enough to double it. */
     TEMPLATE(T, modulus_pow_series_inv)(ctx_inv_rev, ctx, 2*n);
+#if B == fmpz_mod
+    
+#else
     TEMPLATE(B, poly_derivative)(d_ctx, modulus);
     TEMPLATE(B, poly_reverse)(d_ctx, d_ctx, n);
     TEMPLATE(B, poly_mullow)(ctx_inv_rev, ctx_inv_rev, d_ctx, 2*n);
+#endif
 
     TEMPLATE(B, mat_zero)(res);
     for (i = 0; i < n; i++)
@@ -55,8 +63,11 @@ void TEMPLATE(T, embed_dual_to_mono_matrix)(TEMPLATE(B, mat_t) res,
 
     TEMPLATE(T, init)(d_ctx, ctx);
     TEMPLATE(T, init)(d_ctx_inv, ctx);
+#if B == fmpz_mod
+#else
     TEMPLATE(B, mat_init)(mul_mat, n, n, TEMPLATE(B, poly_modulus)(modulus));
     TEMPLATE(B, mat_init)(tmp, n, n, TEMPLATE(B, poly_modulus)(modulus));
+#endif
 
     TEMPLATE(B, mat_zero)(tmp);
     for (i = 0; i < n; i++)
@@ -92,9 +103,12 @@ void TEMPLATE(T, embed_trace_matrix)(TEMPLATE(B, mat_t) res,
     const TEMPLATE(B, poly_struct) *modulus = TEMPLATE(T, ctx_modulus)(sub_ctx);
     TEMPLATE(B, mat_t) m2d, d2m, tmp;
 
+#if B == fmpz_mod
+#else
     TEMPLATE(B, mat_init)(m2d, n, n, TEMPLATE(B, poly_modulus)(modulus));
     TEMPLATE(B, mat_init)(d2m, m, m, TEMPLATE(B, poly_modulus)(modulus));
     TEMPLATE(B, mat_init)(tmp, m, n, TEMPLATE(B, poly_modulus)(modulus));
+#endif
 
     TEMPLATE(T, embed_mono_to_dual_matrix)(m2d, sup_ctx);
     TEMPLATE(B, mat_transpose)(res, basis);
@@ -145,16 +159,27 @@ void TEMPLATE(T, embed_matrices)(TEMPLATE(B, mat_t) embed,
     TEMPLATE(B, poly_t) gen_minpoly_cp;
     TEMPLATE(B, mat_t) gen2sub, sub2gen, gen2sup, sup2gen;
 
-    /* Is there any good reason why the modulus argument to
-       fq_ctx_init_modulus is not const? */
+#if B == fmpz_mod
+#else
     TEMPLATE(B, poly_init)(gen_minpoly_cp, TEMPLATE(B, poly_modulus)(gen_minpoly));
     TEMPLATE(B, poly_set)(gen_minpoly_cp, gen_minpoly);
+#endif
+
     fmpz_init(invd);
+
+#if T == fq
+    
+#else
     TEMPLATE(T, ctx_init_modulus)(gen_ctx, gen_minpoly_cp, "x");
+#endif
+
+#if B == fmpz_mod
+#else
     TEMPLATE(B, mat_init)(gen2sub, m, m, TEMPLATE(B, poly_modulus)(gen_minpoly));
     TEMPLATE(B, mat_init)(sub2gen, m, m, TEMPLATE(B, poly_modulus)(gen_minpoly));
     TEMPLATE(B, mat_init)(gen2sup, n, m, TEMPLATE(B, poly_modulus)(gen_minpoly));
     TEMPLATE(B, mat_init)(sup2gen, m, n, TEMPLATE(B, poly_modulus)(gen_minpoly));
+#endif
 
     /* Gen -> Sub */
     TEMPLATE(T, embed_composition_matrix)(gen2sub, gen_sub, sub_ctx);
@@ -169,7 +194,11 @@ void TEMPLATE(T, embed_matrices)(TEMPLATE(B, mat_t) embed,
     /* If this is an isomorphism, there is no need for correction */
     if (d == 1) {}
     /* If the extension degree is invertible mod p, multiply trace by 1/d */
+#if B == fmpz_mod
+    else if (__TEMPLATE(B, inv_degree)(invd, d, fq_ctx_prime(gen_ctx)))
+#else
     else if (__TEMPLATE(B, inv_degree)(invd, d, TEMPLATE(B, poly_modulus)(gen_minpoly))) 
+#endif
     {
         TEMPLATE(B, mat_scalar_mul_fmpz)(sup2gen, sup2gen, invd);
     }
@@ -182,9 +211,12 @@ void TEMPLATE(T, embed_matrices)(TEMPLATE(B, mat_t) embed,
         
         TEMPLATE(T, init)(mul, sup_ctx);
         TEMPLATE(T, init)(trace, sup_ctx);
+#if B == fmpz_mod
+#else
         TEMPLATE(B, mat_init)(tvec, n, 1, TEMPLATE(B, poly_modulus)(gen_minpoly));
         TEMPLATE(B, mat_init)(mat_mul, n, n, TEMPLATE(B, poly_modulus)(gen_minpoly));
         TEMPLATE(B, mat_init)(tmp, m, n, TEMPLATE(B, poly_modulus)(gen_minpoly));
+#endif
 
         /* Look for a non-zero column in sup2gen
            (we know it has full rank, so first row is non-null) */

@@ -22,15 +22,12 @@ void
 fmpz_mod_poly_factor_init(fmpz_mod_poly_factor_t fac)
 {
     slong i;
-    fmpz_t p;
 
     fac->alloc = 5;
     fac->num = 0;
     fac->poly = flint_malloc(sizeof(fmpz_mod_poly_struct) * 5);
     fac->exp = flint_malloc(sizeof(slong) * 5);
 
-    fmpz_init_set_ui(p, 5);
     for (i = 0; i < 5; i++)
-        fmpz_mod_poly_init(fac->poly + i, p);
-    fmpz_clear(p);
+        fmpz_mod_poly_init(fac->poly + i);
 }

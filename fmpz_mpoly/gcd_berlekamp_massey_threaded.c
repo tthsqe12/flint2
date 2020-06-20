@@ -251,13 +251,15 @@ static void _fmpz_mpolyuu_eval_fmpz_mod_from_coeffs(
 
         if (E->length > 0 && (E->exps[E->length - 1] >> (FLINT_BITS/2)) == xexp)
         {
-            fmpz_mod_poly_set_coeff_fmpz(E->coeffs + E->length - 1, yexp, coeffs + i);
+            fmpz_mod_poly_set_coeff_fmpz(E->coeffs + E->length - 1, yexp,
+                                                   coeffs + i, ctx_mp->ffinfo);
         }
         else
         {
             fmpz_mod_mpolyn_fit_length(E, E->length + 1, ctx_mp);
             fmpz_mod_poly_zero(E->coeffs + E->length);
-            fmpz_mod_poly_set_coeff_fmpz(E->coeffs + E->length, yexp, coeffs + i);
+            fmpz_mod_poly_set_coeff_fmpz(E->coeffs + E->length, yexp,
+                                                   coeffs + i, ctx_mp->ffinfo);
             E->exps[E->length] = xexp << (FLINT_BITS/2);
             E->length++;
         }
@@ -292,6 +294,7 @@ int nmod_mpolyn_mod_matches(const nmod_mpolyn_t A, const nmodf_ctx_t ctx_sp)
 
 int fmpz_mod_mpolyn_mod_matches(const fmpz_mod_mpolyn_t A, const fmpz_mod_ctx_t fpctx)
 {
+#if 0
     slong j;
 
     for (j = 0; j < A->alloc; j++)
@@ -299,7 +302,7 @@ int fmpz_mod_mpolyn_mod_matches(const fmpz_mod_mpolyn_t A, const fmpz_mod_ctx_t 
         if (!fmpz_equal(&A->coeffs[j].p, fmpz_mod_ctx_modulus(fpctx)))
             return 0;
     }
-
+#endif
     return 1;
 }
 
@@ -941,7 +944,7 @@ get_next_index:
     if (i >= length)
         goto cleanup;
 
-    changed = fmpz_mod_berlekamp_massey_reduce(Lcoeffs + i);
+    changed = fmpz_mod_berlekamp_massey_reduce(Lcoeffs + i, w->ctx_mp->ffinfo);
     if (changed)
     {
         w->changed = 1; /* safe - only goes from 0 to 1 */

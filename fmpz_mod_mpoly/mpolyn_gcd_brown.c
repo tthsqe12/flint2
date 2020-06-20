@@ -45,8 +45,8 @@ int fmpz_mod_mpolyn_gcd_brown_bivar(
     fmpz_init(gammaeval);
 
 #if WANT_ASSERT
-    fmpz_mod_poly_init(leadA, fmpz_mod_ctx_modulus(ctx->ffinfo));
-    fmpz_mod_poly_init(leadB, fmpz_mod_ctx_modulus(ctx->ffinfo));
+    fmpz_mod_poly_init(leadA);
+    fmpz_mod_poly_init(leadB);
     fmpz_mod_poly_set(leadA, fmpz_mod_mpolyn_leadcoeff_poly(A, ctx));
     fmpz_mod_poly_set(leadB, fmpz_mod_mpolyn_leadcoeff_poly(B, ctx));
 #endif
@@ -55,42 +55,42 @@ int fmpz_mod_mpolyn_gcd_brown_bivar(
     mpoly_gen_offset_shift_sp(&off, &shift, 0, bits, ctx->minfo);
 
     fmpz_mod_mpolyn_init(T, bits, ctx);
-    fmpz_mod_poly_init(r, fmpz_mod_ctx_modulus(ctx->ffinfo));
-    fmpz_mod_poly_init(cA, fmpz_mod_ctx_modulus(ctx->ffinfo));
-    fmpz_mod_poly_init(cB, fmpz_mod_ctx_modulus(ctx->ffinfo));
-    fmpz_mod_poly_init(cG, fmpz_mod_ctx_modulus(ctx->ffinfo));
-    fmpz_mod_poly_init(cAbar, fmpz_mod_ctx_modulus(ctx->ffinfo));
-    fmpz_mod_poly_init(cBbar, fmpz_mod_ctx_modulus(ctx->ffinfo));
-    fmpz_mod_poly_init(gamma, fmpz_mod_ctx_modulus(ctx->ffinfo));
-    fmpz_mod_poly_init(Aeval, fmpz_mod_ctx_modulus(ctx->ffinfo));
-    fmpz_mod_poly_init(Beval, fmpz_mod_ctx_modulus(ctx->ffinfo));
-    fmpz_mod_poly_init(Geval, fmpz_mod_ctx_modulus(ctx->ffinfo));
-    fmpz_mod_poly_init(Abareval, fmpz_mod_ctx_modulus(ctx->ffinfo));
-    fmpz_mod_poly_init(Bbareval, fmpz_mod_ctx_modulus(ctx->ffinfo));
-    fmpz_mod_poly_init(modulus, fmpz_mod_ctx_modulus(ctx->ffinfo));
-    fmpz_mod_poly_init(modulus2, fmpz_mod_ctx_modulus(ctx->ffinfo));
+    fmpz_mod_poly_init(r);
+    fmpz_mod_poly_init(cA);
+    fmpz_mod_poly_init(cB);
+    fmpz_mod_poly_init(cG);
+    fmpz_mod_poly_init(cAbar);
+    fmpz_mod_poly_init(cBbar);
+    fmpz_mod_poly_init(gamma);
+    fmpz_mod_poly_init(Aeval);
+    fmpz_mod_poly_init(Beval);
+    fmpz_mod_poly_init(Geval);
+    fmpz_mod_poly_init(Abareval);
+    fmpz_mod_poly_init(Bbareval);
+    fmpz_mod_poly_init(modulus);
+    fmpz_mod_poly_init(modulus2);
 
     fmpz_mod_mpolyn_content_poly(cA, A, ctx);
     fmpz_mod_mpolyn_content_poly(cB, B, ctx);
     fmpz_mod_mpolyn_divexact_poly(A, cA, ctx);
     fmpz_mod_mpolyn_divexact_poly(B, cB, ctx);
 
-    fmpz_mod_poly_gcd(cG, cA, cB);
+    fmpz_mod_poly_gcd(cG, cA, cB, ctx->ffinfo);
 
-    fmpz_mod_poly_divrem(cAbar, r, cA, cG);
+    fmpz_mod_poly_divrem(cAbar, r, cA, cG, ctx->ffinfo);
     FLINT_ASSERT(fmpz_mod_poly_is_zero(r));
-    fmpz_mod_poly_divrem(cBbar, r, cB, cG);
+    fmpz_mod_poly_divrem(cBbar, r, cB, cG, ctx->ffinfo);
     FLINT_ASSERT(fmpz_mod_poly_is_zero(r));
 
     fmpz_mod_poly_gcd(gamma, fmpz_mod_mpolyn_leadcoeff_poly(A, ctx),
-                             fmpz_mod_mpolyn_leadcoeff_poly(B, ctx));
+                          fmpz_mod_mpolyn_leadcoeff_poly(B, ctx), ctx->ffinfo);
 
     ldegA = fmpz_mod_mpolyn_lastdeg(A, ctx);
     ldegB = fmpz_mod_mpolyn_lastdeg(B, ctx);
     deggamma = fmpz_mod_poly_degree(gamma);
     bound = 1 + deggamma + FLINT_MAX(ldegA, ldegB);
 
-    fmpz_mod_poly_set_ui(modulus, 1);
+    fmpz_mod_poly_set_ui(modulus, 1, ctx->ffinfo);
 
     fmpz_sub_ui(alpha, fmpz_mod_ctx_modulus(ctx->ffinfo), 1);
 
@@ -104,7 +104,7 @@ choose_prime:
     }
 
     /* make sure evaluation point does not kill both lc(A) and lc(B) */
-    fmpz_mod_poly_evaluate_fmpz(gammaeval, gamma, alpha);
+    fmpz_mod_poly_evaluate_fmpz(gammaeval, gamma, alpha, ctx->ffinfo);
     if (fmpz_is_zero(gammaeval))
     {
         goto choose_prime;
@@ -116,10 +116,10 @@ choose_prime:
     FLINT_ASSERT(Aeval->length > 0);
     FLINT_ASSERT(Beval->length > 0);
 
-    fmpz_mod_poly_gcd(Geval, Aeval, Beval);
-    fmpz_mod_poly_divrem(Abareval, r, Aeval, Geval);
+    fmpz_mod_poly_gcd(Geval, Aeval, Beval, ctx->ffinfo);
+    fmpz_mod_poly_divrem(Abareval, r, Aeval, Geval, ctx->ffinfo);
     FLINT_ASSERT(fmpz_mod_poly_is_zero(r));
-    fmpz_mod_poly_divrem(Bbareval, r, Beval, Geval);
+    fmpz_mod_poly_divrem(Bbareval, r, Beval, Geval, ctx->ffinfo);
     FLINT_ASSERT(fmpz_mod_poly_is_zero(r));
 
     FLINT_ASSERT(Geval->length > 0);
@@ -143,17 +143,17 @@ choose_prime:
         }
         else if (fmpz_mod_poly_degree(Geval) < ((G->exps + N*0)[off]>>shift))
         {
-            fmpz_mod_poly_set_ui(modulus, 1);
+            fmpz_mod_poly_set_ui(modulus, 1, ctx->ffinfo);
         }
     }
 
-    fmpz_mod_poly_scalar_mul_fmpz(Geval, Geval, gammaeval);
+    fmpz_mod_poly_scalar_mul_fmpz(Geval, Geval, gammaeval, ctx->ffinfo);
 
     if (fmpz_mod_poly_degree(modulus) > 0)
     {
-        fmpz_mod_poly_evaluate_fmpz(temp, modulus, alpha);
+        fmpz_mod_poly_evaluate_fmpz(temp, modulus, alpha, ctx->ffinfo);
         fmpz_mod_inv(temp, temp, ctx->ffinfo);
-        fmpz_mod_poly_scalar_mul_fmpz(modulus, modulus, temp);
+        fmpz_mod_poly_scalar_mul_fmpz(modulus, modulus, temp, ctx->ffinfo);
         fmpz_mod_mpolyn_intp_crt_sm_poly(&ldegG, G, T, Geval, modulus, alpha, ctx);
         fmpz_mod_mpolyn_intp_crt_sm_poly(&ldegAbar, Abar, T, Abareval, modulus, alpha, ctx);
         fmpz_mod_mpolyn_intp_crt_sm_poly(&ldegBbar, Bbar, T, Bbareval, modulus, alpha, ctx);
@@ -168,9 +168,9 @@ choose_prime:
         ldegBbar = 0;
     }
 
-    fmpz_mod_poly_scalar_mul_fmpz(modulus2, modulus, alpha);
+    fmpz_mod_poly_scalar_mul_fmpz(modulus2, modulus, alpha, ctx->ffinfo);
     fmpz_mod_poly_shift_left(modulus, modulus, 1);
-    fmpz_mod_poly_sub(modulus, modulus, modulus2);
+    fmpz_mod_poly_sub(modulus, modulus, modulus2, ctx->ffinfo);
 
     if (fmpz_mod_poly_degree(modulus) < bound)
     {
@@ -188,7 +188,7 @@ choose_prime:
         goto successful;
     }
 
-    fmpz_mod_poly_set_ui(modulus, 1);
+    fmpz_mod_poly_set_ui(modulus, 1, ctx->ffinfo);
     goto choose_prime;
 
 successful:
@@ -213,10 +213,10 @@ cleanup:
     {
         FLINT_ASSERT(fmpz_is_one(fmpz_mod_mpolyn_leadcoeff_last_ref(G, ctx)));
         fmpz_mod_poly_mul(modulus, fmpz_mod_mpolyn_leadcoeff_poly(G, ctx),
-                                   fmpz_mod_mpolyn_leadcoeff_poly(Abar, ctx));
+                       fmpz_mod_mpolyn_leadcoeff_poly(Abar, ctx), ctx->ffinfo);
         FLINT_ASSERT(fmpz_mod_poly_equal(modulus, leadA));
         fmpz_mod_poly_mul(modulus, fmpz_mod_mpolyn_leadcoeff_poly(G, ctx),
-                                   fmpz_mod_mpolyn_leadcoeff_poly(Bbar, ctx));
+                       fmpz_mod_mpolyn_leadcoeff_poly(Bbar, ctx), ctx->ffinfo);
         FLINT_ASSERT(fmpz_mod_poly_equal(modulus, leadB));
     }
     fmpz_mod_poly_clear(leadA);

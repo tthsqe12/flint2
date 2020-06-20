@@ -24,7 +24,7 @@ fmpz_mod_poly_randtest_monic_primitive(fmpz_mod_poly_t f,
     while (!primitive)
     {
         fmpz_mod_poly_randtest_monic_irreducible(f, state, len, ctx);
-        fq_ctx_init_modulus(fqctx, f, "X");
+        fq_ctx_init_modulus(fqctx, f, ctx, "X");
         fq_init(X, fqctx);
         fq_gen(X, fqctx);
         primitive = fq_is_primitive(X, fqctx);

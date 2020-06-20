@@ -37,7 +37,8 @@ _fmpz_mod_poly_precompute_matrix_worker (void * arg_ptr)
     fmpz_mod_poly_struct * poly2 = arg.poly2;
     fmpz_mod_poly_struct * poly2inv = arg.poly2inv;
     fmpz_mat_struct * A = arg.A;
-    fmpz * p = &arg.poly1->p;
+    const fmpz_mod_ctx_struct * ctx = arg.ctx;
+    const fmpz * p = fmpz_mod_ctx_modulus(ctx);
 
     n = poly2->length - 1;
 
@@ -65,7 +66,8 @@ _fmpz_mod_poly_compose_mod_brent_kung_precomp_preinv_worker(void * arg_ptr)
     fmpz_mod_poly_struct * poly3 = arg.poly3;
     fmpz_mod_poly_struct * poly3inv = arg.poly3inv;
     fmpz_mat_struct * A = arg.A;
-    fmpz * p = &poly3->p;
+    const fmpz_mod_ctx_struct * ctx = arg.ctx;
+    const fmpz * p = fmpz_mod_ctx_modulus(ctx);
 
     if (poly3->length == 1)
         return;
@@ -139,7 +141,8 @@ _fmpz_mod_poly_interval_poly_worker(void * arg_ptr)
     fmpz_mod_poly_struct * v = arg.v;
     fmpz_mod_poly_struct * vinv = arg.vinv;
     fmpz_mod_poly_struct * baby = arg.baby;
-    fmpz * p = &v->p;
+    const fmpz_mod_ctx_struct * ctx = arg.ctx;
+    const fmpz * p = fmpz_mod_ctx_modulus(ctx);
     fmpz * tmp = arg.tmp;
     fmpz_t invV;
 
@@ -175,7 +178,8 @@ _fmpz_mod_poly_interval_poly_worker(void * arg_ptr)
 
 void
 fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
-           const fmpz_mod_poly_t poly, slong * const *degs)
+                            const fmpz_mod_poly_t poly, slong * const *degs,
+                                                      const fmpz_mod_ctx_t ctx)
 {
     fmpz_mod_poly_t f, g, v, vinv, tmp, II;
     fmpz_mod_poly_struct * h, * H, * I, * scratch;
@@ -187,12 +191,12 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
     fmpz_mod_poly_matrix_precompute_arg_t * args1;
     fmpz_mod_poly_compose_mod_precomp_preinv_arg_t * args2;
     fmpz_mod_poly_interval_poly_arg_t * args3;
-    const fmpz * p = &poly->p;
+    const fmpz * p = fmpz_mod_ctx_modulus(ctx);
 
     n = fmpz_mod_poly_degree(poly);
-    fmpz_mod_poly_init(v, p);
+    fmpz_mod_poly_init(v);
 
-    fmpz_mod_poly_make_monic(v, poly);
+    fmpz_mod_poly_make_monic(v, poly, ctx);
     
     if (n == 1)
     {
@@ -209,11 +213,11 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
     m = ceil(0.5 * n / l);
 
     /* initialization */
-    fmpz_mod_poly_init(f, p);
-    fmpz_mod_poly_init(g, p);
-    fmpz_mod_poly_init(vinv, p);
-    fmpz_mod_poly_init(tmp, p);
-    fmpz_mod_poly_init(II, p);
+    fmpz_mod_poly_init(f);
+    fmpz_mod_poly_init(g);
+    fmpz_mod_poly_init(vinv);
+    fmpz_mod_poly_init(tmp);
+    fmpz_mod_poly_init(II);
 
     num_threads = flint_request_threads(&threads, flint_get_num_threads());
 
@@ -228,7 +232,7 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
     }
 
     for (i = 0; i < 2*m + l + 2 + num_threads; i++)
-       fmpz_mod_poly_init(h + i, p);
+       fmpz_mod_poly_init(h + i);
 
     H = h + (l + 1);
     I = H + m;
@@ -247,39 +251,33 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
                            sizeof(fmpz_mod_poly_interval_poly_arg_t));
 
     fmpz_mod_poly_reverse(vinv, v, v->length);
-    fmpz_mod_poly_inv_series_newton(vinv, vinv, v->length);
+    fmpz_mod_poly_inv_series_newton(vinv, vinv, v->length, ctx);
 
-    /* compute baby steps: h[i]=x^{p^i}mod v */
-    fmpz_mod_poly_set_coeff_ui(h + 0, 1, 1);
-    fmpz_mod_poly_powmod_x_fmpz_preinv(h + 1, p, v, vinv);
+    /* compute baby steps: h[i] = x^{p^i} mod v */
+    fmpz_mod_poly_set_coeff_ui(h + 0, 1, 1, ctx);
+    fmpz_mod_poly_powmod_x_fmpz_preinv(h + 1, p, v, vinv, ctx);
 
     if (fmpz_sizeinbase(p, 2) > ((n_sqrt(v->length - 1) + 1) * 3) / 4)
     {
         for (i = 1; i < FLINT_BIT_COUNT(l); i++)
-            fmpz_mod_poly_compose_mod_brent_kung_vec_preinv_threaded_pool(h + 1 +
-                                                             (1 << (i - 1)),
-                                                             h + 1,
-                                                             1 << (i - 1),
-                                                             1 << (i - 1),
-                                                             h + (1 << (i - 1)),
-                                                             v, vinv,
-                                                             threads, num_threads);
-
-        fmpz_mod_poly_compose_mod_brent_kung_vec_preinv_threaded_pool(h + 1 +
-                                                         (1 << (i - 1)),
-                                                         h + 1,
-                                                         1 << (i - 1),
-                                                         l - (1 << (i - 1)),
-                                                         h + (1 << (i - 1)),
-                                                         v, vinv,
+        {
+            fmpz_mod_poly_compose_mod_brent_kung_vec_preinv_threaded_pool(
+                    h + 1 + (1 << (i - 1)), h + 1, 1 << (i - 1),
+                    1 << (i - 1), h + (1 << (i - 1)), v, vinv, ctx,
                                                          threads, num_threads);
-    } else
+        }
+        fmpz_mod_poly_compose_mod_brent_kung_vec_preinv_threaded_pool(
+                    h + 1 + (1 << (i - 1)), h + 1, 1 << (i - 1),
+                    l - (1 << (i - 1)), h + (1 << (i - 1)), v, vinv, ctx,
+                                                         threads, num_threads);
+    }
+    else
     {
         for (i = 2; i < l + 1; i++)
         {
-            fmpz_mod_poly_init(h + i, p);
+            fmpz_mod_poly_init(h + i); /* TODO already inited? */
             fmpz_mod_poly_powmod_fmpz_binexp_preinv(h + i, h + i - 1, p,
-                                                                      v, vinv);
+                                                                 v, vinv, ctx);
         }
     }
 
@@ -289,7 +287,7 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
     fmpz_mod_poly_set(H + 0, h + l);
     fmpz_mat_init(HH + 0, n_sqrt(v->length - 1) + 1, v->length - 1);
 
-    fmpz_mod_poly_precompute_matrix(HH + 0, H + 0, v, vinv);
+    fmpz_mod_poly_precompute_matrix(HH + 0, H + 0, v, vinv, ctx);
 
     for (d = 1, j = 0; j < m /(num_threads + 1) + 1; j++)
     {
@@ -300,40 +298,43 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
                 if (i > 0 && I[i - 1].length > 1)
                 {
                     _fmpz_mod_poly_reduce_matrix_mod_poly(HH + num_threads + 1,
-                                                          HH + 0, v);
+                                                               HH + 0, v, ctx);
 
                     fmpz_mat_clear(HH + 0);
                     fmpz_mat_init_set(HH + 0, HH + num_threads + 1);
 
                     fmpz_mat_clear(HH + num_threads + 1);
                     
-                    fmpz_mod_poly_rem(tmp, H + i - 1, v);
+                    fmpz_mod_poly_rem(tmp, H + i - 1, v, ctx);
 
                     fmpz_mod_poly_compose_mod_brent_kung_precomp_preinv(H + i,
-                                                         tmp, HH + 0, v, vinv);
-                } else if (i > 0)
+                                                    tmp, HH + 0, v, vinv, ctx);
+                }
+                else if (i > 0)
+                {
                     fmpz_mod_poly_compose_mod_brent_kung_precomp_preinv(H + i,
-                                                   H + i - 1, HH + 0, v, vinv);
+                                              H + i - 1, HH + 0, v, vinv, ctx);
+                }
 
                 /* compute interval polynomials */
-                fmpz_mod_poly_set_coeff_ui(I + i, 0, 1);
+                fmpz_mod_poly_set_coeff_ui(I + i, 0, 1, ctx);
 
                 for (k = l - 1; k >= 0 && 2*d <= v->length - 1; k--, d++)
                 {
-                    fmpz_mod_poly_rem(tmp, h + k, v);
-                    fmpz_mod_poly_sub(tmp, H + i, tmp);
-                    fmpz_mod_poly_mulmod_preinv(I + i, tmp, I + i, v, vinv);
+                    fmpz_mod_poly_rem(tmp, h + k, v, ctx);
+                    fmpz_mod_poly_sub(tmp, H + i, tmp, ctx);
+                    fmpz_mod_poly_mulmod_preinv(I + i, tmp, I + i, v, vinv, ctx);
                 }
 
-                /* compute F_j=f^{[j*l+1]} * ... * f^{[j*l+l]} */
+                /* compute F_j = f^{[j*l+1]} * ... * f^{[j*l+l]} */
                 /* F_j is stored on the place of I_j */
-                fmpz_mod_poly_gcd(I + i, v, I + i);
+                fmpz_mod_poly_gcd(I + i, v, I + i, ctx);
 
                 if (I[i].length > 1)
                 {
-                    fmpz_mod_poly_remove(v, I + i);
+                    fmpz_mod_poly_remove(v, I + i, ctx);
                     fmpz_mod_poly_reverse(vinv, v, v->length);
-                    fmpz_mod_poly_inv_series_newton(vinv, vinv, v->length);
+                    fmpz_mod_poly_inv_series_newton(vinv, vinv, v->length, ctx);
                 }
 
                 if (v->length - 1 < 2*d)
@@ -342,12 +343,13 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
 
             if (v->length - 1 < 2*d)
                 break;
-        } else if (j == 1 && num_threads + 1 < m)
+        }
+        else if (j == 1 && num_threads + 1 < m)
         {
             if (I[num_threads].length > 1)
             {
                 _fmpz_mod_poly_reduce_matrix_mod_poly(HH + num_threads + 1,
-                                                                    HH + 0, v);
+                                                               HH + 0, v, ctx);
 
                 fmpz_mat_clear(HH + 0);
                 fmpz_mat_init_set(HH + 0, HH + num_threads + 1);
@@ -360,7 +362,7 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
             {
                 fmpz_mat_init(HH + i, n_sqrt(v->length - 1) + 1, v->length - 1);
 
-                fmpz_mod_poly_rem(scratch + i, H + i, v);
+                fmpz_mod_poly_rem(scratch + i, H + i, v, ctx);
 
                 if (scratch[i].length < v->length - 1)
                 {
@@ -374,6 +376,7 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
                 args1[i].poly1    = scratch + i;
                 args1[i].poly2    = v;
                 args1[i].poly2inv = vinv;
+                args1[i].ctx      = ctx;
 
                 thread_pool_wake(global_thread_pool, threads[i - 1], 0,
                             _fmpz_mod_poly_precompute_matrix_worker, &args1[i]);
@@ -382,7 +385,7 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
             for (i = 1; i < c1; i++)
                 thread_pool_wait(global_thread_pool, threads[i - 1]);
 
-            fmpz_mod_poly_rem(tmp, H + num_threads, v);
+            fmpz_mod_poly_rem(tmp, H + num_threads, v, ctx);
             
             for (i = 0; i < c1; i++)
             {
@@ -394,6 +397,7 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
                 args2[i].poly1    = tmp;
                 args2[i].poly3    = v;
                 args2[i].poly3inv = vinv;
+                args2[i].ctx      = ctx;
             }
 
             for (i = 1; i < c1; i++)
@@ -424,7 +428,8 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
                 args3[i].res  = I + num_threads + 1 + i;
                 args3[i].v    = v;
                 args3[i].vinv = vinv;
-                args3[i].tmp = _fmpz_vec_init(v->length - 1);
+                args3[i].ctx  = ctx;
+                args3[i].tmp  = _fmpz_vec_init(v->length - 1);
             }
 
             for (i = 1; i < c1; i++)
@@ -448,38 +453,40 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
                _fmpz_vec_clear(args3[i].tmp, v->length - 1);
             }
 
-            fmpz_mod_poly_set_ui(II, 1);
+            fmpz_mod_poly_set_ui(II, 1, ctx);
 
             for (i = 0; i < c1; i++)
                 fmpz_mod_poly_mulmod_preinv(II, II,  I + num_threads + 1 + i,
-                                                                      v, vinv);
+                                                                 v, vinv, ctx);
 
-            fmpz_mod_poly_gcd(II, v, II);
+            fmpz_mod_poly_gcd(II, v, II, ctx);
 
             if (II->length > 1)
             {
-                fmpz_mod_poly_remove(v, II);
+                fmpz_mod_poly_remove(v, II, ctx);
                 fmpz_mod_poly_reverse(vinv, v, v->length);
-                fmpz_mod_poly_inv_series_newton(vinv, vinv, v->length);
+                fmpz_mod_poly_inv_series_newton(vinv, vinv, v->length, ctx);
                 
                 for (i = 0; i < c1; i++)
                 {
                     fmpz_mod_poly_gcd(I + num_threads + 1 + i,
-                                                  I + num_threads + 1 + i, II);
+                                      I + num_threads + 1 + i, II, ctx);
                     if (I[num_threads + 1 + i].length > 1)
-                        fmpz_mod_poly_remove(II, I + num_threads + 1 + i);
+                        fmpz_mod_poly_remove(II, I + num_threads + 1 + i, ctx);
                 }
-            } else
+            }
+            else
             {
                 for (i = 0; i < c1; i++)
-                    fmpz_mod_poly_set_ui(I + num_threads + 1 + i, 1);
+                    fmpz_mod_poly_set_ui(I + num_threads + 1 + i, 1, ctx);
             }
 
             d = d + c1*l;
 
             if (v->length-1 < 2*d)
                 break;
-        } else if (j*(num_threads + 1) < m)
+        }
+        else if (j*(num_threads + 1) < m)
         {
             for (c2 = 0, i = 0; i < num_threads + 1 &&
                                         j*(num_threads + 1) + i < m; i++, c2++)
@@ -487,7 +494,7 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
                 if (HH[i].c > v -> length - 1)
                 {
                     _fmpz_mod_poly_reduce_matrix_mod_poly(HH + num_threads + 1,
-                                                                    HH + i, v);
+                                                               HH + i, v, ctx);
                     
                     fmpz_mat_clear(HH + i);
                     fmpz_mat_init_set(HH + i, HH + num_threads + 1);
@@ -495,7 +502,7 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
                 }
             }
 
-            fmpz_mod_poly_rem(tmp, H + j*(num_threads + 1) - 1, v);
+            fmpz_mod_poly_rem(tmp, H + j*(num_threads + 1) - 1, v, ctx);
             
             for (i = 0; i < c2; i++)
             {
@@ -509,6 +516,7 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
                 args2[i].poly1    = tmp;
                 args2[i].poly3    = v;
                 args2[i].poly3inv = vinv;
+                args2[i].ctx      = ctx;
             }
             
             for (i = 1; i < c2; i++)
@@ -541,6 +549,7 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
                 args3[i].res  = I + j*(num_threads + 1) + i;
                 args3[i].v    = v;
                 args3[i].vinv = vinv;
+                args3[i].ctx  = ctx;
                 args3[i].tmp  = _fmpz_vec_init(v->length - 1);
             }
 
@@ -564,33 +573,34 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
                _fmpz_vec_clear(args3[i].tmp, v->length - 1);
             }
 
-            fmpz_mod_poly_set_ui(II, 1);
+            fmpz_mod_poly_set_ui(II, 1, ctx);
 
             for (i = 0; i < c2; i++)
                 fmpz_mod_poly_mulmod_preinv(II, II,
-                                         I + j*(num_threads + 1) + i, v, vinv);
+                                    I + j*(num_threads + 1) + i, v, vinv, ctx);
 
-            fmpz_mod_poly_gcd(II, v, II);
+            fmpz_mod_poly_gcd(II, v, II, ctx);
 
             if (II->length > 1)
             {
-                fmpz_mod_poly_remove(v, II);
+                fmpz_mod_poly_remove(v, II, ctx);
 
                 fmpz_mod_poly_reverse(vinv, v, v->length);
-                fmpz_mod_poly_inv_series_newton(vinv, vinv, v->length);
+                fmpz_mod_poly_inv_series_newton(vinv, vinv, v->length, ctx);
 
                 for (i = 0; i < c2; i++)
                 {
                     fmpz_mod_poly_gcd(I + j*(num_threads + 1) + i,
-                                      I + j*(num_threads + 1) + i, II);
+                                      I + j*(num_threads + 1) + i, II, ctx);
 
                     if (I[j*(num_threads + 1) + i].length > 1)
-                        fmpz_mod_poly_remove(II, I + j*(num_threads + 1) + i);
+                        fmpz_mod_poly_remove(II, I + j*(num_threads + 1) + i, ctx);
                 }
-            } else
+            }
+            else
             {
                 for (i = 0; i < c2; i++)
-                    fmpz_mod_poly_set_ui(I + j*(num_threads + 1) + i, 1);
+                    fmpz_mod_poly_set_ui(I + j*(num_threads + 1) + i, 1, ctx);
             }
 
             d = d + c2*l;
@@ -618,23 +628,24 @@ fmpz_mod_poly_factor_distinct_deg_threaded(fmpz_mod_poly_factor_t res,
             for (i = l - 1; i >= 0 && g->length > 1; i--)
             {
                 /* compute f^{[l*(j+1)-i]} */
-                fmpz_mod_poly_sub(tmp, H + j, h + i);
-                fmpz_mod_poly_gcd(f, g, tmp);
+                fmpz_mod_poly_sub(tmp, H + j, h + i, ctx);
+                fmpz_mod_poly_gcd(f, g, tmp, ctx);
 
                 if (f->length > 1)
                 {
-                    fmpz_mod_poly_make_monic(f, f);
+                    fmpz_mod_poly_make_monic(f, f, ctx);
 
                     fmpz_mod_poly_factor_insert(res, f, 1);
 
                     (*degs)[index++] = l*(j + 1) - i;
 
-                    fmpz_mod_poly_remove(g, f);
+                    fmpz_mod_poly_remove(g, f, ctx);
                 }
             }
-        } else if (I[j].length > 1)
+        }
+        else if (I[j].length > 1)
         {
-            fmpz_mod_poly_make_monic(I + j, I + j);
+            fmpz_mod_poly_make_monic(I + j, I + j, ctx);
 
             fmpz_mod_poly_factor_insert(res, I + j, 1);
 
