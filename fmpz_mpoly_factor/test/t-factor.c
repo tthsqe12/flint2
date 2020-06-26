@@ -215,7 +215,7 @@ main(void)
     flint_printf("factor....");
 
     check_same_str("x y z w", "(x^3+y^4+z^5+111111111111111111111111111*w^3)"
-                              "*(x^2+3*y^3+4*z^4*(w+1)+2*w^4)");
+                              "*(x^2+3*y^3+4*z^4+2*w^4)");
 
 /*
     check_same_str("x1 x2 x3", "(3*x1*x2*x3^3 + 4*x3^4 + 3)"
