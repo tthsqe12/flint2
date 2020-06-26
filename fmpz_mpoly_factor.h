@@ -127,6 +127,8 @@ FLINT_DLL int subset_next(fmpz_t a, const fmpz_t b, slong n);
 
 FLINT_DLL void subset_print(const fmpz_t a, slong n);
 
+FLINT_DLL void test_new_stuff();
+
 #ifdef __cplusplus
 }
 #endif
