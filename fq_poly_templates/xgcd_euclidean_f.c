@@ -28,9 +28,18 @@ _TEMPLATE(T, poly_xgcd_euclidean_f) (TEMPLATE(T, t) f, TEMPLATE(T, struct) * G,
     _TEMPLATE(T, vec_zero) (S, lenB - 1, ctx);
     _TEMPLATE(T, vec_zero) (T, lenA - 1, ctx);
 
+flint_printf("_poly_xgcd_euclidean_f called\n");
+
     if (lenB == 1)
     {
+
+
+
         TEMPLATE(T, t) invB;
+
+flint_printf("case 1\n");
+
+
         TEMPLATE(T, init) (invB, ctx);
         TEMPLATE(T, gcdinv) (f, invB, B, ctx);
         if (TEMPLATE(T, is_one) (f, ctx))
@@ -50,6 +59,8 @@ _TEMPLATE(T, poly_xgcd_euclidean_f) (TEMPLATE(T, t) f, TEMPLATE(T, struct) * G,
     {
         TEMPLATE(T, struct) * Q, *R;
         slong lenQ, lenR;
+
+flint_printf("case 2\n");
 
         Q = _TEMPLATE(T, vec_init) (2 * lenA, ctx);
         R = Q + lenA;
@@ -157,16 +168,23 @@ TEMPLATE(T, poly_xgcd_euclidean_f) (TEMPLATE(T, t) f, TEMPLATE(T, poly_t) G,
                                     const TEMPLATE(T, poly_t) B,
                                     const TEMPLATE(T, ctx_t) ctx)
 {
+
+flint_printf("poly_xgcd_euclidean_f called\n");
+
     if (A->length < B->length)
     {
+flint_printf("case 1\n");
         TEMPLATE(T, poly_xgcd_euclidean_f) (f, G, T, S, B, A, ctx);
     }
     else                        /* lenA >= lenB >= 0 */
     {
         const slong lenA = A->length, lenB = B->length;
 
+flint_printf("case 2\n");
+
         if (lenA == 0)          /* lenA = lenB = 0 */
         {
+flint_printf("case 3\n");
             TEMPLATE(T, one) (f, ctx);
             TEMPLATE(T, poly_zero) (G, ctx);
             TEMPLATE(T, poly_zero) (S, ctx);
@@ -175,26 +193,46 @@ TEMPLATE(T, poly_xgcd_euclidean_f) (TEMPLATE(T, t) f, TEMPLATE(T, poly_t) G,
         else if (lenB == 0)     /* lenA > lenB = 0 */
         {
             TEMPLATE(T, t) invA;
+
+flint_printf("case 4\n");
+
             TEMPLATE(T, init) (invA, ctx);
             TEMPLATE(T, gcdinv) (f, invA, A->coeffs + lenA - 1, ctx);
 
             if (TEMPLATE(T, is_one) (f, ctx))
             {
+flint_printf("case 4\n");
                 TEMPLATE3(T, poly_scalar_mul, T) (G, A, invA, ctx);
                 TEMPLATE(T, poly_zero) (T, ctx);
                 TEMPLATE3(T, poly_set, T) (S, invA, ctx);
             }
             else
             {
+flint_printf("case 5\n");
                 TEMPLATE(T, poly_zero) (G, ctx);
             }
 
             TEMPLATE(T, clear) (invA, ctx);
         }
-        else                    /* lenA >= lenB >= 1 */
+#if 0
+        else if (lenB == 1)  /* lenA >= lenB = 1 */
+        {
+            TEMPLATE(T, poly_fit_length)(T, 1);
+            TEMPLATE(T, gcdinv)(f, 
+
+            nmod_poly_fit_length(T, 1);
+            T->length = 1;
+            T->coeffs[0] = n_invmod(B->coeffs[0], A->mod.n);
+            nmod_poly_one(G);
+            nmod_poly_zero(S);
+        }
+#endif
+        else                    /* lenA >= lenB >= 2 */
         {
             TEMPLATE(T, struct) * g, *s, *t;
             slong lenG;
+
+flint_printf("case 6\n");
 
             if (G == A || G == B)
             {
@@ -247,6 +285,10 @@ TEMPLATE(T, poly_xgcd_euclidean_f) (TEMPLATE(T, t) f, TEMPLATE(T, poly_t) G,
                 T->coeffs = t;
                 T->alloc = lenA;
             }
+
+flint_printf("lenG: %wd\n", lenG);
+flint_printf("lenB: %wd\n", lenB);
+flint_printf("lenA: %wd\n", lenA);
 
             _TEMPLATE(T, poly_set_length) (G, lenG, ctx);
             _TEMPLATE(T, poly_set_length) (S, FLINT_MAX(lenB - lenG, 1), ctx);

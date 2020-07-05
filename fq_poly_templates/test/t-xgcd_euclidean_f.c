@@ -26,7 +26,7 @@ main(void)
     /* Generic case, most likely co-prime arguments ***************************** */
 
     /* Compare with result from GCD and check correctness */
-    for (i = 0; i < 5 * flint_test_multiplier(); i++)
+    for (i = 0; i < 50 * flint_test_multiplier(); i++)
     {
         TEMPLATE(T, ctx_t) ctx;
         TEMPLATE(T, t) f1, f2;
@@ -44,8 +44,8 @@ main(void)
         TEMPLATE(T, poly_init) (t, ctx);
         TEMPLATE(T, poly_init) (v, ctx);
         TEMPLATE(T, poly_init) (w, ctx);
-        TEMPLATE(T, poly_randtest) (a, state, n_randint(state, 100), ctx);
-        TEMPLATE(T, poly_randtest) (b, state, n_randint(state, 100), ctx);
+        TEMPLATE(T, poly_randtest) (a, state, n_randint(state, 10), ctx);
+        TEMPLATE(T, poly_randtest) (b, state, n_randint(state, 10), ctx);
 
         TEMPLATE(T, poly_gcd_euclidean_f) (f1, d, a, b, ctx);
         TEMPLATE(T, poly_xgcd_euclidean_f) (f2, g, s, t, a, b, ctx);
@@ -97,7 +97,7 @@ main(void)
     /* Special case, arguments share a factor ******************************* */
 
     /* Compare with result from GCD and check correctness */
-    for (i = 0; i < 5 * flint_test_multiplier(); i++)
+    for (i = 0; i < 50 * flint_test_multiplier(); i++)
     {
         TEMPLATE(T, ctx_t) ctx;
         TEMPLATE(T, t) f1, f2;
@@ -117,8 +117,8 @@ main(void)
         TEMPLATE(T, poly_init) (t, ctx);
         TEMPLATE(T, poly_init) (v, ctx);
         TEMPLATE(T, poly_init) (w, ctx);
-        TEMPLATE(T, poly_randtest) (a, state, n_randint(state, 100), ctx);
-        TEMPLATE(T, poly_randtest) (b, state, n_randint(state, 100), ctx);
+        TEMPLATE(T, poly_randtest) (a, state, n_randint(state, 10), ctx);
+        TEMPLATE(T, poly_randtest) (b, state, n_randint(state, 10), ctx);
         TEMPLATE(T, poly_randtest) (f, state, n_randint(state, 20), ctx);
         TEMPLATE(T, poly_mul) (a, a, f, ctx);
         TEMPLATE(T, poly_mul) (b, b, f, ctx);
