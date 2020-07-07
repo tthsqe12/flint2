@@ -118,11 +118,12 @@ main(void)
         TEMPLATE(T, poly_init) (v, ctx);
         TEMPLATE(T, poly_init) (w, ctx);
         TEMPLATE(T, poly_randtest) (a, state, n_randint(state, 10), ctx);
-        TEMPLATE(T, poly_randtest) (b, state, n_randint(state, 10), ctx);
+        TEMPLATE(T, poly_randtest) (b, state, n_randint(state, 1), ctx);
+/*
         TEMPLATE(T, poly_randtest) (f, state, n_randint(state, 5), ctx);
         TEMPLATE(T, poly_mul) (a, a, f, ctx);
         TEMPLATE(T, poly_mul) (b, b, f, ctx);
-
+*/
         TEMPLATE(T, poly_gcd_euclidean_f) (f1, d, a, b, ctx);
         TEMPLATE(T, poly_xgcd_euclidean_f) (f2, g, s, t, a, b, ctx);
 
