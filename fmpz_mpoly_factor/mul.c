@@ -23,29 +23,31 @@ int fmpz_mpoly_factor_mul(
 
     fmpz_mpoly_factor_init(T, ctx);
 
-    fmpz_mul(T->content, B->content, C->content);
+    fmpz_mul(T->constant, B->constant, C->constant);
 
-    fmpz_mpoly_factor_fit_length(T, B->length + C->length, ctx);
+    FLINT_ASSERT(B->num >= 0);
+    FLINT_ASSERT(C->num >= 0);
+    fmpz_mpoly_factor_fit_length(T, B->num + C->num, ctx);
+
     Ti = 0;
 
-    for (i = 0; i < B->length; i++)
+    for (i = 0; i < B->num; i++)
     {
         fmpz_mpoly_set(T->poly + Ti, B->poly + i, ctx);
         fmpz_set(T->exp + Ti, B->exp + i);
         Ti++;
     }
 
-    for (i = 0; i < C->length; i++)
+    for (i = 0; i < C->num; i++)
     {
         fmpz_mpoly_set(T->poly + Ti, C->poly + i, ctx);
         fmpz_set(T->exp + Ti, C->exp + i);
         Ti++;
     }
 
-    T->length = Ti;
+    T->num = Ti;
 
     fmpz_mpoly_factor_swap(A, T, ctx);
-
     fmpz_mpoly_factor_clear(T, ctx);
 
     return 1;

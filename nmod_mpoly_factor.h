@@ -32,45 +32,74 @@
 #endif
 
 typedef struct {
-    mp_limb_t content;
+    mp_limb_t constant;
     nmod_mpoly_struct * poly;
     fmpz * exp;
-    slong length;
+    slong num;
     slong alloc;
 } nmod_mpoly_factor_struct;
 
 typedef nmod_mpoly_factor_struct nmod_mpoly_factor_t[1];
 
-FLINT_DLL void nmod_mpoly_factor_init(nmod_mpoly_factor_t f, const nmod_mpoly_ctx_t ctx);
+NMOD_MPOLY_FACTOR_INLINE
+void nmod_mpoly_factor_init(nmod_mpoly_factor_t f, const nmod_mpoly_ctx_t ctx)
+{
+	f->constant = 1;
+    f->poly  = NULL;
+    f->exp   = NULL;
+    f->num   = 0;
+    f->alloc = 0;
+}
 
-FLINT_DLL void nmod_mpoly_factor_init2(nmod_mpoly_factor_t f, slong alloc, const nmod_mpoly_ctx_t ctx);
+FLINT_DLL void nmod_mpoly_factor_init2(nmod_mpoly_factor_t f, slong alloc,
+                                                   const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL void nmod_mpoly_factor_realloc(nmod_mpoly_factor_t f, slong alloc, const nmod_mpoly_ctx_t ctx);
+FLINT_DLL void nmod_mpoly_factor_realloc(nmod_mpoly_factor_t f, slong alloc,
+                                                   const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL void nmod_mpoly_factor_fit_length(nmod_mpoly_factor_t f, slong len, const nmod_mpoly_ctx_t ctx);
+FLINT_DLL void nmod_mpoly_factor_fit_length(nmod_mpoly_factor_t f, slong len,
+                                                   const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL void nmod_mpoly_factor_clear(nmod_mpoly_factor_t f, const nmod_mpoly_ctx_t ctx);
+FLINT_DLL void nmod_mpoly_factor_clear(nmod_mpoly_factor_t f,
+                                                   const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL void nmod_mpoly_factor_append_ui(nmod_mpoly_factor_t f, const nmod_mpoly_t A, ulong e, const nmod_mpoly_ctx_t ctx);
+FLINT_DLL void nmod_mpoly_factor_append_ui(nmod_mpoly_factor_t f,
+                    const nmod_mpoly_t A, ulong e, const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL void nmod_mpoly_factor_append_fmpz(nmod_mpoly_factor_t f, const nmod_mpoly_t A, const fmpz_t e, const nmod_mpoly_ctx_t ctx);
+FLINT_DLL void nmod_mpoly_factor_append_fmpz(nmod_mpoly_factor_t f,
+             const nmod_mpoly_t A, const fmpz_t e, const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL void nmod_mpoly_factor_set(nmod_mpoly_factor_t a, const nmod_mpoly_factor_t b, const nmod_mpoly_ctx_t ctx);
+FLINT_DLL void nmod_mpoly_factor_set(nmod_mpoly_factor_t f,
+                      const nmod_mpoly_factor_t g, const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL void nmod_mpoly_factor_print_pretty(const nmod_mpoly_factor_t f, const char ** vars, const nmod_mpoly_ctx_t ctx);
+FLINT_DLL void nmod_mpoly_factor_print_pretty(const nmod_mpoly_factor_t f,
+                               const char ** vars, const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL int nmod_mpoly_factor(nmod_mpoly_factor_t f, const nmod_mpoly_t A, int full, const nmod_mpoly_ctx_t ctx);
+FLINT_DLL int nmod_mpoly_factor_squarefree(nmod_mpoly_factor_t f,
+                             const nmod_mpoly_t A, const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL void nmod_mpoly_factor_sort(nmod_mpoly_factor_t f, const nmod_mpoly_ctx_t ctx);
+FLINT_DLL int nmod_mpoly_factor(nmod_mpoly_factor_t f, const nmod_mpoly_t A,
+                                                   const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void nmod_mpoly_factor_sort(nmod_mpoly_factor_t f,
+                                                   const nmod_mpoly_ctx_t ctx);
 
 NMOD_MPOLY_FACTOR_INLINE
-void nmod_mpoly_factor_swap(nmod_mpoly_factor_t A, nmod_mpoly_factor_t B,
+void nmod_mpoly_factor_swap(nmod_mpoly_factor_t f, nmod_mpoly_factor_t g,
                                                     const nmod_mpoly_ctx_t ctx)
 {
-   nmod_mpoly_factor_struct t = *A;
-   *A = *B;
-   *B = t;
+   nmod_mpoly_factor_struct t = *f;
+   *f = *g;
+   *g = t;
 }
+
+NMOD_MPOLY_FACTOR_INLINE
+void nmod_mpoly_factor_one(nmod_mpoly_factor_t f, const nmod_mpoly_ctx_t ctx)
+{
+	f->constant = 1;
+	f->num = 0;
+}
+
 
 FLINT_DLL void subset_first(fmpz_t a, slong n, slong r);
 

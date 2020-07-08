@@ -24,9 +24,9 @@ int fmpz_mpoly_factor_expand(
     fmpz_mpoly_init(t1, ctx);
     fmpz_mpoly_init(t2, ctx);
 
-    fmpz_mpoly_set_fmpz(A, f->content, ctx);
+    fmpz_mpoly_set_fmpz(A, f->constant, ctx);
 
-    for (i = 0; i < f->length; i++)
+    for (i = 0; i < f->num; i++)
     {
         if (fmpz_sgn(f->exp + i) < 0 ||
             !fmpz_mpoly_pow_fmpz(t1, f->poly + i, f->exp + i, ctx))

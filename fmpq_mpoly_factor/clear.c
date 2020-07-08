@@ -11,22 +11,22 @@
 
 #include "fmpq_mpoly_factor.h"
 
-void fmpq_mpoly_factor_clear(fmpq_mpoly_factor_t fac, const fmpq_mpoly_ctx_t ctx)
+void fmpq_mpoly_factor_clear(fmpq_mpoly_factor_t f, const fmpq_mpoly_ctx_t ctx)
 {
-    fmpq_clear(fac->content);
-
-    if (fac->alloc > 0)
+    if (f->alloc > 0)
     {
         slong i;
 
-        for (i = 0; i < fac->alloc; i++)
+        for (i = 0; i < f->alloc; i++)
         {
-            fmpq_mpoly_clear(fac->poly + i, ctx);
-			fmpz_clear(fac->exp + i);
+            fmpq_mpoly_clear(f->poly + i, ctx);
+			fmpz_clear(f->exp + i);
         }
 
-        flint_free(fac->poly);
-        flint_free(fac->exp);
+        flint_free(f->poly);
+        flint_free(f->exp);
     }
+
+    fmpq_clear(f->constant);
 }
 

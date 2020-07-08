@@ -18,7 +18,8 @@ int fmpz_mpoly_factor_fix_units(
 {
     int changed = 0;
     slong i;
-    for (i = 0; i < A->length; i++)
+
+    for (i = 0; i < A->num; i++)
     {
         fmpz_mpoly_struct * Ai = A->poly + i;
         if (Ai->length > 0 && fmpz_sgn(Ai->coeffs + 0) < 0)
@@ -26,7 +27,7 @@ int fmpz_mpoly_factor_fix_units(
             changed = 1;
             fmpz_mpoly_neg(Ai, Ai, ctx);
             if (fmpz_is_odd(A->exp + i))
-                fmpz_neg(A->content, A->content);
+                fmpz_neg(A->constant, A->constant);
         }
     }
 

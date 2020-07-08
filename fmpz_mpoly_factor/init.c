@@ -12,40 +12,30 @@
 #include "fmpz_mpoly_factor.h"
 
 
-void fmpz_mpoly_factor_init(fmpz_mpoly_factor_t fac, const fmpz_mpoly_ctx_t ctx)
+void fmpz_mpoly_factor_init2(fmpz_mpoly_factor_t f, slong alloc,
+                                                    const fmpz_mpoly_ctx_t ctx)
 {
-    fmpz_init_set_ui(fac->content, 1);
-    fac->poly   = NULL;
-    fac->exp    = NULL;
-    fac->length = 0;
-    fac->alloc  = 0;
-}
+    fmpz_init_set_ui(f->constant, 1);
 
-
-void fmpz_mpoly_factor_init2(fmpz_mpoly_factor_t fac, slong alloc, const fmpz_mpoly_ctx_t ctx)
-{
-    fmpz_init_set_ui(fac->content, 1);
-
-    if (alloc)
+    if (alloc > 0)
     {
         slong i;
 
-        fac->poly = (fmpz_mpoly_struct *) flint_malloc(alloc * sizeof(fmpz_mpoly_struct));
-        fac->exp  = (slong *) flint_malloc(alloc * sizeof(slong));
-
+        f->exp = (fmpz *) flint_calloc(alloc, sizeof(fmpz));
+        f->poly = (fmpz_mpoly_struct *) flint_malloc(alloc *
+                                                    sizeof(fmpz_mpoly_struct));
         for (i = 0; i < alloc; i++)
-        {
-            fmpz_mpoly_init(fac->poly + i, ctx);
-            fac->exp[i] = WORD(0);
-        }
+            fmpz_mpoly_init(f->poly + i, ctx);
+
+        f->alloc = alloc;
     }
     else
     {
-        fac->poly = NULL;
-        fac->exp  = NULL;
+        f->exp = NULL;
+        f->poly = NULL;
+        f->alloc = 0;
     }
 
-    fac->length = 0;
-    fac->alloc  = alloc;
+    f->num = 0;
 }
 

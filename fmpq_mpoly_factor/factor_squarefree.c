@@ -12,7 +12,7 @@
 #include "fmpz_mpoly_factor.h"
 #include "fmpq_mpoly_factor.h"
 
-int fmpq_mpoly_factor(fmpq_mpoly_factor_t f, const fmpq_mpoly_t A,
+int fmpq_mpoly_factor_squarefree(fmpq_mpoly_factor_t f, const fmpq_mpoly_t A,
                                                     const fmpq_mpoly_ctx_t ctx)
 {
 	slong i;
@@ -20,7 +20,7 @@ int fmpq_mpoly_factor(fmpq_mpoly_factor_t f, const fmpq_mpoly_t A,
     fmpz_mpoly_factor_t zf;
 
 	fmpz_mpoly_factor_init(zf, ctx->zctx);
-	success = fmpz_mpoly_factor(zf, A->zpoly, ctx->zctx);
+	success = fmpz_mpoly_factor_squarefree(zf, A->zpoly, ctx->zctx);
 
 	fmpq_mpoly_factor_fit_length(f, zf->num, ctx);
 	fmpq_mul_fmpz(f->constant, A->content, zf->constant);

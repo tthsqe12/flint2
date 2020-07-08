@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2019 Daniel Schultz
+    Copyright (C) 2020 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -17,11 +17,11 @@ void fq_nmod_mpoly_factor_append_ui(
     ulong e,
     const fq_nmod_mpoly_ctx_t ctx)
 {
-    slong i = f->length;
+    slong i = f->num;
     fq_nmod_mpoly_factor_fit_length(f, i + 1, ctx);
     fq_nmod_mpoly_set(f->poly + i, A, ctx);
     fmpz_set_ui(f->exp + i, e);
-    f->length = i + 1;
+    f->num = i + 1;
 }
 
 void fq_nmod_mpoly_factor_append_fmpz(
@@ -30,10 +30,10 @@ void fq_nmod_mpoly_factor_append_fmpz(
     const fmpz_t e,
     const fq_nmod_mpoly_ctx_t ctx)
 {
-    slong i = f->length;
+    slong i = f->num;
     fq_nmod_mpoly_factor_fit_length(f, i + 1, ctx);
     fq_nmod_mpoly_set(f->poly + i, A, ctx);
     fmpz_set(f->exp + i, e);
-    f->length = i + 1;
+    f->num = i + 1;
 }
 

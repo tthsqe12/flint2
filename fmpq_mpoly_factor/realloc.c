@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2019 Daniel Schultz
+    Copyright (C) 2020 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -11,57 +11,55 @@
 
 #include "fmpq_mpoly_factor.h"
 
-void fmpq_mpoly_factor_realloc(fmpq_mpoly_factor_t fac, slong alloc,
+
+void fmpq_mpoly_factor_realloc(fmpq_mpoly_factor_t f, slong alloc,
                                                     const fmpq_mpoly_ctx_t ctx)
 {
     slong i;
 
-    if (alloc == 0)
+    if (alloc <= 0)
     {
-        fmpq_mpoly_factor_clear(fac, ctx);
-        fmpq_mpoly_factor_init(fac, ctx);
+        fmpq_mpoly_factor_clear(f, ctx);
+        fmpq_mpoly_factor_init(f, ctx);
+        return;
     }
-    else if (fac->alloc > 0)
+
+    if (f->alloc > 0)
     {
-        if (fac->alloc > alloc)
+        if (f->alloc > alloc)
         {
-            for (i = alloc; i < fac->length; i++)
-			{
-                fmpq_mpoly_clear(fac->poly + i, ctx);
-				fmpz_clear(fac->exp + i);
-			}
-
-            fac->poly = (fmpq_mpoly_struct *) flint_realloc(fac->poly,
-                                            alloc * sizeof(fmpq_mpoly_struct));
-            fac->exp  = (fmpz *) flint_realloc(fac->exp, alloc * sizeof(fmpz));
-            fac->alloc = alloc;
-        }
-        else if (fac->alloc < alloc)
-        {
-            fac->poly = (fmpq_mpoly_struct *) flint_realloc(fac->poly,
-                                            alloc * sizeof(fmpq_mpoly_struct));
-            fac->exp  = (fmpz *) flint_realloc(fac->exp, alloc * sizeof(fmpz));
-
-            for (i = fac->alloc; i < alloc; i++)
+            for (i = alloc; i < f->alloc; i++)
             {
-                fmpq_mpoly_init(fac->poly + i, ctx);
-				fmpz_init(fac->exp + i);
+                fmpq_mpoly_clear(f->poly + i, ctx);
+                fmpz_clear(f->exp + i);
             }
-            fac->alloc = alloc;
+
+            f->exp  = (fmpz *) flint_realloc(f->exp, alloc * sizeof(fmpz));
+            f->poly = (fmpq_mpoly_struct *) flint_realloc(f->poly,
+                                            alloc * sizeof(fmpq_mpoly_struct));
+        }
+        else if (f->alloc < alloc)
+        {
+            f->exp  = (fmpz *) flint_realloc(f->exp, alloc * sizeof(fmpz));
+            f->poly = (fmpq_mpoly_struct *) flint_realloc(f->poly,
+                                            alloc * sizeof(fmpq_mpoly_struct));
+
+            for (i = f->alloc; i < alloc; i++)
+            {
+                fmpq_mpoly_init(f->poly + i, ctx);
+                fmpz_init(f->exp + i);
+            }
         }
     }
     else
     {
-        fac->poly = (fmpq_mpoly_struct *) flint_malloc(alloc *
+        f->exp  = (fmpz *) flint_calloc(alloc, sizeof(fmpz));
+        f->poly = (fmpq_mpoly_struct *) flint_malloc(alloc *
                                                     sizeof(fmpq_mpoly_struct));
-        fac->exp  = (fmpz *) flint_malloc(alloc * sizeof(fmpz));
-
         for (i = 0; i < alloc; i++)
-        {
-            fmpq_mpoly_init(fac->poly + i, ctx);
-			fmpz_init(fac->exp + i);
-        }
-        fac->length = 0;
-        fac->alloc  = alloc;
+            fmpq_mpoly_init(f->poly + i, ctx);
     }
+
+    f->alloc = alloc;
 }
+

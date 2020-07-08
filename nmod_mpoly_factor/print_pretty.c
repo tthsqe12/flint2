@@ -11,18 +11,19 @@
 
 #include "nmod_mpoly_factor.h"
 
-void nmod_mpoly_factor_print_pretty(const nmod_mpoly_factor_t fac,
+
+void nmod_mpoly_factor_print_pretty(const nmod_mpoly_factor_t f,
                                 const char ** vars, const nmod_mpoly_ctx_t ctx)
 {
     slong i;
 
-    flint_printf("%wu", fac->content);
-    for (i = 0; i < fac->length; i++)
+    flint_printf("%wu", f->constant);
+    for (i = 0; i < f->num; i++)
     {
-        flint_printf("\n*(", i);
-        nmod_mpoly_print_pretty(fac->poly + i, vars, ctx);
+        flint_printf("*(", i);
+        nmod_mpoly_print_pretty(f->poly + i, vars, ctx);
 		flint_printf(")^");
-        fmpz_print(fac->exp + i);
+        fmpz_print(f->exp + i);
     }
 }
 

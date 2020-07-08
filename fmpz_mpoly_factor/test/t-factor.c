@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2019 Daniel Schultz
+    Copyright (C) 2020 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -31,7 +31,7 @@ flint_printf("checking same: "); fmpz_mpoly_factor_print_pretty(f, NULL, ctx); p
         flint_abort();            
     }
 
-    if (!fmpz_mpoly_factor(g, p, 1, ctx))
+    if (!fmpz_mpoly_factor(g, p, ctx))
     {
         flint_printf("factorization could not be computed\n");
         flint_abort();            
@@ -48,7 +48,7 @@ flint_printf("checking same: "); fmpz_mpoly_factor_print_pretty(f, NULL, ctx); p
     fmpz_mpoly_factor_fix_units(f, ctx);
     fmpz_mpoly_factor_sort(f, ctx);
 
-    if (!fmpz_mpoly_factor_is_same(f, g, ctx))
+    if (fmpz_mpoly_factor_cmp(f, g, ctx) != 0)
     {
         flint_printf("factorization does not match\n");
         flint_printf(" correct: "); fmpz_mpoly_factor_print_pretty(f, NULL, ctx); printf("\n");
@@ -68,18 +68,14 @@ void check_omega(slong lower, slong upper, const fmpz_mpoly_t p, const fmpz_mpol
     fmpz_mpoly_factor_t g;
     fmpz_t omega;
 
-flint_printf("checking %wd <= # <= %wd: ", lower, upper);
-if (p->length < 20)
-    fmpz_mpoly_print_pretty(p, NULL, ctx);
-else
-    flint_printf("length %wd in %wd vars", p->length, ctx->minfo->nvars);
-flint_printf("\n");
+    flint_printf("checking %wd <= # <= %wd: length %wd in %wd vars\n",
+                                   lower, upper, p->length, ctx->minfo->nvars);
 
     fmpz_init(omega);
     fmpz_mpoly_factor_init(g, ctx);
     fmpz_mpoly_init(q, ctx);
 
-    fmpz_mpoly_factor(g, p, 1, ctx);
+    fmpz_mpoly_factor(g, p, ctx);
 
     if (fmpz_mpoly_factor_fix_units(g, ctx))
     {
@@ -88,11 +84,10 @@ flint_printf("\n");
     }
 
     fmpz_zero(omega);
-    for (i = 0; i < g->length; i++)
+    for (i = 0; i < g->num; i++)
         fmpz_add(omega, omega, g->exp + i);
 
-    if (fmpz_cmp_si(omega, lower) < 0 ||
-        fmpz_cmp_si(omega, upper) > 0)
+    if (fmpz_cmp_si(omega, lower) < 0 || fmpz_cmp_si(omega, upper) > 0)
     {
         flint_printf("factorization has wrong number of factors\n");
         flint_abort();        
@@ -202,14 +197,10 @@ void check_omega_str(slong lower, slong upper, const char * s, const char * poly
 }
 
 
-
-void test_new_stuff();
-
-
 int
 main(void)
 {
-    slong i, j, k, tmul = 10;
+    slong i, j, k, tmul = 20, fateman_power = 20;
     timeit_t timer;
 
     FLINT_TEST_INIT(state);
@@ -246,13 +237,13 @@ main(void)
         slong nfacs, len;
         ulong expbound;
 
-        fmpz_mpoly_ctx_init_rand(ctx, state, 6);
+        fmpz_mpoly_ctx_init_rand(ctx, state, 7);
 
         fmpz_mpoly_init(a, ctx);
         fmpz_mpoly_init(t, ctx);
 
         nfacs = 1 + (5 + n_randint(state, 5))/ctx->minfo->nvars;
-        expbound = 3 + 40/ctx->minfo->nvars/nfacs;
+        expbound = 3 + 30/nfacs;
 
         lower = 0;
         fmpz_mpoly_one(a, ctx);
@@ -276,7 +267,7 @@ flint_printf("%wd ", i);
     }
 
     /* fateman */
-    for (i = 0; i <= ((tmul > 0) ? 20 : -1); i++)
+    for (i = 0; i <= fateman_power; i++)
     {
         fmpz_mpoly_ctx_t ctx;
         fmpz_mpoly_t a, b;

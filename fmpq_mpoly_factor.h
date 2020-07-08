@@ -32,30 +32,41 @@
 #endif
 
 typedef struct {
-    fmpq_t content;
+    fmpq_t constant;
     fmpq_mpoly_struct * poly;
     fmpz * exp;
-    slong length;
+    slong num;
     slong alloc;
 } fmpq_mpoly_factor_struct;
 
 typedef fmpq_mpoly_factor_struct fmpq_mpoly_factor_t[1];
 
-void fmpq_mpoly_factor_init(fmpq_mpoly_factor_t fac, const fmpq_mpoly_ctx_t ctx);
+FLINT_DLL void fmpq_mpoly_factor_init(fmpq_mpoly_factor_t f,
+                                                   const fmpq_mpoly_ctx_t ctx);
 
-void fmpq_mpoly_factor_init2(fmpq_mpoly_factor_t fac, slong alloc, const fmpq_mpoly_ctx_t ctx);
+FLINT_DLL void fmpq_mpoly_factor_init2(fmpq_mpoly_factor_t f,
+                                      slong alloc, const fmpq_mpoly_ctx_t ctx);
 
-void fmpq_mpoly_factor_realloc(fmpq_mpoly_factor_t fac, slong alloc, const fmpq_mpoly_ctx_t ctx);
+FLINT_DLL void fmpq_mpoly_factor_realloc(fmpq_mpoly_factor_t f,
+                                      slong alloc, const fmpq_mpoly_ctx_t ctx);
 
-void fmpq_mpoly_factor_fit_length(fmpq_mpoly_factor_t fac, slong len, const fmpq_mpoly_ctx_t ctx);
+FLINT_DLL void fmpq_mpoly_factor_fit_length(fmpq_mpoly_factor_t f,
+                                        slong len, const fmpq_mpoly_ctx_t ctx);
 
-void fmpq_mpoly_factor_clear(fmpq_mpoly_factor_t fac, const fmpq_mpoly_ctx_t ctx);
+FLINT_DLL void fmpq_mpoly_factor_clear(fmpq_mpoly_factor_t f,
+                                                   const fmpq_mpoly_ctx_t ctx);
 
-void fmpq_mpoly_factor_set(fmpq_mpoly_factor_t res, const fmpq_mpoly_factor_t fac, const fmpq_mpoly_ctx_t ctx);
+FLINT_DLL void fmpq_mpoly_factor_set(fmpq_mpoly_factor_t f,
+                      const fmpq_mpoly_factor_t g, const fmpq_mpoly_ctx_t ctx);
 
-void fmpq_mpoly_factor_print_pretty(const fmpq_mpoly_factor_t fac, const char ** vars, const fmpq_mpoly_ctx_t ctx);
+FLINT_DLL void fmpq_mpoly_factor_print_pretty(const fmpq_mpoly_factor_t f,
+                               const char ** vars, const fmpq_mpoly_ctx_t ctx);
 
-int fmpq_mpoly_factor(fmpq_mpoly_factor_t fac, const fmpq_mpoly_t A, int full, const fmpq_mpoly_ctx_t ctx);
+FLINT_DLL int fmpq_mpoly_factor_squarefree(fmpq_mpoly_factor_t f,
+                             const fmpq_mpoly_t A, const fmpq_mpoly_ctx_t ctx);
+
+FLINT_DLL int fmpq_mpoly_factor(fmpq_mpoly_factor_t f, const fmpq_mpoly_t A,
+                                                   const fmpq_mpoly_ctx_t ctx);
 
 #ifdef __cplusplus
 }

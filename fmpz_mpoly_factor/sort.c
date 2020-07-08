@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2019 Daniel Schultz
+    Copyright (C) 2020 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -11,38 +11,6 @@
 
 #include <string.h>
 #include "fmpz_mpoly_factor.h"
-
-int mpoly_monomial_cmp_sort(
-    const ulong * Aexps, flint_bitcnt_t Abits,
-    const ulong * Bexps, flint_bitcnt_t Bbits,
-    slong length, const mpoly_ctx_t mctx);
-
-int fmpz_mpoly_cmp_sort(
-    const fmpz_mpoly_t A,
-    const fmpz_mpoly_t B,
-    const fmpz_mpoly_ctx_t ctx)
-{
-    slong i;
-    slong length = A->length;
-    fmpz * Acoeffs = A->coeffs;
-    fmpz * Bcoeffs = B->coeffs;
-
-    if (A->length != B->length)
-    {
-        return A->length < B->length ? -1 : 1;
-    }
-
-    for (i = 0; i < length; i++)
-    {
-        int cmp = fmpz_cmp(Acoeffs + i, Bcoeffs + i);
-        if (cmp != 0)
-            return cmp;
-    }
-
-    return mpoly_monomial_cmp_sort(A->exps, A->bits,
-                                   B->exps, B->bits, length, ctx->minfo);
-}
-
 
 typedef struct {
     slong idx;
@@ -63,12 +31,7 @@ static int _sort(const void * a_, const void * b_)
     if (cmp != 0)
         return cmp;
 
-    if (apoly->length != bpoly->length)
-    {
-        return apoly->length < bpoly->length ? -1 : 1;
-    }
-
-    return fmpz_mpoly_cmp_sort(apoly, bpoly, a->ctx);
+    return fmpz_mpoly_cmp(apoly, bpoly, a->ctx);
 }
 
 void fmpz_mpoly_factor_sort(
@@ -77,13 +40,13 @@ void fmpz_mpoly_factor_sort(
 {
     slong i;
     sort_struct * data;
-    fmpz_mpoly_struct * fpolycopy;
+    fmpz_mpoly_struct * fc;
 
-    if (f->length == 0)
+    if (f->num < 1)
         return;
 
-    data = (sort_struct *) flint_malloc(f->length*sizeof(sort_struct));
-    for (i = 0; i < f->length; i++)
+    data = (sort_struct *) flint_malloc(f->num*sizeof(sort_struct));
+    for (i = 0; i < f->num; i++)
     {
         data[i].idx = i;
         data[i].exp = f->exp[i];
@@ -91,20 +54,18 @@ void fmpz_mpoly_factor_sort(
         data[i].ctx = ctx;
     }
 
-    qsort(data, f->length, sizeof(sort_struct), _sort);
+    qsort(data, f->num, sizeof(sort_struct), _sort);
 
     /* we will not permute in place */
-    fpolycopy = (fmpz_mpoly_struct *) flint_malloc(f->length*sizeof(fmpz_mpoly_struct));
-    memcpy(fpolycopy, f->poly, f->length*sizeof(fmpz_mpoly_struct));
+    fc = (fmpz_mpoly_struct *) flint_malloc(f->num*sizeof(fmpz_mpoly_struct));
+    memcpy(fc, f->poly, f->num*sizeof(fmpz_mpoly_struct));
 
-    for (i = 0; i < f->length; i++)
+    for (i = 0; i < f->num; i++)
     {
         f->exp[i] = data[i].exp;
-        f->poly[i] = fpolycopy[data[i].idx];
+        f->poly[i] = fc[data[i].idx];
     }
     
-    flint_free(fpolycopy);
+    flint_free(fc);
     flint_free(data);
-
-    return;
 }

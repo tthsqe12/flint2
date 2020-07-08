@@ -19,11 +19,11 @@ void fq_nmod_mpoly_factor_print_pretty(
     slong i;
 
     flint_printf("(");
-    fq_nmod_print_pretty(f->content, ctx->fqctx);
+    fq_nmod_print_pretty(f->constant, ctx->fqctx);
     flint_printf(")");
-    for (i = 0; i < f->length; i++)
+    for (i = 0; i < f->num; i++)
     {
-        flint_printf("\n*(", i);
+        flint_printf("*(", i);
         fq_nmod_mpoly_print_pretty(f->poly + i, vars, ctx);
 		flint_printf(")^");
         fmpz_print(f->exp + i);

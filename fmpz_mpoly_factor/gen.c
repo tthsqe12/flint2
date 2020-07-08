@@ -17,10 +17,10 @@ void fmpz_mpoly_factor_gen(
     slong v,
     const fmpz_mpoly_ctx_t ctx)
 {
-    fmpz_one(A->content);
+    fmpz_one(A->constant);
     fmpz_mpoly_factor_fit_length(A, 1, ctx);
     fmpz_mpoly_gen(A->poly + 0, v, ctx);
     fmpz_one(A->exp + 0);
-    A->length = 1;
+    A->num = 1;
 }
 
