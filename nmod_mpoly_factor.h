@@ -79,6 +79,45 @@ FLINT_DLL int subset_next(fmpz_t a, const fmpz_t b, slong n);
 FLINT_DLL void subset_print(const fmpz_t a, slong n);
 
 
+NMOD_MPOLY_FACTOR_INLINE
+int z_add_checked(slong * a, slong b, slong c)
+{
+	ulong ahi, alo;
+	add_ssaaaa(ahi, alo, 0, b, 0, c);
+	*a = alo;
+	return FLINT_SIGN_EXT(alo) != ahi;
+}
+
+NMOD_MPOLY_FACTOR_INLINE
+mp_limb_t nmod_addmul(mp_limb_t a, mp_limb_t b, mp_limb_t c, nmod_t mod)
+{
+    NMOD_ADDMUL(a, b, c, mod);
+    return a;
+}
+
+
+NMOD_MPOLY_FACTOR_INLINE
+ulong pack_exp2(ulong e0, ulong e1)
+{
+    return (e0 << (1*(FLINT_BITS/2))) +
+           (e1 << (0*(FLINT_BITS/2)));
+}
+
+NMOD_MPOLY_FACTOR_INLINE
+ulong pack_exp3(ulong e0, ulong e1, ulong e2)
+{
+    return (e0 << (2*(FLINT_BITS/3))) +
+           (e1 << (1*(FLINT_BITS/3))) +
+           (e2 << (0*(FLINT_BITS/3)));
+}
+
+NMOD_MPOLY_FACTOR_INLINE
+ulong extract_exp(ulong e, int idx, int nvars)
+{
+    return (e >> (idx*(FLINT_BITS/nvars))) &
+            ((-UWORD(1)) >> (FLINT_BITS - FLINT_BITS/nvars));
+
+}
 
 
 /**************** dense univarates (Z/nZ)[x] *********************************/
@@ -96,24 +135,34 @@ NMOD_MPOLY_FACTOR_INLINE
 void n_poly_init(n_poly_t A)
 {
     A->length = 0;
-    A->alloc = 0;
-    A->coeffs = NULL;
+    A->alloc = 0;       /* alloc >= 0 */
+    A->coeffs = NULL;   /* alloc == 0  =>  coeffs == NULL */
 }
 
 NMOD_MPOLY_FACTOR_INLINE
 void n_poly_init2(n_poly_t A, slong alloc)
 {
-    FLINT_ASSERT(alloc >= 0);
+    FLINT_ASSERT(A->alloc >= 0);
     A->length = 0;
     A->alloc = alloc;
-    A->coeffs = alloc > 0 ? flint_malloc(alloc*sizeof(mp_limb_t)) : NULL;
+    A->coeffs = NULL;
+    if (alloc > 0)
+        A->coeffs = (mp_limb_t *) flint_malloc(alloc*sizeof(mp_limb_t));
 }
 
-FLINT_DLL void n_poly_clear(n_poly_t A);
+NMOD_MPOLY_FACTOR_INLINE
+void n_poly_clear(n_poly_t A)
+{
+    FLINT_ASSERT(A->alloc != 0 || A->coeffs == NULL);
+    if (A->alloc > 0)
+        flint_free(A->coeffs);
+}
 
 FLINT_DLL void n_poly_realloc(n_poly_t A, slong len);
 
 FLINT_DLL void n_poly_print_pretty(const n_poly_t A, const char * x);
+
+FLINT_DLL int n_poly_mod_is_canonical(const n_poly_t A, nmod_t mod);
 
 NMOD_MPOLY_FACTOR_INLINE
 void n_poly_fit_length(n_poly_t A, slong len)
@@ -242,6 +291,19 @@ ulong n_poly_get_coeff(const n_poly_t poly, slong j)
     return (j >= poly->length) ? 0 : poly->coeffs[j];
 }
 
+NMOD_MPOLY_FACTOR_INLINE
+void n_poly_set_coeff_nonzero(n_poly_t A, slong j, ulong c)
+{
+    FLINT_ASSERT(c != 0);
+    if (j >= A->length)
+    {
+        n_poly_fit_length(A, j + 1);
+        flint_mpn_zero(A->coeffs + A->length, j - A->length);
+        A->length = j + 1;
+    }
+    A->coeffs[j] = c;
+}
+
 FLINT_DLL void n_poly_set_coeff(n_poly_t A, slong e, ulong c);
 
 FLINT_DLL void n_poly_mod_set_coeff_ui(n_poly_t A, slong j, ulong c, nmod_t mod);
@@ -315,10 +377,18 @@ void n_poly_mod_sub(n_poly_t A, const n_poly_t B, const n_poly_t C, nmod_t mod)
     _n_poly_normalise(A);
 }
 
-/* no-nonsense quadratic arithmetic: no aliasing, no mod 1, ... */
 NMOD_MPOLY_FACTOR_INLINE
-void _n_poly_mod_mul(n_poly_t A, const n_poly_t B, const n_poly_t C,
-                                                                    nmod_t mod)
+void n_poly_mod_product_roots_nmod_vec(n_poly_t A, mp_srcptr r, slong n, nmod_t mod)
+{
+    n_poly_fit_length(A, n + 1);
+    A->length = n + 1;
+    _nmod_poly_product_roots_nmod_vec(A->coeffs, r, n, mod);
+}
+
+/* quadratic arithmetic without the bullshit: no aliasing, no mod 1, no throwing */
+
+NMOD_MPOLY_FACTOR_INLINE
+void _n_poly_mod_mul(n_poly_t A, const n_poly_t B, const n_poly_t C, nmod_t mod)
 {
     slong Blen = B->length;
     slong Clen = C->length;
@@ -468,12 +538,33 @@ void n_polyu_fit_length(n_polyu_t A, slong len)
 }
 
 NMOD_MPOLY_FACTOR_INLINE
+void n_polyu_term_swap(n_polyu_term_struct * A, n_polyu_term_struct * B)
+{
+    n_polyu_term_struct T = *A;
+    *A = *B;
+    *B = T;
+}
+NMOD_MPOLY_FACTOR_INLINE
 void n_polyu_swap(n_polyu_t A, n_polyu_t B)
 {
-    n_polyu_struct t = *B;
+    n_polyu_struct T = *B;
     *B = *A;
-    *A = t;
+    *A = T;
 }
+
+
+FLINT_DLL void n_polyu_clear(n_polyu_t A);
+
+FLINT_DLL void n_polyu_realloc(n_polyu_t A, slong len);
+
+FLINT_DLL void n_polyu3_print_pretty(const n_polyu_t A, const char * var0,
+                                         const char * var1, const char * var2);
+
+FLINT_DLL void n_polyu3_degrees(slong * deg0, slong * deg1, slong * deg2,
+                                                            const n_polyu_t A);
+
+FLINT_DLL int n_polyu_mod_is_canonical(const n_polyu_t A, nmod_t mod);
+
 
 /************** sparse poly with dense coefficients ************************/
 
@@ -512,6 +603,14 @@ void n_polyun_fit_length(n_polyun_t A, slong len)
 }
 
 NMOD_MPOLY_FACTOR_INLINE
+void n_polyun_term_swap(n_polyun_term_struct * A, n_polyun_term_struct * B)
+{
+    n_polyun_term_struct T = *A;
+    *A = *B;
+    *B = T;
+}
+
+NMOD_MPOLY_FACTOR_INLINE
 void n_polyun_swap(n_polyun_t A, n_polyun_t B)
 {
     n_polyun_struct t = *B;
@@ -519,54 +618,20 @@ void n_polyun_swap(n_polyun_t A, n_polyun_t B)
     *A = t;
 }
 
+FLINT_DLL void n_polyun_clear(n_polyun_t A);
 
-/************** sparse poly with pair{polydr, polydr} coefficients ***********/
+FLINT_DLL void n_polyun_realloc(n_polyun_t A, slong len);
 
-typedef struct
-{
-    ulong exp;
-    n_poly_t vec1;
-    n_poly_t vec2;
-} n_poly2u_entry_struct;
+FLINT_DLL void n_polyu2n_print_pretty(const n_polyun_t A, const char * var0,
+                                      const char * var1, const char * varlast);
 
-typedef struct
-{
-    n_poly2u_entry_struct * coeffs;
-    slong length;
-    slong alloc;
-} n_poly2u_struct;
+FLINT_DLL void n_polyu3n_print_pretty(const n_polyun_t A, const char * var0,
+                   const char * var1, const char * var2, const char * varlast);
 
-typedef n_poly2u_struct n_poly2u_t[1];
-
-NMOD_MPOLY_FACTOR_INLINE
-void n_poly2u_init(n_poly2u_t A)
-{
-    A->coeffs = NULL;
-    A->length = 0;
-    A->alloc = 0;
-}
-
-FLINT_DLL void n_poly2u_clear(n_poly2u_t A);
-
-FLINT_DLL void n_poly2u_realloc(n_poly2u_t A, slong len);
-
-NMOD_MPOLY_FACTOR_INLINE
-void n_poly2u_fit_length(n_poly2u_t A, slong len)
-{
-    if (len > A->alloc)
-        n_poly2u_realloc(A, len);
-}
-
-NMOD_MPOLY_FACTOR_INLINE
-void n_poly2u_swap(n_poly2u_t A, n_poly2u_t B)
-{
-    n_poly2u_struct t = *B;
-    *B = *A;
-    *A = t;
-}
+FLINT_DLL int n_polyun_mod_is_canonical(const n_polyun_t A, nmod_t mod);
 
 
-/******* dense bivariates (Z/nZ)[x,y] ****************************************/
+/******* dense bivariates (Z/nZ)[y][x] ***************************************/
 
 typedef struct
 {
@@ -614,8 +679,27 @@ void n_bpoly_zero(n_bpoly_t A)
     A->length = 0;
 }
 
+NMOD_MPOLY_FACTOR_INLINE
+int n_bpoly_is_zero(const n_bpoly_t A)
+{
+    return A->length == 0;
+}
+
+FLINT_DLL void n_bpoly_set(n_bpoly_t A, const n_bpoly_t B);
+
+FLINT_DLL void n_bpoly_one(n_bpoly_t A);
+
 FLINT_DLL void n_bpoly_set_coeff(n_bpoly_t A, slong e0, slong e1, mp_limb_t c);
 
+FLINT_DLL void n_bpoly_set_coeff_nonzero(n_bpoly_t A, slong xi, slong yi, mp_limb_t c);
+
+FLINT_DLL int n_bpoly_equal(const n_bpoly_t A, const n_bpoly_t B);
+
+FLINT_DLL void n_bpoly_mod_sub(n_bpoly_t A, const n_bpoly_t B,
+                                                const n_bpoly_t C, nmod_t mod);
+
+FLINT_DLL void n_bpoly_mod_mul(n_bpoly_t A, const n_bpoly_t B,
+                                                const n_bpoly_t C, nmod_t mod);
 
 /*********** dense bivariates Fq[x,y] ****************************************/
 
