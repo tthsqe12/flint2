@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2019 Daniel Schultz
+    Copyright (C) 2020 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -12,42 +12,41 @@
 #include "fmpq_mpoly_factor.h"
 
 
-void fmpq_mpoly_factor_init(fmpq_mpoly_factor_t fac, const fmpq_mpoly_ctx_t ctx)
+void fmpq_mpoly_factor_init(fmpq_mpoly_factor_t f, const fmpq_mpoly_ctx_t ctx)
 {
-    fmpq_init(fac->content);
-	fmpq_one(fac->content);
-    fac->poly   = NULL;
-    fac->exp    = NULL;
-    fac->length = 0;
-    fac->alloc  = 0;
+    fmpq_init(f->constant);
+	fmpq_one(f->constant);
+    f->poly  = NULL;
+    f->exp   = NULL;
+    f->num   = 0;
+    f->alloc = 0;
 }
 
 
-void fmpq_mpoly_factor_init2(fmpq_mpoly_factor_t fac, slong alloc, const fmpq_mpoly_ctx_t ctx)
+void fmpq_mpoly_factor_init2(fmpq_mpoly_factor_t f, slong alloc, const fmpq_mpoly_ctx_t ctx)
 {
-    fmpq_init(fac->content);
-	fmpq_one(fac->content);
+    fmpq_init(f->constant);
+	fmpq_one(f->constant);
 
-    if (alloc)
+    if (alloc > 0)
     {
         slong i;
 
-        fac->poly = (fmpq_mpoly_struct *) flint_malloc(alloc * sizeof(fmpq_mpoly_struct));
-        fac->exp  = (fmpz *) flint_malloc(alloc * sizeof(fmpz));
-
+        f->exp = (fmpz *) flint_calloc(alloc, sizeof(fmpz));
+        f->poly = (fmpq_mpoly_struct *) flint_malloc(alloc *
+                                                    sizeof(fmpq_mpoly_struct));
         for (i = 0; i < alloc; i++)
-        {
-            fmpq_mpoly_init(fac->poly + i, ctx);
-			fmpz_init(fac->exp + i);
-        }
+            fmpq_mpoly_init(f->poly + i, ctx);
+
+        f->alloc = alloc;
     }
     else
     {
-        fac->poly = NULL;
-        fac->exp  = NULL;
+        f->exp = NULL;
+        f->poly = NULL;
+        f->alloc = 0;
     }
 
-    fac->length = 0;
-    fac->alloc  = alloc;
+    f->num = 0;
 }
 

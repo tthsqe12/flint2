@@ -12,21 +12,22 @@
 #include "fmpz_mpoly_factor.h"
 
 
-void fmpz_mpoly_factor_clear(fmpz_mpoly_factor_t fac, const fmpz_mpoly_ctx_t ctx)
+void fmpz_mpoly_factor_clear(fmpz_mpoly_factor_t f, const fmpz_mpoly_ctx_t ctx)
 {
-    fmpz_clear(fac->content);
-
-    if (fac->alloc > 0)
+    if (f->alloc > 0)
     {
         slong i;
 
-        for (i = 0; i < fac->alloc; i++)
+        for (i = 0; i < f->alloc; i++)
         {
-            fmpz_mpoly_clear(fac->poly + i, ctx);
+            fmpz_mpoly_clear(f->poly + i, ctx);
+            fmpz_clear(f->exp + i);
         }
 
-        flint_free(fac->poly);
-        flint_free(fac->exp);
+        flint_free(f->poly);
+        flint_free(f->exp);
     }
+
+    fmpz_clear(f->constant);
 }
 

@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2019 Daniel Schultz
+    Copyright (C) 2020 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -12,27 +12,31 @@
 #include "fmpz_mpoly_factor.h"
 
 
-int fmpz_mpoly_factor_is_same(
+int fmpz_mpoly_factor_cmp(
     const fmpz_mpoly_factor_t A,
     const fmpz_mpoly_factor_t B,
     const fmpz_mpoly_ctx_t ctx)
 {
+    int cmp;
     slong i;
 
-    if (!fmpz_equal(A->content, B->content))
-        return 0;
+    cmp = fmpz_cmp(A->constant, B->constant);
+    if (cmp != 0)
+        return cmp;
 
-    if (A->length != B->length)
-        return 0;
+    if (A->num != B->num)
+        return A->num > B->num ? 1 : -1;
 
-    for (i = 0; i < A->length; i++)
+    for (i = 0; i < A->num; i++)
     {
-        if (!fmpz_equal(A->exp + i, B->exp + i))
-            return 0;
+        cmp = fmpz_cmp(A->exp + i, B->exp + i);
+        if (cmp != 0)
+            return cmp;
 
-        if (!fmpz_mpoly_equal(A->poly + i, B->poly + i, ctx))
-            return 0;
+        cmp = fmpz_mpoly_cmp(A->poly + i, B->poly + i, ctx);
+        if (cmp != 0)
+            return cmp;
     }
 
-    return 1;
+    return 0;
 }

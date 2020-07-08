@@ -30,10 +30,10 @@ int fmpz_mpoly_factor_add(
         goto cleanup;
 
     fmpz_mpoly_factor_fit_length(A, 1, ctx);
-    fmpz_one(A->content);
+    fmpz_one(A->constant);
     fmpz_mpoly_add(A->poly + 0, b, c, ctx);
     fmpz_one(A->exp + 0);
-    A->length = 1;
+    A->num = 1;
     success = 1;
 
 cleanup:

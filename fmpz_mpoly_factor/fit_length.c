@@ -12,15 +12,13 @@
 #include "fmpz_mpoly_factor.h"
 
 
-void fmpz_mpoly_factor_fit_length(fmpz_mpoly_factor_t fac, slong len,
+void fmpz_mpoly_factor_fit_length(fmpz_mpoly_factor_t f, slong len,
                                                     const fmpz_mpoly_ctx_t ctx)
 {
-    if (len > fac->alloc)
+    if (len > f->alloc)
     {
-        /* At least double number of allocated coeffs */
-        if (len < 2 * fac->alloc)
-            len = 2 * fac->alloc;
-        fmpz_mpoly_factor_realloc(fac, len, ctx);
+        len = FLINT_MAX(len, f->alloc + f->alloc/2);
+        fmpz_mpoly_factor_realloc(f, len, ctx);
     }
 }
 

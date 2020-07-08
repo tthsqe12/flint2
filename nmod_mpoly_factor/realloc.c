@@ -11,57 +11,54 @@
 
 #include "nmod_mpoly_factor.h"
 
-void nmod_mpoly_factor_realloc(nmod_mpoly_factor_t fac, slong alloc,
+
+void nmod_mpoly_factor_realloc(nmod_mpoly_factor_t f, slong alloc,
                                                     const nmod_mpoly_ctx_t ctx)
 {
     slong i;
 
-    if (alloc == 0)             /* Clear up, reinitialise */
+    if (alloc <= 0)
     {
-        nmod_mpoly_factor_clear(fac, ctx);
-        nmod_mpoly_factor_init(fac, ctx);
+        nmod_mpoly_factor_clear(f, ctx);
+        nmod_mpoly_factor_init(f, ctx);
+        return;
     }
-    else if (fac->alloc > 0)            /* Realloc */
+
+    if (f->alloc > 0)
     {
-        if (fac->alloc > alloc)
+        if (f->alloc > alloc)
         {
-            for (i = alloc; i < fac->length; i++)
-			{
-                nmod_mpoly_clear(fac->poly + i, ctx);
-				fmpz_clear(fac->exp + i);
-			}
-
-            fac->poly = (nmod_mpoly_struct *) flint_realloc(fac->poly,
-                                            alloc * sizeof(nmod_mpoly_struct));
-            fac->exp  = (fmpz *) flint_realloc(fac->exp, alloc * sizeof(fmpz));
-            fac->alloc = alloc;
-        }
-        else if (fac->alloc < alloc)
-        {
-            fac->poly = (nmod_mpoly_struct *) flint_realloc(fac->poly,
-                                            alloc * sizeof(nmod_mpoly_struct));
-            fac->exp  = (fmpz *) flint_realloc(fac->exp, alloc * sizeof(fmpz));
-
-            for (i = fac->alloc; i < alloc; i++)
+            for (i = alloc; i < f->alloc; i++)
             {
-                nmod_mpoly_init(fac->poly + i, ctx);
-				fmpz_init(fac->exp + i);
+                nmod_mpoly_clear(f->poly + i, ctx);
+                fmpz_clear(f->exp + i);
             }
-            fac->alloc = alloc;
-        }
-    }
-    else                        /* Nothing allocated already so do it now */
-    {
-        fac->poly = (nmod_mpoly_struct *) flint_malloc(alloc *
-                                                    sizeof(nmod_mpoly_struct));
-        fac->exp  = (fmpz *) flint_malloc(alloc * sizeof(fmpz));
 
-        for (i = 0; i < alloc; i++)
-        {
-            nmod_mpoly_init(fac->poly + i, ctx);
-			fmpz_init(fac->exp + i);
+            f->exp  = (fmpz *) flint_realloc(f->exp, alloc * sizeof(fmpz));
+            f->poly = (nmod_mpoly_struct *) flint_realloc(f->poly,
+                                            alloc * sizeof(nmod_mpoly_struct));
         }
-        fac->length = 0;
-        fac->alloc  = alloc;
+        else if (f->alloc < alloc)
+        {
+            f->exp  = (fmpz *) flint_realloc(f->exp, alloc * sizeof(fmpz));
+            f->poly = (nmod_mpoly_struct *) flint_realloc(f->poly,
+                                            alloc * sizeof(nmod_mpoly_struct));
+
+            for (i = f->alloc; i < alloc; i++)
+            {
+                nmod_mpoly_init(f->poly + i, ctx);
+                fmpz_init(f->exp + i);
+            }
+        }
     }
+    else
+    {
+        f->exp  = (fmpz *) flint_calloc(alloc, sizeof(fmpz));
+        f->poly = (nmod_mpoly_struct *) flint_malloc(alloc *
+                                                    sizeof(nmod_mpoly_struct));
+        for (i = 0; i < alloc; i++)
+            nmod_mpoly_init(f->poly + i, ctx);
+    }
+
+    f->alloc = alloc;
 }

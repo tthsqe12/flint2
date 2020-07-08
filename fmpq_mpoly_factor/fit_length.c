@@ -11,14 +11,12 @@
 
 #include "fmpq_mpoly_factor.h"
 
-void fmpq_mpoly_factor_fit_length(fmpq_mpoly_factor_t fac, slong len,
+void fmpq_mpoly_factor_fit_length(fmpq_mpoly_factor_t f, slong len,
                                                     const fmpq_mpoly_ctx_t ctx)
 {
-    if (len > fac->alloc)
+    if (len > f->alloc)
     {
-        /* At least double number of allocated coeffs */
-        if (len < 2 * fac->alloc)
-            len = 2 * fac->alloc;
-        fmpq_mpoly_factor_realloc(fac, len, ctx);
+        len = FLINT_MAX(len, f->alloc + f->alloc/2);
+        fmpq_mpoly_factor_realloc(f, len, ctx);
     }
 }

@@ -17,11 +17,11 @@ void nmod_mpoly_factor_append_ui(
     ulong e,
     const nmod_mpoly_ctx_t ctx)
 {
-    slong i = f->length;
+    slong i = f->num;
     nmod_mpoly_factor_fit_length(f, i + 1, ctx);
     nmod_mpoly_set(f->poly + i, A, ctx);
     fmpz_set_ui(f->exp + i, e);
-    f->length = i + 1;
+    f->num = i + 1;
 }
 
 void nmod_mpoly_factor_append_fmpz(
@@ -30,10 +30,10 @@ void nmod_mpoly_factor_append_fmpz(
     const fmpz_t e,
     const nmod_mpoly_ctx_t ctx)
 {
-    slong i = f->length;
+    slong i = f->num;
     nmod_mpoly_factor_fit_length(f, i + 1, ctx);
     nmod_mpoly_set(f->poly + i, A, ctx);
     fmpz_set(f->exp + i, e);
-    f->length = i + 1;
+    f->num = i + 1;
 }
 

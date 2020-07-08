@@ -22,12 +22,12 @@ void fmpz_mpoly_factor_set(
     if (A == B)
         return;
 
-    fmpz_mpoly_factor_fit_length(A, B->length, ctx);
-    fmpz_set(A->content, B->content);
-    for (i = 0; i < B->length; i++)
+    fmpz_mpoly_factor_fit_length(A, B->num, ctx);
+    fmpz_set(A->constant, B->constant);
+    for (i = 0; i < B->num; i++)
     {
         fmpz_mpoly_set(A->poly + i, B->poly + i, ctx);
         fmpz_set(A->exp + i, B->exp + i);
     }
-    A->length = B->length;
+    A->num = B->num;
 }

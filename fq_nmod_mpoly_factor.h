@@ -39,10 +39,10 @@ void fq_nmod_mpoly_evaluate_one_fq_nmod(
     const fq_nmod_mpoly_ctx_t ctx);
 
 typedef struct {
-    fq_nmod_t content;
+    fq_nmod_t constant;
     fq_nmod_mpoly_struct * poly;
     fmpz * exp;
-    slong length;
+    slong num;
     slong alloc;
 } fq_nmod_mpoly_factor_struct;
 

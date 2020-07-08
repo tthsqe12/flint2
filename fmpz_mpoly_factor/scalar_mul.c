@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2019 Daniel Schultz
+    Copyright (C) 2020 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -19,5 +19,5 @@ void fmpz_mpoly_factor_scalar_mul_si(
     const fmpz_mpoly_ctx_t ctx)
 {
     fmpz_mpoly_factor_set(A, B, ctx);
-    fmpz_mul_si(A->content, A->content, c);
+    fmpz_mul_si(A->constant, A->constant, c);
 }

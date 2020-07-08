@@ -15,11 +15,11 @@ void fq_nmod_mpoly_factor_init(
     fq_nmod_mpoly_factor_t f,
     const fq_nmod_mpoly_ctx_t ctx)
 {
-    fq_nmod_init(f->content, ctx->fqctx);
-	fq_nmod_one(f->content, ctx->fqctx);
-    f->poly   = NULL;
-    f->exp    = NULL;
-    f->length = 0;
-    f->alloc  = 0;
+    fq_nmod_init(f->constant, ctx->fqctx);
+	fq_nmod_one(f->constant, ctx->fqctx);
+    f->poly  = NULL;
+    f->exp   = NULL;
+    f->num   = 0;
+    f->alloc = 0;
 }
 

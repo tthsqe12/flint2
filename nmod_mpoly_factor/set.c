@@ -19,12 +19,12 @@ void nmod_mpoly_factor_set(nmod_mpoly_factor_t res,
     if (res == fac)
         return;
 
-    nmod_mpoly_factor_fit_length(res, fac->length, ctx);
-    res->content = fac->content;
-    for (i = 0; i < fac->length; i++)
+    nmod_mpoly_factor_fit_length(res, fac->num, ctx);
+    res->constant = fac->constant;
+    for (i = 0; i < fac->num; i++)
     {
         nmod_mpoly_set(res->poly + i, fac->poly + i, ctx);
         fmpz_set(res->exp + i, fac->exp + i);
     }
-    res->length = fac->length;
+    res->num = fac->num;
 }

@@ -11,20 +11,20 @@
 
 #include "fmpq_mpoly_factor.h"
 
-void fmpq_mpoly_factor_set(fmpq_mpoly_factor_t res,
-                     const fmpq_mpoly_factor_t fac, const fmpq_mpoly_ctx_t ctx)
+void fmpq_mpoly_factor_set(fmpq_mpoly_factor_t A, const fmpq_mpoly_factor_t B,
+                                                    const fmpq_mpoly_ctx_t ctx)
 {
     slong i;
 
-    if (res == fac)
+    if (A == B)
         return;
 
-    fmpq_mpoly_factor_fit_length(res, fac->length, ctx);
-    fmpq_set(res->content, fac->content);
-    for (i = 0; i < fac->length; i++)
+    fmpq_mpoly_factor_fit_length(A, B->num, ctx);
+    fmpq_set(A->constant, B->constant);
+    for (i = 0; i < B->num; i++)
     {
-        fmpq_mpoly_set(res->poly + i, fac->poly + i, ctx);
-        fmpz_set(res->exp + i, fac->exp + i);
+        fmpq_mpoly_set(A->poly + i, B->poly + i, ctx);
+        fmpz_set(A->exp + i, B->exp + i);
     }
-    res->length = fac->length;
+    A->num = B->num;
 }

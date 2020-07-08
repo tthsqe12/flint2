@@ -22,10 +22,10 @@ int fmpz_mpoly_factor_pow_fmpz(
 
     fmpz_mpoly_factor_set(A, B, ctx);
 
-    if (!fmpz_pow_fmpz(A->content, A->content, e))
+    if (!fmpz_pow_fmpz(A->constant, A->constant, e))
         return 0;
 
-    for (i = 0; i < A->length; i++)
+    for (i = 0; i < A->num; i++)
         fmpz_mul(A->exp + i, A->exp + i, e);
 
     return 1;

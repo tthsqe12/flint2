@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2019 Daniel Schultz
+    Copyright (C) 2020 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -15,8 +15,6 @@ void fq_nmod_mpoly_factor_clear(
     fq_nmod_mpoly_factor_t f,
     const fq_nmod_mpoly_ctx_t ctx)
 {
-    fq_nmod_clear(f->content, ctx->fqctx);
-
     if (f->alloc > 0)
     {
         slong i;
@@ -30,5 +28,7 @@ void fq_nmod_mpoly_factor_clear(
         flint_free(f->poly);
         flint_free(f->exp);
     }
+
+    fq_nmod_clear(f->constant, ctx->fqctx);
 }
 

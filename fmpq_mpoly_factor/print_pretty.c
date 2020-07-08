@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2019 Daniel Schultz
+    Copyright (C) 2020 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -11,20 +11,17 @@
 
 #include "fmpq_mpoly_factor.h"
 
-void fmpq_mpoly_factor_print_pretty(const fmpq_mpoly_factor_t fac,
+void fmpq_mpoly_factor_print_pretty(const fmpq_mpoly_factor_t f,
                                const char ** vars, const fmpq_mpoly_ctx_t ctx)
 {
     slong i;
 
-    flint_printf("content: ");
-    fmpq_print(fac->content);
-    flint_printf("\n");
-    for (i = 0; i < fac->length; i++)
+    fmpq_print(f->constant);
+    for (i = 0; i < f->num; i++)
     {
-        flint_printf("factor[%wd]: ", i);
-        fmpq_mpoly_print_pretty(fac->poly + i, vars, ctx);
-        flint_printf(" ^ ");
-		fmpz_print(fac->exp + i);
-		flint_printf("\n");
+        flint_printf("*(", i);
+        fmpq_mpoly_print_pretty(f->poly + i, vars, ctx);
+		flint_printf(")^");
+        fmpz_print(f->exp + i);
     }
 }

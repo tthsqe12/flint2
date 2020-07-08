@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2019 Daniel Schultz
+    Copyright (C) 2020 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -21,12 +21,12 @@ void fq_nmod_mpoly_factor_set(
     if (a == b)
         return;
 
-    fq_nmod_mpoly_factor_fit_length(a, b->length, ctx);
-    fq_nmod_set(a->content, b->content, ctx->fqctx);
-    for (i = 0; i < b->length; i++)
+    fq_nmod_mpoly_factor_fit_length(a, b->num, ctx);
+    fq_nmod_set(a->constant, b->constant, ctx->fqctx);
+    for (i = 0; i < b->num; i++)
     {
         fq_nmod_mpoly_set(a->poly + i, b->poly + i, ctx);
         fmpz_set(a->exp + i, b->exp + i);
     }
-    a->length = b->length;
+    a->num = b->num;
 }
