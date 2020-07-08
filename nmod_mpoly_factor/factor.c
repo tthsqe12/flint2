@@ -727,6 +727,7 @@ void fq_nmod_bpoly_make_monic(fq_nmod_bpoly_t A, slong order, const fq_nmod_ctx_
     fq_nmod_poly_clear(lcinv, ctx);
 }
 
+
 void n_bpoly_mod_mullow(
     n_bpoly_t A,
     const n_bpoly_t B,
@@ -871,6 +872,13 @@ void fq_nmod_bpoly_add_poly_shift(
     }
 }
 
+
+void n_bpoly_one(n_bpoly_t A)
+{
+    n_bpoly_fit_length(A, 1);
+    A->length = 1;
+    n_poly_one(A->coeffs + 0);
+}
 
 void n_bpoly_mod_sub(
     n_bpoly_t A,
@@ -1157,11 +1165,27 @@ void fq_nmod_bpoly_make_primitive(fq_nmod_bpoly_t A, const fq_nmod_ctx_t ctx)
 }
 
 
-void n_bpoly_set_coeff(n_bpoly_t A, slong xi, slong yi, mp_limb_t c)
+void n_bpoly_set_coeff_nonzero(n_bpoly_t A, slong xi, slong yi, mp_limb_t c)
 {
     slong i;
 
-    FLINT_ASSERT(0 != c);
+    FLINT_ASSERT(c != 0);
+
+    if (xi >= A->length)
+    {
+        n_bpoly_fit_length(A, xi + 1);
+        for (i = A->length; i <= xi; i++)
+            n_poly_zero(A->coeffs + i);
+        A->length = xi + 1;
+    }
+
+    n_poly_set_coeff_nonzero(A->coeffs + xi, yi, c);
+    FLINT_ASSERT(!n_poly_is_zero(A->coeffs + A->length - 1));
+}
+
+void n_bpoly_set_coeff(n_bpoly_t A, slong xi, slong yi, mp_limb_t c)
+{
+    slong i;
 
     if (xi >= A->length)
     {
@@ -1172,6 +1196,8 @@ void n_bpoly_set_coeff(n_bpoly_t A, slong xi, slong yi, mp_limb_t c)
     }
 
     n_poly_set_coeff(A->coeffs + xi, yi, c);
+    while (A->length > 0 && n_poly_is_zero(A->coeffs + A->length - 1))
+        A->length--;
 }
 
 void fq_nmod_bpoly_set_coeff(
@@ -1182,8 +1208,6 @@ void fq_nmod_bpoly_set_coeff(
 {
     slong i;
 
-    FLINT_ASSERT(0 != c);
-
     if (xi >= A->length)
     {
         fq_nmod_bpoly_fit_length(A, xi + 1, ctx);
@@ -1193,6 +1217,8 @@ void fq_nmod_bpoly_set_coeff(
     }
 
     fq_nmod_poly_set_coeff(A->coeffs + xi, yi, c, ctx);
+    while (A->length > 0 && fq_nmod_poly_is_zero(A->coeffs + A->length - 1, ctx))
+        A->length--;
 }
 
 
@@ -3593,11 +3619,11 @@ int nmod_mfactor_lift(
     nmod_mpoly_t e, t, pow, g, q;
     nmod_mpoly_struct * betas, * deltas;
     nmod_disolve_t I;
-
+/*
 flint_printf("_mfactor_lift called (m = %wd)\n", m);
 flint_printf("lfac: "); nmod_mpoly_factor_print_pretty(lfac, NULL, ctx); printf("\n");
 flint_printf("A: "); nmod_mpoly_print_pretty(A, NULL, ctx); printf("\n");
-
+*/
     FLINT_ASSERT(r > 1);
 
     nmod_mpoly_init(e, ctx);

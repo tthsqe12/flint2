@@ -121,13 +121,15 @@ FLINT_DLL int fmpz_mpoly_factor_is_same(const fmpz_mpoly_factor_t A,
 FLINT_DLL int fmpz_mpoly_factor_set_str_pretty(fmpz_mpoly_factor_t poly,
               const char * str, const char** x_in, const fmpz_mpoly_ctx_t ctx);
 
+FLINT_DLL int fmpz_mpoly_factor_bound_si(fmpz_t B, const fmpz_t A,
+                                              const slong * degs, slong nvars);
+
+
 FLINT_DLL void subset_first(fmpz_t a, slong n, slong r);
 
 FLINT_DLL int subset_next(fmpz_t a, const fmpz_t b, slong n);
 
 FLINT_DLL void subset_print(const fmpz_t a, slong n);
-
-FLINT_DLL void test_new_stuff();
 
 #ifdef __cplusplus
 }

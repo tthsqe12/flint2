@@ -11,6 +11,7 @@
 
 #include "fmpz_mpoly_factor.h"
 #include "profiler.h"
+#include "fq_poly.h"
 
 
 /* check factoration matches f within reason */
@@ -204,20 +205,22 @@ void check_omega_str(slong lower, slong upper, const char * s, const char * poly
 
 void test_new_stuff();
 
+
 int
 main(void)
 {
-    slong i, j, k, tmul = 0;
+    slong i, j, k, tmul = 10;
     timeit_t timer;
 
     FLINT_TEST_INIT(state);
 
     flint_printf("factor....");
 
-    check_same_str("x y z w", "(x^3+y^4+z^5+111111111111111111111111111*w^3)"
-                              "*(x^2+3*y^3+4*z^4+2*w^4)");
+    check_same_str("x y z w",
+        "(y^2*z*x^3+y^4+z^5+111111111111111111111111111*w^3)"
+        "*(222222222222222222222*y*w*x^2+3*y^3+444444444444444444444*z^4+2*w^4)");
 
-/*
+
     check_same_str("x1 x2 x3", "(3*x1*x2*x3^3 + 4*x3^4 + 3)"
                               "*(6*x1^3*x3^2 + 2*x2*x3^4 + 3*x1^2*x2^2 + 3)"
                               "*(3*x1^3*x3 + 2*x2^3 + 4*x1 + 4)");
@@ -232,7 +235,7 @@ main(void)
 
     check_omega_str(3, 3, "x y", "(1+y)^9*x^9-y^9");
     check_omega_str(2, 2, "x y z", "x^9-y^9*z^3");
-*/
+
     /* check random factors */
     for (i = 0; i < tmul * flint_test_multiplier(); i++)
     {
@@ -243,13 +246,13 @@ main(void)
         slong nfacs, len;
         ulong expbound;
 
-        fmpz_mpoly_ctx_init_rand(ctx, state, 4);
+        fmpz_mpoly_ctx_init_rand(ctx, state, 6);
 
         fmpz_mpoly_init(a, ctx);
         fmpz_mpoly_init(t, ctx);
 
         nfacs = 1 + (5 + n_randint(state, 5))/ctx->minfo->nvars;
-        expbound = 3 + 20/ctx->minfo->nvars/nfacs;
+        expbound = 3 + 40/ctx->minfo->nvars/nfacs;
 
         lower = 0;
         fmpz_mpoly_one(a, ctx);
@@ -257,7 +260,7 @@ main(void)
         {
             do {
                 len = 1 + n_randint(state, 7);
-                coeff_bits = 10 + n_randint(state, 100)/nfacs;
+                coeff_bits = 10 + n_randint(state, 1000)/nfacs;
                 fmpz_mpoly_randtest_bound(t, state, len, coeff_bits, expbound, ctx);
             } while (t->length == 0);
             lower += !fmpz_mpoly_is_fmpz(t, ctx);
@@ -273,7 +276,7 @@ flint_printf("%wd ", i);
     }
 
     /* fateman */
-    for (i = 0; i <= ((tmul > 0) ? 15 : -1); i++)
+    for (i = 0; i <= ((tmul > 0) ? 20 : -1); i++)
     {
         fmpz_mpoly_ctx_t ctx;
         fmpz_mpoly_t a, b;
@@ -293,6 +296,7 @@ flint_printf("%wd ", i);
             if ((j%2) != 0 && (i%j) == 0)
                 k++;
 
+flint_printf("fateman power %wd\n", i);
 timeit_start(timer);
         check_omega(k, k, a, ctx);
 timeit_stop(timer);
@@ -378,9 +382,7 @@ flint_printf("time: %wd\n", timer->cpu);
         _fmpz_vec_clear(shift, 5);
         _fmpz_vec_clear(stride, 5);
     }
-/*
-    test_new_stuff();
-*/
+
     FLINT_TEST_CLEANUP(state);
     
     flint_printf("PASS\n");
