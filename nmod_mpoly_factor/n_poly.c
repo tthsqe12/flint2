@@ -217,6 +217,55 @@ void n_poly_mod_mullow(
 }
 
 
+void n_poly_mod_mulmod(n_poly_t res, const n_poly_t poly1,
+                            const n_poly_t poly2, const n_poly_t f, nmod_t mod)
+{
+    slong len1, len2, lenf;
+    mp_ptr fcoeffs;
+
+    lenf = f->length;
+    len1 = poly1->length;
+    len2 = poly2->length;
+
+    if (lenf == 0)
+    {
+        flint_printf("Exception (nmod_poly_mulmod). Divide by zero.\n");
+        flint_abort();
+    }
+
+    if (lenf == 1 || len1 == 0 || len2 == 0)
+    {
+        n_poly_zero(res);
+        return;
+    }
+
+    if (len1 + len2 - lenf > 0)
+    {
+        if (f == res)
+        {
+            fcoeffs = flint_malloc(sizeof(mp_limb_t) * lenf);
+            _nmod_vec_set(fcoeffs, f->coeffs, lenf);
+        }
+        else
+            fcoeffs = f->coeffs;
+
+        n_poly_fit_length(res, lenf - 1);
+        _nmod_poly_mulmod(res->coeffs, poly1->coeffs, len1,
+                                       poly2->coeffs, len2,
+                                       fcoeffs, lenf,
+                                       mod);
+        if (f == res)
+            flint_free(fcoeffs);
+
+        res->length = lenf - 1;
+        _n_poly_normalise(res);
+    }
+    else
+    {
+        n_poly_mod_mul(res, poly1, poly2, mod);
+    }
+}
+
 
 void n_poly_mod_div(n_poly_t Q, const n_poly_t A, const n_poly_t B, nmod_t mod)
 {
@@ -629,3 +678,91 @@ void n_poly_mod_inv_series(n_poly_t Qinv, const n_poly_t Q, slong n, nmod_t mod)
     Qinv->length = n;
     _n_poly_normalise(Qinv);
 }
+
+
+
+void n_poly_factor_init(n_poly_factor_t f)
+{
+    f->constant = 1;
+    f->poly = NULL;
+    f->exp = NULL;
+    f->num = 0;
+    f->alloc = 0;
+}
+
+void n_poly_factor_fit_length(n_poly_factor_t f, slong len)
+{
+    slong i;
+    slong old_alloc = f->alloc;
+    slong new_alloc = FLINT_MAX(len, old_alloc + 1 + old_alloc/2);
+
+    FLINT_ASSERT(f->alloc >= 0);
+    if (len <= f->alloc)
+        return;
+
+    if (old_alloc > 0)
+    {
+        f->poly = (n_poly_struct *) flint_realloc(f->poly,
+                                              new_alloc*sizeof(n_poly_struct));
+        f->exp = (slong *) flint_realloc(f->exp, new_alloc*sizeof(slong));
+    }
+    else
+    {
+        f->poly = (n_poly_struct *) flint_realloc(f->poly,
+                                              new_alloc*sizeof(n_poly_struct));
+        f->exp = (slong *) flint_realloc(f->exp, new_alloc*sizeof(slong));
+    }
+
+    for (i = old_alloc; i < new_alloc; i++)
+        n_poly_init(f->poly + i);
+
+    f->alloc = new_alloc;
+}
+
+void n_poly_factor_clear(n_poly_factor_t f)
+{
+    slong i;
+
+    if (f->alloc > 0)
+    {
+        for (i = 0; i < f->alloc; i++)
+            n_poly_clear(f->poly + i);
+
+        flint_free(f->poly);
+        flint_free(f->exp);
+    }
+}
+
+void n_poly_mod_factor(n_poly_factor_t F, const n_poly_t A, nmod_t mod)
+{
+    slong i;
+    nmod_poly_t Amock;
+    nmod_poly_factor_t Fmock;
+
+    nmod_poly_factor_init(Fmock);
+    nmod_poly_mock(Amock, A, mod);
+    F->constant = nmod_poly_factor(Fmock, Amock);
+
+    n_poly_factor_fit_length(F, Fmock->num);
+    F->num = Fmock->num;
+    for (i = 0; i < Fmock->num; i++)
+    {
+        F->exp[i] = Fmock->exp[i];
+        n_poly_set_nmod_poly(F->poly + i, Fmock->p + i);
+    }
+
+    nmod_poly_factor_clear(Fmock);
+}
+
+void n_poly_factor_print_pretty(const n_poly_factor_t f, const char * x)
+{
+    slong i;
+    flint_printf("%wu", f->constant);
+    for (i = 0; i < f->num; i++)
+    {
+        flint_printf("*(");
+        n_poly_print_pretty(f->poly + i, "x");
+        flint_printf(")^%wd", f->exp[i]);
+    }
+}
+

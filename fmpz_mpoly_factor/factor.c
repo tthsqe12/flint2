@@ -5765,7 +5765,7 @@ cleanup:
 #endif
 }
 
-static int play_lift(
+int play_lift(
     slong v,
     fmpz_mpoly_factor_t lfac,
     const fmpz * alpha,
@@ -8548,7 +8548,7 @@ cleanup:
 
 
 
-static void _fmpz_mpoly_get_lc(
+void _fmpz_mpoly_get_lc(
     fmpz_mpoly_t c,
     const fmpz_mpoly_t A,
     const fmpz_mpoly_ctx_t ctx)
@@ -8561,7 +8561,7 @@ static void _fmpz_mpoly_get_lc(
     fmpz_mpoly_get_coeff_vars_ui(c, A, dummyvars, dummydegs, 1, ctx);
 }
 
-static void _nmod_mpoly_get_lc(
+void _nmod_mpoly_get_lc(
     nmod_mpoly_t c,
     const nmod_mpoly_t A,
     const nmod_mpoly_ctx_t ctx)
@@ -8574,7 +8574,7 @@ static void _nmod_mpoly_get_lc(
     nmod_mpoly_get_coeff_vars_ui(c, A, dummyvars, dummydegs, 1, ctx);
 }
 
-static void _fmpz_mpoly_set_lc(
+void _fmpz_mpoly_set_lc(
     fmpz_mpoly_t A,
     const fmpz_mpoly_t B,
     const fmpz_mpoly_t c,
@@ -8599,7 +8599,7 @@ static void _fmpz_mpoly_set_lc(
     fmpz_mpoly_clear(g, ctx);
 }
 
-static void _nmod_mpoly_set_lc(
+void _nmod_mpoly_set_lc(
     nmod_mpoly_t A,
     const nmod_mpoly_t B,
     const nmod_mpoly_t c,
@@ -8623,7 +8623,6 @@ static void _nmod_mpoly_set_lc(
     nmod_mpoly_clear(t, ctx);
     nmod_mpoly_clear(g, ctx);
 }
-
 
 
 /*
@@ -8711,7 +8710,7 @@ static int _try_lift(
         fmpz_mpoly_to_univar(u, qfac->poly + i, 0, ctx);
         success = fmpz_mpoly_univar_content_mpoly(t, u, ctx);
         if (!success)
-            goto cleanup;
+            goto cleanup; /* TODO this is not correct */
         success = fmpz_mpoly_divides(qfac->poly + i, qfac->poly + i, t, ctx);
         FLINT_ASSERT(success);
         FLINT_ASSERT(qfac->poly[i].length > 0);
@@ -11707,6 +11706,7 @@ static int _irreducible_mvar_factors(
 
     FLINT_ASSERT(n > 1);
 
+    FLINT_ASSERT(A->length > 0);
     if (fmpz_sgn(A->coeffs + 0) < 0)
         fmpz_mpoly_neg(A, A, ctx);
 /*
@@ -11778,8 +11778,8 @@ printf("alpha = "); tuple_print(alpha, n);
     /* ensure degrees do not drop under evaluation */
     for (i = n - 1; i >= 0; i--)
     {
-        fmpz_mpoly_evaluate_one_fmpz(Aevals + i, i == n - 1 ? A : Aevals + i + 1,
-                                                        i + 1, alpha + i, ctx);
+        fmpz_mpoly_evaluate_one_fmpz(Aevals + i,
+                       i == n - 1 ? A : Aevals + i + 1, i + 1, alpha + i, ctx);
         fmpz_mpoly_degrees_si(degeval, Aevals + i, ctx);
         for (j = 0; j <= i; j++)
         {
@@ -11819,7 +11819,7 @@ printf("alpha = "); tuple_print(alpha, n);
         FLINT_ASSERT(fmpz_is_one(pfac->constant));
         FLINT_ASSERT(fmpz_mpoly_factor_matches(p, pfac, ctx));
 
-        /* if pfac has only one factor, A must be irreducible */
+        /* if p has only one factor, A must be irreducible */
         if (pfac->num < 2)
         {
             fmpz_mpoly_factor_append_ui(fac, A, 1, ctx);
