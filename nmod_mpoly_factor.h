@@ -84,6 +84,12 @@ FLINT_DLL int nmod_mpoly_factor(nmod_mpoly_factor_t f, const nmod_mpoly_t A,
 FLINT_DLL void nmod_mpoly_factor_sort(nmod_mpoly_factor_t f,
                                                    const nmod_mpoly_ctx_t ctx);
 
+FLINT_DLL int nmod_mpoly_factor_expand(nmod_mpoly_t A,
+                      const nmod_mpoly_factor_t f, const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int nmod_mpoly_factor_fix_units(nmod_mpoly_factor_t f,
+                                                   const nmod_mpoly_ctx_t ctx);
+
 NMOD_MPOLY_FACTOR_INLINE
 void nmod_mpoly_factor_swap(nmod_mpoly_factor_t f, nmod_mpoly_factor_t g,
                                                     const nmod_mpoly_ctx_t ctx)
@@ -99,6 +105,17 @@ void nmod_mpoly_factor_one(nmod_mpoly_factor_t f, const nmod_mpoly_ctx_t ctx)
 	f->constant = 1;
 	f->num = 0;
 }
+
+FLINT_DLL void _nmod_mpoly_get_lc(
+    nmod_mpoly_t c,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void _nmod_mpoly_set_lc(
+    nmod_mpoly_t A,
+    const nmod_mpoly_t B,
+    const nmod_mpoly_t c,
+    const nmod_mpoly_ctx_t ctx);
 
 
 FLINT_DLL void subset_first(fmpz_t a, slong n, slong r);
@@ -516,6 +533,9 @@ FLINT_DLL void n_poly_mod_rem(n_poly_t R, const n_poly_t A, const n_poly_t B,
 FLINT_DLL void n_poly_mod_divrem(n_poly_t Q, n_poly_t R, const n_poly_t A,
                                                  const n_poly_t B, nmod_t mod);
 
+FLINT_DLL void n_poly_mod_mulmod(n_poly_t res, const n_poly_t poly1,
+                           const n_poly_t poly2, const n_poly_t f, nmod_t mod);
+
 FLINT_DLL int n_poly_mod_invmod(n_poly_t A, const n_poly_t B, const n_poly_t P,
                                                                    nmod_t mod);
 
@@ -528,8 +548,27 @@ FLINT_DLL void n_poly_mod_xgcd(n_poly_t G, n_poly_t S, n_poly_t T,
 FLINT_DLL void n_poly_mod_inv_series(n_poly_t Qinv, const n_poly_t Q, slong n,
                                                                    nmod_t mod);
 
+typedef struct {
+    mp_limb_t constant;
+    n_poly_struct * poly;
+    slong * exp;
+    slong num;
+    slong alloc;
+} n_poly_factor_struct;
 
-/************** sparse univariate poly ************************/
+typedef n_poly_factor_struct n_poly_factor_t[1];
+
+FLINT_DLL void n_poly_factor_init(n_poly_factor_t f);
+
+FLINT_DLL void n_poly_factor_fit_length(n_poly_factor_t f, slong len);
+
+FLINT_DLL void n_poly_factor_clear(n_poly_factor_t f);
+
+FLINT_DLL void n_poly_mod_factor(n_poly_factor_t f, const n_poly_t A, nmod_t mod);
+
+FLINT_DLL void n_poly_factor_print_pretty(const n_poly_factor_t f, const char * x);
+
+/*****************************************************************************/
 
 typedef struct
 {
@@ -595,7 +634,7 @@ FLINT_DLL void n_polyu3_degrees(slong * deg0, slong * deg1, slong * deg2,
 FLINT_DLL int n_polyu_mod_is_canonical(const n_polyu_t A, nmod_t mod);
 
 
-/************** sparse poly with dense coefficients ************************/
+/*****************************************************************************/
 
 typedef struct
 {
@@ -660,7 +699,7 @@ FLINT_DLL void n_polyu3n_print_pretty(const n_polyun_t A, const char * var0,
 FLINT_DLL int n_polyun_mod_is_canonical(const n_polyun_t A, nmod_t mod);
 
 
-/******* dense bivariates (Z/nZ)[y][x] ***************************************/
+/*****************************************************************************/
 
 typedef struct
 {
@@ -723,6 +762,8 @@ FLINT_DLL void n_bpoly_set_coeff(n_bpoly_t A, slong e0, slong e1, mp_limb_t c);
 FLINT_DLL void n_bpoly_set_coeff_nonzero(n_bpoly_t A, slong xi, slong yi, mp_limb_t c);
 
 FLINT_DLL int n_bpoly_equal(const n_bpoly_t A, const n_bpoly_t B);
+
+FLINT_DLL int n_bpoly_mod_is_canonical(const n_bpoly_t A, nmod_t mod);
 
 FLINT_DLL void n_bpoly_mod_sub(n_bpoly_t A, const n_bpoly_t B,
                                                 const n_bpoly_t C, nmod_t mod);

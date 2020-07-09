@@ -200,7 +200,7 @@ void check_omega_str(slong lower, slong upper, const char * s, const char * poly
 int
 main(void)
 {
-    slong i, j, k, tmul = 20, fateman_power = 20;
+    slong i, j, k, tmul = 20, fateman_power = 10;
     timeit_t timer;
 
     FLINT_TEST_INIT(state);
@@ -259,7 +259,7 @@ main(void)
         }
 
 flint_printf("%wd ", i);
-        check_omega(lower, 999, a, ctx);
+        check_omega(lower, WORD_MAX, a, ctx);
 
         fmpz_mpoly_clear(t, ctx);
         fmpz_mpoly_clear(a, ctx);
