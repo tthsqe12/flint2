@@ -227,6 +227,8 @@ main(void)
     check_omega_str(3, 3, "x y", "(1+y)^9*x^9-y^9");
     check_omega_str(2, 2, "x y z", "x^9-y^9*z^3");
 
+    check_same_str("x y", "(x^2+y+1)*(x+y^2+1)^2*(x*y+1)^13*(x*y+2)^14*(x+y+1)^63");
+
     /* check random factors */
     for (i = 0; i < tmul * flint_test_multiplier(); i++)
     {
@@ -235,7 +237,8 @@ main(void)
         fmpz_mpoly_t a, t;
         flint_bitcnt_t coeff_bits;
         slong nfacs, len;
-        ulong expbound;
+        ulong expbound, powbound;
+ulong pow;
 
         fmpz_mpoly_ctx_init_rand(ctx, state, 7);
 
@@ -243,7 +246,8 @@ main(void)
         fmpz_mpoly_init(t, ctx);
 
         nfacs = 1 + (5 + n_randint(state, 5))/ctx->minfo->nvars;
-        expbound = 3 + 30/nfacs;
+        expbound = 3 + 40/nfacs/ctx->minfo->nvars;
+        powbound = 1 + n_randint(state, 3);
 
         lower = 0;
         fmpz_mpoly_one(a, ctx);
@@ -254,7 +258,10 @@ main(void)
                 coeff_bits = 10 + n_randint(state, 1000)/nfacs;
                 fmpz_mpoly_randtest_bound(t, state, len, coeff_bits, expbound, ctx);
             } while (t->length == 0);
-            lower += !fmpz_mpoly_is_fmpz(t, ctx);
+            pow = 1 + n_randint(state, powbound);
+            if (!fmpz_mpoly_is_fmpz(t, ctx))
+                lower += pow;
+            fmpz_mpoly_pow_ui(t, t, pow, ctx);
             fmpz_mpoly_mul(a, a, t, ctx);
         }
 

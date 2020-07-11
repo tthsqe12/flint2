@@ -766,3 +766,134 @@ void n_poly_factor_print_pretty(const n_poly_factor_t f, const char * x)
     }
 }
 
+/* multiply A by (x^k + c) */
+void n_poly_mod_shift_left_scalar_addmul(n_poly_t A, slong k, mp_limb_t c,
+                                                                    nmod_t mod)
+{
+    mp_limb_t * Acoeffs;
+    slong i;
+    slong Alen = A->length;
+
+    n_poly_fit_length(A, Alen + k);
+
+    Acoeffs = A->coeffs;
+
+    flint_mpn_copyd(Acoeffs + k, Acoeffs, Alen);
+    flint_mpn_zero(Acoeffs, k);
+
+    for (i = 0; i < A->length; i++)
+        Acoeffs[i] = nmod_addmul(Acoeffs[i], c, Acoeffs[i + k], mod);
+
+    A->length = Alen + k;
+}
+
+/* A = B + C*(d1*x+d0) */
+void n_poly_mod_addmul_linear(
+    n_poly_t A,
+    const n_poly_t B,
+    const n_poly_t C,
+    mp_limb_t d1, mp_limb_t d0,
+    nmod_t mod)
+{
+    slong i;
+    mp_limb_t * Acoeffs, * Bcoeffs, * Ccoeffs;
+    slong Blen = B->length;
+    slong Clen = C->length;
+    slong Alen = FLINT_MAX(B->length, C->length + 1);
+/*
+flint_printf("n_poly_mod_addmul_linear called\n");
+flint_printf("B: "); n_poly_print_pretty(B, "Z"); flint_printf("\n");
+flint_printf("C: "); n_poly_print_pretty(C, "Z"); flint_printf("\n");
+flint_printf("%wu*Z + %wu\n", d1, d0);
+*/
+    FLINT_ASSERT(A != B);
+    FLINT_ASSERT(A != C);
+
+    n_poly_fit_length(A, Alen);
+    Acoeffs = A->coeffs;
+    Bcoeffs = B->coeffs;
+    Ccoeffs = C->coeffs;
+
+    for (i = 0; i < Alen; i++)
+    {
+        ulong p1, p0, t0 = 0, t1 = 0, t2 = 0;
+
+        if (i < Blen)
+        {
+            t0 = Bcoeffs[i];
+        }
+        if (i < Clen)
+        {
+            umul_ppmm(p1, p0, Ccoeffs[i], d0);
+            add_ssaaaa(t1, t0, t1, t0, p1, p0);
+        }
+        if (0 < i && i - 1 < Clen)
+        {
+            umul_ppmm(p1, p0, Ccoeffs[i - 1], d1);
+            add_sssaaaaaa(t2, t1, t0, t2, t1, t0, 0, p1, p0);
+        }
+        NMOD_RED3(Acoeffs[i], t2, t1, t0, mod);
+    }
+
+    A->length = Alen;
+    _n_poly_normalise(A);
+/*
+flint_printf("n_poly_mod_addmul_linear returning\n");
+flint_printf("A: "); n_poly_print_pretty(A, "Z"); flint_printf("\n");
+*/
+}
+
+
+void n_poly_mod_eval2_pow(
+    mp_limb_t * vp,
+    mp_limb_t * vm,
+    const n_poly_t P, 
+    n_poly_t alphapow,
+    nmod_t mod)
+{
+    const mp_limb_t * Pcoeffs = P->coeffs;
+    slong Plen = P->length;
+    mp_limb_t * alpha_powers = alphapow->coeffs;
+    mp_limb_t p1, p0, a0, a1, a2, q1, q0, b0, b1, b2;
+    slong k;
+
+    a0 = a1 = a2 = 0;
+    b0 = b1 = b2 = 0;
+
+    if (Plen > alphapow->length)
+    {
+        slong oldlength = alphapow->length;
+        FLINT_ASSERT(2 <= oldlength);
+        n_poly_fit_length(alphapow, Plen);
+        for (k = oldlength; k < Plen; k++)
+        {
+            alphapow->coeffs[k] = nmod_mul(alphapow->coeffs[k - 1],
+                                               alphapow->coeffs[1], mod);
+        }
+        alphapow->length = Plen;
+        alpha_powers = alphapow->coeffs;
+    }
+
+    for (k = 0; k + 2 <= Plen; k += 2)
+    {
+        umul_ppmm(p1, p0, Pcoeffs[k + 0], alpha_powers[k + 0]);
+        umul_ppmm(q1, q0, Pcoeffs[k + 1], alpha_powers[k + 1]);
+        add_sssaaaaaa(a2, a1, a0, a2, a1, a0, 0, p1, p0);
+        add_sssaaaaaa(b2, b1, b0, b2, b1, b0, 0, q1, q0);
+    }
+
+    if (k < Plen)
+    {
+        umul_ppmm(p1, p0, Pcoeffs[k + 0], alpha_powers[k + 0]);
+        add_sssaaaaaa(a2, a1, a0, a2, a1, a0, 0, p1, p0);
+        k++;
+    }
+
+    FLINT_ASSERT(k == Plen);
+
+    NMOD_RED3(p0, a2, a1, a0, mod);
+    NMOD_RED3(q0, b2, b1, b0, mod);
+
+    *vp = nmod_add(p0, q0, mod);
+    *vm = nmod_sub(p0, q0, mod);
+}

@@ -73,7 +73,7 @@ void check_omega(slong lower, slong upper, const nmod_mpoly_t p, const nmod_mpol
 int
 main(void)
 {
-    slong i, j, tmul = 10;
+    slong i, j, tmul = 15;
     FLINT_TEST_INIT(state);
 
     flint_printf("factor....");
@@ -105,7 +105,7 @@ main(void)
         nmod_mpoly_one(a, ctx);
         for (j = 0; j < nfacs; j++)
         {
-            len = 1 + n_randint(state, 7);
+            len = 1 + n_randint(state, 10);
             nmod_mpoly_randtest_bound(t, state, len, expbound, ctx);
             if (nmod_mpoly_is_zero(t, ctx))
                 nmod_mpoly_one(t, ctx);
