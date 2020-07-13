@@ -166,6 +166,8 @@ void fmpz_mpoly_convert_perm(
     ulong * Bexps;
     TMP_INIT;
 
+    FLINT_ASSERT(A->bits <= FLINT_BITS);
+    FLINT_ASSERT(B->bits <= FLINT_BITS);
     FLINT_ASSERT(B->length > 0);
     TMP_START;
 
@@ -200,7 +202,7 @@ void fmpz_mpoly_convert_perm(
     return 1 for success, 0 for failure
 */
 static int _irreducible_factors(
-    fmpz_mpoly_factor_t Af,
+    fmpz_mpolyv_t Af,
     fmpz_mpoly_t A,
     const fmpz_mpoly_ctx_t ctx)
 {
@@ -208,12 +210,14 @@ static int _irreducible_factors(
     slong i, mvars;
     slong * Adegs, * perm, * iperm;
     slong nvars = ctx->minfo->nvars;
-    flint_bitcnt_t Lbits, Abits = A->bits;
-    int same;
-/*
-flint_printf("_irreducible_factors called\n");
-flint_printf("A: "); fmpz_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
-*/
+    flint_bitcnt_t Lbits, Abits;
+    int perm_is_id;
+#if WANT_ASSERT
+    fmpz_mpoly_t Aorg;
+
+    fmpz_mpoly_init(Aorg, ctx);
+    fmpz_mpoly_set(Aorg, A, ctx);
+#endif
 
     FLINT_ASSERT(A->length == 0 || fmpz_sgn(A->coeffs + 0) > 0);
 
@@ -221,22 +225,13 @@ flint_printf("A: "); fmpz_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
     perm = Adegs + nvars;
     iperm = perm + nvars;
 
-    if (A->length <= 1)
+    if (A->length < 2)
     {
-        if (A->length == 1)
-        {
-            FLINT_ASSERT(!fmpz_mpoly_is_fmpz(A, ctx));
-            fmpz_mpoly_factor_fit_length(Af, 1, ctx);
-            Af->num = 1;
-            fmpz_one(Af->constant);
-            fmpz_mpoly_set(Af->poly + 0, A, ctx);
-            fmpz_one(Af->exp + 0);
-        }
-        else
-        {
-            fmpz_mpoly_factor_zero(Af, ctx);
-        }
-
+        FLINT_ASSERT(A->length == 1);
+        FLINT_ASSERT(!fmpz_mpoly_is_fmpz(A, ctx));
+        fmpz_mpolyv_fit_length(Af, 1, ctx);
+        Af->length = 1;
+        fmpz_mpoly_swap(Af->coeffs + 0, A, ctx);
         success = 1;
         goto cleanup;
     }
@@ -247,11 +242,20 @@ flint_printf("A: "); fmpz_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
         goto cleanup;
     }
 
+    if (A->bits > FLINT_BITS &&
+        !fmpz_mpoly_repack_bits_inplace(A, FLINT_BITS, ctx))
+    {
+        success = 0;
+        goto cleanup;
+    }
+
     fmpz_mpoly_degrees_si(Adegs, A, ctx);
+
+    Abits = A->bits;
 
     mvars = 0;
     Lbits = 0;
-    for (i = 0; i < ctx->minfo->nvars; i++)
+    for (i = 0; i < nvars; i++)
     {
         iperm[i] = -1;
         if (Adegs[i] > 0)
@@ -263,19 +267,19 @@ flint_printf("A: "); fmpz_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
         }
     }
 
-    if (Lbits + 10 > FLINT_BITS)
+    if (Lbits > FLINT_BITS - 10)
     {
         success = 0;
         goto cleanup;
     }
 
-    /* TODO: figure out nice perm */
+    /* TODO nice permutation */
 
     /* invert perm */
-    same = (mvars == nvars);
+    perm_is_id = (mvars == nvars);
     for (i = 0; i < mvars; i++)
     {
-        same = same && (perm[i] == i);
+        perm_is_id = perm_is_id && (perm[i] == i);
         iperm[perm[i]] = i;
     }
 
@@ -294,15 +298,17 @@ flint_printf("A: "); fmpz_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
         FLINT_ASSERT(success);
         fmpz_poly_factor(Auf, Au);
 
-        fmpz_mpoly_factor_fit_length(Af, Auf->num, ctx);
-        fmpz_swap(Af->constant, &Auf->c); /* Auf->c should be 1 */
+        /* c = +-1 */
+        FLINT_ASSERT(fmpz_is_pm1(&Auf->c));
+
+        fmpz_mpolyv_fit_length(Af, Auf->num, ctx);
+        Af->length = Auf->num;
         for (i = 0; i < Auf->num; i++)
         {
-            fmpz_set_ui(Af->exp + i, Auf->exp[i]); /* Aufac->exp[i] should be 1 */
-            _fmpz_mpoly_set_fmpz_poly(Af->poly + i, Abits,
+            FLINT_ASSERT(Auf->exp[i] == 1);
+            _fmpz_mpoly_set_fmpz_poly(Af->coeffs + i, Abits,
                              Auf->p[i].coeffs, Auf->p[i].length, perm[0], ctx);
         }
-        Af->num = Auf->num;
 
         fmpz_poly_clear(Au);
         fmpz_poly_factor_clear(Auf);
@@ -311,19 +317,46 @@ flint_printf("A: "); fmpz_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
     }
     else if (mvars == 2)
     {
-        fmpz_mpoly_factor_irred_bivar(Af, A, perm[0], perm[1], ctx);
+        fmpz_poly_t c;
+        fmpz_bpoly_t Ab;
+        fmpz_tpoly_t Abf;
+
+        fmpz_poly_init(c);
+        fmpz_bpoly_init(Ab);
+        fmpz_tpoly_init(Abf);
+
+        fmpz_mpoly_get_bpoly(Ab, A, perm[0], perm[1], ctx);
+        fmpz_bpoly_factor(c, Abf, Ab);
+
+        /* c = +-1 */
+        FLINT_ASSERT(c->length == 1 && fmpz_is_pm1(c->coeffs + 0));
+
+        fmpz_mpolyv_fit_length(Af, Abf->length, ctx);
+        Af->length = Abf->length;
+        for (i = 0; i < Abf->length; i++)
+        {
+            fmpz_mpoly_set_fmpz_bpoly(Af->coeffs + i, Abits, Abf->coeffs + i,
+                                                        perm[0], perm[1], ctx);
+            fmpz_mpoly_unit_normalize(Af->coeffs + i, ctx);
+        }
+
+        fmpz_poly_clear(c);
+        fmpz_bpoly_clear(Ab);
+        fmpz_tpoly_clear(Abf);
+
         success = 1;
     }
     else
     {
         fmpz_mpoly_ctx_t Lctx;
         fmpz_mpoly_t L, lcL;
-        fmpz_mpoly_factor_t Lf, lcLf;
+        fmpz_mpolyv_t Lf;
+        fmpz_mpoly_factor_t lcLf;
 
         fmpz_mpoly_ctx_init(Lctx, mvars, ORD_LEX);
         fmpz_mpoly_init(L, Lctx);
         fmpz_mpoly_init(lcL, Lctx);
-        fmpz_mpoly_factor_init(Lf, Lctx);
+        fmpz_mpolyv_init(Lf, Lctx);
         fmpz_mpoly_factor_init(lcLf, Lctx);
 
         Lbits = mpoly_fix_bits(Lbits + 1, Lctx->minfo);
@@ -335,7 +368,7 @@ flint_printf("A: "); fmpz_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
         success = fmpz_mpoly_factor(lcLf, lcL, Lctx);
         if (success)
         {
-            success = fmpz_mpoly_factor_irred_tuncer(Lf, L, lcLf, lcL, Lctx);
+            success = fmpz_mpoly_factor_irred_zippel(Lf, L, lcLf, lcL, Lctx);
             if (!success)
                 success = fmpz_mpoly_factor_irred_wang(Lf, L, lcLf, lcL, Lctx);
         }
@@ -344,21 +377,19 @@ flint_printf("A: "); fmpz_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
 
         if (success)
         {
-            fmpz_mpoly_factor_fit_length(Af, Lf->num, ctx);
-            fmpz_one(Af->constant);
-            Af->num = Lf->num;
-            for (i = 0; i < Lf->num; i++)
+            fmpz_mpolyv_fit_length(Af, Lf->length, ctx);
+            Af->length = Lf->length;
+            for (i = 0; i < Lf->length; i++)
             {
-                fmpz_one(Af->exp + i);
-                fmpz_mpoly_convert_perm(Af->poly + i, Abits, ctx,
-                                                    Lf->poly + i, Lctx, iperm);
-                fmpz_mpoly_unit_normalize(Af->poly + i, ctx);
+                fmpz_mpoly_convert_perm(Af->coeffs + i, Abits, ctx,
+                                                  Lf->coeffs + i, Lctx, iperm);
+                fmpz_mpoly_unit_normalize(Af->coeffs + i, ctx);
             }
         }
 
         fmpz_mpoly_clear(L, Lctx);
         fmpz_mpoly_clear(lcL, Lctx);
-        fmpz_mpoly_factor_clear(Lf, Lctx);
+        fmpz_mpolyv_clear(Lf, Lctx);
         fmpz_mpoly_factor_clear(lcLf, Lctx);
         fmpz_mpoly_ctx_clear(Lctx);
     }
@@ -366,12 +397,20 @@ flint_printf("A: "); fmpz_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
 cleanup:
 
     flint_free(Adegs);
-/*
-flint_printf("_irreducible_factors returning %d\n", success);
-flint_printf("A: "); fmpz_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
-flint_printf("f: "); fmpz_mpoly_factor_print_pretty(f, NULL, ctx); flint_printf("\n");
-*/
-    FLINT_ASSERT(!success || fmpz_mpoly_factor_matches(A, Af, ctx));
+
+#if WANT_ASSERT
+    if (success)
+    {
+        fmpz_mpoly_t prod;
+        fmpz_mpoly_init(prod, ctx);
+        fmpz_mpoly_one(prod, ctx);
+        for (i = 0; i < Af->length; i++)
+            fmpz_mpoly_mul(prod, prod, Af->coeffs + i, ctx);
+        FLINT_ASSERT(fmpz_mpoly_equal(prod, Aorg, ctx));
+        fmpz_mpoly_clear(prod, ctx);
+        fmpz_mpoly_clear(Aorg, ctx);
+    }
+#endif
 
     return success;
 }
@@ -384,44 +423,44 @@ int fmpz_mpoly_factor(
 {
     int success;
     slong i, j;
-    fmpz_mpoly_factor_t newf, tempf;
+    fmpz_mpolyv_t t;
+    fmpz_mpoly_factor_t g;
 
-    fmpz_mpoly_factor_init(newf, ctx);
-    fmpz_mpoly_factor_init(tempf, ctx);
+    fmpz_mpolyv_init(t, ctx);
+    fmpz_mpoly_factor_init(g, ctx);
 
     success = fmpz_mpoly_factor_squarefree(f, A, ctx);
     if (!success)
         goto cleanup;
 
-    /* ensure factors are irreducible */
     FLINT_ASSERT(fmpz_mpoly_factor_matches(A, f, ctx));
 
-    fmpz_swap(newf->constant, f->constant);
-    newf->num = 0;
+    fmpz_swap(g->constant, f->constant);
+    g->num = 0;
     for (j = 0; j < f->num; j++)
     {
-        success = _irreducible_factors(tempf, f->poly + j, ctx);
+        success = _irreducible_factors(t, f->poly + j, ctx);
         if (!success)
             goto cleanup;
 
-        FLINT_ASSERT(fmpz_is_one(tempf->constant));
-        for (i = 0; i < tempf->num; i++)
+        fmpz_mpoly_factor_fit_length(g, g->num + t->length, ctx);
+        for (i = 0; i < t->length; i++)
         {
-            FLINT_ASSERT(fmpz_is_one(tempf->exp + i));
-            fmpz_mpoly_factor_append_fmpz_swap(newf,
-                                             tempf->poly + i, f->exp + j, ctx);
+            fmpz_set(g->exp + g->num, f->exp + j);
+            fmpz_mpoly_swap(g->poly + g->num, t->coeffs + i, ctx);
+            g->num++;
         }
     }
-    fmpz_mpoly_factor_swap(f, newf, ctx);
+    fmpz_mpoly_factor_swap(f, g, ctx);
 
     success = 1;
 
 cleanup:
 
-    fmpz_mpoly_factor_clear(newf, ctx);
-    fmpz_mpoly_factor_clear(tempf, ctx);
+    fmpz_mpolyv_clear(t, ctx);
+    fmpz_mpoly_factor_clear(g, ctx);
 
-    FLINT_ASSERT(fmpz_mpoly_factor_matches(A, f, ctx));
+    FLINT_ASSERT(!success || fmpz_mpoly_factor_matches(A, f, ctx));
 
     return success;
 }

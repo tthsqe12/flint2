@@ -9,33 +9,77 @@
     (at your option) any later version.  See <http://www.gnu.org/licenses/>.
 */
 
-#include "fmpz_mpoly_factor.h"
 #include "nmod_mpoly_factor.h"
 
-
-int fmpz_mpoly_is_fmpz_poly(
-    const fmpz_mpoly_t A,
+/* TODO: this could a bit faster */
+int mpoly_is_poly(
+    const ulong * Aexps,
+    slong Alen,
+    flint_bitcnt_t Abits,
     slong var,
-    const fmpz_mpoly_ctx_t ctx)
+    const mpoly_ctx_t mctx)
+{
+    int ret = 1;
+    slong i, j;
+    slong N = mpoly_words_per_exp(Abits, mctx);
+    slong nvars = mctx->nvars;
+    fmpz * t;
+    TMP_INIT;
+
+    TMP_START;
+    t = (fmpz *) TMP_ALLOC(nvars*sizeof(fmpz));
+    for (i = 0; i < nvars; i++)
+        fmpz_init(t + i);
+
+    for (i = 0; i < Alen; i++)
+    {
+        mpoly_get_monomial_ffmpz(t, Aexps + N*i, Abits, mctx);
+        for (j = 0; j < nvars; j++)
+        {
+            if (j != var && !fmpz_is_zero(t + j))
+            {
+                ret = 0;
+                goto cleanup;
+            }
+        }
+    }
+
+cleanup:
+
+    for (i = 0; i < nvars; i++)
+        fmpz_clear(t + i);
+
+    TMP_END;
+
+    return ret;
+}
+
+
+int nmod_mpoly_is_nmod_poly(
+    const nmod_mpoly_t A,
+    slong var,
+    const nmod_mpoly_ctx_t ctx)
 {
     return mpoly_is_poly(A->exps, A->length, A->bits, var, ctx->minfo);
 }
 
 
-int fmpz_mpoly_get_fmpz_poly(
-    fmpz_poly_t A,
-    const fmpz_mpoly_t B,
+int nmod_mpoly_get_nmod_poly(
+    nmod_poly_t A,
+    const nmod_mpoly_t B,
     slong var,
-    const fmpz_mpoly_ctx_t ctx)
+    const nmod_mpoly_ctx_t ctx)
 {
     slong Blen = B->length;
-    const fmpz * Bcoeffs = B->coeffs;
+    const mp_limb_t * Bcoeffs = B->coeffs;
     const ulong * Bexps = B->exps;
     flint_bitcnt_t Bbits = B->bits;
     slong i, N = mpoly_words_per_exp(Bbits, ctx->minfo);
     ulong k;
 
-    fmpz_poly_zero(A);
+    A->mod = ctx->ffinfo->mod;
+
+    nmod_poly_zero(A);
 
     if (B->length < 1)
         return 1;
@@ -50,7 +94,7 @@ int fmpz_mpoly_get_fmpz_poly(
         for (i = 0; i < Blen; i++)
         {
             k = (Bexps[N*i + off] >> shift) & mask;
-            fmpz_poly_set_coeff_fmpz(A, k, Bcoeffs + i);
+            nmod_poly_set_coeff_ui(A, k, Bcoeffs[i]);
         }
         return 1;
     }
@@ -71,17 +115,17 @@ int fmpz_mpoly_get_fmpz_poly(
             if (check != 0 || (slong) k < 0)
                 return 0;
 
-            fmpz_poly_set_coeff_fmpz(A, k, Bcoeffs + i);
+            nmod_poly_set_coeff_ui(A, k, Bcoeffs[i]);
         }
         return 1;
     }
 }
 
-void fmpz_mpoly_fit_length_set_bits(
-    fmpz_mpoly_t A,
+void nmod_mpoly_fit_length_set_bits(
+    nmod_mpoly_t A,
     slong len,
     flint_bitcnt_t bits,
-    const fmpz_mpoly_ctx_t ctx)
+    const nmod_mpoly_ctx_t ctx)
 {
     slong N = mpoly_words_per_exp(bits, ctx->minfo);
     slong new_alloc;
@@ -93,13 +137,12 @@ void fmpz_mpoly_fit_length_set_bits(
         new_alloc = FLINT_MAX(len, 2*A->alloc);
         if (A->alloc > 0)
         {
-            A->coeffs = (fmpz *) flint_realloc(A->coeffs, new_alloc*sizeof(fmpz));
+            A->coeffs = (mp_limb_t *) flint_realloc(A->coeffs, new_alloc*sizeof(mp_limb_t));
             A->exps = (ulong *) flint_realloc(A->exps, new_alloc*N*sizeof(ulong));
-            memset(A->coeffs + A->alloc, 0, (new_alloc - A->alloc)*sizeof(fmpz));
         }
         else
         {
-            A->coeffs = (fmpz *) flint_calloc(new_alloc, sizeof(fmpz));
+            A->coeffs = (mp_limb_t *) flint_calloc(new_alloc, sizeof(mp_limb_t));
             A->exps   = (ulong *) flint_malloc(new_alloc*N*sizeof(ulong));
         }
         A->alloc = new_alloc;
@@ -113,13 +156,13 @@ void fmpz_mpoly_fit_length_set_bits(
     A->bits = bits;
 }
 
-void _fmpz_mpoly_set_fmpz_poly(
-    fmpz_mpoly_t A,
+void _nmod_mpoly_set_nmod_poly(
+    nmod_mpoly_t A,
     flint_bitcnt_t Abits,
-    const fmpz * Bcoeffs,
+    const mp_limb_t * Bcoeffs,
     slong Blen,
     slong var,
-    const fmpz_mpoly_ctx_t ctx)
+    const nmod_mpoly_ctx_t ctx)
 {
     slong N = mpoly_words_per_exp(Abits, ctx->minfo);
     slong i, Alen;
@@ -138,42 +181,42 @@ void _fmpz_mpoly_set_fmpz_poly(
     for (i = 0; i < Blen; i++)
         Alen += (Bcoeffs[i] != 0);
 
-    fmpz_mpoly_fit_length_set_bits(A, Alen, Abits, ctx);
+    nmod_mpoly_fit_length_set_bits(A, Alen, Abits, ctx);
 
     Alen = 0;
     for (i = Blen - 1; i >= 0; i--)
     {
-        if (fmpz_is_zero(Bcoeffs + i))
+        if (Bcoeffs[i] == 0)
             continue;
 
         FLINT_ASSERT(Alen < A->alloc);
-        fmpz_set(A->coeffs + Alen, Bcoeffs + i);
+        A->coeffs[Alen] = Bcoeffs[i];
         if (Abits <= FLINT_BITS)
             mpoly_monomial_mul_ui(A->exps + N*Alen, genexp, N, i);
         else
             mpoly_monomial_mul_ui_mp(A->exps + N*Alen, genexp, N, i);
         Alen++;
     }
-    _fmpz_mpoly_set_length(A, Alen, ctx);
+    A->length = Alen;
 
     TMP_END;
 }
 
-void fmpz_mpoly_set_fmpz_poly(
-    fmpz_mpoly_t A,
-    const fmpz_poly_t B,
-    slong v,
-    const fmpz_mpoly_ctx_t ctx)
+void nmod_mpoly_set_nmod_poly(
+    nmod_mpoly_t A,
+    const nmod_poly_t B,
+    slong var,
+    const nmod_mpoly_ctx_t ctx)
 {
     flint_bitcnt_t bits;
 
     if (B->length < 1)
     {
-        fmpz_mpoly_zero(A, ctx);
+        nmod_mpoly_zero(A, ctx);
         return;
     }
 
-    bits = mpoly_gen_pow_exp_bits_required(v, B->length - 1, ctx->minfo);
+    bits = mpoly_gen_pow_exp_bits_required(var, B->length - 1, ctx->minfo);
     bits = mpoly_fix_bits(bits, ctx->minfo);
-    _fmpz_mpoly_set_fmpz_poly(A, bits, B->coeffs, B->length, v, ctx);
+    _nmod_mpoly_set_nmod_poly(A, bits, B->coeffs, B->length, var, ctx);
 }

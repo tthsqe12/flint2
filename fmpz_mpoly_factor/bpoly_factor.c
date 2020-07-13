@@ -97,17 +97,6 @@ void fmpz_mod_bpoly_fit_length(fmpz_mod_bpoly_t A, slong len)
     A->alloc = len;
 }
 
-void fmpz_tpoly_clear(fmpz_tpoly_t A)
-{
-    if (A->alloc > 0)
-    {
-        slong i;
-        for (i = 0; i < A->alloc; i++)
-            fmpz_bpoly_clear(A->coeffs + i);
-        flint_free(A->coeffs);
-    }
-}
-
 void fmpz_tpoly_print(fmpz_tpoly_t A, const char * xvar, const char * yvar, const char * zvar)
 {
     slong i;
@@ -128,29 +117,6 @@ void fmpz_tpoly_print(fmpz_tpoly_t A, const char * xvar, const char * yvar, cons
 
     if (first)
         flint_printf("0");
-}
-
-void fmpz_tpoly_fit_length(fmpz_tpoly_t A, slong len)
-{
-    slong i;
-
-    if (len <= A->alloc)
-        return;
-
-    if (len < 2 * A->alloc)
-        len = 2 * A->alloc;
-
-    if (A->alloc == 0)
-        A->coeffs = (fmpz_bpoly_struct *) flint_malloc(
-                                              len * sizeof(fmpz_bpoly_struct));
-    else
-        A->coeffs = (fmpz_bpoly_struct *) flint_realloc(A->coeffs,
-                                              len * sizeof(fmpz_bpoly_struct));
-
-    for (i = A->alloc; i < len; i++)
-        fmpz_bpoly_init(A->coeffs + i);
-
-    A->alloc = len;
 }
 
 

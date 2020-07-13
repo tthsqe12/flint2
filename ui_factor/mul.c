@@ -20,6 +20,9 @@ void ui_factor_mul(ui_factor_t z, const ui_factor_t f, const ui_factor_t g)
     const ui_factor_entry * fd, * gd;
     ui_factor_entry * zd;
 
+    FLINT_ASSERT(z != f);
+    FLINT_ASSERT(z != f);
+
     ui_factor_fit_length(z, fn + gn);
 
     zd = z->data;
@@ -72,7 +75,7 @@ void ui_factor_mul(ui_factor_t z, const ui_factor_t f, const ui_factor_t g)
     FLINT_ASSERT(zi <= z->alloc);
     z->length = zi;
 
-    FLINT_ASSERT(~(ui_factor_is_canonical(f) && ui_factor_is_canonical(g)) ||
+    FLINT_ASSERT(!(ui_factor_is_canonical(f) && ui_factor_is_canonical(g)) ||
                  ui_factor_is_canonical(z));
 }
 

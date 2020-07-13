@@ -12,189 +12,9 @@
 #include "nmod_mpoly_factor.h"
 #include "fq_nmod_mpoly_factor.h"
 
-/********************* univar ************************************************/
 
-int nmod_mpoly_univar_content_mpoly(
-    nmod_mpoly_t g,
-    const nmod_mpoly_univar_t A,
-    const nmod_mpoly_ctx_t ctx)
-{
-    slong i;
 
-    nmod_mpoly_zero(g, ctx);
-    for (i = 0; i < A->length; i++)
-    {
-		if (!nmod_mpoly_gcd(g, g, A->coeffs + i, ctx))
-			return 0;
-    }
 
-    return 1;
-}
-
-int fq_nmod_mpoly_univar_content_mpoly(
-    fq_nmod_mpoly_t g,
-    const fq_nmod_mpoly_univar_t A,
-    const fq_nmod_mpoly_ctx_t ctx)
-{
-    slong i;
-
-    fq_nmod_mpoly_zero(g, ctx);
-    for (i = 0; i < A->length; i++)
-    {
-		if (!fq_nmod_mpoly_gcd(g, g, A->coeffs + i, ctx))
-			return 0;
-    }
-
-    return 1;
-}
-
-void nmod_mpoly_univar_divexact_mpoly(
-    nmod_mpoly_univar_t A,
-    const nmod_mpoly_t b,
-    const nmod_mpoly_ctx_t ctx)
-{
-    int success;
-    slong i;
-
-    for (i = 0; i < A->length; i++)
-    {
-        success = nmod_mpoly_divides(A->coeffs + i, A->coeffs + i, b, ctx);
-        FLINT_ASSERT(success);
-    }
-}
-
-void nmod_mpoly_univar_shift_right(
-    nmod_mpoly_univar_t A,
-    ulong shift,
-    const nmod_mpoly_ctx_t ctx)
-{
-    slong i;
-    for (i = 0; i < A->length; i++)
-    {
-        FLINT_ASSERT(A->exps[i] >= shift);
-        A->exps[i] -= shift;
-    }
-}
-
-int nmod_mpoly_factor_matches(const nmod_mpoly_t a, const nmod_mpoly_factor_t f, const nmod_mpoly_ctx_t ctx)
-{
-    int matches;
-    nmod_mpoly_t t;
-    nmod_mpoly_init(t, ctx);
-    nmod_mpoly_factor_expand(t, f, ctx);
-    matches = nmod_mpoly_equal(t, a, ctx);
-    nmod_mpoly_clear(t, ctx);
-    return matches;
-}
-
-int fq_nmod_mpoly_factor_matches(const fq_nmod_mpoly_t a, const fq_nmod_mpoly_factor_t f, const fq_nmod_mpoly_ctx_t ctx)
-{
-    int matches;
-    fq_nmod_mpoly_t t;
-    fq_nmod_mpoly_init(t, ctx);
-    fq_nmod_mpoly_factor_expand(t, f, ctx);
-    matches = fq_nmod_mpoly_equal(t, a, ctx);
-    fq_nmod_mpoly_clear(t, ctx);
-    return matches;
-}
-
-/* 	return 0 no, 1 yes, -1 don't know	*/
-int nmod_mpoly_factor_is_pairwise_prime(
-	const nmod_mpoly_factor_t f, 
-	const nmod_mpoly_ctx_t ctx)
-{
-	int result;
-	slong i, j;
-	nmod_mpoly_t g;
-
-	nmod_mpoly_init(g, ctx);
-
-	for (i = 0; i + 1 < f->num; i++)
-	for (j = i + 1; j < f->num; j++)
-	{
-		/* make sure factors are monic */
-		if ((f->poly + i)->length == 0 ||
-            (f->poly + j)->length == 0 ||
-            (f->poly + i)->coeffs[0] != 1 ||
-            (f->poly + j)->coeffs[0] != 1)
-		{
-			result = 0;
-			goto cleanup;
-		}
-
-		if (nmod_mpoly_gcd(g, f->poly + i, f->poly + j, ctx))
-		{
-			if (!nmod_mpoly_is_one(g, ctx))
-			{
-				result = 0;
-				goto cleanup;
-			}
-		}
-		else
-		{
-			result = -1;
-			goto cleanup;
-		}
-	}
-
-	result = 1;
-
-cleanup:
-
-	nmod_mpoly_clear(g, ctx);
-
-	return result;
-}
-
-void nmod_mpoly_factor_pow_fmpz(
-	nmod_mpoly_factor_t a,
-	const nmod_mpoly_factor_t b,
-	const fmpz_t e,
-	const nmod_mpoly_ctx_t ctx)
-{
-	if (a != b)
-		nmod_mpoly_factor_set(a, b, ctx);
-	a->constant = nmod_pow_fmpz(a->constant, e, ctx->ffinfo->mod);
-	_fmpz_vec_scalar_mul_fmpz(a->exp, a->exp, a->num, e);
-}
-
-void nmod_mpoly_factor_mul_mpoly_fmpz(
-	nmod_mpoly_factor_t fac,
-	const nmod_mpoly_t a,
-	const fmpz_t e,
-	const nmod_mpoly_ctx_t ctx)
-{
-	if (nmod_mpoly_is_ui(a, ctx))
-	{
-		ulong t = nmod_mpoly_get_ui(a, ctx);
-		t = nmod_pow_fmpz(t, e, ctx->ffinfo->mod);
-		fac->constant = nmod_mul(fac->constant, t, ctx->ffinfo->mod);
-		return;
-	}
-	else
-	{
-		nmod_mpoly_factor_append_fmpz(fac, a, e, ctx);
-	}
-}
-
-void nmod_mpoly_factor_mul_mpoly_ui(
-	nmod_mpoly_factor_t fac,
-	const nmod_mpoly_t a,
-	ulong e,
-	const nmod_mpoly_ctx_t ctx)
-{
-	if (nmod_mpoly_is_ui(a, ctx))
-	{
-		ulong t = nmod_mpoly_get_ui(a, ctx);
-		t = nmod_pow_ui(t, e, ctx->ffinfo->mod);
-		fac->constant = nmod_mul(fac->constant, t, ctx->ffinfo->mod);
-		return;
-	}
-	else
-	{
-		nmod_mpoly_factor_append_ui(fac, a, e, ctx);
-	}
-}
 
 /* a *= b^e */
 void nmod_mpoly_factor_mul_factor_fmpz(
@@ -243,119 +63,6 @@ void nmod_mpoly_factor_mul_factor_ui(
     fmpz_clear(t);
 }
 
-
-/*
-	b and c are pairwise prime
-	produce a=b*c pairwise prime and return 1
-		else return 0 with a undefined
-*/
-int nmod_mpoly_factor_mul_pairwise_prime(
-	nmod_mpoly_factor_t a,
-	const nmod_mpoly_factor_t b,
-	const nmod_mpoly_factor_t c,
-	const nmod_mpoly_ctx_t ctx)
-{
-	int success;
-	slong i, j;
-	nmod_mpoly_t T1, T2;
-	nmod_mpoly_struct * g;
-	fmpz_t t;
-
-	if (a == b || a == c)
-	{
-		nmod_mpoly_factor_t ta;
-		nmod_mpoly_factor_init(ta, ctx);
-		success = nmod_mpoly_factor_mul_pairwise_prime(ta, b, c, ctx);
-		nmod_mpoly_factor_swap(a, ta, ctx);
-		nmod_mpoly_factor_clear(ta, ctx);
-		return success;
-	}
-
-	fmpz_init(t);
-	nmod_mpoly_init(T1, ctx);
-	nmod_mpoly_init(T2, ctx);
-
-	FLINT_ASSERT(nmod_mpoly_factor_is_pairwise_prime(b, ctx) == 1);
-	FLINT_ASSERT(nmod_mpoly_factor_is_pairwise_prime(c, ctx) == 1);
-
-	g = (nmod_mpoly_struct *) flint_malloc(b->num*c->num*sizeof(nmod_mpoly_struct));
-	/* g[i,j] = gcd(b[i], c[j]) */
-	for (i = 0; i < b->num; i++)
-	for (j = 0; j < c->num; j++)
-	{
-		nmod_mpoly_init(g + i*c->num + j, ctx);
-	}
-
-	a->constant = nmod_mul(b->constant, c->constant, ctx->ffinfo->mod);
-	a->num = 0;
-
-	for (i = 0; i < b->num; i++)
-	for (j = 0; j < c->num; j++)
-	{
-		if (!nmod_mpoly_gcd(g + i*c->num + j, b->poly + i, c->poly + j, ctx))
-		{
-			success = 0;
-			goto cleanup;
-		}
-
-		fmpz_add(t, b->exp + i, c->exp + j);
-		nmod_mpoly_factor_mul_mpoly_fmpz(a, g + i*c->num + j, t, ctx);
-	}
-
-	for (i = 0; i < b->num; i++)
-	{
-		nmod_mpoly_set(T1, b->poly + i, ctx);
-		for (j = 0; j < c->num; j++)
-		{
-			success = nmod_mpoly_divides(T1, T1, g + i*c->num + j, ctx);
-            FLINT_ASSERT(success);
-		}
-		nmod_mpoly_factor_mul_mpoly_fmpz(a, T1, b->exp + i, ctx);
-	}	
-
-	for (j = 0; j < c->num; j++)
-	{
-		nmod_mpoly_set(T1, c->poly + j, ctx);
-		for (i = 0; i < b->num; i++)
-		{
-			success = nmod_mpoly_divides(T1, T1, g + i*c->num + j, ctx);
-            FLINT_ASSERT(success);
-		}
-		nmod_mpoly_factor_mul_mpoly_fmpz(a, T1, c->exp + j, ctx);
-	}	
-
-	success = 1;
-
-cleanup:
-
-	for (i = 0; i < b->num; i++)
-	for (j = 0; j < c->num; j++)
-	{
-		nmod_mpoly_clear(g + i*c->num + j, ctx);
-	}
-	flint_free(g);
-
-	nmod_mpoly_clear(T1, ctx);
-	nmod_mpoly_clear(T2, ctx);
-	fmpz_clear(t);
-
-	if (success)
-	{
-		nmod_mpoly_t ae, be, ce;
-		nmod_mpoly_init(ae, ctx);
-		nmod_mpoly_init(be, ctx);
-		nmod_mpoly_init(ce, ctx);
-		FLINT_ASSERT(nmod_mpoly_factor_is_pairwise_prime(a, ctx) == 1);
-		nmod_mpoly_factor_expand(be, b, ctx);
-		nmod_mpoly_factor_expand(ce, c, ctx);
-		nmod_mpoly_mul(ae, be, ce, ctx);
-		FLINT_ASSERT(nmod_mpoly_factor_matches(ae, a, ctx));
-		nmod_mpoly_clear(ae, ctx);
-		nmod_mpoly_clear(be, ctx);
-		nmod_mpoly_clear(ce, ctx);
-	}
-	return success;
-}
 
 
 /* f *= g^e, no combination */
@@ -557,30 +264,6 @@ void fq_nmod_bpoly_realloc(fq_nmod_bpoly_t A, slong len, const fq_nmod_ctx_t ctx
     A->alloc = len;
 }
 
-
-void nmod_poly_set_nmod(nmod_poly_t A, ulong c)
-{
-    FLINT_ASSERT(c < A->mod.n);
-    nmod_poly_fit_length(A, 1);
-    A->length = (c != 0);
-    A->coeffs[0] = c;
-}
-
-void n_bpoly_set_polyx(
-    n_bpoly_t A,
-    const n_poly_t B)
-{
-    slong i;
-    n_bpoly_fit_length(A, B->length);
-    A->length = 0;
-    for (i = 0; i < B->length; i++)
-    {
-        n_poly_set_ui(A->coeffs + i, B->coeffs[i]);
-        if (!n_poly_is_zero(A->coeffs + i))
-            A->length = i + 1;
-    }    
-}
-
 void fq_nmod_bpoly_set_polyx(
     fq_nmod_bpoly_t A,
     const fq_nmod_poly_t B,
@@ -597,13 +280,6 @@ void fq_nmod_bpoly_set_polyx(
     }    
 }
 
-void n_bpoly_set_polyy(n_bpoly_t A, const n_poly_t B)
-{
-    n_bpoly_fit_length(A, 1);
-	n_poly_set(A->coeffs + 0, B);
-	A->length = !n_poly_is_zero(A->coeffs + 0);
-}
-
 void fq_nmod_bpoly_set_polyy(
     fq_nmod_bpoly_t A,
     const fq_nmod_poly_t B,
@@ -614,72 +290,12 @@ void fq_nmod_bpoly_set_polyy(
 	A->length = !fq_nmod_poly_is_zero(A->coeffs + 0, ectx);
 }
 
-mp_limb_t n_bpoly_get_coeff(const n_bpoly_t A, slong xi, slong yi)
-{
-    if (xi >= A->length)
-        return 0;
-    else
-        return n_poly_get_coeff(A->coeffs + xi, yi);
-}
-
 void fq_nmod_bpoly_get_coeff(fq_nmod_t c, const fq_nmod_bpoly_t A, slong xi, slong yi, const fq_nmod_ctx_t ectx)
 {
     if (xi >= A->length)
         fq_nmod_zero(c, ectx);
     else
         fq_nmod_poly_get_coeff(c, A->coeffs + xi, yi, ectx);
-}
-
-
-void n_bpoly_mod_make_monic(n_bpoly_t A, slong order, nmod_t mod)
-{
-    slong i;
-    n_poly_t t, lcinv;
-/*
-flint_printf("n_bpoly_mod_make_monic order = %wd\n");
-flint_printf("A: "); n_bpoly_print_pretty(A, "x" ,"y"); flint_printf("\n");
-*/
-    FLINT_ASSERT(A->length > 0);
-    FLINT_ASSERT(n_bpoly_mod_is_canonical(A, mod));
-
-    n_poly_init(t);
-    n_poly_init(lcinv);
-    n_poly_mod_inv_series(lcinv, A->coeffs + A->length - 1, order, mod);
-
-    for (i = 0; i < A->length; i++)
-    {
-        n_poly_mod_mullow(t, A->coeffs + i, lcinv, order, mod);
-        n_poly_swap(A->coeffs + i, t);
-    }
-/*
-flint_printf("A: "); n_bpoly_print_pretty(A, "x" ,"y"); flint_printf("\n");
-*/
-    n_poly_clear(t);
-    n_poly_clear(lcinv);
-}
-
-void n_bpoly_mod_make_monic_mod(n_bpoly_t A, n_poly_t mk, nmod_t mod)
-{
-    slong i;
-    int success;
-    n_poly_t t, lcinv;
-
-    FLINT_ASSERT(A->length > 0);
-    FLINT_ASSERT(n_bpoly_mod_is_canonical(A, mod));
-
-    n_poly_init(t);
-    n_poly_init(lcinv);
-    success = n_poly_mod_invmod(lcinv, A->coeffs + A->length - 1, mk, mod);
-    FLINT_ASSERT(success);
-
-    for (i = 0; i < A->length; i++)
-    {
-        n_poly_mod_mulmod(t, A->coeffs + i, lcinv, mk, mod);
-        n_poly_swap(A->coeffs + i, t);
-    }
-
-    n_poly_clear(t);
-    n_poly_clear(lcinv);
 }
 
 
@@ -702,40 +318,6 @@ void fq_nmod_bpoly_make_monic(fq_nmod_bpoly_t A, slong order, const fq_nmod_ctx_
 
     fq_nmod_poly_clear(t, ctx);
     fq_nmod_poly_clear(lcinv, ctx);
-}
-
-
-void n_bpoly_mod_mullow(
-    n_bpoly_t A,
-    const n_bpoly_t B,
-    const n_bpoly_t C,
-    slong order,
-    nmod_t mod)
-{
-    slong i, j;
-    n_poly_t t;
-
-    FLINT_ASSERT(A != B);
-    FLINT_ASSERT(A != C);
-
-    n_poly_init(t);
-
-    n_bpoly_fit_length(A, B->length + C->length - 1);
-    for (i = 0; i < B->length + C->length - 1; i++)
-        n_poly_zero(A->coeffs + i);
-
-    for (i = 0; i < B->length; i++)
-    {
-        for (j = 0; j < C->length; j++)
-        {
-            n_poly_mod_mullow(t, B->coeffs + i, C->coeffs + j, order, mod);
-            n_poly_mod_add(A->coeffs + i + j, A->coeffs + i + j, t, mod);
-        }
-    }
-
-    A->length = B->length + C->length - 1;
-
-    n_poly_clear(t);
 }
 
 void fq_nmod_bpoly_mullow(
@@ -773,60 +355,6 @@ void fq_nmod_bpoly_mullow(
     fq_nmod_poly_clear(t, ectx);
 }
 
-void n_bpoly_mod_mullow_mod(
-    n_bpoly_t A,
-    const n_bpoly_t B,
-    const n_bpoly_t C,
-    const n_poly_t m,
-    nmod_t mod)
-{
-    slong i, j;
-    n_poly_t t;
-
-    FLINT_ASSERT(A != B);
-    FLINT_ASSERT(A != C);
-
-    n_poly_init(t);
-
-    n_bpoly_fit_length(A, B->length + C->length - 1);
-    for (i = 0; i < B->length + C->length - 1; i++)
-        n_poly_zero(A->coeffs + i);
-
-    for (i = 0; i < B->length; i++)
-    {
-        for (j = 0; j < C->length; j++)
-        {
-            n_poly_mod_mul(t, B->coeffs + i, C->coeffs + j, mod);
-            n_poly_mod_add(A->coeffs + i + j, A->coeffs + i + j, t, mod);
-            n_poly_mod_rem(A->coeffs + i + j, A->coeffs + i + j, m, mod);
-        }
-    }
-
-    A->length = B->length + C->length - 1;
-
-    while (A->length > 0 && n_poly_is_zero(A->coeffs + A->length - 1))
-        A->length--;
-
-    n_poly_clear(t);
-}
-
-
-void nmod_bpoly_add_poly_shift(
-    n_bpoly_t A,
-    const n_poly_t B,
-    slong yshift,
-    const nmodf_ctx_t ctx)
-{
-    slong i;
-
-    FLINT_ASSERT(A->length > B->length);
-
-    for (i = 0; i < B->length; i++)
-    {
-        FLINT_ASSERT(0 == n_poly_get_coeff(A->coeffs + i, yshift));
-        n_poly_set_coeff(A->coeffs + i, yshift, B->coeffs[i]);
-    }
-}
 
 void fq_nmod_bpoly_add_poly_shift(
     fq_nmod_bpoly_t A,
@@ -959,73 +487,6 @@ void fq_nmod_bpoly_set(fq_nmod_bpoly_t A, const fq_nmod_bpoly_t B, const fq_nmod
         fq_nmod_poly_set(A->coeffs + i, B->coeffs + i, ctx);
 }
 
-int n_bpoly_mod_divides(
-    n_bpoly_t Q,
-    const n_bpoly_t A,
-    const n_bpoly_t B,
-    nmod_t mod)
-{
-    slong i, qoff;
-    int divides;
-    n_poly_t q, t;
-    n_bpoly_t R;
-
-    FLINT_ASSERT(Q != A);
-    FLINT_ASSERT(Q != B);
-    FLINT_ASSERT(B->length > 0);
-
-    n_poly_init(q);
-    n_poly_init(t);
-    n_bpoly_init(R);
-    n_bpoly_set(R, A);
-
-    Q->length = 0;
-
-    while (R->length >= B->length)
-    {
-        _n_poly_mod_divrem(q, t, R->coeffs + R->length - 1,
-                                 B->coeffs + B->length - 1, mod);
-        if (!n_poly_is_zero(t))
-        {
-            divides = 0;
-            goto cleanup;
-        }
-
-        for (i = 0; i < B->length; i++)
-        {
-            _n_poly_mod_mul(t, B->coeffs + i, q, mod);
-            n_poly_mod_sub(R->coeffs + i + R->length - B->length,
-                            R->coeffs + i + R->length - B->length, t, mod);
-        }
-
-        qoff = R->length - B->length;
-
-        FLINT_ASSERT(qoff >= 0);
-        if (qoff >= Q->length)
-        {
-            n_bpoly_fit_length(Q, qoff + 1);
-            for (i = Q->length; i <= qoff; i++)
-                n_poly_zero(Q->coeffs + i);
-            Q->length = qoff + 1;
-        }
-
-        n_poly_set(Q->coeffs + qoff, q);
-
-        while (R->length > 0 && n_poly_is_zero(R->coeffs + R->length - 1))
-            R->length--;
-    }
-
-    divides = (R->length == 0);
-
-cleanup:
-
-    n_poly_clear(q);
-    n_poly_clear(t);
-    n_bpoly_clear(R);
-
-    return divides;
-}
-
 int fq_nmod_bpoly_divides(
     fq_nmod_bpoly_t Q,
     const fq_nmod_bpoly_t A,
@@ -1089,30 +550,6 @@ cleanup:
     fq_nmod_bpoly_clear(R, ctx);
 
     return divides;
-}
-
-void n_bpoly_mod_make_primitive(n_bpoly_t A, nmod_t mod)
-{
-    slong i;
-    n_poly_t g, q;
-
-    n_poly_init(g);
-    n_poly_init(q);
-
-    for (i = 0; i < A->length; i++)
-	{
-        n_poly_mod_gcd(q, g, A->coeffs + i, mod);
-		n_poly_swap(g, q);
-	}
-
-    for (i = 0; i < A->length; i++)
-    {
-        n_poly_mod_div(q, A->coeffs + i, g, mod);
-		n_poly_swap(A->coeffs + i, q);
-    }
-
-    n_poly_clear(g);
-    n_poly_clear(q);
 }
 
 void fq_nmod_bpoly_make_primitive(fq_nmod_bpoly_t A, const fq_nmod_ctx_t ctx)
@@ -1209,35 +646,6 @@ void fq_nmod_bpoly_zero(fq_nmod_bpoly_t A, const fq_nmod_ctx_t fqctx)
     A->length = 0;
 }
 
-void nmod_mpoly_to_bpoly(
-    n_bpoly_t A,
-    const nmod_mpoly_t B,
-    slong varx,
-    slong vary,
-    const nmod_mpoly_ctx_t ctx)
-{
-    slong j;
-    slong NB;
-    ulong Bexpx, Bexpy;
-    slong Boffx, Bshiftx, Boffy, Bshifty;
-    ulong mask;
-
-    FLINT_ASSERT(B->bits <= FLINT_BITS);
-    NB = mpoly_words_per_exp_sp(B->bits, ctx->minfo);
-
-    mpoly_gen_offset_shift_sp(&Boffx, &Bshiftx, varx, B->bits, ctx->minfo);
-    mpoly_gen_offset_shift_sp(&Boffy, &Bshifty, vary, B->bits, ctx->minfo);
-    mask = (-UWORD(1)) >> (FLINT_BITS - B->bits);
-
-    n_bpoly_zero(A);
-    for (j = 0; j < B->length; j++)
-    {
-        Bexpx = ((B->exps + NB*j)[Boffx] >> Bshiftx) & mask;
-        Bexpy = ((B->exps + NB*j)[Boffy] >> Bshifty) & mask;
-        n_bpoly_set_coeff(A, Bexpx, Bexpy, B->coeffs[j]);
-    }
-}
-
 void fq_nmod_mpoly_to_bpoly(
     fq_nmod_bpoly_t A,
     const fq_nmod_mpoly_t B,
@@ -1268,67 +676,6 @@ void fq_nmod_mpoly_to_bpoly(
     }
 }
 
-
-void nmod_mpoly_from_nmod_bpoly(
-    nmod_mpoly_t A,
-    flint_bitcnt_t Abits,
-    const n_bpoly_t B,
-    slong varx,
-    slong vary,
-    const nmod_mpoly_ctx_t ctx)
-{
-    slong n = ctx->minfo->nvars;
-    slong i, j;
-    slong NA;
-    slong Alen;
-    mp_limb_t * Acoeff;
-    ulong * Aexp;
-    slong Aalloc;
-    ulong * Aexps;
-    TMP_INIT;
-
-    FLINT_ASSERT(B->length > 0);
-    FLINT_ASSERT(Abits <= FLINT_BITS);
-    TMP_START;
-
-    Aexps = (ulong *) TMP_ALLOC(n*sizeof(ulong));
-    for (i = 0; i < n; i++)
-        Aexps[i] = 0;
-
-    NA = mpoly_words_per_exp(Abits, ctx->minfo);
-    nmod_mpoly_fit_bits(A, Abits, ctx);
-    A->bits = Abits;
-
-    Acoeff = A->coeffs;
-    Aexp = A->exps;
-    Aalloc = A->alloc;
-    Alen = 0;
-    for (i = 0; i < B->length; i++)
-    {
-        n_poly_struct * Bc = B->coeffs + i;
-        _nmod_mpoly_fit_length(&Acoeff, &Aexp, &Aalloc, Alen + Bc->length, NA);
-
-        for (j = 0; j < Bc->length; j++)
-        {
-            if (0 == Bc->coeffs[j])
-                continue;
-
-            Aexps[varx] = i;
-            Aexps[vary] = j;
-            Acoeff[Alen] = Bc->coeffs[j];
-            mpoly_set_monomial_ui(Aexp + NA*Alen, Aexps, Abits, ctx->minfo);
-            Alen++;
-        }
-    }
-    A->coeffs = Acoeff;
-    A->exps = Aexp;
-    A->alloc = Aalloc;
-    A->length = Alen;
-
-    TMP_END;
-
-    nmod_mpoly_sort_terms(A, ctx);
-}
 
 void fq_nmod_mpoly_from_fq_nmod_bpoly(
     fq_nmod_mpoly_t A,
@@ -1392,21 +739,6 @@ void fq_nmod_mpoly_from_fq_nmod_bpoly(
 }
 
 
-void n_bpoly_mod_eval(
-    n_poly_t E,
-    const n_bpoly_t A,
-    mp_limb_t alpha,
-    nmod_t mod)
-{
-    slong i;
-    n_poly_zero(E);
-    for (i = A->length - 1; i >= 0; i--)
-    {
-        mp_limb_t c = n_poly_mod_evaluate_nmod(A->coeffs + i, alpha, mod);
-        n_poly_set_coeff(E, i, c);
-    }
-}
-
 void fq_nmod_bpoly_eval(
     fq_nmod_poly_t E,
     const fq_nmod_bpoly_t A,
@@ -1423,13 +755,6 @@ void fq_nmod_bpoly_eval(
         fq_nmod_poly_set_coeff(E, i, t, ctx);
     }
     fq_nmod_clear(t, ctx);
-}
-
-void n_bpoly_mod_taylor_shift(n_bpoly_t A, mp_limb_t alpha, nmod_t mod)
-{
-    slong i;
-    for (i = A->length - 1; i >= 0; i--)
-        n_poly_mod_taylor_shift(A->coeffs + i, alpha, mod);
 }
 
 void _fq_nmod_poly_taylor_shift_horner(
@@ -1481,19 +806,6 @@ void fq_nmod_bpoly_taylor_shift(
 /*****************************************************************************/
 
 
-
-typedef struct {
-    slong r; /* number of local factors */
-    nmod_t modulus;
-    n_bpoly_t Btilde;
-    n_bpoly_struct * newBitilde;
-    n_poly_struct * P;
-    n_poly_struct * d;
-    n_poly_struct * Bitilde;
-} nmod_bpoly_info_struct;
-
-typedef nmod_bpoly_info_struct nmod_bpoly_info_t[1];
-
 typedef struct {
     slong r; /* number of local factors */
     fq_nmod_bpoly_t Btilde;
@@ -1505,40 +817,6 @@ typedef struct {
 
 typedef fq_nmod_smprime_info_struct fq_nmod_smprime_info_t[1];
 
-typedef struct {
-    slong r; /* number of local factors */
-    n_bpoly_t Btilde;
-    n_bpoly_struct * newBitilde;
-    fq_nmod_poly_struct * d;
-    fq_nmod_poly_struct * Bitilde;
-} nmod_lgprime_info_struct;
-
-typedef nmod_lgprime_info_struct nmod_lgprime_info_t[1];
-
-
-void nmod_bpoly_info_init(nmod_bpoly_info_t I, slong r)
-{
-    slong i;
-
-    FLINT_ASSERT(r >= 2);
-
-    I->r = r;
-
-    n_bpoly_init(I->Btilde);
-
-    I->newBitilde = (n_bpoly_struct *) flint_malloc(r*sizeof(n_bpoly_struct));
-    I->P          = (n_poly_struct *) flint_malloc(r*sizeof(n_poly_struct));
-    I->d          = (n_poly_struct *) flint_malloc(r*sizeof(n_poly_struct));
-    I->Bitilde    = (n_poly_struct *) flint_malloc(r*sizeof(n_poly_struct));
-
-    for (i = 0; i < r; i++)
-    {
-        n_bpoly_init(I->newBitilde + i);
-        n_poly_init(I->P + i);
-        n_poly_init(I->d + i);
-        n_poly_init(I->Bitilde + i);
-    }
-}
 
 void fq_nmod_smprime_info_init(
     fq_nmod_smprime_info_t I,
@@ -1565,52 +843,6 @@ void fq_nmod_smprime_info_init(
     }
 }
 
-void nmod_lgprime_info_init(
-    nmod_lgprime_info_t I,
-    slong r,
-    const fq_nmod_ctx_t ectx)
-{
-    slong i;
-
-    FLINT_ASSERT(r >= 2);
-
-    I->r = r;
-
-    n_bpoly_init(I->Btilde);
-
-    I->newBitilde = (n_bpoly_struct *) flint_malloc(r*sizeof(n_bpoly_struct));
-    I->d          = (fq_nmod_poly_struct *) flint_malloc(r*sizeof(fq_nmod_poly_struct));
-    I->Bitilde    = (fq_nmod_poly_struct *) flint_malloc(r*sizeof(fq_nmod_poly_struct));
-
-    for (i = 0; i < r; i++)
-    {
-        n_bpoly_init(I->newBitilde + i);
-        fq_nmod_poly_init(I->d + i, ectx);
-        fq_nmod_poly_init(I->Bitilde + i, ectx);
-    }
-}
-
-
-void nmod_bpoly_info_clear(nmod_bpoly_info_t I)
-{
-    slong i;
-
-    n_bpoly_clear(I->Btilde);
-
-    for (i = 0; i < I->r; i++)
-    {
-        n_bpoly_clear(I->newBitilde + i);
-        n_poly_clear(I->P + i);
-        n_poly_clear(I->d + i);
-        n_poly_clear(I->Bitilde + i);
-    }
-
-    flint_free(I->newBitilde);
-    flint_free(I->P);
-    flint_free(I->d);
-    flint_free(I->Bitilde);
-}
-
 void fq_nmod_smprime_info_clear(fq_nmod_smprime_info_t I,
     const fq_nmod_ctx_t fqctx)
 {
@@ -1630,82 +862,8 @@ void fq_nmod_smprime_info_clear(fq_nmod_smprime_info_t I,
     flint_free(I->Bitilde);
 }
 
-void nmod_lgprime_info_clear(
-    nmod_lgprime_info_t I,
-    const fq_nmod_ctx_t ectx)
-{
-    slong i;
-
-    n_bpoly_clear(I->Btilde);
-
-    for (i = 0; i < I->r; i++)
-    {
-        n_bpoly_clear(I->newBitilde + i);
-        fq_nmod_poly_clear(I->d + i, ectx);
-        fq_nmod_poly_clear(I->Bitilde + i, ectx);
-    }
-
-    flint_free(I->newBitilde);
-    flint_free(I->d);
-    flint_free(I->Bitilde);
-}
 
 
-
-
-
-/*
-    set out[i] so that
-    1/(f[0]*f[1]*...*f[r-1]) = out[0]/f[0] + ... + out[n-1]/f[r-1]
-*/
-int nmod_partial_fraction_coeffs(
-    slong r,
-    n_poly_struct * out,
-    const n_poly_struct * f,
-    nmod_t mod)
-{
-    slong i;
-    n_poly_t num, den, a, b, g, t;
-
-    FLINT_ASSERT(r >= 2);
-
-    n_poly_init(num);
-    n_poly_init(den);
-    n_poly_init(a);
-    n_poly_init(b);
-    n_poly_init(g);
-    n_poly_init(t);
-
-    n_poly_one(num);
-    _n_poly_mod_mul(den, f + 0, f + 1, mod);
-    for (i = 2; i < r; i++)
-    {
-        _n_poly_mod_mul(g, den, f + i, mod);
-        n_poly_swap(g, den);
-    }
-
-    for (i = 0; i < r; i++)
-    {
-        n_poly_mod_divrem(den, t, den, f + i, mod);
-        FLINT_ASSERT(n_poly_is_zero(t));
-        n_poly_mod_xgcd(g, a, b, f + i, den, mod);
-        if (n_poly_degree(g) != 0)
-            return 0;
-        FLINT_ASSERT(n_poly_is_one(g));
-        n_poly_mod_mul(t, b, num, mod);
-        n_poly_mod_rem(out + i, t, f + i, mod);
-        n_poly_mod_mul(t, a, num, mod);
-        n_poly_mod_rem(num, t, den, mod);
-    }
-
-    n_poly_clear(num);
-    n_poly_clear(den);
-    n_poly_clear(a);
-    n_poly_clear(b);
-    n_poly_clear(g);
-    n_poly_clear(t);
-    return 1;
-}
 
 /*
     set out[i] so that
@@ -1757,289 +915,11 @@ int fq_nmod_partial_fraction_coeffs(
     return 1;
 }
 
-int nmod_bpoly_info_disolve(nmod_bpoly_info_t I, const nmodf_ctx_t ctx)
-{
-    return nmod_partial_fraction_coeffs(I->r, I->d, I->Bitilde, ctx->mod);
-}
-
 int fq_nmod_smprime_info_disolve(fq_nmod_smprime_info_t I, const fq_nmod_ctx_t ctx)
 {
     return fq_nmod_partial_fraction_coeffs(I->r, I->d, I->Bitilde, ctx);
 }
 
-int nmod_lgprime_info_disolve(
-    nmod_lgprime_info_t I,
-    const fq_nmod_ctx_t ectx)
-{
-    return fq_nmod_partial_fraction_coeffs(I->r, I->d, I->Bitilde, ectx);
-}
-
-
-static int _irreducible_bivar_factors_smprime(
-    nmod_mpoly_factor_t fac,
-    const nmod_mpoly_t A,
-    slong xvar,
-    slong yvar,
-    const nmod_mpoly_ctx_t ctx)
-{
-    int success;
-    slong i, j;
-    ulong k;
-    mp_limb_t alpha;
-    n_poly_t Beval;
-    n_bpoly_t B;
-    n_poly_factor_t Bevalfac;
-    slong Blengthx, Blengthy;
-    nmod_bpoly_info_t I;
-    n_bpoly_t tp, tp1, error;
-    n_poly_t ss, tt;
-
-    nmod_mpoly_factor_one(fac, ctx);
-
-    n_poly_init(Beval);
-    n_poly_factor_init(Bevalfac);
-    n_bpoly_init(B);
-    nmod_bpoly_info_init(I, 2);
-    n_poly_init(ss);
-    n_poly_init(tt);
-    n_bpoly_init(tp);
-    n_bpoly_init(tp1);
-    n_bpoly_init(error);
-
-    /* init done */
-
-    nmod_mpoly_to_bpoly(B, A, xvar, yvar, ctx);
-
-    Blengthx = B->length;
-    FLINT_ASSERT(Blengthx > 1);
-
-    alpha = 0;
-    goto got_alpha;
-
-next_alpha:
-
-    alpha++;
-    if (alpha >= ctx->ffinfo->mod.n)
-    {
-        success = 0;
-        goto cleanup;
-    }
-
-got_alpha:
-
-    n_bpoly_mod_eval(Beval, B, alpha, ctx->ffinfo->mod);
-
-    /* if killed leading coeff, get new alpha */
-    if (Beval->length != Blengthx)
-        goto next_alpha;
-
-    n_poly_mod_factor(Bevalfac, Beval, ctx->ffinfo->mod);
-
-    /* if multiple factors, get new alpha */
-    for (i = 0; i < Bevalfac->num; i++)
-    {
-        if (Bevalfac->exp[i] != 1)
-            goto next_alpha;
-    }
-
-	/* if one factor, A is irreducible */
-	if (Bevalfac->num < 2)
-	{
-		nmod_mpoly_factor_append_ui(fac, A, 1, ctx);
-        success = 1;
-        goto cleanup;
-	}
-
-    n_bpoly_mod_taylor_shift(B, alpha, ctx->ffinfo->mod);
-
-    Blengthy = 0;
-    for (i = 0; i < B->length; i++)
-        Blengthy = FLINT_MAX(Blengthy, (B->coeffs + i)->length);
-
-    nmod_bpoly_info_clear(I);
-    nmod_bpoly_info_init(I, Bevalfac->num);
-
-    n_bpoly_set(I->Btilde, B);
-    n_bpoly_mod_make_monic(I->Btilde, Blengthy, ctx->ffinfo->mod);
-
-    for (i = 0; i < I->r; i++)
-    {
-        n_poly_mod_make_monic(I->Bitilde + i, Bevalfac->poly + i, ctx->ffinfo->mod);
-        n_bpoly_set_polyx(I->newBitilde + i, I->Bitilde + i);
-    }
-
-    nmod_bpoly_info_disolve(I, ctx->ffinfo);
-
-    FLINT_ASSERT(I->r >= 2);
-
-    n_bpoly_mod_mullow(tp, I->newBitilde + 0, I->newBitilde + 1, Blengthy, ctx->ffinfo->mod);
-    for (i = 2; i < I->r; i++)
-    {
-        n_bpoly_mod_mullow(tp1, tp, I->newBitilde + i, Blengthy, ctx->ffinfo->mod);
-        n_bpoly_swap(tp1, tp);
-    }
-
-    n_bpoly_mod_sub(error, I->Btilde, tp, ctx->ffinfo->mod);
-
-    for (j = 1; j < Blengthy; j++)
-    {
-        n_poly_zero(ss);
-        for (i = error->length - 1; i >= 0; i--)
-        {
-            n_poly_set_coeff(ss, i, n_bpoly_get_coeff(error, i, j));
-            for (k = 0; k < j; k++)
-            {
-                FLINT_ASSERT(0 == n_bpoly_get_coeff(error, i, k));
-            }
-        }
-
-        for (i = 0; i < I->r; i++)
-        {
-            n_poly_mod_mul(tt, ss, I->d + i, ctx->ffinfo->mod);
-            n_poly_mod_rem(tt, tt, I->Bitilde + i, ctx->ffinfo->mod);
-            nmod_bpoly_add_poly_shift(I->newBitilde + i, tt, j, ctx->ffinfo);
-        }
-
-        n_bpoly_mod_mullow(tp, I->newBitilde + 0, I->newBitilde + 1, Blengthy, ctx->ffinfo->mod);
-        for (i = 2; i < I->r; i++)
-        {
-            n_bpoly_mod_mullow(tp1, tp, I->newBitilde + i, Blengthy, ctx->ffinfo->mod);
-            n_bpoly_swap(tp1, tp);
-        }
-        n_bpoly_mod_sub(error, I->Btilde, tp, ctx->ffinfo->mod);
-    }
-
-    {
-        n_bpoly_t f, Q, R, trymez;
-        n_bpoly_t tryme, trymet;
-        n_poly_t leadf;
-        slong kk, *used_arr, *sub_arr;
-
-        used_arr = (slong *) flint_calloc(2 * I->r, sizeof(slong));
-        sub_arr  = used_arr + I->r;
-
-        n_bpoly_init(f);
-        n_bpoly_init(Q);
-        n_bpoly_init(R);
-        n_bpoly_init(trymez);
-        n_bpoly_init(tryme);
-        n_bpoly_init(trymet);
-        n_poly_init(leadf);
-
-        n_bpoly_set(f, B);
-        FLINT_ASSERT(f->length > 0);
-        n_poly_set(leadf, f->coeffs + f->length - 1);
-
-        for (kk = 1; kk < I->r; kk++)
-        {
-            slong count = 0, indx = kk - 1, l;
-
-            for(l = 0; l < kk; l++)
-                sub_arr[l] = l;
-
-            sub_arr[indx]--;
-            while ((indx >= 0))
-            {
-                sub_arr[indx] = sub_arr[indx] + 1;
-
-                for (l = indx + 1; l < kk; l++)
-                    sub_arr[l] = sub_arr[l - 1] + 1;
-
-                if (sub_arr[kk - 1] > I->r - 1)
-                    indx--;
-                else
-                {
-                    for(l = 0; l < kk; l++)
-                    {
-                        if (used_arr[sub_arr[l]] == 1)
-                            break;
-                    }
-
-                    n_bpoly_set_polyy(tryme, leadf);
-                    for (l = 0; l < kk; l++)
-                    {
-                        n_bpoly_mod_mullow(trymet, tryme, I->newBitilde + sub_arr[l], Blengthy, ctx->ffinfo->mod);
-                        n_bpoly_swap(trymet, tryme);
-                    }
-
-                    n_bpoly_set(trymez, tryme);
-                    n_bpoly_mod_make_primitive(trymez, ctx->ffinfo->mod);
-                    if (n_bpoly_mod_divides(Q, f, trymez, ctx->ffinfo->mod))
-                    {
-                        nmod_mpoly_t goodtry;
-
-                        n_bpoly_mod_taylor_shift(trymez, nmod_neg(alpha, ctx->ffinfo->mod), ctx->ffinfo->mod);
-                        nmod_mpoly_init(goodtry, ctx);
-                        nmod_mpoly_from_nmod_bpoly(goodtry, A->bits, trymez, xvar, yvar, ctx);
-                        nmod_mpoly_make_monic(goodtry, goodtry, ctx);
-                        nmod_mpoly_factor_append_ui(fac, goodtry, 1, ctx);
-                        nmod_mpoly_clear(goodtry, ctx);
-
-                        for(l = 0; l < kk; l++)
-                        {
-                            used_arr[sub_arr[l]] = 1;
-                            count++;
-                        }
-
-                        n_bpoly_set(f, Q);
-                        FLINT_ASSERT(f->length > 0);
-                        n_poly_set(leadf, f->coeffs + f->length - 1);
-
-                     /* If r - count = kk then the rest are irreducible.  
-                        TODO: Add a test for that case */
-                    }
-
-                    indx = kk - 1;
-                }
-            }
-        }
-
-        {
-            slong test = 0;
-
-            for (kk = 0; kk < I->r; kk++)
-                test = test + used_arr[kk];
-
-            if (test == 0)
-            {
-                nmod_mpoly_t goodtry;
-                if (alpha != 0)
-                    n_bpoly_mod_taylor_shift(f, nmod_neg(alpha, ctx->ffinfo->mod), ctx->ffinfo->mod);
-                nmod_mpoly_init(goodtry, ctx);
-                nmod_mpoly_from_nmod_bpoly(goodtry, A->bits, f, xvar, yvar, ctx);
-                nmod_mpoly_make_monic(goodtry, goodtry, ctx);
-                nmod_mpoly_factor_append_ui(fac, goodtry, 1, ctx);
-                nmod_mpoly_clear(goodtry, ctx);
-            }
-        }
-
-        n_bpoly_clear(f);
-        n_bpoly_clear(Q);
-        n_bpoly_clear(R);
-        n_bpoly_clear(trymez);
-        n_bpoly_clear(tryme);
-        n_bpoly_clear(trymet);
-        n_poly_clear(leadf);
-
-        flint_free(used_arr);
-    }
-
-    success = 1;
-
-cleanup:
-
-    n_poly_clear(Beval);
-    n_poly_factor_clear(Bevalfac);
-    n_bpoly_clear(B);
-    nmod_bpoly_info_clear(I);
-    n_poly_clear(ss);
-    n_poly_clear(tt);
-    n_bpoly_clear(tp);
-    n_bpoly_clear(tp1);
-    n_bpoly_clear(error);
-
-    return success;
-}
 
 
 
@@ -2082,10 +962,6 @@ static int _fq_nmod_irreducible_bivar_factors_smprime(
 
     fq_nmod_mpoly_to_bpoly(B, A, xvar, yvar, ctx);
 
-flint_printf("_fq_nmod_irreducible_bivar_factors_smprime called\n");
-flint_printf("B: ");
-fq_nmod_bpoly_print_pretty(B, "x", "y", ctx->fqctx);
-flint_printf("\n");
 
     Blengthx = B->length;
     FLINT_ASSERT(Blengthx > 1);
@@ -2104,8 +980,6 @@ next_alpha:
 
 got_alpha:
 
-/*flint_printf("<_fq_nmod_irreducible_bivar_factors_smprime>\n  trying alpha = "); fq_nmod_print_pretty(alpha, ctx->fqctx); printf("\n");*/
-
     fq_nmod_bpoly_eval(Beval, B, alpha, ctx->fqctx);
 
     /* if killed leading coeff, get new alpha */
@@ -2114,8 +988,6 @@ got_alpha:
 
     Bevalfac->num = 0;
     fq_nmod_poly_factor(Bevalfac, Bevalfaclc, Beval, ctx->fqctx);
-
-/*flint_printf("<_fq_nmod_irreducible_bivar_factors_smprime>\n  Bevalfac: "); fq_nmod_poly_factor_print_pretty(Bevalfac, "x", ctx->fqctx); printf("\n");*/
 
     /* if multiple factors, get new alpha */
     for (i = 0; i < Bevalfac->num; i++)
@@ -2131,8 +1003,6 @@ got_alpha:
         success = 1;
         goto cleanup;
 	}
-
-/*flint_printf("<_fq_nmod_irreducible_bivar_factors_smprime>\n  good alpha = "); fq_nmod_print_pretty(alpha, ctx->fqctx); printf("\n");*/
 
     fq_nmod_bpoly_taylor_shift(B, alpha, ctx->fqctx);
 
@@ -2165,7 +1035,7 @@ got_alpha:
     }
 
     fq_nmod_bpoly_sub(error, I->Btilde, tp, ctx->fqctx);
-/*flint_printf("error: "); nmod_bpoly_print(error, "x", "y"); printf("\n");*/
+
     for (j = 1; j < Blengthy; j++)
     {
         fq_nmod_poly_zero(ss, ctx->fqctx);
@@ -2197,7 +1067,6 @@ got_alpha:
             fq_nmod_bpoly_swap(tp1, tp);
         }
         fq_nmod_bpoly_sub(error, I->Btilde, tp, ctx->fqctx);
-/*flint_printf("j = %wd lift: error: ", j); nmod_bpoly_print(error, "x", "y"); printf("\n");*/
     }
 
     {
@@ -2320,11 +1189,6 @@ got_alpha:
 
 cleanup:
 
-flint_printf("_fq_nmod_irreducible_bivar_factors_smprime returning %d\n", success);
-flint_printf("fac: ");
-fq_nmod_mpoly_factor_print_pretty(fac, NULL, ctx);
-flint_printf("\n");
-
     fq_nmod_clear(alpha, ctx->fqctx);
     fq_nmod_clear(Bevalfaclc, ctx->fqctx);
     fq_nmod_poly_clear(ss, ctx->fqctx);
@@ -2342,32 +1206,6 @@ flint_printf("\n");
 }
 
 
-
-
-
-void n_bpoly_eval_fq_nmod_poly(
-    fq_nmod_poly_t A,
-    const fq_nmod_ctx_t ectx,
-    const n_bpoly_t B)
-{
-    slong i;
-    n_poly_t t;
-    n_poly_t mock;
-    nmod_poly_t mock2;
-
-    n_poly_init(t);
-
-    fq_nmod_poly_zero(A, ectx);
-    for (i = B->length - 1; i >= 0; i--)
-    {
-        n_poly_mock(mock, ectx->modulus);
-        n_poly_mod_rem(t, B->coeffs + i, mock, ectx->modulus->mod);
-        nmod_poly_mock(mock2, t, ectx->modulus->mod);
-        fq_nmod_poly_set_coeff(A, i, mock2, ectx);
-    }
-
-    n_poly_clear(t);
-}
 
 
 /*
@@ -2441,771 +1279,6 @@ void nmod_bpoly_unshift_fq_nmod_bpoly(
     }
 }
 */
-
-
-void n_bpoly_add_fq_nmod_poly_mul(
-    n_bpoly_t A,
-    const fq_nmod_poly_t B,
-    const n_poly_t mpow,
-    nmod_t mod)
-{
-    slong i;
-    n_poly_t t, mock;
-
-    n_poly_init(t);
-
-    FLINT_ASSERT(A->length > B->length);
-
-    for (i = 0; i < B->length; i++)
-    {
-        n_poly_mock(mock, B->coeffs + i);
-        n_poly_mod_mul(t, mock, mpow, mod);
-        n_poly_mod_add(A->coeffs + i, A->coeffs + i, t, mod);
-    }
-
-    n_poly_clear(t);
-}
-
-void n_bpoly_set_fq_nmod_polyx(
-    n_bpoly_t A,
-    const fq_nmod_poly_t B,
-    const fq_nmod_ctx_t ectx)
-{
-    slong i;
-
-    n_bpoly_fit_length(A, B->length);
-    A->length = B->length;
-
-    for (i = 0; i < B->length; i++)
-        n_poly_set_nmod_poly(A->coeffs + i, B->coeffs + i);
-}
-
-
-static int _irreducible_bivar_factors_lgprime(
-    nmod_mpoly_factor_t fac,
-    const nmod_mpoly_t A,
-    slong xvar,
-    slong yvar,
-    const nmod_mpoly_ctx_t ctx)
-{
-    int success;
-    slong i, j, k;
-    fq_nmod_poly_t Beval;
-    n_bpoly_t B;
-    fq_nmod_poly_factor_t Bevalfac;
-    fq_nmod_t Bfaclc;
-    slong Blengthx, Blengthy;
-    nmod_lgprime_info_t I;
-    n_bpoly_t tp, tp1, error;
-    fq_nmod_poly_t ss, tt;
-	slong deg;
-    fq_nmod_ctx_t ectx;
-    fmpz_t P;
-    n_poly_t finalmpow, mpow;
-    n_poly_t mock;
-    nmod_poly_t mock2;
-
-    nmod_mpoly_factor_one(fac, ctx);
-
-    deg = 2;
-    fmpz_init_set_ui(P, ctx->ffinfo->mod.n);
-    fq_nmod_ctx_init(ectx, P, deg, "y");
-
-    n_poly_init(mpow);
-    n_poly_init(finalmpow);
-    fq_nmod_poly_init(Beval, ectx);
-    fq_nmod_poly_factor_init(Bevalfac, ectx);
-    fq_nmod_init(Bfaclc, ectx);
-    n_bpoly_init(B);
-    nmod_lgprime_info_init(I, 2, ectx);
-    fq_nmod_poly_init(ss, ectx);
-    fq_nmod_poly_init(tt, ectx);
-    n_bpoly_init(tp);
-    n_bpoly_init(tp1);
-    n_bpoly_init(error);
-
-    nmod_mpoly_to_bpoly(B, A, xvar, yvar, ctx);
-/*
-printf("\n ************ lgprime B: "); nmod_bpoly_print(B, "x", "y"); printf("\n");
-*/
-    Blengthx = B->length;
-    FLINT_ASSERT(Blengthx > 1);
-/*
-flint_printf("Blengthx: %wd\n");
-*/
-    goto got_alpha;
-
-next_alpha:
-
-    deg++;
-    if (deg >= 10000)
-    {
-        success = 0;
-        goto cleanup;
-    }
-
-	fq_nmod_ctx_clear(ectx);
-	fq_nmod_ctx_init(ectx, P, deg, "y");
-
-got_alpha:
-/*
-printf("***alpha: finite field m: "); nmod_poly_print_pretty(ectx->modulus, "y"); printf("\n");
-*/
-    n_bpoly_eval_fq_nmod_poly(Beval, ectx, B);
-
-    /* if killed leading coeff, get new alpha */
-    if (Beval->length != Blengthx)
-        goto next_alpha;
-
-    Bevalfac->num = 0;
-    fq_nmod_poly_factor(Bevalfac, Bfaclc, Beval, ectx);
-
-    /* if multiple factors, get new alpha */
-    for (i = 0; i < Bevalfac->num; i++)
-    {
-        if (Bevalfac->exp[i] != 1)
-            goto next_alpha;
-    }
-
-	/* if one factor, A is irreducible */
-	if (Bevalfac->num < 2)
-	{
-		nmod_mpoly_factor_append_ui(fac, A, 1, ctx);
-        success = 1;
-        goto cleanup;
-	}
-/*
-printf("***alpha: good finite field m: "); nmod_poly_print_pretty(ectx->modulus, "y"); printf("\n");
-*/
-    Blengthy = 0;
-    for (i = 0; i < B->length; i++)
-    {
-        Blengthy = FLINT_MAX(Blengthy, (B->coeffs + i)->length);
-    }
-
-    n_poly_one(finalmpow);
-    while (finalmpow->length <= Blengthy)
-    {
-        n_poly_mock(mock, ectx->modulus);
-        n_poly_mod_mul(finalmpow, finalmpow, mock, ctx->ffinfo->mod);
-    }
-
-    nmod_lgprime_info_clear(I, ectx);
-    nmod_lgprime_info_init(I, Bevalfac->num, ectx);
-
-    n_bpoly_set(I->Btilde, B);
-    n_bpoly_mod_make_monic_mod(I->Btilde, finalmpow, ctx->ffinfo->mod);
-
-    for (i = 0; i < I->r; i++)
-    {
-        fq_nmod_poly_make_monic(I->Bitilde + i, Bevalfac->poly + i, ectx);
-        n_bpoly_set_fq_nmod_polyx(I->newBitilde + i, I->Bitilde + i, ectx);
-    }
-
-    nmod_lgprime_info_disolve(I, ectx);
-
-    FLINT_ASSERT(I->r > 1);
-
-    n_bpoly_mod_mullow_mod(tp, I->newBitilde + 0, I->newBitilde + 1, finalmpow, ctx->ffinfo->mod);
-    for (i = 2; i < I->r; i++)
-    {
-        n_bpoly_mod_mullow_mod(tp1, tp, I->newBitilde + i, finalmpow, ctx->ffinfo->mod);
-        n_bpoly_swap(tp1, tp);
-    }
-
-    n_bpoly_mod_sub(error, I->Btilde, tp, ctx->ffinfo->mod);
-/*
-flint_printf("\nerror: "); nmod_bpoly_print(error, "x", "y"); printf("\n");
-*/
-    n_poly_one(mpow);
-
-    for (j = 1; j < Blengthy; j++)
-    {
-        n_poly_mock(mock, ectx->modulus);
-        n_poly_mod_mul(mpow, mpow, mock, ctx->ffinfo->mod);
-/*
-flint_printf("j = %wd, m^j: ",j); nmod_poly_print_pretty(mpow, "y"); printf("\n");
-*/
-        fq_nmod_poly_zero(ss, ectx);
-
-        for (k = error->length - 1; k >= 0; k--)
-        {
-            n_poly_t q, r;
-            n_poly_init(q);
-            n_poly_init(r);
-            n_poly_mod_divrem(q, r, error->coeffs + k, mpow, ctx->ffinfo->mod);
-            FLINT_ASSERT(n_poly_is_zero(r));
-            n_poly_mock(mock, ectx->modulus);
-            n_poly_mod_rem(r, q, mock, ctx->ffinfo->mod);
-            nmod_poly_mock(mock2, r, ctx->ffinfo->mod);
-            fq_nmod_poly_set_coeff(ss, k, mock2, ectx);
-            n_poly_clear(q);
-            n_poly_clear(r);
-        }
-
-        for (i = 0; i < I->r; i++)
-        {
-            fq_nmod_poly_mul(tt, ss, I->d + i, ectx);
-            fq_nmod_poly_rem(tt, tt, I->Bitilde + i, ectx);
-/*
-printf("tt: "); fq_nmod_poly_print_pretty(tt, "y", ectx); printf("\n");
-*/
-            n_bpoly_add_fq_nmod_poly_mul(I->newBitilde + i, tt, mpow, ctx->ffinfo->mod);
-/*
-flint_printf("I->newBitilde[%wd]: ", i); nmod_bpoly_print(I->newBitilde + i, "x", "y"); printf("\n");
-*/
-        }
-
-        n_bpoly_mod_mullow_mod(tp, I->newBitilde + 0, I->newBitilde + 1, finalmpow, ctx->ffinfo->mod);
-        for (i = 2; i < I->r; i++)
-        {
-            n_bpoly_mod_mullow_mod(tp1, tp, I->newBitilde + i, finalmpow, ctx->ffinfo->mod);
-            n_bpoly_swap(tp1, tp);
-        }
-        n_bpoly_mod_sub(error, I->Btilde, tp, ctx->ffinfo->mod);
-/*
-flint_printf("\nj = %wd lift: error: ", j); nmod_bpoly_print(error, "x", "y"); printf("\n");
-*/
-    }
-
-    {
-        n_bpoly_t f, Q, R, trymez;
-        n_bpoly_t tryme, trymet;
-        n_poly_t leadf;
-        slong kk, *used_arr, *sub_arr;
-
-        used_arr = (slong *) flint_calloc(2 * I->r, sizeof(slong));
-        sub_arr  = used_arr + I->r;
-
-        n_bpoly_init(f);
-        n_bpoly_init(Q);
-        n_bpoly_init(R);
-        n_bpoly_init(trymez);
-        n_bpoly_init(tryme);
-        n_bpoly_init(trymet);
-        n_poly_init(leadf);
-
-        n_bpoly_set(f, B);
-        FLINT_ASSERT(f->length > 0);
-        n_poly_set(leadf, f->coeffs + f->length - 1);
-
-        for (kk = 1; kk < I->r; kk++)
-        {
-            slong count = 0, indx = kk - 1, l;
-
-            for(l = 0; l < kk; l++)
-                sub_arr[l] = l;
-
-            sub_arr[indx]--;
-            while ((indx >= 0))
-            {
-                sub_arr[indx] = sub_arr[indx] + 1;
-
-                for (l = indx + 1; l < kk; l++)
-                    sub_arr[l] = sub_arr[l - 1] + 1;
-
-                if (sub_arr[kk - 1] > I->r - 1)
-                    indx--;
-                else
-                {
-                    for(l = 0; l < kk; l++)
-                    {
-                        if (used_arr[sub_arr[l]] == 1)
-                            break;
-                    }
-
-                    n_bpoly_set_polyy(tryme, leadf);
-                    for (l = 0; l < kk; l++)
-                    {
-                        n_bpoly_mod_mullow_mod(trymet, tryme, I->newBitilde + sub_arr[l], finalmpow, ctx->ffinfo->mod);
-                        n_bpoly_swap(trymet, tryme);
-                    }
-
-                    n_bpoly_set(trymez, tryme);
-                    n_bpoly_mod_make_primitive(trymez, ctx->ffinfo->mod);
-                    if (n_bpoly_mod_divides(Q, f, trymez, ctx->ffinfo->mod))
-                    {
-                        nmod_mpoly_t goodtry;
-                        nmod_mpoly_init(goodtry, ctx);
-                        nmod_mpoly_from_nmod_bpoly(goodtry, A->bits, trymez, xvar, yvar, ctx);
-                        nmod_mpoly_make_monic(goodtry, goodtry, ctx);
-                        nmod_mpoly_factor_append_ui(fac, goodtry, 1, ctx);
-                        nmod_mpoly_clear(goodtry, ctx);
-
-                        for(l = 0; l < kk; l++)
-                        {
-                            used_arr[sub_arr[l]] = 1;
-                            count++;
-                        }
-
-                        n_bpoly_set(f, Q);
-                        FLINT_ASSERT(f->length > 0);
-                        n_poly_set(leadf, f->coeffs + f->length - 1);
-
-                     /* If r - count = kk then the rest are irreducible.  
-                        TODO: Add a test for that case */
-                    }
-
-                    indx = kk - 1;
-                }
-            }
-        }
-
-        {
-            slong test = 0;
-
-            for (kk = 0; kk < I->r; kk++)
-                test = test + used_arr[kk];
-
-            if (test == 0)
-            {
-                nmod_mpoly_t goodtry;
-                nmod_mpoly_init(goodtry, ctx);
-                nmod_mpoly_from_nmod_bpoly(goodtry, A->bits, f, xvar, yvar, ctx);
-                nmod_mpoly_make_monic(goodtry, goodtry, ctx);
-                nmod_mpoly_factor_append_ui(fac, goodtry, 1, ctx);
-                nmod_mpoly_clear(goodtry, ctx);
-            }
-        }
-
-        n_bpoly_clear(f);
-        n_bpoly_clear(Q);
-        n_bpoly_clear(R);
-        n_bpoly_clear(trymez);
-        n_bpoly_clear(tryme);
-        n_bpoly_clear(trymet);
-        n_poly_clear(leadf);
-
-        flint_free(used_arr);
-    }
-
-    success = 1;
-
-cleanup:
-
-    n_poly_clear(mpow);
-    n_poly_clear(finalmpow);
-
-    fq_nmod_poly_clear(Beval, ectx);
-    fq_nmod_poly_factor_clear(Bevalfac, ectx);
-    fq_nmod_clear(Bfaclc, ectx);
-    nmod_lgprime_info_clear(I, ectx);
-    fq_nmod_poly_clear(ss, ectx);
-    fq_nmod_poly_clear(tt, ectx);
-    n_bpoly_clear(tp);
-    n_bpoly_clear(tp1);
-    n_bpoly_clear(error);
-
-    fq_nmod_ctx_clear(ectx);
-
-    n_bpoly_clear(B);
-
-    return success;
-}
-
-
-static int _irreducible_mvar_factors_smprime(
-    nmod_mpoly_factor_t fac,
-    nmod_mpoly_t A,
-    const nmod_mpoly_ctx_t ctx)
-{
-    int try_count = 0;
-    int success;
-    const slong n = ctx->minfo->nvars - 1;
-    slong i, j, m, r;
-    mp_limb_t * alpha;
-    nmod_mpoly_struct * Aevals, * newAevals, * lcAevals;
-    slong * deg, * degeval, * newdeg;
-    nmod_mpoly_t t, g, lcA, newA;
-    nmod_mpoly_univar_t u;
-    nmod_mpoly_factor_t lfac;
-    slong dummyvars[] = {0};
-    ulong dummydegs[] = {0};
-    flint_rand_t randstate;
-	fmpz_t subset;
-	nmod_mpoly_factor_t cfac;
-/*
-flint_printf("_irreducible_mvar_factors_smprime(n = %wd) called\n", n);
-flint_printf("A: "); nmod_mpoly_print_pretty(A, NULL, ctx); printf("\n");
-*/
-    flint_randinit(randstate);
-	fmpz_init(subset);
-	nmod_mpoly_factor_init(cfac, ctx);
-	alpha = (mp_limb_t *) flint_malloc(n*sizeof(mp_limb_t));
-    Aevals    = (nmod_mpoly_struct *) flint_malloc(n*sizeof(nmod_mpoly_struct));
-    newAevals = (nmod_mpoly_struct *) flint_malloc(n*sizeof(nmod_mpoly_struct));
-    lcAevals  = (nmod_mpoly_struct *) flint_malloc(n*sizeof(nmod_mpoly_struct));
-
-    deg     = (slong *) flint_malloc((n + 1)*sizeof(slong));
-    degeval = (slong *) flint_malloc((n + 1)*sizeof(slong));
-    newdeg  = (slong *) flint_malloc((n + 1)*sizeof(slong));
-
-	for (i = 0; i < n; i++)
-	{
-		nmod_mpoly_init(Aevals + i, ctx);
-		nmod_mpoly_init(newAevals + i, ctx);
-		nmod_mpoly_init(lcAevals + i, ctx);
-	}
-
-	nmod_mpoly_init(newA, ctx);
-	nmod_mpoly_init(lcA, ctx);
-	nmod_mpoly_init(t, ctx);
-	nmod_mpoly_init(g, ctx);
-
-	nmod_mpoly_univar_init(u, ctx);
-
-    nmod_mpoly_factor_init(lfac, ctx);
-
-	nmod_mpoly_degrees_si(deg, A, ctx);
-
-next_alpha:
-
-    if (++try_count > 10)
-	{
-		success = 0;
-        goto cleanup;
-	}
-
-    for (i = 0; i < n; i++)
-    {
-        alpha[i] = n_urandint(randstate, ctx->ffinfo->mod.n - 1) + 1;
-    }
-
-	i = n - 1;
-	nmod_mpoly_evaluate_one_ui(Aevals + i, A, i + 1, alpha[i], ctx);
-	nmod_mpoly_degrees_si(degeval, Aevals + i, ctx);
-	for (j = 0; j <= i; j++)
-		if (degeval[j] != deg[j])
-			goto next_alpha;
-	for (i--; i >= 0; i--)
-	{
-		nmod_mpoly_evaluate_one_ui(Aevals + i, Aevals + i + 1, i + 1, alpha[i], ctx);
-/*
-flint_printf("Aeval[%wd]: ", i ); nmod_mpoly_print_pretty(Aevals + i, NULL, ctx); printf("\n");
-*/
-		nmod_mpoly_degrees_si(degeval, Aevals + i, ctx);
-		for (j = 0; j <= i; j++)
-			if (degeval[j] != deg[j])
-				goto next_alpha;
-	}
-
-	nmod_mpoly_derivative(t, Aevals + 0, 0, ctx);
-	nmod_mpoly_gcd(t, t, Aevals + 0, ctx);
-/*
-flint_printf("squarefree check gcd: " ); nmod_mpoly_print_pretty(t, NULL, ctx); printf("\n");
-*/
-	if (!nmod_mpoly_is_one(t, ctx))
-		goto next_alpha;
-
-	nmod_mpoly_to_univar(u, Aevals + 1, 0, ctx);
-    nmod_mpoly_univar_content_mpoly(t, u, ctx);
-/*
-flint_printf("content    check gcd: " ); nmod_mpoly_print_pretty(t, NULL, ctx); printf("\n");
-*/
-	if (!nmod_mpoly_is_one(t, ctx))
-		goto next_alpha;
-
-    success = _irreducible_bivar_factors_smprime(lfac, Aevals + 1, 0, 1, ctx);
-	if (!success)
-        success = _irreducible_bivar_factors_lgprime(lfac, Aevals + 1, 0, 1, ctx);
-    if (!success)
-        goto next_alpha;
-
-    FLINT_ASSERT(lfac->num > 0);
-
-have_bivar_factors:
-/*
-flint_printf("nmod have_bivar_factors: \n");
-flint_printf("A: "); nmod_mpoly_print_pretty(A, NULL, ctx); printf("\n");
-flint_printf("lfac: "); nmod_mpoly_factor_print_pretty(lfac, NULL, ctx); printf("\n");
-*/
-    if (lfac->num == 1)
-    {
-	    nmod_mpoly_factor_append_ui(fac, A, 1, ctx);
-		success = 1;
-		goto cleanup;
-    }
-
-	nmod_mpoly_factor_set(cfac, lfac, ctx);
-
-    dummyvars[0] = 0;
-    dummydegs[0] = deg[0];
-    nmod_mpoly_get_coeff_vars_ui(lcA, A, dummyvars, dummydegs, 1, ctx);
-
-    /* rescale A */
-    nmod_mpoly_pow_ui(t, lcA, lfac->num - 1, ctx);
-    nmod_mpoly_mul(newA, A, t, ctx);
-/*
-flint_printf("newA: "); nmod_mpoly_print_pretty(newA, NULL, ctx); printf("\n");
-*/
-    nmod_mpoly_degrees_si(newdeg, newA, ctx);
-
-    /* evaluations of leading coefficient */
-    i = n - 1;
-    nmod_mpoly_evaluate_one_ui(lcAevals + i, lcA, i + 1, alpha[i], ctx);
-/*
-flint_printf("lcAevals[%wd]: ", i); nmod_mpoly_print_pretty(lcAevals + i, NULL, ctx); printf("\n");
-*/
-    for (i--; i >= 0; i--)
-    {
-	    nmod_mpoly_evaluate_one_ui(lcAevals + i, lcAevals + i + 1, i + 1, alpha[i], ctx);
-/*
-flint_printf("lcAevals[%wd]: ", i); nmod_mpoly_print_pretty(lcAevals + i, NULL, ctx); printf("\n");
-*/
-    }
-
-    /* evaluations */
-    i = n - 1;
-	nmod_mpoly_evaluate_one_ui(newAevals + i, newA, i + 1, alpha[i], ctx);
-/*
-flint_printf("newAevals[%wd]: ", i ); nmod_mpoly_print_pretty(newAevals + i, NULL, ctx); printf("\n");
-*/
-	for (i--; i >= 0; i--)
-	{
-		nmod_mpoly_evaluate_one_ui(newAevals + i, newAevals + i + 1, i + 1, alpha[i], ctx);
-/*
-flint_printf("newAevals[%wd]: ", i ); nmod_mpoly_print_pretty(newAevals + i, NULL, ctx); printf("\n");
-*/
-	}
-
-    /* rescale factors */
-    for (i = 0; i < lfac->num; i++)
-    {
-        dummyvars[0] = 0;
-        dummydegs[0] = nmod_mpoly_degree_si(lfac->poly + i, 0, ctx);
-        nmod_mpoly_get_coeff_vars_ui(g, lfac->poly + i, dummyvars, dummydegs, 1, ctx);
-/*
-flint_printf("lfac[%wd]lc: ", i); nmod_mpoly_print_pretty(g, NULL, ctx); printf("\n");
-*/
-        success = nmod_mpoly_divides(t, lcAevals + 1, g, ctx);
-        FLINT_ASSERT(success);
-/*
-flint_printf("lfac[%wd] t: ", i); nmod_mpoly_print_pretty(g, NULL, ctx); printf("\n");
-*/
-        nmod_mpoly_mul(lfac->poly + i, lfac->poly + i, t, ctx);
-/*
-flint_printf("lfac[%wd]: ", i); nmod_mpoly_print_pretty(lfac->poly + i, NULL, ctx); printf("\n");
-*/
-    }
-/*
-flint_printf("lift m = %wd, lfac: ", 1); nmod_mpoly_factor_print_pretty(lfac, NULL, ctx); printf("\n");
-*/
-
-    for (m = 2; m <= n; m++)
-    {
-        for (i = 0; i < lfac->num; i++)
-        {
-            slong dd = nmod_mpoly_degree_si(lfac->poly + i, 0, ctx);
-            nmod_mpoly_gen(g, 0, ctx);
-            nmod_mpoly_pow_ui(g, g, dd, ctx);
-            nmod_mpoly_sub(t, m < n ? lcAevals + m : lcA, lcAevals + m - 1, ctx);
-            nmod_mpoly_mul(t, t, g, ctx);
-            nmod_mpoly_add(lfac->poly + i, lfac->poly + i, t, ctx);
-        }
-
-        success = nmod_mpoly_hlift(m, lfac->poly, lfac->num, alpha, m < n ? newAevals + m : newA, newdeg, ctx);
-        if (!success)
-		{
-printf("smprime lift failed!!!!!\n");
-            goto combine_factors;
-		}
-/*
-flint_printf("lift m = %wd, lfac: ", m); nmod_mpoly_factor_print_pretty(lfac, NULL, ctx); printf("\n");
-*/
-    }
-
-    for (i = 0; i < lfac->num; i++)
-    {
-        nmod_mpoly_to_univar(u, lfac->poly + i, 0, ctx);
-        success = nmod_mpoly_univar_content_mpoly(g, u, ctx);
-        if (!success)
-            goto cleanup;
-        success = nmod_mpoly_divides(t, lfac->poly + i, g, ctx);
-        FLINT_ASSERT(success);
-        nmod_mpoly_factor_append_ui(fac, t, 1, ctx);
-    }
-
-	success = 1;
-    goto cleanup;
-
-combine_factors:
-
-flint_printf("combine_factors: \n");
-
-	nmod_mpoly_factor_swap(cfac, lfac, ctx);
-
-	FLINT_ASSERT(lfac->num > 1);
-
-	if (lfac->num == 2)
-	{
-	    nmod_mpoly_factor_append_ui(fac, A, 1, ctx);
-        success = 1;
-        goto cleanup;
-	}
-
-	for (r = 1; r <= lfac->num/2; r++)
-	{
-		subset_first(subset, lfac->num, r);
-		do {
-
-flint_printf("subset(r = %wd): ", r); subset_print(subset, lfac->num); flint_printf("\n");
-
-
-			nmod_mpoly_factor_one(cfac, ctx);
-			nmod_mpoly_factor_fit_length(cfac, 2, ctx);
-			cfac->num = 2;
-			nmod_mpoly_one(cfac->poly + 0, ctx);
-			nmod_mpoly_one(cfac->poly + 1, ctx);
-			fmpz_one(cfac->exp + 0);
-			fmpz_one(cfac->exp +1);
-			for (i = 0; i < lfac->num; i++)
-			{
-				j = fmpz_tstbit(subset, i);
-				nmod_mpoly_mul(cfac->poly + j, cfac->poly + j, lfac->poly + i, ctx);
-			}
-			
-			dummyvars[0] = 0;
-			dummydegs[0] = deg[0];
-			nmod_mpoly_get_coeff_vars_ui(lcA, A, dummyvars, dummydegs, 1, ctx);
-
-			/* rescale A */
-			nmod_mpoly_pow_ui(t, lcA, cfac->num - 1, ctx);
-			nmod_mpoly_mul(newA, A, t, ctx);
-			nmod_mpoly_degrees_si(newdeg, newA, ctx);
-
-			/* evaluations of leading coefficient */
-			i = n - 1;
-			nmod_mpoly_evaluate_one_ui(lcAevals + i, lcA, i + 1, alpha[i], ctx);
-			for (i--; i >= 0; i--)
-			{
-			    nmod_mpoly_evaluate_one_ui(lcAevals + i, lcAevals + i + 1, i + 1, alpha[i], ctx);
-			}
-
-			/* evaluations */
-			i = n - 1;
-			nmod_mpoly_evaluate_one_ui(newAevals + i, newA, i + 1, alpha[i], ctx);
-			for (i--; i >= 0; i--)
-			{
-				nmod_mpoly_evaluate_one_ui(newAevals + i, newAevals + i + 1, i + 1, alpha[i], ctx);
-			}
-
-			/* rescale factors */
-			for (i = 0; i < cfac->num; i++)
-			{
-			    dummyvars[0] = 0;
-			    dummydegs[0] = nmod_mpoly_degree_si(cfac->poly + i, 0, ctx);
-			    nmod_mpoly_get_coeff_vars_ui(g, cfac->poly + i, dummyvars, dummydegs, 1, ctx);
-			    success = nmod_mpoly_divides(t, lcAevals + 1, g, ctx);
-			    FLINT_ASSERT(success);
-			    nmod_mpoly_mul(cfac->poly + i, cfac->poly + i, t, ctx);
-			}
-
-			for (m = 2; m <= n; m++)
-			{
-			    for (i = 0; i < cfac->num; i++)
-			    {
-			        slong dd = nmod_mpoly_degree_si(cfac->poly + i, 0, ctx);
-			        nmod_mpoly_gen(g, 0, ctx);
-			        nmod_mpoly_pow_ui(g, g, dd, ctx);
-			        nmod_mpoly_sub(t, m < n ? lcAevals + m : lcA, lcAevals + m - 1, ctx);
-			        nmod_mpoly_mul(t, t, g, ctx);
-			        nmod_mpoly_add(cfac->poly + i, cfac->poly + i, t, ctx);
-			    }
-
-			    success = nmod_mpoly_hlift(m, cfac->poly, cfac->num, alpha, m < n ? newAevals + m : newA, newdeg, ctx);
-			    if (!success)
-			        goto nextsubset;
-			}
-
-		    nmod_mpoly_to_univar(u, cfac->poly + 1, 0, ctx);
-		    success = nmod_mpoly_univar_content_mpoly(g, u, ctx);
-		    if (!success)
-		        goto cleanup;
-		    success = nmod_mpoly_divides(t, cfac->poly + 1, g, ctx);
-		    FLINT_ASSERT(success);
-		    nmod_mpoly_factor_append_ui(fac, t, 1, ctx);
-
-			/* fix A and lfac */
-		    success = nmod_mpoly_divides(A, A, t, ctx);
-		    FLINT_ASSERT(success);
-			nmod_mpoly_degrees_si(deg, A, ctx);
-			i = n - 1;
-			nmod_mpoly_evaluate_one_ui(Aevals + i, A, i + 1, alpha[i], ctx);
-			nmod_mpoly_degrees_si(degeval, Aevals + i, ctx);
-			for (j = 0; j <= i; j++)
-				FLINT_ASSERT(degeval[j] == deg[j]);
-			for (i--; i >= 0; i--)
-			{
-				nmod_mpoly_evaluate_one_ui(Aevals + i, Aevals + i + 1, i + 1, alpha[i], ctx);
-				nmod_mpoly_degrees_si(degeval, Aevals + i, ctx);
-				for (j = 0; j <= i; j++)
-					FLINT_ASSERT(degeval[j] == deg[j]);
-			}
-
-			nmod_mpoly_factor_one(cfac, ctx);
-			for (i = 0; i < lfac->num; i++)
-			{
-				if (!fmpz_tstbit(subset, i))
-					nmod_mpoly_factor_append_ui(cfac, lfac->poly + i, 1, ctx);
-			}
-			nmod_mpoly_factor_swap(lfac, cfac, ctx);
-			goto have_bivar_factors;
-
-nextsubset:
-			(void) NULL;
-		}
-		while (subset_next(subset, subset, lfac->num));			
-	}
-
-    nmod_mpoly_factor_append_ui(fac, A, 1, ctx);
-
-    success = 1;
-
-cleanup: 
-
-    flint_randclear(randstate);
-	fmpz_clear(subset);
-	nmod_mpoly_factor_clear(cfac, ctx);
-
-	flint_free(alpha);
-
-    flint_free(deg);
-    flint_free(degeval);
-    flint_free(newdeg);
-
-	for (i = 0; i < n; i++)
-	{
-		nmod_mpoly_clear(Aevals + i, ctx);
-		nmod_mpoly_clear(newAevals + i, ctx);
-		nmod_mpoly_clear(lcAevals + i, ctx);
-	}
-    flint_free(Aevals);
-    flint_free(newAevals);
-    flint_free(lcAevals);
-
-
-	nmod_mpoly_clear(newA, ctx);
-	nmod_mpoly_clear(lcA, ctx);
-	nmod_mpoly_clear(t, ctx);
-	nmod_mpoly_clear(g, ctx);
-
-	nmod_mpoly_univar_clear(u, ctx);
-
-    nmod_mpoly_factor_clear(lfac, ctx);
-
-	return success;
-}
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -3375,8 +1448,8 @@ cleanup:
 
 
 
-static int _irreducible_mvar_factors_lgprime(
-    nmod_mpoly_factor_t fac_,
+int nmod_mpoly_factor_irred_lgprime_default(
+    nmod_mpolyv_t fac_,
     const nmod_mpoly_t A_,
     const nmod_mpoly_ctx_t ctx_)
 {
@@ -3574,7 +1647,7 @@ try_again:
 
 cleanup:
 
-    nmod_mpoly_factor_one(fac_, ctx_);
+    fac_->length = 0;
     if (success)
 	{
         nmod_mpoly_t truefactor_;
@@ -3626,7 +1699,10 @@ printf("truefactor: "); fq_nmod_mpoly_print_pretty(truefactor, NULL, ctx); print
 
             success = nmod_mpoly_get_fq_nmod_mpoly(truefactor_, ctx_, truefactor, ctx);
             FLINT_ASSERT(success);
-            nmod_mpoly_factor_append_ui(fac_, truefactor_, 1, ctx_);
+
+            nmod_mpolyv_fit_length(fac_, fac_->length + 1, ctx_);
+            nmod_mpoly_swap(fac_->coeffs + fac_->length, truefactor_, ctx_);
+            fac_->length++;
         }
 
         for (i = 0; i < edeg; i++)
@@ -3691,7 +1767,7 @@ void nmod_mpoly_convert_perm(
     FLINT_ASSERT(B->bits <= FLINT_BITS);
     TMP_START;
 
-    Aexps = (ulong *) TMP_ALLOC((m)*sizeof(ulong));
+    Aexps = (ulong *) TMP_ALLOC(m*sizeof(ulong));
     Bexps = (ulong *) TMP_ALLOC(n*sizeof(ulong));
 
     NA = mpoly_words_per_exp(Abits, lctx->minfo);
@@ -3723,41 +1799,71 @@ void nmod_mpoly_convert_perm(
     return 1 for success, 0 for failure
 */
 static int _irreducible_factors(
-    nmod_mpoly_factor_t f,
-    const nmod_mpoly_t A,
+    nmod_mpolyv_t Af,
+    nmod_mpoly_t A,
     const nmod_mpoly_ctx_t ctx)
 {
     int success;
     slong i, t, nzdvar, mvars;
+    slong nvars = ctx->minfo->nvars;
     slong * Adegs, * perm, * iperm;
-    ulong * shift, * stride;
     nmod_mpoly_t G, Abar, Bbar, nzdpoly;
+    flint_bitcnt_t Lbits, Abits;
+    int perm_is_id;
+#if WANT_ASSERT
+    nmod_mpoly_t Aorg;
 
-    if (A->bits > FLINT_BITS)
-        return 0;
+    nmod_mpoly_init(Aorg, ctx);
+    nmod_mpoly_set(Aorg, A, ctx);
+#endif
 
     nmod_mpoly_init(G, ctx);
     nmod_mpoly_init(Abar, ctx);
     nmod_mpoly_init(Bbar, ctx);
     nmod_mpoly_init(nzdpoly, ctx);
 
-    Adegs = (slong *) flint_malloc(ctx->minfo->nvars*sizeof(slong));
-    perm = (slong *) flint_malloc(ctx->minfo->nvars*sizeof(slong));
-    iperm = (slong *) flint_malloc(ctx->minfo->nvars*sizeof(slong));
-	shift = (ulong *) flint_malloc(ctx->minfo->nvars*sizeof(slong));
-    stride = (ulong *) flint_malloc(ctx->minfo->nvars*sizeof(slong));
+    Adegs = (slong *) flint_malloc(3*nvars*sizeof(slong));
+    perm = Adegs + nvars;
+    iperm = perm + nvars;
+
+    if (A->length < 2)
+    {
+        FLINT_ASSERT(A->length == 1);
+        FLINT_ASSERT(!nmod_mpoly_is_ui(A, ctx));
+        nmod_mpolyv_fit_length(Af, 1, ctx);
+        Af->length = 1;
+        nmod_mpoly_swap(Af->coeffs + 0, A, ctx);
+        success = 1;
+        goto cleanup;
+    }
+
+    if (!nmod_mpoly_degrees_fit_si(A, ctx))
+    {
+        success = 0;
+        goto cleanup;
+    }
+
+    if (A->bits > FLINT_BITS &&
+        !nmod_mpoly_repack_bits_inplace(A, FLINT_BITS, ctx))
+    {
+        success = 0;
+        goto cleanup;
+    }
+
     nmod_mpoly_degrees_si(Adegs, A, ctx);
 
-    mvars = 0;
+    Abits = A->bits;
 
+    mvars = 0;
+    Lbits = 0;
     nzdvar = -1;
-    for (i = 0; i < ctx->minfo->nvars; i++)
+    for (i = 0; i < nvars; i++)
     {
-        shift[i] = 0;
-        stride[i] = 1;
 		iperm[i] = -1;
         if (Adegs[i] > 0)
         {
+            flint_bitcnt_t this_bits = FLINT_BIT_COUNT(Adegs[i]);
+            Lbits = FLINT_MAX(Lbits, this_bits);
             perm[mvars] = i;
             mvars++;
 
@@ -3779,92 +1885,148 @@ static int _irreducible_factors(
     FLINT_ASSERT(perm[0] == nzdvar);
     FLINT_ASSERT(!nmod_mpoly_is_zero(nzdpoly, ctx));
 
-    nmod_mpoly_gcd_cofactors(G, Abar, Bbar, A, nzdpoly, ctx);
-    if (!nmod_mpoly_is_one(G, ctx))
+    if (!nmod_mpoly_gcd_cofactors(G, Abar, Bbar, A, nzdpoly, ctx))
     {
-        nmod_mpoly_factor_t newf;
-        nmod_mpoly_factor_init(newf, ctx);
-        success = _irreducible_factors(f, Abar, ctx);
-        success = success && _irreducible_factors(newf, Bbar, ctx);
-        nmod_mpoly_factor_mul_factor_ui(f, newf, 1, ctx);
-        nmod_mpoly_factor_clear(newf, ctx);
+        success = 0;
         goto cleanup;
     }
 
-	/* perm[0] should be a variable (nzdvar) with nonzero derivative */
+    /* check for annoying things like (x^2+y)(x^p+y) */
+    if (!nmod_mpoly_is_one(G, ctx))
+    {
+        nmod_mpolyv_t newf;
+        nmod_mpolyv_init(newf, ctx);
+        success = _irreducible_factors(Af, Abar, ctx);
+        success = success && _irreducible_factors(newf, Bbar, ctx);
+        if (success)
+        {
+            nmod_mpolyv_fit_length(Af, Af->length + newf->length, ctx);
+            for (i = 0; i < newf->length; i++)
+            {
+                nmod_mpoly_swap(Af->coeffs + Af->length, newf->coeffs + i, ctx);
+                Af->length++;
+            }
+        }
+        nmod_mpolyv_clear(newf, ctx);
+        goto cleanup;
+    }
+
+	/* A is separable wrt gen(perm[0]) now */
+
+    if (Lbits > FLINT_BITS - 10)
+    {
+        success = 0;
+        goto cleanup;
+    }
 
     /* TODO nice permutation */
 
     /* invert perm */
-	for (i = 0; i < mvars; i++)
-		iperm[perm[i]] = i;
-
-    if (mvars == 1)
+    perm_is_id = (mvars == nvars);
+    for (i = 0; i < mvars; i++)
     {
-        nmod_mpoly_t tt;
+        perm_is_id = perm_is_id && (perm[i] == i);
+        iperm[perm[i]] = i;
+    }
+
+    if (mvars < 2)
+    {
         nmod_poly_t Au;
-        nmod_poly_factor_t fu;
+        nmod_poly_factor_t Auf;
 
-        nmod_mpoly_init(tt, ctx);
+        FLINT_ASSERT(mvars == 1);
+
         nmod_poly_init_mod(Au, ctx->ffinfo->mod);
-        nmod_poly_factor_init(fu);
+        nmod_poly_factor_init(Auf);
 
-        _nmod_mpoly_to_nmod_poly_deflate(Au, A, perm[0], shift, stride, ctx);
+        FLINT_ASSERT(nmod_mpoly_is_nmod_poly(A, perm[0], ctx));
+        success = nmod_mpoly_get_nmod_poly(Au, A, perm[0], ctx);
+        FLINT_ASSERT(success);
+        nmod_poly_factor(Auf, Au);
 
-        f->constant = nmod_poly_factor(fu, Au); /* leading coeff should be 1 */
-        f->num = 0; 
-        for (i = 0; i < fu->num; i++)
+        nmod_mpolyv_fit_length(Af, Auf->num, ctx);
+        Af->length = Auf->num; 
+        for (i = 0; i < Auf->num; i++)
         {
-            _nmod_mpoly_from_nmod_poly_inflate(tt, A->bits, fu->p + i, perm[0], shift, stride, ctx);
-            nmod_mpoly_factor_append_ui(f, tt, fu->exp[i], ctx); /* fu->exp[i] should be 1 */
+            FLINT_ASSERT(Auf->exp[i] == 1);
+            _nmod_mpoly_set_nmod_poly(Af->coeffs + i, Abits,
+                             Auf->p[i].coeffs, Auf->p[i].length, perm[0], ctx);
         }
 
-        nmod_mpoly_clear(tt, ctx);
         nmod_poly_clear(Au);
-        nmod_poly_factor_clear(fu);
+        nmod_poly_factor_clear(Auf);
 
         success = 1;
     }
     else if (mvars == 2)
     {
-        success = _irreducible_bivar_factors_smprime(f, A, perm[0], perm[1], ctx);
-		if (!success)
-	        success = _irreducible_bivar_factors_lgprime(f, A, perm[0], perm[1], ctx);
+        n_poly_t c;
+        n_bpoly_t Ab;
+        n_tpoly_t Abf;
+
+        n_poly_init(c);
+        n_bpoly_init(Ab);
+        n_tpoly_init(Abf);
+
+        nmod_mpoly_get_bpoly(Ab, A, perm[0], perm[1], ctx);
+        success = n_bpoly_mod_factor_smprime(c, Abf, Ab, 1, ctx->ffinfo->mod);
+        if (!success)
+        {
+            nmod_mpoly_get_bpoly(Ab, A, perm[0], perm[1], ctx);
+            n_bpoly_mod_factor_lgprime(c, Abf, Ab, ctx->ffinfo->mod);
+        }
+
+        FLINT_ASSERT(n_poly_degree(c) == 0);
+
+        nmod_mpolyv_fit_length(Af, Abf->length, ctx);
+        Af->length = Abf->length;
+        for (i = 0; i < Abf->length; i++)
+        {
+            nmod_mpoly_set_bpoly(Af->coeffs + i, Abits, Abf->coeffs + i,
+                                                        perm[0], perm[1], ctx);
+            nmod_mpoly_make_monic(Af->coeffs + i, Af->coeffs + i, ctx);
+        }
+
+        n_poly_clear(c);
+        n_bpoly_clear(Ab);
+        n_tpoly_clear(Abf);
     }
     else
     {
-		nmod_mpoly_ctx_t lctx;
-		nmod_mpoly_t Al, B;
-		nmod_mpoly_factor_t Amfactors;
+		nmod_mpoly_ctx_t Lctx;
+		nmod_mpoly_t L;
+		nmod_mpolyv_t Lf;
 
-		nmod_mpoly_ctx_init(lctx, mvars, ORD_LEX, ctx->ffinfo->mod.n);
-		nmod_mpoly_init(Al, lctx);
-        nmod_mpoly_init(B, ctx);
-		nmod_mpoly_factor_init(Amfactors, lctx);
+		nmod_mpoly_ctx_init(Lctx, mvars, ORD_LEX, ctx->ffinfo->mod.n);
+		nmod_mpoly_init(L, Lctx);
+		nmod_mpolyv_init(Lf, Lctx);
 
-		nmod_mpoly_convert_perm(Al, A->bits, lctx, A, ctx, perm);
+        Lbits = mpoly_fix_bits(Lbits + 1, Lctx->minfo);
 
-		success = _irreducible_mvar_factors_smprime(Amfactors, Al, lctx);
+		nmod_mpoly_convert_perm(L, Lbits, Lctx, A, ctx, perm);
+        nmod_mpoly_make_monic(L, L, ctx);
+
+		success = nmod_mpoly_factor_irred_smprime_default(Lf, L, Lctx);
         if (!success)
         {
-    		success = _irreducible_mvar_factors_lgprime(Amfactors, Al, lctx);
+    		success = nmod_mpoly_factor_irred_lgprime_default(Lf, L, Lctx);
         }
 
 		if (success)
         {
-            nmod_mpoly_factor_one(f, ctx);
-		    for (i = 0; i < Amfactors->num; i++)
+            nmod_mpolyv_fit_length(Af, Lf->length, ctx);
+            Af->length = Lf->length;
+		    for (i = 0; i < Lf->length; i++)
 		    {
-			    nmod_mpoly_convert_perm(B, A->bits, ctx, Amfactors->poly + i, lctx, iperm);
-                nmod_mpoly_make_monic(B, B, ctx);
-			    nmod_mpoly_factor_append_fmpz(f, B, Amfactors->exp + i, ctx);
+                nmod_mpoly_convert_perm(Af->coeffs + i, Abits, ctx,
+                                                  Lf->coeffs + i, Lctx, iperm);
+                nmod_mpoly_make_monic(Af->coeffs + i, Af->coeffs + i, ctx);
 		    }
         }
 
-	    nmod_mpoly_factor_clear(Amfactors, lctx);
-	    nmod_mpoly_clear(B, ctx);
-	    nmod_mpoly_clear(Al, lctx);
-	    nmod_mpoly_ctx_clear(lctx);
+	    nmod_mpolyv_clear(Lf, Lctx);
+	    nmod_mpoly_clear(L, Lctx);
+	    nmod_mpoly_ctx_clear(Lctx);
     }
 
 cleanup:
@@ -3875,128 +2037,23 @@ cleanup:
     nmod_mpoly_clear(nzdpoly, ctx);
 
     flint_free(Adegs);
-    flint_free(perm);
-    flint_free(iperm);
-	flint_free(shift);
-    flint_free(stride);
+
+#if WANT_ASSERT
+    if (success)
+    {
+        nmod_mpoly_t prod;
+        nmod_mpoly_init(prod, ctx);
+        nmod_mpoly_one(prod, ctx);
+        for (i = 0; i < Af->length; i++)
+            nmod_mpoly_mul(prod, prod, Af->coeffs + i, ctx);
+        FLINT_ASSERT(nmod_mpoly_equal(prod, Aorg, ctx));
+        nmod_mpoly_clear(prod, ctx);
+        nmod_mpoly_clear(Aorg, ctx);
+    }
+#endif
 
     return success;
 }
-
-
-
-static int _squarefree_factors(
-	nmod_mpoly_factor_t f,
-	const nmod_mpoly_t A,
-	const nmod_mpoly_ctx_t ctx)
-{
-	int success;
-	slong var;
-    ulong k;
-	fmpz * shift, * stride;
-	nmod_mpoly_factor_t tempf;
-	fmpz_t g, gr, p, pk;
-    nmod_mpoly_t B, C, U, V, W, G;
-
-    nmod_mpoly_init(B, ctx);
-    nmod_mpoly_init(C, ctx);
-    nmod_mpoly_init(U, ctx);
-    nmod_mpoly_init(V, ctx);
-    nmod_mpoly_init(W, ctx);
-    nmod_mpoly_init(G, ctx);
-
-	fmpz_init_set_ui(p, ctx->ffinfo->mod.n);
-	fmpz_init(pk);
-	fmpz_init(g);
-	fmpz_init(gr);
-	nmod_mpoly_factor_init(tempf, ctx);
-	shift = _fmpz_vec_init(ctx->minfo->nvars);
-	stride = _fmpz_vec_init(ctx->minfo->nvars);
-
-	nmod_mpoly_factor_one(f, ctx);
-	nmod_mpoly_set(C, A, ctx);
-
-	for (var = 0; var < ctx->minfo->nvars; var++)
-	{
-        nmod_mpoly_derivative(G, C, var, ctx);
-        success = nmod_mpoly_gcd_cofactors(C, W, V, C, G, ctx);
-        if (!success)
-            goto cleanup;
-
-        for (k = 1; k + 1 < ctx->ffinfo->mod.n &&
-                            !(nmod_mpoly_derivative(G, W, var, ctx),
-                              nmod_mpoly_sub(U, V, G, ctx),
-                              nmod_mpoly_is_zero(U, ctx)); k++)
-        {
-            success = nmod_mpoly_gcd_cofactors(G, W, V, W, U, ctx);
-            if (!success)
-	            goto cleanup;
-
-            nmod_mpoly_factor_mul_mpoly_ui(f, G, k, ctx);
-
-            if (!nmod_mpoly_is_one(W, ctx))
-            {
-                success = nmod_mpoly_divides(U, C, W, ctx); FLINT_ASSERT(success);
-                nmod_mpoly_swap(C, U, ctx);
-            }
-        }
-
-        nmod_mpoly_factor_mul_mpoly_ui(f, W, k, ctx);
-	}
-
-	if (nmod_mpoly_is_ui(C, ctx))
-	{
-		f->constant = nmod_mul(f->constant, nmod_mpoly_get_ui(C, ctx), ctx->ffinfo->mod);
-	}
-	else
-	{
-		nmod_mpoly_deflation(shift, stride, C, ctx);
-		fmpz_zero(g);
-		for (var = 0; var < ctx->minfo->nvars; var++)
-		{
-			fmpz_gcd(g, g, stride + var);
-			fmpz_gcd(g, g, shift + var);
-		}
-
-		FLINT_ASSERT(fmpz_remove(gr, g, p) > 0);
-		fmpz_pow_ui(pk, p, fmpz_remove(gr, g, p));
-		for (var = 0; var < ctx->minfo->nvars; var++)
-		{
-			fmpz_set(stride + var, pk);
-			fmpz_zero(shift + var);
-		}
-
-		nmod_mpoly_deflate(C, C, shift, stride, ctx);
-
-		success = _squarefree_factors(tempf, C, ctx);
-		if (!success)
-			goto cleanup;
-
-		nmod_mpoly_factor_pow_fmpz(tempf, tempf, pk, ctx);
-		nmod_mpoly_factor_mul_pairwise_prime(f, f, tempf, ctx);
-	}
-
-	success = 1;
-
-cleanup:
-
-    nmod_mpoly_clear(C, ctx);
-    nmod_mpoly_clear(U, ctx);
-    nmod_mpoly_clear(V, ctx);
-    nmod_mpoly_clear(W, ctx);
-    nmod_mpoly_clear(G, ctx);
-
-	fmpz_clear(p);
-	fmpz_clear(pk);
-	fmpz_clear(g);
-	fmpz_clear(gr);
-	nmod_mpoly_factor_clear(tempf, ctx);
-	_fmpz_vec_clear(shift, ctx->minfo->nvars);
-	_fmpz_vec_clear(stride, ctx->minfo->nvars);
-
-	return success;
-}
-
 
 
 int nmod_mpoly_factor(
@@ -4005,129 +2062,43 @@ int nmod_mpoly_factor(
     const nmod_mpoly_ctx_t ctx)
 {
     int success;
-    slong j, v;
-    nmod_mpoly_t c;
-    nmod_mpoly_univar_t u;
-    nmod_mpoly_factor_t newf, tempf;
-/*
-flint_printf("nmod_mpoly_factor called\nA: "); nmod_mpoly_print_pretty(A, NULL, ctx); printf("\n");
-*/
-    /* 0. set trivial factorization */
-    f->num = 0;
-    if (nmod_mpoly_is_ui(A, ctx))
-    {
-		f->constant = nmod_mpoly_get_ui(A, ctx);
-        return 1;
-    }
-    else
-    {
-        FLINT_ASSERT(A->length > 0);
-		f->constant = A->coeffs[0];
-		nmod_mpoly_factor_fit_length(f, 1, ctx);
-		nmod_mpoly_scalar_mul_ui(f->poly + 0, A,
-                                 nmod_inv(f->constant, ctx->ffinfo->mod), ctx);
-		fmpz_one(f->exp + 0);
-		f->num = 1;
-    }
+    slong i, j;
+    nmod_mpolyv_t t;
+    nmod_mpoly_factor_t g;
 
-    if (A->bits > FLINT_BITS)
-    {
-        return 0;
-    }
+    nmod_mpolyv_init(t, ctx);
+    nmod_mpoly_factor_init(g, ctx);
 
-    nmod_mpoly_factor_init(newf, ctx);
-    nmod_mpoly_factor_init(tempf, ctx);
-    nmod_mpoly_univar_init(u, ctx);
-    nmod_mpoly_init(c, ctx);
+    success = nmod_mpoly_factor_squarefree(f, A, ctx);
+    if (!success)
+        goto cleanup;
 
-    /* 1. ensure factors are primitive w.r.t any variable */
-    FLINT_ASSERT(nmod_mpoly_factor_matches(A, f, ctx));
-
-    for (v = 0; v < ctx->minfo->nvars; v++)
-    {
-        newf->constant = f->constant;
-        newf->num = 0;
-        for (j = 0; j < f->num; j++)
-        {
-            if (fmpz_is_one(f->exp + j))
-            {
-                nmod_mpoly_to_univar(u, f->poly + j, v, ctx);
-                FLINT_ASSERT(u->length > 0);
-
-                success = nmod_mpoly_univar_content_mpoly(c, u, ctx);
-                if (!success)
-                    goto cleanup;
-
-                nmod_mpoly_univar_divexact_mpoly(u, c, ctx);
-
-                nmod_mpoly_factor_mul_mpoly_ui(newf, c, 1, ctx);
-
-                if (u->exps[u->length - 1] != 0)
-                {
-                    nmod_mpoly_gen(c, v, ctx);
-                    nmod_mpoly_factor_append_ui(newf, c, u->exps[u->length - 1], ctx);
-                    nmod_mpoly_univar_shift_right(u, u->exps[u->length - 1], ctx);
-                }
-
-                if (u->length > 1)
-                {
-                    nmod_mpoly_from_univar_bits(c, A->bits, u, v, ctx);
-                    nmod_mpoly_factor_append_ui(newf, c, 1, ctx);
-                }
-                else
-                {
-                    FLINT_ASSERT(nmod_mpoly_is_one(u->coeffs + 0, ctx));
-                }
-            }
-            else
-            {
-                FLINT_ASSERT(fmpz_sgn(f->exp + j) > 0);
-                nmod_mpoly_factor_append_fmpz(newf, f->poly + j, f->exp + j, ctx);
-            }
-        }
-
-        nmod_mpoly_factor_swap(f, newf, ctx);
-    }
-
-    /* 2. ensure factors are squarefree */
-    FLINT_ASSERT(nmod_mpoly_factor_matches(A, f, ctx));
-	FLINT_ASSERT(nmod_mpoly_factor_is_pairwise_prime(f, ctx) != 0);
-
-    newf->constant = f->constant;
-    newf->num = 0;
+    g->constant = f->constant;
+    g->num = 0;
     for (j = 0; j < f->num; j++)
     {
-		success = _squarefree_factors(tempf, f->poly + j, ctx);
-		if (!success)
-			goto cleanup;
-		nmod_mpoly_factor_mul_factor_fmpz(newf, tempf, f->exp + j, ctx);
-    }
-    nmod_mpoly_factor_swap(f, newf, ctx);
-
-    /* 3. ensure factors are irreducible */
-    FLINT_ASSERT(nmod_mpoly_factor_matches(A, f, ctx));
-
-    newf->constant = f->constant;
-    newf->num = 0;
-    for (j = 0; j < f->num; j++)
-    {
-        success = _irreducible_factors(tempf, f->poly + j, ctx);
+        success = _irreducible_factors(t, f->poly + j, ctx);
         if (!success)
             goto cleanup;
-        nmod_mpoly_factor_mul_factor_fmpz(newf, tempf, f->exp + j, ctx);
+
+        nmod_mpoly_factor_fit_length(g, g->num + t->length, ctx);
+        for (i = 0; i < t->length; i++)
+        {
+            fmpz_set(g->exp + g->num, f->exp + j);
+            nmod_mpoly_swap(g->poly + g->num, t->coeffs + i, ctx);
+            g->num++;
+        }
     }
-    nmod_mpoly_factor_swap(f, newf, ctx);
+    nmod_mpoly_factor_swap(f, g, ctx);
 
     success = 1;
 
 cleanup:
 
-    nmod_mpoly_factor_clear(tempf, ctx);
-    nmod_mpoly_factor_clear(newf, ctx);
-    nmod_mpoly_univar_clear(u, ctx);
-    nmod_mpoly_clear(c, ctx);
+    nmod_mpolyv_clear(t, ctx);
+    nmod_mpoly_factor_clear(g, ctx);
 
-    FLINT_ASSERT(nmod_mpoly_factor_matches(A, f, ctx));
+    FLINT_ASSERT(!success || nmod_mpoly_factor_matches(A, f, ctx));
 
     return success;
 }

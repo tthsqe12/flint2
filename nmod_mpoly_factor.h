@@ -31,6 +31,49 @@
  extern "C" {
 #endif
 
+
+/*****************************************************************************/
+
+FLINT_DLL int mpoly_is_poly(
+    const ulong * Aexps,
+    slong Alen,
+    flint_bitcnt_t Abits,
+    slong var,
+    const mpoly_ctx_t mctx);
+
+FLINT_DLL int nmod_mpoly_is_nmod_poly(
+    const nmod_mpoly_t A,
+    slong var,
+    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int nmod_mpoly_get_nmod_poly(
+    nmod_poly_t A,
+    const nmod_mpoly_t B,
+    slong var,
+    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void nmod_mpoly_fit_length_set_bits(
+    nmod_mpoly_t A,
+    slong len,
+    flint_bitcnt_t bits,
+    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void _nmod_mpoly_set_nmod_poly(
+    nmod_mpoly_t A,
+    flint_bitcnt_t Abits,
+    const mp_limb_t * Bcoeffs,
+    slong Blen,
+    slong var,
+    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void nmod_mpoly_set_nmod_poly(
+    nmod_mpoly_t A,
+    const nmod_poly_t B,
+    slong var,
+    const nmod_mpoly_ctx_t ctx);
+
+/*****************************************************************************/
+
 typedef struct {
     mp_limb_t constant;
     nmod_mpoly_struct * poly;
@@ -86,6 +129,18 @@ FLINT_DLL void nmod_mpoly_factor_sort(nmod_mpoly_factor_t f,
 
 FLINT_DLL int nmod_mpoly_factor_expand(nmod_mpoly_t A,
                       const nmod_mpoly_factor_t f, const nmod_mpoly_ctx_t ctx);
+
+NMOD_MPOLY_FACTOR_INLINE
+int nmod_mpoly_factor_matches(const nmod_mpoly_t a, const nmod_mpoly_factor_t f, const nmod_mpoly_ctx_t ctx)
+{
+    int matches;
+    nmod_mpoly_t t;
+    nmod_mpoly_init(t, ctx);
+    nmod_mpoly_factor_expand(t, f, ctx);
+    matches = nmod_mpoly_equal(t, a, ctx);
+    nmod_mpoly_clear(t, ctx);
+    return matches;
+}
 
 FLINT_DLL int nmod_mpoly_factor_fix_units(nmod_mpoly_factor_t f,
                                                    const nmod_mpoly_ctx_t ctx);
@@ -169,6 +224,43 @@ FLINT_DLL void nmod_mpolyv_print_pretty(const nmod_mpolyv_t poly,
 FLINT_DLL void nmod_mpolyv_fit_length(nmod_mpolyv_t A, slong length,
                                                    const nmod_mpoly_ctx_t ctx);
 
+/*****************************************************************************/
+
+FLINT_DLL int nmod_mpoly_univar_content_mpoly(
+    nmod_mpoly_t g,
+    const nmod_mpoly_univar_t A,
+    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void nmod_mpoly_univar_divexact_mpoly(
+    nmod_mpoly_univar_t A,
+    const nmod_mpoly_t b,
+    const nmod_mpoly_ctx_t ctx);
+
+/*****************************************************************************/
+
+FLINT_DLL int nmod_mpoly_factor_irred_smprime_default(
+    nmod_mpolyv_t fac,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int nmod_mpoly_factor_irred_lgprime_default(
+    nmod_mpolyv_t fac,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int nmod_irreducible_bivar_factors_smprime(
+    nmod_mpoly_factor_t fac,
+    const nmod_mpoly_t A,
+    slong xvar,
+    slong yvar,
+    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int nmod_irreducible_bivar_factors_lgprime(
+    nmod_mpoly_factor_t fac,
+    const nmod_mpoly_t A,
+    slong xvar,
+    slong yvar,
+    const nmod_mpoly_ctx_t ctx);
 
 /*****************************************************************************/
 
@@ -441,8 +533,14 @@ NMOD_MPOLY_FACTOR_INLINE
 void n_poly_mod_scalar_mul_nmod(n_poly_t A, const n_poly_t B, mp_limb_t c,
                                                                     nmod_t mod)
 {
+    slong i;
+    FLINT_ASSERT(B->length <= B->alloc);
     n_poly_fit_length(A, B->length);
+    for (i = 0; i < B->length; i++)
+        A->coeffs[i] = nmod_mul(B->coeffs[i], c, mod);
+/*
     _nmod_vec_scalar_mul_nmod(A->coeffs, B->coeffs, B->length, c, mod);
+*/
     A->length = B->length;
 }
 
@@ -829,19 +927,23 @@ FLINT_DLL void n_bpoly_set(n_bpoly_t A, const n_bpoly_t B);
 
 FLINT_DLL void n_bpoly_one(n_bpoly_t A);
 
-FLINT_DLL void n_bpoly_set_coeff(n_bpoly_t A, slong e0, slong e1, mp_limb_t c);
-
-FLINT_DLL void n_bpoly_set_coeff_nonzero(n_bpoly_t A, slong xi, slong yi, mp_limb_t c);
-
 FLINT_DLL int n_bpoly_equal(const n_bpoly_t A, const n_bpoly_t B);
 
 FLINT_DLL int n_bpoly_mod_is_canonical(const n_bpoly_t A, nmod_t mod);
 
-FLINT_DLL void n_bpoly_mod_sub(n_bpoly_t A, const n_bpoly_t B,
-                                                const n_bpoly_t C, nmod_t mod);
+FLINT_DLL void n_bpoly_set_coeff(n_bpoly_t A, slong e0, slong e1, mp_limb_t c);
 
-FLINT_DLL void n_bpoly_mod_mul(n_bpoly_t A, const n_bpoly_t B,
-                                                const n_bpoly_t C, nmod_t mod);
+FLINT_DLL void n_bpoly_set_coeff_nonzero(n_bpoly_t A, slong e0, slong e1,
+                                                                  mp_limb_t c);
+
+NMOD_MPOLY_FACTOR_INLINE
+mp_limb_t n_bpoly_get_coeff(const n_bpoly_t A, slong e0, slong e1)
+{
+    if (e0 >= A->length)
+        return 0;
+    else
+        return n_poly_get_coeff(A->coeffs + e0, e1);
+}
 
 NMOD_MPOLY_FACTOR_INLINE
 slong n_bpoly_degree0(const n_bpoly_t A)
@@ -851,12 +953,78 @@ slong n_bpoly_degree0(const n_bpoly_t A)
 
 FLINT_DLL slong n_bpoly_degree1(const n_bpoly_t A);
 
-FLINT_DLL int n_bpoly_mod_is_canonical(const n_bpoly_t A, nmod_t mod);
+FLINT_DLL void n_bpoly_set_poly_var1(n_bpoly_t A, const n_poly_t B);
 
-FLINT_DLL int n_bpoly_equal(const n_bpoly_t A, const n_bpoly_t B);
+FLINT_DLL void n_bpoly_set_poly_var0(n_bpoly_t A, const n_poly_t B);
+
+FLINT_DLL void n_bpoly_mod_taylor_shift_var1(n_bpoly_t A, mp_limb_t c,
+                                                                   nmod_t ctx);
+
+FLINT_DLL void n_bpoly_mod_taylor_shift_var0(n_bpoly_t A, mp_limb_t c,
+                                                                   nmod_t ctx);
+
+FLINT_DLL void n_bpoly_mod_sub(n_bpoly_t A, const n_bpoly_t B,
+                                                const n_bpoly_t C, nmod_t ctx);
+
+FLINT_DLL void n_bpoly_mod_make_primitive(n_poly_t g, n_bpoly_t A, nmod_t ctx);
 
 FLINT_DLL void n_bpoly_mod_mul(n_bpoly_t A, const n_bpoly_t B,
-                                                const n_bpoly_t C, nmod_t mod);
+                                                const n_bpoly_t C, nmod_t ctx);
+
+FLINT_DLL void n_bpoly_mod_mullow(n_bpoly_t A, const n_bpoly_t B,
+                                   const n_bpoly_t C, slong order, nmod_t ctx);
+
+FLINT_DLL int n_bpoly_mod_divides(n_bpoly_t Q, const n_bpoly_t A,
+                                                const n_bpoly_t B, nmod_t mod);
+
+FLINT_DLL void nmod_mpoly_get_bpoly(n_bpoly_t A, const nmod_mpoly_t B,
+                           slong var0, slong var1, const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void nmod_mpoly_set_bpoly(nmod_mpoly_t A, flint_bitcnt_t Abits,
+        const n_bpoly_t B, slong var0, slong var1, const nmod_mpoly_ctx_t ctx);
+
+
+typedef struct
+{
+    n_bpoly_struct * coeffs;
+    slong alloc;
+    slong length;
+} n_tpoly_struct;
+
+typedef n_tpoly_struct n_tpoly_t[1];
+
+NMOD_MPOLY_FACTOR_INLINE
+void n_tpoly_init(n_tpoly_t A)
+{
+    A->coeffs = NULL;
+    A->alloc = 0;
+    A->length = 0;
+}
+
+NMOD_MPOLY_FACTOR_INLINE
+void n_tpoly_swap(n_tpoly_t A, n_tpoly_t B)
+{
+    n_tpoly_struct t = *A;
+    *A = *B;
+    *B = t;
+}
+
+FLINT_DLL void n_tpoly_fit_length(n_tpoly_t A, slong len);
+
+FLINT_DLL void n_tpoly_clear(n_tpoly_t A);
+
+FLINT_DLL int n_bpoly_mod_factor_smprime(
+    n_poly_t c,
+    n_tpoly_t F,
+    n_bpoly_t B,
+    int allow_shift,
+    nmod_t ctx);
+
+FLINT_DLL void n_bpoly_mod_factor_lgprime(
+    n_poly_t c,
+    n_tpoly_t F,
+    n_bpoly_t B,
+    nmod_t ctx);
 
 
 /*****************************************************************************/

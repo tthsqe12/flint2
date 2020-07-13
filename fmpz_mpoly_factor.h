@@ -32,8 +32,28 @@
  extern "C" {
 #endif
 
+/*****************************************************************************/
+
+FLINT_DLL void fmpz_mpoly_fit_length_set_bits(fmpz_mpoly_t A, slong len,
+                              flint_bitcnt_t bits, const fmpz_mpoly_ctx_t ctx);
+
+FLINT_DLL int fmpz_mpoly_is_fmpz_poly(const fmpz_mpoly_t A, slong var,
+                                                   const fmpz_mpoly_ctx_t ctx);
+
+FLINT_DLL int fmpz_mpoly_get_fmpz_poly(fmpz_poly_t A, const fmpz_mpoly_t B,
+                                        slong var, const fmpz_mpoly_ctx_t ctx);
+
+FLINT_DLL void _fmpz_mpoly_set_fmpz_poly(fmpz_mpoly_t A, flint_bitcnt_t Abits,
+      const fmpz * Bcoeffs, slong Blen, slong var, const fmpz_mpoly_ctx_t ctx);
+
+FLINT_DLL void fmpz_mpoly_set_fmpz_poly(fmpz_mpoly_t A, const fmpz_poly_t B,
+                                          slong v, const fmpz_mpoly_ctx_t ctx);
+
+/*****************************************************************************/
+
 typedef struct {
     fmpz_t constant;
+    fmpz_t constant_den;        /* currently unused, makes an even 48 bytes */
     fmpz_mpoly_struct * poly;
     fmpz * exp;
     slong num;
@@ -224,28 +244,13 @@ void fmpz_mpoly_factor_append_ui(
     f->num = i + 1;
 }
 
+/*****************************************************************************/
+
 FLINT_DLL int fmpz_mpoly_univar_content_mpoly(fmpz_mpoly_t g,
                       const fmpz_mpoly_univar_t A, const fmpz_mpoly_ctx_t ctx);
 
 FLINT_DLL void fmpz_mpoly_univar_divexact_mpoly(fmpz_mpoly_univar_t A,
                              const fmpz_mpoly_t b, const fmpz_mpoly_ctx_t ctx);
-
-/*****************************************************************************/
-
-FLINT_DLL void fmpz_mpoly_fit_length_set_bits(fmpz_mpoly_t A, slong len,
-                              flint_bitcnt_t bits, const fmpz_mpoly_ctx_t ctx);
-
-FLINT_DLL int fmpz_mpoly_is_fmpz_poly(const fmpz_mpoly_t A, slong var,
-                                                   const fmpz_mpoly_ctx_t ctx);
-
-FLINT_DLL int fmpz_mpoly_get_fmpz_poly(fmpz_poly_t A, const fmpz_mpoly_t B,
-                                        slong var, const fmpz_mpoly_ctx_t ctx);
-
-FLINT_DLL void _fmpz_mpoly_set_fmpz_poly(fmpz_mpoly_t A, flint_bitcnt_t Abits,
-            fmpz * Bcoeffs, slong Blen, slong var, const fmpz_mpoly_ctx_t ctx);
-
-FLINT_DLL void fmpz_mpoly_set_fmpz_poly(fmpz_mpoly_t A, fmpz_poly_t B,
-                                          slong v, const fmpz_mpoly_ctx_t ctx);
 
 /*****************************************************************************/
 
@@ -408,6 +413,21 @@ void fmpz_bpoly_zero(fmpz_bpoly_t A)
 FLINT_DLL void fmpz_bpoly_set_coeff(fmpz_bpoly_t A, slong exp0, slong exp1,
                                                                const fmpz_t c);
 
+FLINT_DLL void fmpz_mpoly_set_fmpz_bpoly(
+    fmpz_mpoly_t A,
+    flint_bitcnt_t Abits,
+    const fmpz_bpoly_t B,
+    slong var0,
+    slong var1,
+    const fmpz_mpoly_ctx_t ctx);
+
+FLINT_DLL void fmpz_mpoly_get_bpoly(
+    fmpz_bpoly_t A,
+    const fmpz_mpoly_t B,
+    slong var0,
+    slong var1,
+    const fmpz_mpoly_ctx_t ctx);
+
 typedef struct
 {
     fmpz_bpoly_struct * coeffs;
@@ -433,6 +453,8 @@ void fmpz_tpoly_swap(fmpz_tpoly_t A, fmpz_tpoly_t B)
     *B = t;
 }
 
+FLINT_DLL void fmpz_tpoly_fit_length(fmpz_tpoly_t A, slong len);
+
 FLINT_DLL void fmpz_tpoly_clear(fmpz_tpoly_t A);
 
 FLINT_DLL void fmpz_bpoly_factor(fmpz_poly_t c, fmpz_tpoly_t F, fmpz_bpoly_t B);
@@ -447,9 +469,6 @@ void fmpz_mpoly_unit_normalize(fmpz_mpoly_t A, const fmpz_mpoly_ctx_t ctx)
         fmpz_mpoly_neg(A, A, ctx);
 }
 
-FLINT_DLL int fmpz_mpoly_factor_irred_bivar(fmpz_mpoly_factor_t fac,
-    const fmpz_mpoly_t A, slong var0, slong var1,  const fmpz_mpoly_ctx_t ctx);
-
 FLINT_DLL int fmpz_mpoly_factor_lcc_wang(
     fmpz_mpolyv_t lc_divs,
     const fmpz_mpoly_factor_t lcAfac,
@@ -458,19 +477,19 @@ FLINT_DLL int fmpz_mpoly_factor_lcc_wang(
     const fmpz_mpoly_ctx_t ctx);
 
 FLINT_DLL int fmpz_mpoly_factor_irred_default(
-    fmpz_mpoly_factor_t fac,
+    fmpz_mpolyv_t fac,
     const fmpz_mpoly_t A,
     const fmpz_mpoly_ctx_t ctx);
 
 FLINT_DLL int fmpz_mpoly_factor_irred_wang(
-    fmpz_mpoly_factor_t fac,
+    fmpz_mpolyv_t fac,
     const fmpz_mpoly_t A,
     const fmpz_mpoly_factor_t lcAfac,
     const fmpz_mpoly_t lcA,
     const fmpz_mpoly_ctx_t ctx);
 
-FLINT_DLL int fmpz_mpoly_factor_irred_tuncer(
-    fmpz_mpoly_factor_t fac,
+FLINT_DLL int fmpz_mpoly_factor_irred_zippel(
+    fmpz_mpolyv_t fac,
     const fmpz_mpoly_t A,
     const fmpz_mpoly_factor_t lcAfac,
     const fmpz_mpoly_t lcA,

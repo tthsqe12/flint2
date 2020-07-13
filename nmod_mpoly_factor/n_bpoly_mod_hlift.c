@@ -11,32 +11,6 @@
 
 #include "nmod_mpoly_factor.h"
 
-
-void n_bpoly_mod_taylor_shift_var0(n_bpoly_t A, mp_limb_t c, nmod_t mod)
-{
-    slong n, i, j;
-    n_poly_t t;
-
-    FLINT_ASSERT(c < mod.n);
-
-    if (c == 0)
-        return;
-
-    n_poly_init(t);
-    n = A->length;
-
-    for (i = n - 2; i >= 0; i--)
-    {
-        for (j = i; j < n - 1; j++)
-        {
-            n_poly_mod_scalar_mul_nmod(t, A->coeffs + j + 1, c, mod);
-            n_poly_mod_add(A->coeffs + j, A->coeffs + j, t, mod);
-        }
-    }
-
-    n_poly_clear(t);
-}
-
 /*
     input A, B0, B1 with A(y,x) = B0(y,x) * B1(y,x) mod (y-alpha)
     return

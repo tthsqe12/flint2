@@ -31,6 +31,14 @@
  extern "C" {
 #endif
 
+FLINT_DLL int fq_nmod_partial_fraction_coeffs(
+    slong r,
+    fq_nmod_poly_struct * out,
+    const fq_nmod_poly_struct * f,
+    const fq_nmod_ctx_t ectx);
+
+/*****************************************************************************/
+
 void fq_nmod_mpoly_evaluate_one_fq_nmod(
     fq_nmod_mpoly_t A,
     const fq_nmod_mpoly_t B,
@@ -99,6 +107,18 @@ FLINT_DLL int fq_nmod_mpoly_factor_expand(fq_nmod_mpoly_t A,
                 const fq_nmod_mpoly_factor_t f, const fq_nmod_mpoly_ctx_t ctx);
 
 
+FQ_NMOD_MPOLY_FACTOR_INLINE
+int fq_nmod_mpoly_factor_matches(const fq_nmod_mpoly_t a, const fq_nmod_mpoly_factor_t f, const fq_nmod_mpoly_ctx_t ctx)
+{
+    int matches;
+    fq_nmod_mpoly_t t;
+    fq_nmod_mpoly_init(t, ctx);
+    fq_nmod_mpoly_factor_expand(t, f, ctx);
+    matches = fq_nmod_mpoly_equal(t, a, ctx);
+    fq_nmod_mpoly_clear(t, ctx);
+    return matches;
+}
+
 FLINT_DLL void _fq_nmod_mpoly_get_lc(
     fq_nmod_mpoly_t c,
     const fq_nmod_mpoly_t A,
@@ -108,6 +128,18 @@ FLINT_DLL void _fq_nmod_mpoly_set_lc(
     fq_nmod_mpoly_t A,
     const fq_nmod_mpoly_t B,
     const fq_nmod_mpoly_t c,
+    const fq_nmod_mpoly_ctx_t ctx);
+
+/*****************************************************************************/
+
+FLINT_DLL int fq_nmod_mpoly_univar_content_mpoly(
+    fq_nmod_mpoly_t g,
+    const fq_nmod_mpoly_univar_t A,
+    const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void fq_nmod_mpoly_univar_divexact_mpoly(
+    fq_nmod_mpoly_univar_t A,
+    const fq_nmod_mpoly_t b,
     const fq_nmod_mpoly_ctx_t ctx);
 
 /*****************************************************************************/

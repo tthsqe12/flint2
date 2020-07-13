@@ -14,9 +14,9 @@
 
 
 static int _try_lift(
-    fmpz_mpoly_factor_t qfac,
+    fmpz_mpolyv_t qfac,
     const fmpz_mpoly_t q,
-    const fmpz_mpoly_factor_t pfac,
+    const fmpz_mpolyv_t pfac,
     const fmpz_mpoly_t p,
     slong m,
     fmpz * alpha,
@@ -29,7 +29,7 @@ static int _try_lift(
     fmpz_mpoly_t lcq, lcp, t, newq;
     fmpz_mpoly_univar_t u;
 
-    FLINT_ASSERT(pfac->num > 1);
+    FLINT_ASSERT(pfac->length > 1);
 
     newdeg = (slong *) flint_malloc((n + 1)*sizeof(slong));
     fmpz_mpoly_init(lcq, ctx);
@@ -38,50 +38,58 @@ static int _try_lift(
     fmpz_mpoly_init(newq, ctx);
     fmpz_mpoly_univar_init(u, ctx);
 
-    FLINT_ASSERT(fmpz_is_one(pfac->constant));
-    FLINT_ASSERT(fmpz_mpoly_factor_matches(p, pfac, ctx));
+#if WANT_ASSERT
+    fmpz_mpoly_one(t, ctx);
+    for (i = 0; i < pfac->length; i++)
+        fmpz_mpoly_mul(t, t, pfac->coeffs + i, ctx);
+    FLINT_ASSERT(fmpz_mpoly_equal(t, p, ctx));
+#endif
 
     _fmpz_mpoly_get_lead0(lcq, q, ctx);
     fmpz_mpoly_evaluate_one_fmpz(lcp, lcq, m, alpha + m - 1, ctx);
 
     FLINT_ASSERT(lcp->length > 0);
 
-    fmpz_mpoly_pow_ui(t, lcq, pfac->num - 1, ctx);
+    fmpz_mpoly_pow_ui(t, lcq, pfac->length - 1, ctx);
     fmpz_mpoly_mul(newq, q, t, ctx);
-    fmpz_mpoly_degrees_si(newdeg, newq, ctx);
 
-    fmpz_set(qfac->constant, pfac->constant);
-    fmpz_mpoly_factor_fit_length(qfac, pfac->num, ctx);
-    qfac->num = pfac->num;
-    for (i = 0; i < pfac->num; i++)
+    if (newq->bits > FLINT_BITS)
     {
-        _fmpz_mpoly_get_lead0(t, pfac->poly + i, ctx);
-        success = fmpz_mpoly_divides(t, lcp, t, ctx);
-        FLINT_ASSERT(success);
-        fmpz_mpoly_mul(qfac->poly + i, pfac->poly + i, t, ctx);
-        _fmpz_mpoly_set_lead0(qfac->poly + i, qfac->poly + i, lcq, ctx);
-        fmpz_one(qfac->exp + i);
+        success = -1;
+        goto cleanup;
     }
 
-    success = fmpz_mpoly_hlift(m, qfac->poly, qfac->num,
+    fmpz_mpoly_degrees_si(newdeg, newq, ctx);
+
+    fmpz_mpolyv_fit_length(qfac, pfac->length, ctx);
+    qfac->length = pfac->length;
+    for (i = 0; i < pfac->length; i++)
+    {
+        _fmpz_mpoly_get_lead0(t, pfac->coeffs + i, ctx);
+        success = fmpz_mpoly_divides(t, lcp, t, ctx);
+        FLINT_ASSERT(success);
+        fmpz_mpoly_mul(qfac->coeffs + i, pfac->coeffs + i, t, ctx);
+        _fmpz_mpoly_set_lead0(qfac->coeffs + i, qfac->coeffs + i, lcq, ctx);
+    }
+
+    success = fmpz_mpoly_hlift(m, qfac->coeffs, qfac->length,
                                                      alpha, newq, newdeg, ctx);
     if (!success)
         goto cleanup;
 
-    for (i = 0; i < qfac->num; i++)
+    for (i = 0; i < qfac->length; i++)
     {
-        fmpz_mpoly_to_univar(u, qfac->poly + i, 0, ctx);
+        fmpz_mpoly_to_univar(u, qfac->coeffs + i, 0, ctx);
         success = fmpz_mpoly_univar_content_mpoly(t, u, ctx);
         if (!success)
         {
             success = -1;
             goto cleanup;
         }
-        success = fmpz_mpoly_divides(qfac->poly + i, qfac->poly + i, t, ctx);
+        success = fmpz_mpoly_divides(qfac->coeffs + i,
+                                     qfac->coeffs + i, t, ctx);
         FLINT_ASSERT(success);
-        FLINT_ASSERT(qfac->poly[i].length > 0);
-        if (fmpz_sgn(qfac->poly[i].coeffs + 0) < 0)
-            fmpz_mpoly_neg(qfac->poly + i, qfac->poly + i, ctx);
+        fmpz_mpoly_unit_normalize(qfac->coeffs + i, ctx);
     }
 
     success = 1;
@@ -95,16 +103,25 @@ cleanup:
     fmpz_mpoly_clear(newq, ctx);
     fmpz_mpoly_univar_clear(u, ctx);
 
-    /* q and its factors are primitive with positive lc */
-    FLINT_ASSERT(!success || (fmpz_is_one(qfac->constant) &&
-                              fmpz_mpoly_factor_matches(q, qfac, ctx)));
+#if WANT_ASSERT
+    if (success)
+    {
+        fmpz_mpoly_init(t, ctx);
+        fmpz_mpoly_one(t, ctx);
+        for (i = 0; i < qfac->length; i++)
+            fmpz_mpoly_mul(t, t, qfac->coeffs + i, ctx);
+        FLINT_ASSERT(fmpz_mpoly_equal(t, q, ctx));
+        fmpz_mpoly_clear(t, ctx);
+    }
+#endif
+
     return success;
 }
 
 
 /* A is square free and primitive w.r.t all variables */
 int fmpz_mpoly_factor_irred_default(
-    fmpz_mpoly_factor_t fac,
+    fmpz_mpolyv_t fac,
     const fmpz_mpoly_t A,
     const fmpz_mpoly_ctx_t ctx)
 {
@@ -115,9 +132,12 @@ int fmpz_mpoly_factor_irred_default(
     fmpz * alpha, * alphait;
     fmpz_mpoly_struct * Aevals;
     slong * deg, * degeval;
-    fmpz_mpoly_factor_t qfac, pfac, tfac, dfac;
+    fmpz_mpolyv_t qfac, pfac, tfac, dfac;
     fmpz_mpoly_t t, p, q;
     fmpz_mpoly_univar_t u;
+    fmpz_poly_t c;
+    fmpz_bpoly_t B;
+    fmpz_tpoly_t F;
 
     FLINT_ASSERT(n > 1);
     FLINT_ASSERT(A->length > 0);
@@ -131,16 +151,17 @@ int fmpz_mpoly_factor_irred_default(
     degeval = (slong *) flint_malloc((n + 1)*sizeof(slong));
     for (i = 0; i < n; i++)
         fmpz_mpoly_init(Aevals + i, ctx);
-    fmpz_mpoly_factor_init(pfac, ctx);
-    fmpz_mpoly_factor_init(qfac, ctx);
-    fmpz_mpoly_factor_init(tfac, ctx);
-    fmpz_mpoly_factor_init(dfac, ctx);
+    fmpz_mpolyv_init(pfac, ctx);
+    fmpz_mpolyv_init(qfac, ctx);
+    fmpz_mpolyv_init(tfac, ctx);
+    fmpz_mpolyv_init(dfac, ctx);
     fmpz_mpoly_init(t, ctx);
     fmpz_mpoly_init(p, ctx);
     fmpz_mpoly_init(q, ctx);
     fmpz_mpoly_univar_init(u, ctx);
-
-    fmpz_mpoly_factor_one(fac, ctx);
+    fmpz_poly_init(c);
+    fmpz_bpoly_init(B);
+    fmpz_tpoly_init(F);
 
     fmpz_mpoly_degrees_si(deg, A, ctx);
     goto got_alpha;
@@ -158,11 +179,6 @@ next_alpha:
 
 got_alpha:
 
-/*
-usleep(1000000);
-printf("alpha = "); tuple_print(alpha, n);
-*/
-
     /* ensure degrees do not drop under evaluation */
     for (i = n - 1; i >= 0; i--)
     {
@@ -179,38 +195,57 @@ printf("alpha = "); tuple_print(alpha, n);
         }
     }
 
-    /* make sure our univar is squarefree */
+    /* make sure univar is squarefree */
     fmpz_mpoly_derivative(t, Aevals + 0, 0, ctx);
     fmpz_mpoly_gcd(t, t, Aevals + 0, ctx);
     if (!fmpz_mpoly_is_fmpz(t, ctx))
         goto next_alpha;
 
-    /* make our evaluations primitive */
+    /* make evaluations primitive */
     for (i = n - 1; i > 0; i--)
     {
         fmpz_mpoly_to_univar(u, Aevals + i, 0, ctx);
-        fmpz_mpoly_univar_content_mpoly(t, u, ctx);
+        success = fmpz_mpoly_univar_content_mpoly(t, u, ctx);
+        if (!success)
+            goto cleanup;
         success = fmpz_mpoly_divides(Aevals + i, Aevals + i, t, ctx);
         FLINT_ASSERT(success);
-        FLINT_ASSERT(Aevals[i].length > 0);
-        if (fmpz_sgn(Aevals[i].coeffs + 0) < 0)
-            fmpz_mpoly_neg(Aevals + i, Aevals + i, ctx);
+        fmpz_mpoly_unit_normalize(Aevals + i, ctx);
     }
 
-    fmpz_mpoly_factor_irred_bivar(pfac, Aevals + 1, 0, 1, ctx);
+    fmpz_mpoly_get_bpoly(B, Aevals + 1, 0, 1, ctx);
+    fmpz_bpoly_factor(c, F, B);
+
+    /* c = +-1 */
+    FLINT_ASSERT(c->length == 1 && fmpz_is_pm1(c->coeffs + 0));
+
+    fmpz_mpolyv_fit_length(pfac, F->length, ctx);
+    pfac->length = F->length;
+    for (i = 0; i < F->length; i++)
+    {
+        fmpz_mpoly_set_fmpz_bpoly(pfac->coeffs + i, A->bits,
+                                                 F->coeffs + i, 0, 1, ctx);
+        fmpz_mpoly_unit_normalize(pfac->coeffs + i, ctx);
+    }
 
     for (m = 2; m <= n; m++)
     {
         fmpz_mpoly_set(q, m < n ? Aevals + m : A, ctx);
         fmpz_mpoly_set(p, Aevals + m - 1, ctx);
 
-        FLINT_ASSERT(fmpz_is_one(pfac->constant));
-        FLINT_ASSERT(fmpz_mpoly_factor_matches(p, pfac, ctx));
+    #if WANT_ASSERT
+        fmpz_mpoly_one(t, ctx);
+        for (i = 0; i < pfac->length; i++)
+            fmpz_mpoly_mul(t, t, pfac->coeffs + i, ctx);
+        FLINT_ASSERT(fmpz_mpoly_equal(t, p, ctx));
+    #endif
 
         /* if p has only one factor, A must be irreducible */
-        if (pfac->num < 2)
+        if (pfac->length < 2)
         {
-            fmpz_mpoly_factor_append_ui(fac, A, 1, ctx);
+            fmpz_mpolyv_fit_length(fac, 1, ctx);
+            fac->length = 1;
+            fmpz_mpoly_set(fac->coeffs + 0, A, ctx);
             success = 1;
             goto cleanup;
         }
@@ -218,7 +253,7 @@ printf("alpha = "); tuple_print(alpha, n);
         success = _try_lift(qfac, q, pfac, p, m, alpha, n, ctx);
         if (success > 0)
         {
-            fmpz_mpoly_factor_swap(qfac, pfac, ctx);
+            fmpz_mpolyv_swap(qfac, pfac, ctx);
             continue;
         }
         else if (success < 0)
@@ -228,54 +263,62 @@ printf("alpha = "); tuple_print(alpha, n);
         }
 
         /* if we couldn't lift two local factors, A must be irreducible */
-        if (pfac->num == 2)
+        if (pfac->length == 2)
         {
-            fmpz_mpoly_factor_append_ui(fac, A, 1, ctx);
+            fmpz_mpolyv_fit_length(fac, 1, ctx);
+            fac->length = 1;
+            fmpz_mpoly_set(fac->coeffs + 0, A, ctx);
             success = 1;
             goto cleanup;
         }
 
-        qfac->num = 0;
+        qfac->length = 0;
 
 try_again:
 
-        for (r = 1; r <= pfac->num/2; r++)
+        for (r = 1; r <= pfac->length/2; r++)
         {
-            subset_first(subset, pfac->num, r);
+            subset_first(subset, pfac->length, r);
 
-            FLINT_ASSERT(fmpz_is_one(pfac->constant));
-            FLINT_ASSERT(fmpz_mpoly_factor_matches(p, pfac, ctx));
+        #if WANT_ASSERT
+            fmpz_mpoly_one(t, ctx);
+            for (i = 0; i < pfac->length; i++)
+                fmpz_mpoly_mul(t, t, pfac->coeffs + i, ctx);
+            FLINT_ASSERT(fmpz_mpoly_equal(t, p, ctx));
+        #endif
 
             do {
-                fmpz_mpoly_factor_fit_length(dfac, 2, ctx);
-                dfac->num = 2;
-                fmpz_one(dfac->constant);
-                fmpz_mpoly_one(dfac->poly + 0, ctx);
-                fmpz_mpoly_one(dfac->poly + 1, ctx);
-                fmpz_one(dfac->exp + 0);
-                fmpz_one(dfac->exp + 1);
-                for (i = 0; i < pfac->num; i++)
+                fmpz_mpolyv_fit_length(dfac, 2, ctx);
+                dfac->length = 2;
+                fmpz_mpoly_one(dfac->coeffs + 0, ctx);
+                fmpz_mpoly_one(dfac->coeffs + 1, ctx);
+                for (i = 0; i < pfac->length; i++)
                 {
                     j = fmpz_tstbit(subset, i);
-                    fmpz_mpoly_mul(dfac->poly + j, dfac->poly + j,
-                                                          pfac->poly + i, ctx);
+                    fmpz_mpoly_mul(dfac->coeffs + j,
+                                   dfac->coeffs + j, pfac->coeffs + i, ctx);
                 }
 
                 success = _try_lift(tfac, q, dfac, p, m, alpha, n, ctx);
                 if (success > 0)
                 {
-                    for (i = pfac->num - 1; i >= 0; i--)
+                    for (i = pfac->length - 1; i >= 0; i--)
                     {
                         if (fmpz_tstbit(subset, i))
                         {
-                            fmpz_mpoly_swap(pfac->poly + i,
-                                              pfac->poly + pfac->num - 1, ctx);
-                            pfac->num--;
+                            pfac->length--;
+                            fmpz_mpoly_swap(pfac->coeffs + i,
+                                            pfac->coeffs + pfac->length, ctx);
                         }
                     }
-                    fmpz_mpoly_factor_append_ui(qfac, tfac->poly + 1, 1, ctx);
-                    fmpz_mpoly_swap(q, tfac->poly + 0, ctx);
-                    fmpz_mpoly_swap(p, dfac->poly + 0, ctx);
+
+                    fmpz_mpolyv_fit_length(qfac, qfac->length + 1, ctx);
+                    fmpz_mpoly_swap(qfac->coeffs + qfac->length,
+                                                        tfac->coeffs + 1, ctx);
+                    qfac->length++;
+
+                    fmpz_mpoly_swap(q, tfac->coeffs + 0, ctx);
+                    fmpz_mpoly_swap(p, dfac->coeffs + 0, ctx);
                     goto try_again;
                 }
                 else if (success < 0)
@@ -284,17 +327,19 @@ try_again:
                     goto cleanup;
                 }
             }
-            while (subset_next(subset, subset, pfac->num));
+            while (subset_next(subset, subset, pfac->length));
         }
-        /* if pfac could not be combined, p must be irreducible */
-        fmpz_mpoly_factor_append_ui(qfac, q, 1, ctx);
-        fmpz_mpoly_factor_swap(qfac, pfac, ctx);
+
+        /* if pfac could not be combined, q must be irreducible */
+        fmpz_mpolyv_fit_length(qfac, qfac->length + 1, ctx);
+        fmpz_mpoly_swap(qfac->coeffs + qfac->length, q, ctx);
+        qfac->length++;
+        fmpz_mpolyv_swap(qfac, pfac, ctx);
     }
 
     success = 1;
 
-    for (i = 0; i < pfac->num; i++)
-        fmpz_mpoly_factor_append_ui(fac, pfac->poly + i, 1, ctx);
+    fmpz_mpolyv_swap(fac, pfac, ctx);
 
 cleanup:
 
@@ -306,17 +351,29 @@ cleanup:
     flint_free(Aevals);
     flint_free(deg);
     flint_free(degeval);
-    fmpz_mpoly_factor_clear(pfac, ctx);
-    fmpz_mpoly_factor_clear(qfac, ctx);
-    fmpz_mpoly_factor_clear(tfac, ctx);
-    fmpz_mpoly_factor_clear(dfac, ctx);
+    fmpz_mpolyv_clear(pfac, ctx);
+    fmpz_mpolyv_clear(qfac, ctx);
+    fmpz_mpolyv_clear(tfac, ctx);
+    fmpz_mpolyv_clear(dfac, ctx);
     fmpz_mpoly_clear(t, ctx);
     fmpz_mpoly_clear(p, ctx);
     fmpz_mpoly_clear(q, ctx);
     fmpz_mpoly_univar_clear(u, ctx);
+    fmpz_poly_clear(c);
+    fmpz_bpoly_clear(B);
+    fmpz_tpoly_clear(F);
 
-    FLINT_ASSERT(!success || (fmpz_is_one(fac->constant) &&
-                              fmpz_mpoly_factor_matches(A, fac, ctx)));
+#if WANT_ASSERT
+    if (success)
+    {
+        fmpz_mpoly_init(t, ctx);
+        fmpz_mpoly_one(t, ctx);
+        for (i = 0; i < fac->length; i++)
+            fmpz_mpoly_mul(t, t, fac->coeffs + i, ctx);
+        FLINT_ASSERT(fmpz_mpoly_equal(t, A, ctx));
+        fmpz_mpoly_clear(t, ctx);
+    }
+#endif
 
     return success;
 }

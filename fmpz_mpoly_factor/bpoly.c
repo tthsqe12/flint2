@@ -85,3 +85,94 @@ void fmpz_bpoly_set_coeff(fmpz_bpoly_t A, slong xi, slong yi, const fmpz_t c)
 
     fmpz_poly_set_coeff_fmpz(A->coeffs + xi, yi, c);
 }
+
+void fmpz_mpoly_set_fmpz_bpoly(
+    fmpz_mpoly_t A,
+    flint_bitcnt_t Abits,
+    const fmpz_bpoly_t B,
+    slong varx,
+    slong vary,
+    const fmpz_mpoly_ctx_t ctx)
+{
+    slong n = ctx->minfo->nvars;
+    slong i, j;
+    slong NA;
+    slong Alen;
+    fmpz * Acoeff;
+    ulong * Aexp;
+    slong Aalloc;
+    ulong * Aexps;
+    TMP_INIT;
+
+    FLINT_ASSERT(B->length > 0);
+    FLINT_ASSERT(Abits <= FLINT_BITS);
+
+    TMP_START;
+
+    Aexps = (ulong *) TMP_ALLOC(n*sizeof(ulong));
+    for (i = 0; i < n; i++)
+        Aexps[i] = 0;
+
+    NA = mpoly_words_per_exp(Abits, ctx->minfo);
+    fmpz_mpoly_fit_bits(A, Abits, ctx);
+    A->bits = Abits;
+
+    Acoeff = A->coeffs;
+    Aexp = A->exps;
+    Aalloc = A->alloc;
+    Alen = 0;
+    for (i = 0; i < B->length; i++)
+    {
+        fmpz_poly_struct * Bc = B->coeffs + i;
+        _fmpz_mpoly_fit_length(&Acoeff, &Aexp, &Aalloc, Alen + Bc->length, NA);
+
+        for (j = 0; j < Bc->length; j++)
+        {
+            if (fmpz_is_zero(Bc->coeffs + j))
+                continue;
+            Aexps[varx] = i;
+            Aexps[vary] = j;
+            fmpz_set(Acoeff + Alen, Bc->coeffs + j);
+            mpoly_set_monomial_ui(Aexp + NA*Alen, Aexps, Abits, ctx->minfo);
+            Alen++;
+        }
+    }
+    A->coeffs = Acoeff;
+    A->exps = Aexp;
+    A->alloc = Aalloc;
+    _fmpz_mpoly_set_length(A, Alen, ctx);
+
+    fmpz_mpoly_sort_terms(A, ctx);
+    TMP_END;
+}
+
+void fmpz_mpoly_get_bpoly(
+    fmpz_bpoly_t A,
+    const fmpz_mpoly_t B,
+    slong varx,
+    slong vary,
+    const fmpz_mpoly_ctx_t ctx)
+{
+    slong j;
+    slong NB;
+    ulong Bexpx, Bexpy;
+    slong Boffx, Bshiftx, Boffy, Bshifty;
+    ulong mask;
+
+    FLINT_ASSERT(B->bits <= FLINT_BITS);
+    NB = mpoly_words_per_exp_sp(B->bits, ctx->minfo);
+
+    mpoly_gen_offset_shift_sp(&Boffx, &Bshiftx, varx, B->bits, ctx->minfo);
+    mpoly_gen_offset_shift_sp(&Boffy, &Bshifty, vary, B->bits, ctx->minfo);
+    mask = (-UWORD(1)) >> (FLINT_BITS - B->bits);
+
+    fmpz_bpoly_zero(A);
+
+    for (j = 0; j < B->length; j++)
+    {
+        Bexpx = ((B->exps + NB*j)[Boffx] >> Bshiftx) & mask;
+        Bexpy = ((B->exps + NB*j)[Boffy] >> Bshifty) & mask;
+        fmpz_bpoly_set_coeff(A, Bexpx, Bexpy, B->coeffs + j);
+    }
+}
+
