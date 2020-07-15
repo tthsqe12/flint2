@@ -378,52 +378,6 @@ void fq_nmod_bpoly_add_poly_shift(
 }
 
 
-void n_bpoly_one(n_bpoly_t A)
-{
-    n_bpoly_fit_length(A, 1);
-    A->length = 1;
-    n_poly_one(A->coeffs + 0);
-}
-
-void n_bpoly_mod_sub(
-    n_bpoly_t A,
-    const n_bpoly_t B,
-    const n_bpoly_t C,
-    nmod_t mod)
-{
-    slong i;
-    slong Alen = FLINT_MAX(B->length, C->length);
-
-    FLINT_ASSERT(A != B);
-    FLINT_ASSERT(A != C);
-
-    n_bpoly_fit_length(A, Alen);
-
-    A->length = 0;
-    for (i = 0; i < Alen; i++)
-    {
-        if (i < B->length)
-        {
-            if (i < C->length)
-            {
-                n_poly_mod_sub(A->coeffs + i, B->coeffs + i, C->coeffs + i, mod);
-            }
-            else
-            {
-                n_poly_set(A->coeffs + i, B->coeffs + i);
-            }
-        }
-        else
-        {
-            FLINT_ASSERT(i < C->length);
-            n_poly_mod_neg(A->coeffs + i, C->coeffs + i, mod);
-        }
-
-        if (!n_poly_is_zero(A->coeffs + i))
-            A->length = i + 1;
-    }
-}
-
 void fq_nmod_bpoly_sub(
     fq_nmod_bpoly_t A,
     const fq_nmod_bpoly_t B,
@@ -1468,10 +1422,10 @@ int nmod_mpoly_factor_irred_lgprime_default(
     fq_nmod_mpoly_factor_t qfac, pfac, tfac, dfac;
     fq_nmod_mpoly_t t, p, q;
 	fq_nmod_mpoly_univar_t u;
-
+/*
 flint_printf("_irreducible_mvar_factors_lgprime(n = %wd) called\n", n);
 flint_printf("A_: "); nmod_mpoly_print_pretty(A_, NULL, ctx_); printf("\n");
-
+*/
     FLINT_ASSERT(A_->length > 0);
     FLINT_ASSERT(A_->coeffs[0] == 1);
     FLINT_ASSERT(ctx_->minfo->ord == ORD_LEX);
@@ -1653,14 +1607,14 @@ cleanup:
         nmod_mpoly_t truefactor_;
         fq_nmod_mpoly_t truefactor;
         fq_nmod_mpoly_struct * conjugates;
-
+/*
 printf("now must frob combine\n");
-
+*/
 	    fq_nmod_mpoly_set_nmod_mpoly(A, ctx, A_, ctx_);
-
+/*
 flint_printf("A: "); fq_nmod_mpoly_print_pretty(A, NULL, ctx); printf("\n");
 flint_printf("fac: "); fq_nmod_mpoly_factor_print_pretty(fac, NULL, ctx); printf("\n");
-
+*/
 		FLINT_ASSERT(fq_nmod_mpoly_factor_matches(A, fac, ctx));
 
         conjugates = (fq_nmod_mpoly_struct *) flint_malloc(edeg*sizeof(fq_nmod_mpoly_struct));
@@ -1674,18 +1628,22 @@ flint_printf("fac: "); fq_nmod_mpoly_factor_print_pretty(fac, NULL, ctx); printf
         {
             fq_nmod_mpoly_one(truefactor, ctx);
             get_conjugates(conjugates, fac->poly + 0, edeg, ctx);
+/*
 flint_printf("fac->poly[0]: "); fq_nmod_mpoly_print_pretty(fac->poly + 0, NULL, ctx);printf("\n");
 for (i = 0; i < edeg; i++)
 {
 flint_printf("conjugate[%wd]: ", i); fq_nmod_mpoly_print_pretty(conjugates + i, NULL, ctx);printf("\n");
 }
+*/
             for (i = 0; i < fac->num; i++)
             {
                 for (j = 0; j < edeg; j++)
                 {
                     if (fq_nmod_mpoly_equal(fac->poly + i, conjugates + j, ctx))
                     {
+/*
 flint_printf("match i = %wd, j = %wd\n", i, j);
+*/
                         fq_nmod_mpoly_mul(truefactor, truefactor, fac->poly + i, ctx);
                         fq_nmod_mpoly_swap(fac->poly + i, fac->poly + fac->num - 1, ctx);
                         fac->num--;
@@ -1694,8 +1652,6 @@ flint_printf("match i = %wd, j = %wd\n", i, j);
                     }
                 }
             }
-
-printf("truefactor: "); fq_nmod_mpoly_print_pretty(truefactor, NULL, ctx); printf("\n");
 
             success = nmod_mpoly_get_fq_nmod_mpoly(truefactor_, ctx_, truefactor, ctx);
             FLINT_ASSERT(success);
@@ -1711,6 +1667,8 @@ printf("truefactor: "); fq_nmod_mpoly_print_pretty(truefactor, NULL, ctx); print
 
         fq_nmod_mpoly_clear(truefactor, ctx);
         nmod_mpoly_clear(truefactor_, ctx_);
+
+        success = 1;
     }
 
     fq_nmod_mpoly_clear(A, ctx);
@@ -1885,13 +1843,15 @@ static int _irreducible_factors(
     FLINT_ASSERT(perm[0] == nzdvar);
     FLINT_ASSERT(!nmod_mpoly_is_zero(nzdpoly, ctx));
 
+    /*
+        Check for annoying things like (x^2+y)(x^p+y). The squarefree
+        requirement should already have ruled out (x^2+y)(x^p+y^p).
+    */
     if (!nmod_mpoly_gcd_cofactors(G, Abar, Bbar, A, nzdpoly, ctx))
     {
         success = 0;
         goto cleanup;
     }
-
-    /* check for annoying things like (x^2+y)(x^p+y) */
     if (!nmod_mpoly_is_one(G, ctx))
     {
         nmod_mpolyv_t newf;
@@ -1990,6 +1950,8 @@ static int _irreducible_factors(
         n_poly_clear(c);
         n_bpoly_clear(Ab);
         n_tpoly_clear(Abf);
+
+        success = 1;
     }
     else
     {
@@ -2079,7 +2041,10 @@ int nmod_mpoly_factor(
     {
         success = _irreducible_factors(t, f->poly + j, ctx);
         if (!success)
+        {
+            flint_printf("it failed\n");
             goto cleanup;
+        }
 
         nmod_mpoly_factor_fit_length(g, g->num + t->length, ctx);
         for (i = 0; i < t->length; i++)
@@ -2089,6 +2054,7 @@ int nmod_mpoly_factor(
             g->num++;
         }
     }
+
     nmod_mpoly_factor_swap(f, g, ctx);
 
     success = 1;

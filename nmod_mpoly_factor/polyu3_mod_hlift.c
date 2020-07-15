@@ -712,7 +712,7 @@ flint_printf("B1-: "); n_bpoly_print_pretty(B1m, vars[0], vars[1]); flint_printf
         c = nmod_mul(c, alpha, ctx->mod);
         c = nmod_add(c, c, ctx->mod);
         c = n_invmod(c, ctx->mod.n);
-        n_poly_mod_scalar_mul_nmod(modulus, modulus, c, ctx->mod);
+        _n_poly_mod_scalar_mul_nmod(modulus, modulus, c, ctx->mod);
         n_polyu3n_mod_interp_crt_2sm_bpoly(&ldegBB0, BB0, T, B0p, B0m,
                                                   modulus, alphapow, ctx->mod);
         n_polyu3n_mod_interp_crt_2sm_bpoly(&ldegBB1, BB1, T, B1p, B1m,
@@ -924,7 +924,7 @@ flint_printf("\n");
         c = nmod_mul(c, alpha, ctx->mod);
         c = nmod_add(c, c, ctx->mod);
         c = nmod_inv(c, ctx->mod);
-        n_poly_mod_scalar_mul_nmod(modulus, modulus, c, ctx->mod);
+        _n_poly_mod_scalar_mul_nmod(modulus, modulus, c, ctx->mod);
         for (i = 0; i < r; i++)
         {
             n_polyu3n_mod_interp_crt_2sm_bpoly(BBdegZ + i, BB + i, T,

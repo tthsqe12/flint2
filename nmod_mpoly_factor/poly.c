@@ -560,7 +560,7 @@ void n_poly_mod_xgcd(
         else if (lenB == 0)  /* lenA > lenB = 0 */
         {
             inv = n_invmod(A->coeffs[lenA - 1], mod.n);
-            n_poly_mod_scalar_mul_nmod(G, A, inv, mod);
+            _n_poly_mod_scalar_mul_nmod(G, A, inv, mod);
             n_poly_zero(T);
             n_poly_set_coeff(S, 0, inv);
             S->length = 1;
@@ -641,9 +641,9 @@ void n_poly_mod_xgcd(
             if (G->coeffs[lenG - 1] != 1)
             {
                 inv = nmod_inv(G->coeffs[lenG - 1], mod);
-                n_poly_mod_scalar_mul_nmod(G, G, inv, mod);
-                n_poly_mod_scalar_mul_nmod(S, S, inv, mod);
-                n_poly_mod_scalar_mul_nmod(T, T, inv, mod);
+                _n_poly_mod_scalar_mul_nmod(G, G, inv, mod);
+                _n_poly_mod_scalar_mul_nmod(S, S, inv, mod);
+                _n_poly_mod_scalar_mul_nmod(T, T, inv, mod);
             }
         }
     }
@@ -677,6 +677,43 @@ void n_poly_mod_inv_series(n_poly_t Qinv, const n_poly_t Q, slong n, nmod_t mod)
 
     Qinv->length = n;
     _n_poly_normalise(Qinv);
+}
+
+
+void n_poly_mod_div_series(n_poly_t Q, const n_poly_t A, const n_poly_t B,
+                                                       slong order, nmod_t ctx)
+{
+    slong Blen = B->length;
+    slong Alen = A->length;
+
+    if (order < 1 || Blen == 0 || B->coeffs[0] == 0)
+    {
+        flint_printf("Exception (n_poly_div_series). Division by zero.\n");
+        flint_abort();
+    }
+
+    if (Alen == 0)
+    {
+        n_poly_zero(Q);
+        return;
+    }
+
+    if (Q != A && Q != B)
+    {
+        n_poly_fit_length(Q, order);
+        _nmod_poly_div_series(Q->coeffs, A->coeffs, Alen, B->coeffs, Blen, order, ctx);
+    }
+    else
+    {
+        n_poly_t t;
+        n_poly_init(t);
+        _nmod_poly_div_series(t->coeffs, A->coeffs, Alen, B->coeffs, Blen, order, ctx);
+        n_poly_swap(Q, t);
+        n_poly_clear(t);
+    }
+
+    Q->length = order;
+    _n_poly_normalise(Q);
 }
 
 
@@ -764,6 +801,23 @@ void n_poly_factor_print_pretty(const n_poly_factor_t f, const char * x)
         n_poly_print_pretty(f->poly + i, "x");
         flint_printf(")^%wd", f->exp[i]);
     }
+}
+
+void n_poly_mod_scalar_mul_ui(n_poly_t A, const n_poly_t B, mp_limb_t c, nmod_t ctx)
+{
+    if (c >= ctx.n)
+    {
+        NMOD_RED(c, c, ctx);
+    }
+
+    if (c == 0 || B->length < 1)
+    {
+        n_poly_zero(A);
+        return;
+    }
+
+    _n_poly_mod_scalar_mul_nmod(A, B, c, ctx);
+    _n_poly_normalise(A);
 }
 
 /* multiply A by (x^k + c) */

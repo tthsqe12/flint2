@@ -198,7 +198,7 @@ next_alpha:
     /* make evaluations primitive */
     for (i = n - 1; i > 0; i--)
     {
-    	nmod_mpoly_to_univar(u, Aevals + 1, 0, ctx);
+    	nmod_mpoly_to_univar(u, Aevals + i, 0, ctx);
         success = nmod_mpoly_univar_content_mpoly(t, u, ctx);
         if (!success)
             goto cleanup;

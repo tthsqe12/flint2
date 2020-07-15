@@ -310,7 +310,7 @@ flint_printf("\n");
                 B[i].length++;
             }
             n_poly_mod_add(B[i].coeffs + j, B[i].coeffs + j, v + i, mod);
-            n_bpoly_normalize(B + i);
+            n_bpoly_normalise(B + i);
             tdeg += B[i].length - 1;
         }
 

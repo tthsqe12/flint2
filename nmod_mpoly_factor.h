@@ -530,7 +530,7 @@ void n_poly_shift_left(n_poly_t A, const n_poly_t B, slong k)
 /* basic linear arithmetic */
 
 NMOD_MPOLY_FACTOR_INLINE
-void n_poly_mod_scalar_mul_nmod(n_poly_t A, const n_poly_t B, mp_limb_t c,
+void _n_poly_mod_scalar_mul_nmod(n_poly_t A, const n_poly_t B, mp_limb_t c,
                                                                     nmod_t mod)
 {
     slong i;
@@ -543,6 +543,9 @@ void n_poly_mod_scalar_mul_nmod(n_poly_t A, const n_poly_t B, mp_limb_t c,
 */
     A->length = B->length;
 }
+
+FLINT_DLL void n_poly_mod_scalar_mul_ui(n_poly_t A, const n_poly_t B,
+                                                      mp_limb_t c, nmod_t ctx);
 
 NMOD_MPOLY_FACTOR_INLINE
 mp_limb_t n_poly_mod_evaluate_nmod(const n_poly_t A, mp_limb_t c, nmod_t mod)
@@ -711,6 +714,9 @@ FLINT_DLL void n_poly_mod_xgcd(n_poly_t G, n_poly_t S, n_poly_t T,
 
 FLINT_DLL void n_poly_mod_inv_series(n_poly_t Qinv, const n_poly_t Q, slong n,
                                                                    nmod_t mod);
+
+FLINT_DLL void n_poly_mod_div_series(n_poly_t Q, const n_poly_t A,
+                                    const n_poly_t B, slong order, nmod_t ctx);
 
 typedef struct {
     mp_limb_t constant;
@@ -896,7 +902,7 @@ FLINT_DLL void n_bpoly_print_pretty(const n_bpoly_t A,
                                         const char * xvar, const char * yvar);
 
 NMOD_MPOLY_FACTOR_INLINE
-void n_bpoly_normalize(n_bpoly_t A)
+void n_bpoly_normalise(n_bpoly_t A)
 {
     while (A->length > 0 && n_poly_is_zero(A->coeffs + A->length - 1))
         A->length--;
@@ -923,6 +929,12 @@ int n_bpoly_is_zero(const n_bpoly_t A)
     return A->length == 0;
 }
 
+FLINT_DLL void nmod_mpoly_get_bpoly(n_bpoly_t A, const nmod_mpoly_t B,
+                           slong var0, slong var1, const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void nmod_mpoly_set_bpoly(nmod_mpoly_t A, flint_bitcnt_t Abits,
+        const n_bpoly_t B, slong var0, slong var1, const nmod_mpoly_ctx_t ctx);
+
 FLINT_DLL void n_bpoly_set(n_bpoly_t A, const n_bpoly_t B);
 
 FLINT_DLL void n_bpoly_one(n_bpoly_t A);
@@ -935,6 +947,9 @@ FLINT_DLL void n_bpoly_set_coeff(n_bpoly_t A, slong e0, slong e1, mp_limb_t c);
 
 FLINT_DLL void n_bpoly_set_coeff_nonzero(n_bpoly_t A, slong e0, slong e1,
                                                                   mp_limb_t c);
+
+FLINT_DLL void n_bpoly_mod_derivative(n_bpoly_t A, const n_bpoly_t B,
+                                                                   nmod_t ctx);
 
 NMOD_MPOLY_FACTOR_INLINE
 mp_limb_t n_bpoly_get_coeff(const n_bpoly_t A, slong e0, slong e1)
@@ -963,6 +978,9 @@ FLINT_DLL void n_bpoly_mod_taylor_shift_var1(n_bpoly_t A, mp_limb_t c,
 FLINT_DLL void n_bpoly_mod_taylor_shift_var0(n_bpoly_t A, mp_limb_t c,
                                                                    nmod_t ctx);
 
+FLINT_DLL void n_bpoly_mod_add(n_bpoly_t A, const n_bpoly_t B,
+                                                const n_bpoly_t C, nmod_t ctx);
+
 FLINT_DLL void n_bpoly_mod_sub(n_bpoly_t A, const n_bpoly_t B,
                                                 const n_bpoly_t C, nmod_t ctx);
 
@@ -971,18 +989,14 @@ FLINT_DLL void n_bpoly_mod_make_primitive(n_poly_t g, n_bpoly_t A, nmod_t ctx);
 FLINT_DLL void n_bpoly_mod_mul(n_bpoly_t A, const n_bpoly_t B,
                                                 const n_bpoly_t C, nmod_t ctx);
 
-FLINT_DLL void n_bpoly_mod_mullow(n_bpoly_t A, const n_bpoly_t B,
+FLINT_DLL int n_bpoly_mod_divides(n_bpoly_t Q, const n_bpoly_t A,
+                                                const n_bpoly_t B, nmod_t ctx);
+
+FLINT_DLL void n_bpoly_mod_mul_series(n_bpoly_t A, const n_bpoly_t B,
                                    const n_bpoly_t C, slong order, nmod_t ctx);
 
-FLINT_DLL int n_bpoly_mod_divides(n_bpoly_t Q, const n_bpoly_t A,
-                                                const n_bpoly_t B, nmod_t mod);
-
-FLINT_DLL void nmod_mpoly_get_bpoly(n_bpoly_t A, const nmod_mpoly_t B,
-                           slong var0, slong var1, const nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL void nmod_mpoly_set_bpoly(nmod_mpoly_t A, flint_bitcnt_t Abits,
-        const n_bpoly_t B, slong var0, slong var1, const nmod_mpoly_ctx_t ctx);
-
+FLINT_DLL void n_bpoly_mod_divrem_series(n_bpoly_t Q, n_bpoly_t R,
+                const n_bpoly_t A, const n_bpoly_t B, slong order, nmod_t ctx);
 
 typedef struct
 {

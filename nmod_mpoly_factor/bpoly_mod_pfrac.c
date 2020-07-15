@@ -293,7 +293,7 @@ choose_prime:
         c = nmod_mul(c, alpha, mod);
         c = nmod_add(c, c, mod);
         c = nmod_inv(c, mod);
-        n_poly_mod_scalar_mul_nmod(modulus, modulus, c, mod);
+        _n_poly_mod_scalar_mul_nmod(modulus, modulus, c, mod);
 
         n_bpoly_mod_interp_crt_2sm_poly(&C1_deg1, C1, T, C1evalp, C1evalm, modulus, alphapow, mod);
         n_bpoly_mod_interp_crt_2sm_poly(&C2_deg1, C2, T, C2evalp, C2evalm, modulus, alphapow, mod);
@@ -545,7 +545,7 @@ choose_prime:
         c = nmod_mul(c, alpha, mod);
         c = nmod_add(c, c, mod);
         c = nmod_inv(c, mod);
-        n_poly_mod_scalar_mul_nmod(modulus, modulus, c, mod);
+        _n_poly_mod_scalar_mul_nmod(modulus, modulus, c, mod);
 
         for (i = 0; i < r; i++)
         {
