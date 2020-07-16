@@ -112,6 +112,57 @@ void n_poly_mod_set_coeff_ui(
 }
 
 
+void n_poly_mod_pow(n_poly_t res, const n_poly_t poly, ulong e, nmod_t ctx)
+{
+    const slong len = poly->length;
+    slong rlen;
+
+    if ((len < 2) | (e < UWORD(3)))
+    {
+        if (len == 0)
+        {
+            if (e == 0)
+                n_poly_one(res);
+            else
+                n_poly_zero(res);
+        }
+        else if (len == 1)
+        {
+            n_poly_set_ui(res,
+                     n_powmod2_ui_preinv(poly->coeffs[0], e, ctx.n, ctx.ninv));
+        }
+        else if (e == 0)
+        {
+            n_poly_one(res);
+        }
+        else if (e == 1)
+            n_poly_set(res, poly);
+        else  /* e == UWORD(2) */
+            n_poly_mod_mul(res, poly, poly, ctx);
+
+        return;
+    }
+
+    rlen = (slong) e * (len - 1) + 1;
+
+    if (res != poly)
+    {
+        n_poly_fit_length(res, rlen);
+        _nmod_poly_pow(res->coeffs, poly->coeffs, len, e, ctx);
+    }
+    else
+    {
+        n_poly_t t;
+        n_poly_init2(t, rlen);
+        _nmod_poly_pow(t->coeffs, poly->coeffs, len, e, ctx);
+        n_poly_swap(res, t);
+        n_poly_clear(t);
+    }
+
+    res->length = rlen;
+    _n_poly_normalise(res);
+}
+
 
 void n_poly_mod_mul(n_poly_t res, const n_poly_t poly1,
                  const n_poly_t poly2, nmod_t mod)

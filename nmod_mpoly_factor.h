@@ -182,6 +182,8 @@ FLINT_DLL void subset_print(const fmpz_t a, slong n);
 
 FLINT_DLL void subset_map_down(fmpz_t a, const fmpz_t b, const fmpz_t m);
 
+FLINT_DLL int subset_fix(fmpz_t subset, slong len);
+
 FLINT_DLL void tuple_print(fmpz * alpha, slong n);
 
 FLINT_DLL void tuple_saturate(fmpz * alpha, slong n, slong m);
@@ -684,6 +686,9 @@ void _n_poly_mod_divrem(n_poly_t Q, n_poly_t R, const n_poly_t A,
 }
 
 /* quadratic arithmetic dealing with aliasing, mod 1, and illegal input */
+
+FLINT_DLL void n_poly_mod_pow(n_poly_t res, const n_poly_t poly, ulong e,
+                                                                   nmod_t ctx);
 
 FLINT_DLL void n_poly_mod_mul(n_poly_t A, const n_poly_t B, const n_poly_t C,
                                                                    nmod_t mod);
