@@ -20,7 +20,7 @@ void nmod_mpoly_factor_print_pretty(const nmod_mpoly_factor_t f,
     flint_printf("%wu", f->constant);
     for (i = 0; i < f->num; i++)
     {
-        flint_printf("*(", i);
+        flint_printf("\n*(", i);
         nmod_mpoly_print_pretty(f->poly + i, vars, ctx);
 		flint_printf(")^");
         fmpz_print(f->exp + i);

@@ -21,7 +21,7 @@ slong check_omega(slong lower, slong upper, const nmod_mpoly_t p, const nmod_mpo
     fmpz_t omega;
 
     flint_printf("checking %wd <= # <= %wd: length %wd in %wd vars\n",
-                                   lower, upper, p->length, ctx->minfo->nvars);
+                  lower, FLINT_MIN(9999, upper), p->length, ctx->minfo->nvars);
 
     fmpz_init(omega);
     nmod_mpoly_factor_init(g, ctx);
@@ -38,6 +38,7 @@ slong check_omega(slong lower, slong upper, const nmod_mpoly_t p, const nmod_mpo
 flint_printf("p: "); nmod_mpoly_print_pretty(p, NULL, ctx); flint_printf("\n");
 flint_printf("g: "); nmod_mpoly_factor_print_pretty(g, NULL, ctx); flint_printf("\n");
 */
+
     if (nmod_mpoly_factor_fix_units(g, ctx))
     {
         flint_printf("FAIL:\nfactorization is not unit normal\n");
@@ -97,7 +98,7 @@ main(void)
         nmod_mpoly_ctx_t ctx;
         nmod_mpoly_t a, t;
         slong nfacs, len;
-        ulong expbound;
+        ulong expbounds[2];
         mp_limb_t p;
 
         p = n_randint(state, (i % 10 == 0) ? 4 : FLINT_BITS - 1) + 1;
@@ -109,22 +110,23 @@ main(void)
         nmod_mpoly_init(a, ctx);
         nmod_mpoly_init(t, ctx);
 
-        nfacs = 1 + n_randint(state, 6);
-        expbound = 3 + 30/nfacs;
+        nfacs = 2 + n_randint(state, 10);
+        expbounds[0] = 3 + n_randint(state, 3 + 100/nfacs);
+        expbounds[1] = 3 + n_randint(state, 3 + 100/nfacs);
 
         lower = 0;
         nmod_mpoly_one(a, ctx);
         for (j = 0; j < nfacs; j++)
         {
-            len = 1 + n_randint(state, 10);
-            nmod_mpoly_randtest_bound(t, state, len, expbound, ctx);
+            len = expbounds[0] + expbounds[1] + n_randint(state, 10);
+            nmod_mpoly_randtest_bounds(t, state, len, expbounds, ctx);
             if (nmod_mpoly_is_zero(t, ctx))
                 nmod_mpoly_one(t, ctx);
             lower += !nmod_mpoly_is_ui(t, ctx);
             nmod_mpoly_mul(a, a, t, ctx);
         }
 if (ctx->minfo->nvars == 2)
-flint_printf("degrees (%wd, %wd)\n", nmod_mpoly_degree_si(a, 0, ctx), nmod_mpoly_degree_si(a, 1, ctx));
+flint_printf("nfacs: %wd, degrees (%wd, %wd)\n", nfacs, nmod_mpoly_degree_si(a, 0, ctx), nmod_mpoly_degree_si(a, 1, ctx));
 
 flint_printf("1:%wd ", i);
         total += check_omega(lower, WORD_MAX, a, ctx);
@@ -132,7 +134,6 @@ flint_printf("1:%wd ", i);
         nmod_mpoly_clear(t, ctx);
         nmod_mpoly_clear(a, ctx);
         nmod_mpoly_ctx_clear(ctx);
-
     }
 flint_printf("**********total number of mvar factors: %wd ******\n", total);
 usleep(1000000);
@@ -140,7 +141,7 @@ usleep(1000000);
 
     /* check random factors */
     total = 0;
-    for (i = 0; i < tmul * flint_test_multiplier(); i++)
+    for (i = 0; i < 0*tmul * flint_test_multiplier(); i++)
     {
         slong lower;
         nmod_mpoly_ctx_t ctx;

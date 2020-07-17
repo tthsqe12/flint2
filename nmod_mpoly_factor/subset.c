@@ -98,3 +98,31 @@ void subset_map_down(fmpz_t a, const fmpz_t b, const fmpz_t m)
         }
     }
 }
+
+/*
+    set subset to the next subset that is disjoint from subset
+    then remove the places corresponding to the places present in the old subset
+*/
+int subset_fix(fmpz_t subset, slong len)
+{
+    fmpz_t test, tsubset;
+
+    fmpz_init(test);
+    fmpz_init_set(tsubset, subset);
+
+    do {
+        if (!subset_next(tsubset, tsubset, len))
+        {
+            fmpz_clear(test);
+            fmpz_clear(tsubset);
+            return 0;
+        }
+        fmpz_and(test, tsubset, subset);
+    } while (!fmpz_is_zero(test));
+    subset_map_down(test, tsubset, subset);
+    fmpz_swap(test, subset);
+
+    fmpz_clear(test);
+    fmpz_clear(tsubset);
+    return 1;
+}

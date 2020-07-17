@@ -111,6 +111,22 @@ void n_poly_mod_set_coeff_ui(
     n_poly_set_coeff(poly, j, c);
 }
 
+void n_poly_mod_add_ui(n_poly_t res, const n_poly_t poly, ulong c, nmod_t ctx)
+{
+    if (c >= ctx.n)
+        NMOD_RED(c, c, ctx);
+   
+    if (poly->length < 1)
+    {
+        n_poly_set_ui(res, c);
+    }
+    else
+    {
+        n_poly_set(res, poly);
+        res->coeffs[0] = nmod_add(res->coeffs[0], c, ctx);
+        _n_poly_normalise(res);
+   }
+}
 
 void n_poly_mod_pow(n_poly_t res, const n_poly_t poly, ulong e, nmod_t ctx)
 {

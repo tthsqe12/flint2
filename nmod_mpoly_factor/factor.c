@@ -2041,10 +2041,7 @@ int nmod_mpoly_factor(
     {
         success = _irreducible_factors(t, f->poly + j, ctx);
         if (!success)
-        {
-            flint_printf("it failed\n");
             goto cleanup;
-        }
 
         nmod_mpoly_factor_fit_length(g, g->num + t->length, ctx);
         for (i = 0; i < t->length; i++)

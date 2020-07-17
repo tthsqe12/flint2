@@ -34,6 +34,10 @@
 
 /*****************************************************************************/
 
+FLINT_DLL int nmod_mat_is_reduced(const nmod_mat_t N);
+
+FLINT_DLL void nmod_mat_init_nullspace_tr(nmod_mat_t X, nmod_mat_t tmp);
+
 FLINT_DLL int mpoly_is_poly(
     const ulong * Aexps,
     slong Alen,
@@ -529,6 +533,32 @@ void n_poly_shift_left(n_poly_t A, const n_poly_t B, slong k)
     A->length = B->length + k;
 }
 
+NMOD_MPOLY_FACTOR_INLINE
+void n_poly_shift_right(n_poly_t res, const n_poly_t poly, slong k)
+{
+    if (k >= poly->length)
+    {
+        res->length = 0;
+    }
+    else
+    {
+        const slong len = poly->length - k;
+        n_poly_fit_length(res, len);
+        _nmod_poly_shift_right(res->coeffs, poly->coeffs, len, k);
+        res->length = len;
+    }
+}
+
+NMOD_MPOLY_FACTOR_INLINE
+void n_poly_truncate(n_poly_t poly, slong len)
+{
+    if (poly->length > len)
+    {
+        poly->length = len;
+        _n_poly_normalise(poly);
+    }
+}
+
 /* basic linear arithmetic */
 
 NMOD_MPOLY_FACTOR_INLINE
@@ -572,6 +602,9 @@ void n_poly_mod_add(n_poly_t A, const n_poly_t B, const n_poly_t C, nmod_t mod)
     A->length = Alen;
     _n_poly_normalise(A);
 }
+
+FLINT_DLL void n_poly_mod_add_ui(n_poly_t res, const n_poly_t poly, ulong c, nmod_t ctx);
+
 
 NMOD_MPOLY_FACTOR_INLINE
 void n_poly_mod_sub(n_poly_t A, const n_poly_t B, const n_poly_t C, nmod_t mod)
