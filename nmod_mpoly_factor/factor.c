@@ -415,19 +415,6 @@ void fq_nmod_bpoly_sub(
     }
 }
 
-void n_bpoly_set(n_bpoly_t A, const n_bpoly_t B)
-{
-    slong i;
-
-    FLINT_ASSERT(A != B);
-
-    n_bpoly_fit_length(A, B->length);
-    A->length = B->length;
-
-    for (i = 0; i < B->length; i++)
-        n_poly_set(A->coeffs + i, B->coeffs + i);
-}
-
 void fq_nmod_bpoly_set(fq_nmod_bpoly_t A, const fq_nmod_bpoly_t B, const fq_nmod_ctx_t ctx)
 {
     slong i;

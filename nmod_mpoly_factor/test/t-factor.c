@@ -99,26 +99,28 @@ main(void)
         nmod_mpoly_t a, t;
         slong nfacs, len;
         ulong expbounds[2];
+        ulong expbound;
         mp_limb_t p;
 
         p = n_randint(state, (i % 10 == 0) ? 4 : FLINT_BITS - 1) + 1;
         p = n_randbits(state, p);
         p = n_nextprime(p, 1);
 
-        nmod_mpoly_ctx_init_rand(ctx, state, 2, p);
+        nmod_mpoly_ctx_init(ctx, 2, mpoly_ordering_randtest(state), p);
 
         nmod_mpoly_init(a, ctx);
         nmod_mpoly_init(t, ctx);
 
-        nfacs = 2 + n_randint(state, 10);
-        expbounds[0] = 3 + n_randint(state, 3 + 100/nfacs);
-        expbounds[1] = 3 + n_randint(state, 3 + 100/nfacs);
+        nfacs = 2 + n_randint(state, 20);
+        expbound = 3 + n_randint(state, 3 + 100/nfacs);
 
         lower = 0;
         nmod_mpoly_one(a, ctx);
         for (j = 0; j < nfacs; j++)
         {
-            len = expbounds[0] + expbounds[1] + n_randint(state, 10);
+            expbounds[0] = 3 + n_randint(state, expbound);
+            expbounds[1] = 3 + n_randint(state, expbound);
+            len = expbounds[0] + expbounds[1] + 100;
             nmod_mpoly_randtest_bounds(t, state, len, expbounds, ctx);
             if (nmod_mpoly_is_zero(t, ctx))
                 nmod_mpoly_one(t, ctx);

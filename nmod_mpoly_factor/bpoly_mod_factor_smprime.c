@@ -202,9 +202,9 @@ void n_bpoly_mod_eval(
 }
 
 
-static void _recombine_lattice(
+static void _lattice(
     nmod_mat_t N,
-    const n_bpoly_struct * g,
+    n_bpoly_struct * const * g,
     slong r,
     slong lift_order,
     slong * starts,
@@ -231,9 +231,9 @@ static void _recombine_lattice(
 
     for (i = 0; i < r; i++)
     {
-        n_bpoly_mod_divrem_series(Q, R, f, g + i, lift_order, ctx);
+        n_bpoly_mod_divrem_series(Q, R, f, g[i], lift_order, ctx);
         FLINT_ASSERT(R->length == 0);
-        n_bpoly_mod_derivative(R, g + i, ctx);
+        n_bpoly_mod_derivative(R, g[i], ctx);
         n_bpoly_mod_mul_series(ld + i, Q, R, lift_order, ctx);
     }
 
@@ -278,22 +278,26 @@ static void _recombine_lattice(
 }
 
 
-static void _recombine_zassenhaus(
+static int _zassenhaus(
+    slong limit,
     n_tpoly_t F,
     mp_limb_t malpha,
     const nmod_mat_t N,
-    const n_bpoly_struct * loc_fac_org,
+    n_bpoly_struct * const * loc_fac_org,
     slong r,
     slong order,
-    n_bpoly_t f,
+    const n_bpoly_t B,
     nmod_t ctx)
 {
+    int success;
     n_bpoly_t Q, R, t1, t2;
     n_poly_t leadf, g;
     slong * idx;
     slong i, j, s, len, d = nmod_mat_nrows(N);
     fmpz_t subset;
     n_bpoly_struct * loc_fac;
+    n_bpoly_struct * f;
+    n_bpoly_t B_copy;
 
     FLINT_ASSERT(nmod_mat_ncols(N) == r);
 
@@ -313,6 +317,7 @@ static void _recombine_zassenhaus(
     n_bpoly_init(t1);
     n_bpoly_init(t2);
     n_poly_init(leadf);
+    n_bpoly_init(B_copy);
 
     for (i = 0; i < d; i++)
     {
@@ -321,17 +326,25 @@ static void _recombine_zassenhaus(
         {
             if (nmod_mat_entry(N, i, j) == 0)
                 continue;
-            n_bpoly_mod_mul_series(t1, loc_fac + i, loc_fac_org + j, order, ctx);
+            FLINT_ASSERT(nmod_mat_entry(N, i, j) == 1);
+            n_bpoly_mod_mul_series(t1, loc_fac + i, loc_fac_org[j], order, ctx);
             n_bpoly_swap(t1, loc_fac + i);
         }
     }
 
+    f = (n_bpoly_struct *) B;
     FLINT_ASSERT(f->length > 0);
     n_poly_set(leadf, f->coeffs + f->length - 1);
 
     len = d;
     for (s = 1; s <= len/2; s++)
     {
+        if (s > limit)
+        {
+            success = 0;
+            goto cleanup;
+        }
+
         subset_first(subset, len, s);
         do {
 try_subset:
@@ -348,13 +361,22 @@ try_subset:
             n_bpoly_mod_make_primitive(g, t1, ctx);
             if (n_bpoly_mod_divides(Q, f, t1, ctx))
             {
-                n_bpoly_mod_taylor_shift_var1(t1, malpha, ctx);
+                n_bpoly_mod_taylor_shift_var1(t1, t1, malpha, ctx);
                 n_tpoly_fit_length(F, F->length + 1);
                 n_bpoly_swap(F->coeffs + F->length, t1);
                 F->length++;
+                f = B_copy;
                 n_bpoly_swap(f, Q);
                 FLINT_ASSERT(f->length > 0);
                 n_poly_set(leadf, f->coeffs + f->length - 1);
+
+                if (f->length <= 1)
+                {
+                    FLINT_ASSERT(f->length == 1);
+                    FLINT_ASSERT(n_poly_is_one(f->coeffs + 0));
+                    success = 1;
+                    goto cleanup;
+                }
 
                 for (j = 0, i = 0; i < len; i++)
                     if (!fmpz_tstbit(subset, i))
@@ -371,11 +393,10 @@ sloop_continue:
         (void)(NULL);
     }
 
-    n_bpoly_mod_taylor_shift_var1(f, malpha, ctx);
     if (f->length > 1)
     {
         n_tpoly_fit_length(F, F->length + 1);
-        n_bpoly_swap(F->coeffs + F->length, f);
+        n_bpoly_mod_taylor_shift_var1(F->coeffs + F->length, f, malpha, ctx);
         F->length++;
     }
     else
@@ -383,6 +404,10 @@ sloop_continue:
         FLINT_ASSERT(f->length == 1);
         FLINT_ASSERT(n_poly_is_one(f->coeffs + 0));
     }
+
+    success = 1;
+
+cleanup:
 
     fmpz_clear(subset);
 
@@ -392,16 +417,19 @@ sloop_continue:
     n_bpoly_clear(t1);
     n_bpoly_clear(t2);
     n_poly_clear(leadf);
+    n_bpoly_clear(B_copy);
 
     for (i = 0; i < d; i++)
         n_bpoly_clear(loc_fac + i);
     flint_free(loc_fac);
 
     flint_free(idx);
+
+    return success;
 }
 
 
-static void _lift_quintic(
+void _lift_quintic(
     n_bpoly_struct * lift_facs,
     n_poly_struct * local_facs,
     slong r,
@@ -490,8 +518,8 @@ static void _hensel_build_tree(
     n_poly_struct * V;
     n_poly_struct * W;
 
-    V = flint_malloc((2*r - 2)*sizeof(nmod_poly_t));
-    W = flint_malloc((2*r - 2)*sizeof(nmod_poly_t));
+    V = (n_poly_struct *) flint_malloc((2*r - 2)*sizeof(n_poly_struct));
+    W = (n_poly_struct *) flint_malloc((2*r - 2)*sizeof(n_poly_struct));
 
     n_poly_init(d);
     for (i = 0; i < 2*r - 2; i++)
@@ -522,13 +550,11 @@ static void _hensel_build_tree(
                 mind = n_poly_degree(V + s);
             }
         }
-
         n_poly_swap(V + j, V + minp);
         tmp = link[j]; link[j] = link[minp]; link[minp] = tmp;
 
         minp = j + 1;
         mind = n_poly_degree(V + j + 1);
-
         for (s = j + 2; s < i; s++)
         {
             if (n_poly_degree(V + s) < mind)
@@ -537,7 +563,6 @@ static void _hensel_build_tree(
                 mind = n_poly_degree(V + s);
             }
         }
-
         n_poly_swap(V + j + 1, V + minp);
         tmp = link[j + 1]; link[j + 1] = link[minp]; link[minp] = tmp;
 
@@ -617,6 +642,14 @@ static void _hensel_lift_fac(
     n_bpoly_swap(G, t1);
     n_bpoly_swap(H, t2);
 
+#if WANT_ASSERT
+    n_bpoly_mod_mul(t1, G, H, ctx);
+    n_bpoly_mod_sub(c, f, t1, ctx);
+    for (i = 0; i < c->length; i++)
+        for (j = 0; j < p0 + p1; j++)
+            FLINT_ASSERT(n_poly_get_coeff(c->coeffs + i, j) == 0);
+#endif
+
     n_bpoly_clear(c);
     n_bpoly_clear(t1);
     n_bpoly_clear(t2);
@@ -643,7 +676,13 @@ static void _hensel_lift_inv(
     n_bpoly_init(t2);
     n_bpoly_init(q);
     n_bpoly_init(r);
-
+/*
+flint_printf("_hensel_lift_inv called p0 = %wd, p1 = %wd\n", p0, p1);
+flint_printf("G: "); n_bpoly_print_pretty(G, "x", "y"); flint_printf("\n");
+flint_printf("H: "); n_bpoly_print_pretty(H, "x", "y"); flint_printf("\n");
+flint_printf("a: "); n_bpoly_print_pretty(a, "x", "y"); flint_printf("\n");
+flint_printf("b: "); n_bpoly_print_pretty(a, "x", "y"); flint_printf("\n");
+*/
     n_bpoly_mod_mul(t1, G, a, ctx);
     n_bpoly_mod_mul(t2, H, b, ctx);
     n_bpoly_mod_add(c, t1, t2, ctx);
@@ -681,6 +720,22 @@ static void _hensel_lift_inv(
     n_bpoly_swap(t1, B);
     n_bpoly_swap(t2, A);
 
+#if WANT_ASSERT
+    n_bpoly_mod_mul(t1, G, A, ctx);
+    n_bpoly_mod_mul(t2, H, B, ctx);
+    n_bpoly_mod_add(c, t1, t2, ctx);
+
+    FLINT_ASSERT(c->length > 0);
+    for (i = 0; i < c->length; i++)
+        n_poly_mod_neg(c->coeffs + i, c->coeffs + i, ctx);
+    n_poly_mod_add_ui(c->coeffs + 0, c->coeffs + 0, 1, ctx);
+    n_bpoly_normalise(c);
+
+    for (i = 0; i < c->length; i++)
+        for (j = 0; j < p0 + p1; j++)
+            FLINT_ASSERT(n_poly_get_coeff(c->coeffs + i, j) == 0);
+#endif
+
     n_bpoly_clear(c);
     n_bpoly_clear(t1);
     n_bpoly_clear(t2);
@@ -693,12 +748,14 @@ static void _hensel_lift_tree(
     slong * link,
     n_bpoly_struct * v,
     n_bpoly_struct * w,
-    n_bpoly_t f,
+    const n_bpoly_t f,
     slong j,
     slong p0,
     slong p1,
     nmod_t ctx)
 {
+    FLINT_ASSERT(p1 <= p0);
+
     if (j < 0)
         return;
 
@@ -714,6 +771,22 @@ static void _hensel_lift_tree(
     _hensel_lift_tree(opt, link, v, w, v + j + 1, link[j + 1], p0, p1, ctx);
 }
 
+/*
+    final_order = deg_y(B)
+    lift_order = final_order + 10
+    N = rxr identity
+try_zas:
+    if try_zas(2, N, final_order)
+        return
+    end
+more:
+    N = lattice_reduce(N, lift_order)
+    if !is_reduced(N)
+        lift_order += 10
+        goto more
+    end
+    goto try_zas 
+*/
 int n_bpoly_mod_factor_smprime(
     n_poly_t c,
     n_tpoly_t F,
@@ -725,28 +798,43 @@ int n_bpoly_mod_factor_smprime(
     slong i, r;
     slong Blenx = B->length;
     slong Bleny;
-    slong final_order, lift_order;
+    slong final_order, curr_lift_order, prev_lift_order, next_lift_order;
     slong * starts;
     mp_limb_t alpha;
     n_poly_t Beval;
     n_poly_factor_t local_fac;
     n_bpoly_t monicB;
-    n_tpoly_t lift_fac;
     nmod_mat_t N;
-timeit_t timer;
+    slong * link;
+    n_bpoly_struct * v, * w, ** lift_fac;
+    n_tpoly_t tmp;
+    slong e[FLINT_BITS];
+    slong old_nrows;
+    slong zas_limit;    
 
     FLINT_ASSERT(Blenx > 1);
 
     n_poly_init(Beval);
     n_poly_factor_init(local_fac);
     n_bpoly_init(monicB);
-    n_tpoly_init(lift_fac);
-
+    n_tpoly_init(tmp);
+    nmod_mat_init(N, 0, 0, ctx.n);
     starts = (slong *) flint_malloc(Blenx*sizeof(slong));
+    link = (slong *) flint_malloc(sizeof(slong));
+    lift_fac = (n_bpoly_struct **) flint_malloc(sizeof(n_bpoly_struct *));
 
     /* init done */
 
     n_bpoly_mod_make_primitive(c, B, ctx);
+
+    /* deg_y(B) + 1 */
+    Bleny = 0;
+    for (i = 0; i < B->length; i++)
+        Bleny = FLINT_MAX(Bleny, (B->coeffs + i)->length);
+
+    /* CLD bounds */
+    for (i = 0; i < Blenx; i++)
+        starts[i] = Bleny;
 
     alpha = 0;
     goto got_alpha;
@@ -764,8 +852,8 @@ got_alpha:
 
     n_bpoly_mod_eval(Beval, B, alpha, ctx);
 
-    /* if killed leading coeff, get new alpha */
-    if (Beval->length != Blenx)
+    /* if killed leading/trailing coeff, get new alpha */
+    if (Beval->length != Blenx || Beval->coeffs[0] == 0)
         goto next_alpha;
 
     n_poly_mod_factor(local_fac, Beval, ctx);
@@ -789,116 +877,106 @@ got_alpha:
         goto cleanup;
 	}
 
-    n_bpoly_mod_taylor_shift_var1(B, alpha, ctx);
-
-    Bleny = 0;
-    for (i = 0; i < B->length; i++)
-        Bleny = FLINT_MAX(Bleny, (B->coeffs + i)->length);
-
-    lift_order = Bleny + 10;
-    final_order = Bleny;
-
-    n_bpoly_mod_make_monic_series(monicB, B, lift_order, ctx);
-
-    n_tpoly_fit_length(lift_fac, r);
-    lift_fac->length = r;
-
     for (i = 0; i < r; i++)
     {
         FLINT_ASSERT(local_fac->poly[i].length > 1);
         FLINT_ASSERT(local_fac->poly[i].coeffs[local_fac->poly[i].length - 1] == 1);
     }
 
-timeit_start(timer);
+    /* done if B is constant in y */
+    if (Bleny < 2)
     {
-        slong * link = flint_malloc((2*r - 2)*sizeof(slong));
-        n_bpoly_struct * v = flint_malloc(2*(2*r - 2) * sizeof(n_bpoly_struct));
-        n_bpoly_struct * w = v + (2*r - 2);
-
-        for (i = 0; i < 2*r - 2; i++)
-        {
-            n_bpoly_init(v + i);
-            n_bpoly_init(w + i);
-        }
-
-        _hensel_build_tree(link, v, w, local_fac->poly, r, ctx);
-
-        {
-            slong * e, n = FLINT_CLOG2(lift_order) + 1;
-            e = flint_malloc(n * sizeof(slong));
-            for (e[i = 0] = lift_order; e[i] > 1; i++)
-                e[i + 1] = (e[i] + 1) / 2;
-
-            for (i--; i > 0; i--)
-                _hensel_lift_tree(0, link, v, w, monicB, 2*r-4, e[i+1], e[i]-e[i+1], ctx);
-
-            if (lift_order > 1)
-                _hensel_lift_tree(1, link, v, w, monicB, 2*r-4, e[i+1], e[i]-e[i+1], ctx);
-
-            for (i = 0; i < 2*r - 2; i++)
-            { 
-                if (link[i] < 0)
-                {
-/*
-flint_printf("lifted factor: ");
-n_bpoly_print_pretty(v + i, "x", "y");
-flint_printf("\n");
-*/
-                }
-            }
-
-        }
-
-        for (i = 0; i < 2*r - 2; i++)
-        {
-            n_bpoly_clear(v + i);
-            n_bpoly_clear(w + i);
-        }
-        flint_free(link);
-        flint_free(v);
+        n_tpoly_fit_length(F, r);
+        F->length = r;
+        for (i = 0; i < r; i++)
+            n_bpoly_set_poly_var0(F->coeffs + i, local_fac->poly + i);
+        success = 1;
+        goto cleanup;
     }
-timeit_stop(timer);
-flint_printf("   tree: %wd\n", timer->wall);
 
+    /* precision for constructing true factors */
+    final_order = Bleny;
 
-timeit_start(timer);
-    _lift_quintic(lift_fac->coeffs, local_fac->poly, r, monicB, lift_order, ctx);
-timeit_stop(timer);
-flint_printf("quintic: %wd\n", timer->wall);
+    n_bpoly_mod_taylor_shift_var1(B, B, alpha, ctx);
 
-    for (i = 0; i < Blenx; i++)
-        starts[i] = Bleny;
-
+    nmod_mat_clear(N);
     nmod_mat_init(N, r, r, ctx.n);
     for (i = 0; i < r; i++)
         nmod_mat_entry(N, i, i) = 1;
 
-    _recombine_lattice(N, lift_fac->coeffs, r, lift_order, starts, B, ctx);
+    link = (slong *) flint_realloc(link, (2*r - 2)*sizeof(slong));
+    lift_fac = (n_bpoly_struct **) flint_realloc(lift_fac,
+                                                  r*sizeof(n_bpoly_struct *));
 
-    if (!nmod_mat_is_reduced(N))
-    {
-flint_printf("it wasn't reduced\n");
-usleep(1000000);
-        nmod_mat_clear(N);
-        nmod_mat_init(N, r, r, ctx.n);
-        for (i = 0; i < r; i++)
-            nmod_mat_entry(N, i, i) = 1;
-    }
+    n_tpoly_fit_length(tmp, 2*(2*r - 2));
+    v = tmp->coeffs + 0;
+    w = tmp->coeffs + (2*r - 2);
+
+    curr_lift_order = final_order + r;
+
+    n_bpoly_mod_make_monic_series(monicB, B, curr_lift_order, ctx);
+
+    _hensel_build_tree(link, v, w, local_fac->poly, r, ctx);
+    for (i = 0; i < 2*r - 2; i++)
+        if (-link[i] - 1 >= 0)
+            lift_fac[-link[i] - 1] = v + i;
+
+    FLINT_ASSERT(curr_lift_order > 1);
+    for (i = 0, e[i] = curr_lift_order; e[i] > 1; i++)
+        e[i+1] = (e[i] + 1) / 2;
+
+    for (i--; i > 0; i--)
+        _hensel_lift_tree(0, link, v, w, monicB, 2*r-4, e[i+1], e[i]-e[i+1], ctx);
+
+    prev_lift_order = e[1];
+    _hensel_lift_tree(1, link, v, w, monicB, 2*r-4, e[1], e[0]-e[1], ctx);
+
+    zas_limit = 1;
+
+try_zas:
 
     F->length = 0;
-    _recombine_zassenhaus(F, nmod_neg(alpha, ctx), N,
-                                     lift_fac->coeffs, r, final_order, B, ctx);
+    success = _zassenhaus(zas_limit, F, nmod_neg(alpha, ctx), N,
+                                             lift_fac, r, final_order, B, ctx);
+    if (success)
+        goto cleanup;
 
-    nmod_mat_clear(N);
-    success = 1;
+    zas_limit = 2;
+
+more:
+
+    old_nrows = nmod_mat_nrows(N);
+    _lattice(N, lift_fac, r, curr_lift_order, starts, B, ctx);
+    if (nmod_mat_nrows(N) < old_nrows && nmod_mat_is_reduced(N))
+        goto try_zas;
+
+    next_lift_order = curr_lift_order + r;
+    next_lift_order = FLINT_MIN(next_lift_order, 2*curr_lift_order);
+
+    _hensel_lift_tree(-1, link, v, w, monicB, 2*r-4, prev_lift_order,
+                                       curr_lift_order - prev_lift_order, ctx);
+
+    n_bpoly_mod_make_monic_series(monicB, B, next_lift_order, ctx);
+
+    _hensel_lift_tree(0, link, v, w, monicB, 2*r-4, curr_lift_order,
+                                       next_lift_order - curr_lift_order, ctx);
+
+    prev_lift_order = curr_lift_order;
+    curr_lift_order = next_lift_order;
+
+    goto more;
 
 cleanup:
 
+    flint_free(starts);
+    flint_free(link);
+    flint_free(lift_fac);
+
+    nmod_mat_clear(N);
     n_poly_clear(Beval);
     n_poly_factor_clear(local_fac);
     n_bpoly_clear(monicB);
-    n_tpoly_clear(lift_fac);
-    flint_free(starts);
+    n_tpoly_clear(tmp);
 
     return success;
 }

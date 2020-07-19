@@ -39,8 +39,6 @@ flint_printf("n_bpoly coeff i = %wd is bad\n", i);
     return !n_poly_is_zero(A->coeffs + A->length - 1);
 }
 
-
-
 int n_bpoly_equal(const n_bpoly_t A, const n_bpoly_t B)
 {
     slong i;
@@ -55,6 +53,17 @@ int n_bpoly_equal(const n_bpoly_t A, const n_bpoly_t B)
     }
 
     return 1;
+}
+
+void _n_bpoly_set(n_bpoly_t A, const n_bpoly_t B)
+{
+    slong i;
+
+    n_bpoly_fit_length(A, B->length);
+    A->length = B->length;
+
+    for (i = 0; i < B->length; i++)
+        n_poly_set(A->coeffs + i, B->coeffs + i);
 }
 
 void n_bpoly_set_poly_var1(n_bpoly_t A, const n_poly_t B)
@@ -74,11 +83,15 @@ void n_bpoly_set_poly_var0(n_bpoly_t A, const n_poly_t B)
 }
 
 
-void n_bpoly_mod_taylor_shift_var1(n_bpoly_t A, mp_limb_t alpha, nmod_t mod)
+void n_bpoly_mod_taylor_shift_var1(n_bpoly_t A, const n_bpoly_t B,
+                                                      mp_limb_t c, nmod_t ctx)
 {
     slong i;
+
+    n_bpoly_set(A, B);
+
     for (i = A->length - 1; i >= 0; i--)
-        n_poly_mod_taylor_shift(A->coeffs + i, alpha, mod);
+        n_poly_mod_taylor_shift(A->coeffs + i, c, ctx);
 }
 
 void n_bpoly_mod_taylor_shift_var0(n_bpoly_t A, mp_limb_t c, nmod_t mod)
@@ -105,6 +118,7 @@ void n_bpoly_mod_taylor_shift_var0(n_bpoly_t A, mp_limb_t c, nmod_t mod)
 
     n_poly_clear(t);
 }
+
 
 void n_bpoly_one(n_bpoly_t A)
 {

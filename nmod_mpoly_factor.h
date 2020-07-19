@@ -973,7 +973,14 @@ FLINT_DLL void nmod_mpoly_get_bpoly(n_bpoly_t A, const nmod_mpoly_t B,
 FLINT_DLL void nmod_mpoly_set_bpoly(nmod_mpoly_t A, flint_bitcnt_t Abits,
         const n_bpoly_t B, slong var0, slong var1, const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL void n_bpoly_set(n_bpoly_t A, const n_bpoly_t B);
+FLINT_DLL void _n_bpoly_set(n_bpoly_t A, const n_bpoly_t B);
+
+NMOD_MPOLY_FACTOR_INLINE
+void n_bpoly_set(n_bpoly_t A, const n_bpoly_t B)
+{
+    if (A != B)
+        _n_bpoly_set(A, B);
+}
 
 FLINT_DLL void n_bpoly_one(n_bpoly_t A);
 
@@ -1010,8 +1017,8 @@ FLINT_DLL void n_bpoly_set_poly_var1(n_bpoly_t A, const n_poly_t B);
 
 FLINT_DLL void n_bpoly_set_poly_var0(n_bpoly_t A, const n_poly_t B);
 
-FLINT_DLL void n_bpoly_mod_taylor_shift_var1(n_bpoly_t A, mp_limb_t c,
-                                                                   nmod_t ctx);
+FLINT_DLL void n_bpoly_mod_taylor_shift_var1(n_bpoly_t A, const n_bpoly_t B,
+                                                      mp_limb_t c, nmod_t ctx);
 
 FLINT_DLL void n_bpoly_mod_taylor_shift_var0(n_bpoly_t A, mp_limb_t c,
                                                                    nmod_t ctx);
