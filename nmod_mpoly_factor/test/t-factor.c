@@ -83,7 +83,7 @@ flint_printf("g: "); nmod_mpoly_factor_print_pretty(g, NULL, ctx); flint_printf(
 int
 main(void)
 {
-    slong i, j, tmul = 20;
+    slong i, j, tmul = 30;
     slong total;
     FLINT_TEST_INIT(state);
 
@@ -92,7 +92,7 @@ main(void)
 
     /* check random bivariate factors */
     total = 0;
-    for (i = 0; i < tmul * flint_test_multiplier(); i++)
+    for (i = 0; i < (1+0*tmul) * flint_test_multiplier(); i++)
     {
         slong lower;
         nmod_mpoly_ctx_t ctx;
@@ -143,7 +143,7 @@ usleep(1000000);
 
     /* check random factors */
     total = 0;
-    for (i = 0; i < 0*tmul * flint_test_multiplier(); i++)
+    for (i = 0; i < tmul * flint_test_multiplier(); i++)
     {
         slong lower;
         nmod_mpoly_ctx_t ctx;
@@ -152,7 +152,7 @@ usleep(1000000);
         ulong expbound;
         mp_limb_t p;
 
-        p = n_randint(state, (i % 10 == 0) ? 4 : FLINT_BITS - 1) + 1;
+        p = n_randint(state, (i % 2 == 0) ? 4 : FLINT_BITS - 1) + 1;
         p = n_randbits(state, p);
         p = n_nextprime(p, 1);
 

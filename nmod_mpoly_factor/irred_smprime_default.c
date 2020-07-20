@@ -12,7 +12,12 @@
 #include "nmod_mpoly_factor.h"
 #include "fq_nmod_mpoly_factor.h"
 
-
+/*
+    return:
+        1: success
+        0: lift is impossible
+       -1: failed, don't try again
+*/
 static int _try_lift(
     nmod_mpolyv_t qfac,
     const nmod_mpoly_t q,
@@ -104,7 +109,7 @@ cleanup:
     nmod_mpoly_univar_clear(u, ctx);
 
 #if WANT_ASSERT
-    if (success)
+    if (success > 0)
     {
         nmod_mpoly_init(t, ctx);
         nmod_mpoly_one(t, ctx);

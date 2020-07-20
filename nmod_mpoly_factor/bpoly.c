@@ -12,6 +12,82 @@
 #include "nmod_mpoly_factor.h"
 
 
+void n_bpoly_clear(n_bpoly_t A)
+{
+    slong i;
+    if (A->alloc > 0)
+    {
+        FLINT_ASSERT(A->coeffs != NULL);
+        for (i = 0; i < A->alloc; i++)
+            n_poly_clear(A->coeffs + i);
+        flint_free(A->coeffs);
+    }
+    else
+    {
+        FLINT_ASSERT(A->coeffs == NULL);
+    }
+}
+
+
+void n_bpoly_realloc(n_bpoly_t A, slong len)
+{
+    slong i;
+    slong old_alloc = A->alloc;
+    slong new_alloc = FLINT_MAX(len, old_alloc + 1 + old_alloc/2);
+
+    FLINT_ASSERT(A->alloc >= 0);
+
+    if (len <= A->alloc)
+        return;
+
+    if (A->alloc > 0)
+    {
+        A->coeffs = (n_poly_struct *) flint_realloc(A->coeffs,
+                                       new_alloc * sizeof(n_poly_struct));
+    }
+    else
+    {
+        FLINT_ASSERT(A->coeffs == NULL);
+        A->coeffs = (n_poly_struct *) flint_malloc(
+                                       new_alloc * sizeof(n_poly_struct));
+    }
+
+    for (i = old_alloc; i < new_alloc; i++)
+        n_poly_init(A->coeffs + i);
+
+    A->alloc = len;
+}
+
+
+void n_bpoly_print_pretty(
+    const n_bpoly_t A,
+    const char * xvar,
+    const char * yvar)
+{
+    slong i;
+    int first;
+
+    first = 1;
+    for (i = A->length - 1; i >= 0; i--)
+    {
+        if (n_poly_is_zero(A->coeffs + i))
+            continue;
+
+        if (!first)
+            flint_printf(" + ");
+
+        first = 0;
+
+        flint_printf("(");
+        n_poly_print_pretty(A->coeffs + i, yvar);
+        flint_printf(")*%s^%wd", xvar, i);
+    }
+
+    if (first)
+        flint_printf("0");
+}
+
+
 slong n_bpoly_degree1(const n_bpoly_t A)
 {
     slong i, len = 0;
@@ -19,6 +95,7 @@ slong n_bpoly_degree1(const n_bpoly_t A)
         len = FLINT_MAX(len, A->coeffs[i].length);
     return len - 1;    
 }
+
 
 int n_bpoly_mod_is_canonical(const n_bpoly_t A, nmod_t mod)
 {
@@ -30,14 +107,12 @@ int n_bpoly_mod_is_canonical(const n_bpoly_t A, nmod_t mod)
     for (i = 0; i < A->length; i++)
     {
         if (!n_poly_mod_is_canonical(A->coeffs + i, mod))
-        {
-flint_printf("n_bpoly coeff i = %wd is bad\n", i);
             return 0;
-        }
     }
 
     return !n_poly_is_zero(A->coeffs + A->length - 1);
 }
+
 
 int n_bpoly_equal(const n_bpoly_t A, const n_bpoly_t B)
 {
@@ -55,6 +130,7 @@ int n_bpoly_equal(const n_bpoly_t A, const n_bpoly_t B)
     return 1;
 }
 
+
 void _n_bpoly_set(n_bpoly_t A, const n_bpoly_t B)
 {
     slong i;
@@ -66,12 +142,48 @@ void _n_bpoly_set(n_bpoly_t A, const n_bpoly_t B)
         n_poly_set(A->coeffs + i, B->coeffs + i);
 }
 
+void n_bpoly_set_coeff_nonzero(n_bpoly_t A, slong xi, slong yi, mp_limb_t c)
+{
+    slong i;
+
+    FLINT_ASSERT(c != 0);
+
+    if (xi >= A->length)
+    {
+        n_bpoly_fit_length(A, xi + 1);
+        for (i = A->length; i <= xi; i++)
+            n_poly_zero(A->coeffs + i);
+        A->length = xi + 1;
+    }
+
+    n_poly_set_coeff_nonzero(A->coeffs + xi, yi, c);
+    FLINT_ASSERT(!n_poly_is_zero(A->coeffs + A->length - 1));
+}
+
+void n_bpoly_set_coeff(n_bpoly_t A, slong xi, slong yi, mp_limb_t c)
+{
+    slong i;
+
+    if (xi >= A->length)
+    {
+        n_bpoly_fit_length(A, xi + 1);
+        for (i = A->length; i <= xi; i++)
+            n_poly_zero(A->coeffs + i);
+        A->length = xi + 1;
+    }
+
+    n_poly_set_coeff(A->coeffs + xi, yi, c);
+    while (A->length > 0 && n_poly_is_zero(A->coeffs + A->length - 1))
+        A->length--;
+}
+
 void n_bpoly_set_poly_var1(n_bpoly_t A, const n_poly_t B)
 {
     n_bpoly_fit_length(A, 1);
 	n_poly_set(A->coeffs + 0, B);
 	A->length = !n_poly_is_zero(A->coeffs + 0);
 }
+
 
 void n_bpoly_set_poly_var0(n_bpoly_t A, const n_poly_t B)
 {
@@ -127,6 +239,7 @@ void n_bpoly_one(n_bpoly_t A)
     n_poly_one(A->coeffs + 0);
 }
 
+
 void n_bpoly_mod_sub(
     n_bpoly_t A,
     const n_bpoly_t B,
@@ -165,6 +278,7 @@ void n_bpoly_mod_sub(
             A->length = i + 1;
     }
 }
+
 
 void n_bpoly_mod_add(
     n_bpoly_t A,
@@ -223,22 +337,25 @@ void n_bpoly_mod_make_primitive(n_poly_t g, n_bpoly_t A, nmod_t ctx)
         n_poly_swap(g, q);
     }
 
-    if (Alen > 0)
-        c = A->coeffs[Alen - 1].coeffs[A->coeffs[Alen - 1].length - 1];
-
-    for (i = 0; i < A->length; i++)
+    for (i = 0; i < Alen; i++)
     {
         n_poly_mod_divrem(q, r, A->coeffs + i, g, ctx);
         FLINT_ASSERT(n_poly_is_zero(r));
         n_poly_swap(A->coeffs + i, q);
     }
 
-    if (c != 1)
+    /* make lc_xy(A) one */
+    if (Alen > 0)
     {
-        _n_poly_mod_scalar_mul_nmod(g, g, c, ctx);
-        c = nmod_inv(c, ctx);
-        for (i = 0; i < A->length; i++)
-            _n_poly_mod_scalar_mul_nmod(A->coeffs + i, A->coeffs + i, c, ctx);
+        c = A->coeffs[Alen - 1].coeffs[A->coeffs[Alen - 1].length - 1];
+        if (c != 1)
+        {
+            _n_poly_mod_scalar_mul_nmod(g, g, c, ctx);
+            c = nmod_inv(c, ctx);
+            for (i = 0; i < Alen; i++)
+                _n_poly_mod_scalar_mul_nmod(A->coeffs + i,
+                                            A->coeffs + i, c, ctx);
+        }
     }
 
     n_poly_clear(q);
@@ -280,6 +397,7 @@ void n_bpoly_mod_mul(n_bpoly_t A, const n_bpoly_t B, const n_bpoly_t C,
     n_bpoly_normalise(A);
 }
 
+
 void n_bpoly_mod_mul_series(n_bpoly_t A, const n_bpoly_t B, const n_bpoly_t C,
                                                        slong order, nmod_t mod)
 {
@@ -310,6 +428,7 @@ void n_bpoly_mod_mul_series(n_bpoly_t A, const n_bpoly_t B, const n_bpoly_t C,
     n_poly_clear(t);
 }
 
+
 void n_bpoly_mod_derivative(
     n_bpoly_t A,
     const n_bpoly_t B,
@@ -333,7 +452,10 @@ void n_bpoly_mod_derivative(
 }
 
 
-/* division in ((Z/nZ)[y]/y^order)[x] */
+/*
+    division in ((Z/nZ)[y]/y^order)[x]
+    inputs need not be reduced mod y^order
+*/
 void n_bpoly_mod_divrem_series(
     n_bpoly_t Q,
     n_bpoly_t R,
@@ -355,6 +477,9 @@ void n_bpoly_mod_divrem_series(
     n_poly_init(t);
 
     n_bpoly_set(R, A);
+    for (i = 0; i < R->length; i++)
+        n_poly_truncate(R->coeffs + i, order);
+    n_bpoly_normalise(R);
 
     Q->length = 0;
 
@@ -385,13 +510,13 @@ void n_bpoly_mod_divrem_series(
 
         FLINT_ASSERT(n_poly_is_zero(R->coeffs + R->length - 1));
 
-        while (R->length > 0 && n_poly_is_zero(R->coeffs + R->length - 1))
-            R->length--;
+        n_bpoly_normalise(R);
     }
 
     n_poly_clear(q);
     n_poly_clear(t);
 }
+
 
 int n_bpoly_mod_divides(
     n_bpoly_t Q,
@@ -489,6 +614,7 @@ void nmod_mpoly_get_bpoly(
         n_bpoly_set_coeff(A, Bexpx, Bexpy, B->coeffs[j]);
     }
 }
+
 
 void nmod_mpoly_set_bpoly(
     nmod_mpoly_t A,

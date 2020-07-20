@@ -12,7 +12,12 @@
 #include "fmpz_mpoly_factor.h"
 #include "nmod_mpoly_factor.h"
 
-
+/*
+    return:
+        1: success
+        0: lift is impossible
+       -1: failed, don't try again
+*/
 static int _try_lift(
     fmpz_mpolyv_t qfac,
     const fmpz_mpoly_t q,
@@ -104,7 +109,7 @@ cleanup:
     fmpz_mpoly_univar_clear(u, ctx);
 
 #if WANT_ASSERT
-    if (success)
+    if (success > 0)
     {
         fmpz_mpoly_init(t, ctx);
         fmpz_mpoly_one(t, ctx);
@@ -362,6 +367,8 @@ cleanup:
     fmpz_poly_clear(c);
     fmpz_bpoly_clear(B);
     fmpz_tpoly_clear(F);
+
+    FLINT_ASSERT(success == 0 || success == 1);
 
 #if WANT_ASSERT
     if (success)

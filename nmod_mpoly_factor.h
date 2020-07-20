@@ -1099,50 +1099,6 @@ FLINT_DLL void nmod_mpolyu3_print_pretty(
     const char ** vars,
     const nmod_mpoly_ctx_t ctx);
 
-/*****************************************************************************/
-
-typedef struct
-{
-    fq_nmod_poly_struct * coeffs;
-    slong alloc;
-    slong length;
-} fq_nmod_bpoly_struct;
-
-typedef fq_nmod_bpoly_struct fq_nmod_bpoly_t[1];
-
-NMOD_MPOLY_FACTOR_INLINE
-void fq_nmod_bpoly_init(fq_nmod_bpoly_t A, const fq_nmod_ctx_t ectx)
-{
-    A->coeffs = NULL;
-    A->alloc = 0;
-    A->length = 0;
-}
-
-FLINT_DLL void fq_nmod_bpoly_clear(fq_nmod_bpoly_t A, const fq_nmod_ctx_t ectx);
-
-NMOD_MPOLY_FACTOR_INLINE
-void fq_nmod_bpoly_swap(fq_nmod_bpoly_t A, fq_nmod_bpoly_t B)
-{
-    fq_nmod_bpoly_struct t = *A;
-    *A = *B;
-    *B = t;
-}
-
-FLINT_DLL void fq_nmod_bpoly_realloc(fq_nmod_bpoly_t A, slong len,
-                                                      const fq_nmod_ctx_t ctx);
-
-NMOD_MPOLY_FACTOR_INLINE
-void fq_nmod_bpoly_fit_length(fq_nmod_bpoly_t A, slong len,
-                                                       const fq_nmod_ctx_t ctx)
-{
-    if (len > A->alloc)
-        fq_nmod_bpoly_realloc(A, len, ctx);
-}
-
-
-FLINT_DLL void fq_nmod_bpoly_print_pretty(const fq_nmod_bpoly_t A,
-               const char * xvar, const char * yvar, const fq_nmod_ctx_t ectx);
-
 
 /*****************************************************************************/
 

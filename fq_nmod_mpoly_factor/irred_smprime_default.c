@@ -1,0 +1,397 @@
+/*
+    Copyright (C) 2020 Daniel Schultz
+
+    This file is part of FLINT.
+
+    FLINT is free software: you can redistribute it and/or modify it under
+    the terms of the GNU Lesser General Public License (LGPL) as published
+    by the Free Software Foundation; either version 2.1 of the License, or
+    (at your option) any later version.  See <http://www.gnu.org/licenses/>.
+*/
+
+#include "nmod_mpoly_factor.h"
+#include "fq_nmod_mpoly_factor.h"
+
+/*
+    return:
+        1: success
+        0: lift is impossible
+       -1: failed, don't try again
+*/
+static int _try_lift(
+    fq_nmod_mpolyv_t qfac,
+    const fq_nmod_mpoly_t q,
+    const fq_nmod_mpolyv_t pfac,
+    const fq_nmod_mpoly_t p,
+    slong m,
+    fq_nmod_struct * alpha,
+    slong n,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    int success;
+    slong i;
+    slong * newdeg;
+    fq_nmod_mpoly_t lcq, lcp, t, newq;
+    fq_nmod_mpoly_univar_t u;
+
+    FLINT_ASSERT(pfac->length > 1);
+
+    newdeg = (slong *) flint_malloc((n + 1)*sizeof(slong));
+    fq_nmod_mpoly_init(lcq, ctx);
+    fq_nmod_mpoly_init(lcp, ctx);
+    fq_nmod_mpoly_init(t, ctx);
+    fq_nmod_mpoly_init(newq, ctx);
+    fq_nmod_mpoly_univar_init(u, ctx);
+
+#if WANT_ASSERT
+    fq_nmod_mpoly_one(t, ctx);
+    for (i = 0; i < pfac->length; i++)
+        fq_nmod_mpoly_mul(t, t, pfac->coeffs + i, ctx);
+    FLINT_ASSERT(fq_nmod_mpoly_equal(t, p, ctx));
+#endif
+
+    _fq_nmod_mpoly_get_lc(lcq, q, ctx);
+    fq_nmod_mpoly_evaluate_one_fq_nmod(lcp, lcq, m, alpha + m - 1, ctx);
+
+    FLINT_ASSERT(lcp->length > 0);
+
+    fq_nmod_mpoly_pow_ui(t, lcq, pfac->length - 1, ctx);
+    fq_nmod_mpoly_mul(newq, q, t, ctx);
+
+    if (newq->bits > FLINT_BITS)
+    {
+        success = -1;
+        goto cleanup;
+    }
+
+    fq_nmod_mpoly_degrees_si(newdeg, newq, ctx);
+
+    fq_nmod_mpolyv_fit_length(qfac, pfac->length, ctx);
+    qfac->length = pfac->length;
+    for (i = 0; i < pfac->length; i++)
+    {
+        _fq_nmod_mpoly_get_lc(t, pfac->coeffs + i, ctx);
+        success = fq_nmod_mpoly_divides(t, lcp, t, ctx);
+        FLINT_ASSERT(success);
+        fq_nmod_mpoly_mul(qfac->coeffs + i, pfac->coeffs + i, t, ctx);
+        _fq_nmod_mpoly_set_lc(qfac->coeffs + i, qfac->coeffs + i, lcq, ctx);
+    }
+
+    success = fq_nmod_mpoly_hlift(m, qfac->coeffs, qfac->length,
+                                                     alpha, newq, newdeg, ctx);
+    if (!success)
+        goto cleanup;
+
+    for (i = 0; i < qfac->length; i++)
+    {
+        fq_nmod_mpoly_to_univar(u, qfac->coeffs + i, 0, ctx);
+        success = fq_nmod_mpoly_univar_content_mpoly(t, u, ctx);
+        if (!success)
+        {
+            success = -1;
+            goto cleanup;
+        }
+        success = fq_nmod_mpoly_divides(qfac->coeffs + i,
+                                        qfac->coeffs + i, t, ctx);
+        FLINT_ASSERT(success);
+        fq_nmod_mpoly_make_monic(qfac->coeffs + i, qfac->coeffs + i, ctx);
+    }
+
+    success = 1;
+
+cleanup:
+
+    flint_free(newdeg);
+    fq_nmod_mpoly_clear(lcq, ctx);
+    fq_nmod_mpoly_clear(lcp, ctx);
+    fq_nmod_mpoly_clear(t, ctx);
+    fq_nmod_mpoly_clear(newq, ctx);
+    fq_nmod_mpoly_univar_clear(u, ctx);
+
+#if WANT_ASSERT
+    if (success > 0)
+    {
+        fq_nmod_mpoly_init(t, ctx);
+        fq_nmod_mpoly_one(t, ctx);
+        for (i = 0; i < qfac->length; i++)
+            fq_nmod_mpoly_mul(t, t, qfac->coeffs + i, ctx);
+        FLINT_ASSERT(fq_nmod_mpoly_equal(t, q, ctx));
+        fq_nmod_mpoly_clear(t, ctx);
+    }
+#endif
+
+    return success;
+}
+
+/*
+    return:
+        1: success
+        0: failed, may try again
+       -1: failed, don't try again
+*/
+int fq_nmod_mpoly_factor_irred_smprime_default(
+    fq_nmod_mpolyv_t fac,
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    int tries_left = 10;
+    int success;
+    const slong n = ctx->minfo->nvars - 1;
+    slong i, j, m, r;
+    fmpz_t subset;
+    fq_nmod_struct * alpha;
+    fq_nmod_mpoly_struct * Aevals;
+    slong * deg, * degeval;
+    fq_nmod_mpolyv_t qfac, pfac, tfac, dfac;
+    fq_nmod_mpoly_t t, p, q;
+    fq_nmod_mpoly_univar_t u;
+    fq_nmod_poly_t c;
+    fq_nmod_bpoly_t B;
+    fq_nmod_tpoly_t F;
+    flint_rand_t randstate;
+
+	fmpz_init(subset);
+    flint_randinit(randstate);
+	alpha = (fq_nmod_struct *) flint_malloc(n*sizeof(fq_nmod_struct));
+    for (i = 0; i < n; i++)
+        fq_nmod_init(alpha + i, ctx->fqctx);
+
+    deg     = (slong *) flint_malloc((n + 1)*sizeof(slong));
+    degeval = (slong *) flint_malloc((n + 1)*sizeof(slong));
+
+    Aevals    = (fq_nmod_mpoly_struct *) flint_malloc(n*sizeof(fq_nmod_mpoly_struct));
+	for (i = 0; i < n; i++)
+		fq_nmod_mpoly_init(Aevals + i, ctx);
+
+    fq_nmod_mpolyv_init(pfac, ctx);
+	fq_nmod_mpolyv_init(qfac, ctx);
+    fq_nmod_mpolyv_init(tfac, ctx);
+	fq_nmod_mpolyv_init(dfac, ctx);
+	fq_nmod_mpoly_init(t, ctx);
+	fq_nmod_mpoly_init(p, ctx);
+	fq_nmod_mpoly_init(q, ctx);
+	fq_nmod_mpoly_univar_init(u, ctx);
+    fq_nmod_poly_init(c, ctx->fqctx);
+    fq_nmod_bpoly_init(B, ctx->fqctx);
+    fq_nmod_tpoly_init(F, ctx->fqctx);
+
+	fq_nmod_mpoly_degrees_si(deg, A, ctx);
+    goto got_alpha;
+
+next_alpha:
+
+    tries_left--;
+    if (tries_left < 0)
+    {
+        success = 0;
+        goto cleanup;
+    }
+
+    for (i = 0; i < n; i++)
+        fq_nmod_rand(alpha + i, randstate, ctx->fqctx);
+
+got_alpha:
+
+	/* ensure degrees do not drop under evalutaion */
+    for (i = n - 1; i >= 0; i--)
+    {
+    	fq_nmod_mpoly_evaluate_one_fq_nmod(Aevals + i,
+                       i == n - 1 ? A : Aevals + i + 1, i + 1, alpha + i, ctx);
+    	fq_nmod_mpoly_degrees_si(degeval, Aevals + i, ctx);
+	    for (j = 0; j <= i; j++)
+        {
+	    	if (degeval[j] != deg[j])
+			    goto next_alpha;
+        }
+    }
+
+    /* make sure univar is squarefree */
+	fq_nmod_mpoly_derivative(t, Aevals + 0, 0, ctx);
+	fq_nmod_mpoly_gcd(t, t, Aevals + 0, ctx);
+	if (!fq_nmod_mpoly_is_one(t, ctx))
+		goto next_alpha;
+
+    /* make evaluations primitive */
+    for (i = n - 1; i > 0; i--)
+    {
+        fq_nmod_mpoly_to_univar(u, Aevals + i, 0, ctx);
+        success = fq_nmod_mpoly_univar_content_mpoly(t, u, ctx);
+        if (!success)
+            goto cleanup;
+        success = fq_nmod_mpoly_divides(Aevals + i, Aevals + i, t, ctx);
+        FLINT_ASSERT(success);
+        fq_nmod_mpoly_make_monic(Aevals + i, Aevals + i, ctx);
+    }
+
+    fq_nmod_mpoly_get_fq_nmod_bpoly(B, Aevals + 1, 0, 1, ctx);
+    success = fq_nmod_bpoly_factor_smprime(c, F, B, 1, ctx->fqctx);
+    if (!success)
+        goto next_alpha;
+
+    FLINT_ASSERT(fq_nmod_poly_degree(c, ctx->fqctx) == 0);
+
+    fq_nmod_mpolyv_fit_length(pfac, F->length, ctx);
+    pfac->length = F->length;
+    for (i = 0; i < F->length; i++)
+    {
+        fq_nmod_mpoly_set_fq_nmod_bpoly(pfac->coeffs + i, A->bits,
+                                                     F->coeffs + i, 0, 1, ctx);
+        fq_nmod_mpoly_make_monic(pfac->coeffs + i, pfac->coeffs + i, ctx);
+    }
+
+    for (m = 2; m <= n; m++)
+    {
+        fq_nmod_mpoly_set(q, m < n ? Aevals + m : A, ctx);
+        fq_nmod_mpoly_set(p, Aevals + m - 1, ctx);
+
+    #if WANT_ASSERT
+        fq_nmod_mpoly_one(t, ctx);
+        for (i = 0; i < pfac->length; i++)
+            fq_nmod_mpoly_mul(t, t, pfac->coeffs + i, ctx);
+        FLINT_ASSERT(fq_nmod_mpoly_equal(t, p, ctx));
+    #endif
+
+        /* if p has only one factor, A must be irreducible */
+        if (pfac->length < 2)
+        {
+	        fq_nmod_mpolyv_fit_length(fac, 1, ctx);
+            fac->length = 1;
+            fq_nmod_mpoly_set(fac->coeffs + 0, A, ctx);
+		    success = 1;
+		    goto cleanup;
+        }
+
+        success = _try_lift(qfac, q, pfac, p, m, alpha, n, ctx);
+        if (success > 0)
+        {
+            fq_nmod_mpolyv_swap(qfac, pfac, ctx);
+            continue;
+        }
+        else if (success < 0)
+        {
+            success = 0;
+            goto cleanup;
+        }
+
+        if (pfac->length == 2)
+        {
+	        fq_nmod_mpolyv_fit_length(fac, 1, ctx);
+            fac->length = 1;
+            fq_nmod_mpoly_set(fac->coeffs + 0, A, ctx);
+		    success = 1;
+		    goto cleanup;
+        }
+
+        qfac->length = 0;
+
+try_again:
+
+        for (r = 1; r <= pfac->length/2; r++)
+        {
+            subset_first(subset, pfac->length, r);
+
+        #if WANT_ASSERT
+            fq_nmod_mpoly_one(t, ctx);
+            for (i = 0; i < pfac->length; i++)
+                fq_nmod_mpoly_mul(t, t, pfac->coeffs + i, ctx);
+            FLINT_ASSERT(fq_nmod_mpoly_equal(t, p, ctx));
+        #endif
+
+            do {
+                fq_nmod_mpolyv_fit_length(dfac, 2, ctx);
+                dfac->length = 2;
+                fq_nmod_mpoly_one(dfac->coeffs + 0, ctx);
+                fq_nmod_mpoly_one(dfac->coeffs + 1, ctx);
+                for (i = 0; i < pfac->length; i++)
+                {
+                    j = fmpz_tstbit(subset, i);
+                    fq_nmod_mpoly_mul(dfac->coeffs + j,
+                                      dfac->coeffs + j, pfac->coeffs + i, ctx);
+                }
+
+                success = _try_lift(tfac, q, dfac, p, m, alpha, n, ctx);
+                if (success > 0)
+                {
+                    for (i = pfac->length - 1; i >= 0; i--)
+                    {
+                        if (fmpz_tstbit(subset, i))
+                        {
+                            pfac->length--;
+                            fq_nmod_mpoly_swap(pfac->coeffs + i,
+                                             pfac->coeffs + pfac->length, ctx);
+                        }
+                    }
+
+                    fq_nmod_mpolyv_fit_length(qfac, qfac->length + 1, ctx);
+                    fq_nmod_mpoly_swap(qfac->coeffs + qfac->length,
+                                                        tfac->coeffs + 1, ctx);
+                    qfac->length++;
+
+                    fq_nmod_mpoly_swap(q, tfac->coeffs + 0, ctx);
+                    fq_nmod_mpoly_swap(p, dfac->coeffs + 0, ctx);
+                    goto try_again;
+                }
+                else if (success < 0)
+                {
+                    success = 0;
+                    goto cleanup;
+                }
+            }
+            while (subset_next(subset, subset, pfac->length));
+        }
+
+        /* if pfac could not be combined, p must be irreducible */
+        fq_nmod_mpolyv_fit_length(qfac, qfac->length + 1, ctx);
+        fq_nmod_mpoly_swap(qfac->coeffs + qfac->length, q, ctx);
+        qfac->length++;
+        fq_nmod_mpolyv_swap(qfac, pfac, ctx);
+    }
+
+    success = 1;
+
+    fq_nmod_mpolyv_swap(fac, pfac, ctx);
+
+cleanup:
+
+    fmpz_clear(subset);
+
+    for (i = 0; i < n; i++)
+        fq_nmod_clear(alpha + i, ctx->fqctx);
+    flint_free(alpha);
+
+    for (i = 0; i < n; i++)
+        fq_nmod_mpoly_clear(Aevals + i, ctx);
+    flint_free(Aevals);
+
+    flint_free(deg);
+    flint_free(degeval);
+
+    fq_nmod_mpolyv_clear(pfac, ctx);
+    fq_nmod_mpolyv_clear(qfac, ctx);
+    fq_nmod_mpolyv_clear(tfac, ctx);
+    fq_nmod_mpolyv_clear(dfac, ctx);
+    fq_nmod_mpoly_clear(t, ctx);
+    fq_nmod_mpoly_clear(p, ctx);
+    fq_nmod_mpoly_clear(q, ctx);
+    fq_nmod_mpoly_univar_clear(u, ctx);
+    fq_nmod_poly_clear(c, ctx->fqctx);
+    fq_nmod_bpoly_clear(B, ctx->fqctx);
+    fq_nmod_tpoly_clear(F, ctx->fqctx);
+
+    FLINT_ASSERT(success == 0 || success == 1);
+
+#if WANT_ASSERT
+    if (success)
+    {
+        fq_nmod_mpoly_init(t, ctx);
+        fq_nmod_mpoly_one(t, ctx);
+        for (i = 0; i < fac->length; i++)
+            fq_nmod_mpoly_mul(t, t, fac->coeffs + i, ctx);
+        FLINT_ASSERT(fq_nmod_mpoly_equal(t, A, ctx));
+        fq_nmod_mpoly_clear(t, ctx);
+    }
+#endif
+
+    return success;
+}
+

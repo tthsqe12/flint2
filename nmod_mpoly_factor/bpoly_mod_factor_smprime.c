@@ -95,24 +95,6 @@ void nmod_mat_init_nullspace_tr(nmod_mat_t X, nmod_mat_t tmp)
 }
 
 
-
-static void n_bpoly_mod_add_poly_shift(
-    n_bpoly_t A,
-    const n_poly_t B,
-    slong yshift,
-    const nmod_t ctx)
-{
-    slong i;
-
-    FLINT_ASSERT(A->length > B->length);
-
-    for (i = 0; i < B->length; i++)
-    {
-        FLINT_ASSERT(0 == n_poly_get_coeff(A->coeffs + i, yshift));
-        n_poly_set_coeff(A->coeffs + i, yshift, B->coeffs[i]);
-    }
-}
-
 void n_bpoly_mod_make_monic_series(
     n_bpoly_t A,
     const n_bpoly_t B,
@@ -429,82 +411,6 @@ cleanup:
 }
 
 
-void _lift_quintic(
-    n_bpoly_struct * lift_facs,
-    n_poly_struct * local_facs,
-    slong r,
-    const n_bpoly_t IBtilde,
-    slong lift_order,
-    nmod_t ctx)
-{
-    slong i, j, k;
-    n_bpoly_t Id;
-    n_bpoly_t tp, tp1, error;
-    n_poly_t ss, tt;
-
-    n_bpoly_init(Id);
-    n_poly_init(ss);
-    n_poly_init(tt);
-    n_bpoly_init(tp);
-    n_bpoly_init(tp1);
-    n_bpoly_init(error);
-
-    n_bpoly_fit_length(Id, r);
-    Id->length = r;
-
-    for (i = 0; i < r; i++)
-    {
-        n_bpoly_set_poly_var0(lift_facs + i, local_facs + i);
-    }
-
-    nmod_partial_fraction_coeffs(r, Id->coeffs, local_facs, ctx);
-
-    n_bpoly_mod_mul_series(tp, lift_facs + 0, lift_facs + 1, lift_order, ctx);
-    for (i = 2; i < r; i++)
-    {
-        n_bpoly_mod_mul_series(tp1, tp, lift_facs + i, lift_order, ctx);
-        n_bpoly_swap(tp1, tp);
-    }
-
-    n_bpoly_mod_sub(error, IBtilde, tp, ctx);
-
-    for (j = 1; j < lift_order; j++)
-    {
-        n_poly_zero(ss);
-        for (i = error->length - 1; i >= 0; i--)
-        {
-            n_poly_set_coeff(ss, i, n_bpoly_get_coeff(error, i, j));
-            for (k = 0; k < j; k++)
-            {
-                FLINT_ASSERT(0 == n_bpoly_get_coeff(error, i, k));
-            }
-        }
-
-        for (i = 0; i < r; i++)
-        {
-            n_poly_mod_mul(tt, ss, Id->coeffs + i, ctx);
-            n_poly_mod_rem(tt, tt, local_facs + i, ctx);
-            n_bpoly_mod_add_poly_shift(lift_facs + i, tt, j, ctx);
-        }
-
-        n_bpoly_mod_mul_series(tp, lift_facs + 0, lift_facs + 1, lift_order, ctx);
-        for (i = 2; i < r; i++)
-        {
-            n_bpoly_mod_mul_series(tp1, tp, lift_facs + i, lift_order, ctx);
-            n_bpoly_swap(tp1, tp);
-        }
-        n_bpoly_mod_sub(error, IBtilde, tp, ctx);
-    }
-
-    n_bpoly_clear(Id);
-    n_poly_clear(ss);
-    n_poly_clear(tt);
-    n_bpoly_clear(tp);
-    n_bpoly_clear(tp1);
-    n_bpoly_clear(error);
-}
-
-
 static void _hensel_build_tree(
     slong * link,
     n_bpoly_struct * v,
@@ -771,22 +677,7 @@ static void _hensel_lift_tree(
     _hensel_lift_tree(opt, link, v, w, v + j + 1, link[j + 1], p0, p1, ctx);
 }
 
-/*
-    final_order = deg_y(B)
-    lift_order = final_order + 10
-    N = rxr identity
-try_zas:
-    if try_zas(2, N, final_order)
-        return
-    end
-more:
-    N = lattice_reduce(N, lift_order)
-    if !is_reduced(N)
-        lift_order += 10
-        goto more
-    end
-    goto try_zas 
-*/
+
 int n_bpoly_mod_factor_smprime(
     n_poly_t c,
     n_tpoly_t F,
@@ -871,8 +762,8 @@ got_alpha:
 	if (r < 2)
 	{
         n_tpoly_fit_length(F, 1);
-        F->length = 1;
         n_bpoly_swap(F->coeffs + 0, B);
+        F->length = 1;
         success = 1;
         goto cleanup;
 	}
