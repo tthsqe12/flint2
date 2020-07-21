@@ -314,8 +314,7 @@ try_subset:
             }
         }
         while (subset_next(subset, subset, len));
-sloop_continue:
-        (void)(NULL);
+sloop_continue:;
     }
 
     if (f->length > 1)
@@ -521,6 +520,7 @@ static void _hensel_lift_fac(
             n_poly_mod_divrem(tq, tr, c->coeffs + i, p01, ctx);
             FLINT_ASSERT(n_poly_is_zero(tr));
         }
+        n_poly_clear(p01);
     }
 #endif
 

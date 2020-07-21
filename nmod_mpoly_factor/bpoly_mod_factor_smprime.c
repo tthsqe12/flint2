@@ -112,11 +112,15 @@ void n_bpoly_mod_make_monic_series(
     n_poly_mod_inv_series(lcinv, B->coeffs + B->length - 1, order, ctx);
 
     n_bpoly_fit_length(A, B->length);
-    A->length = B->length;
     for (i = 0; i < B->length; i++)
         n_poly_mod_mullow(A->coeffs + i, B->coeffs + i, lcinv, order, ctx);
 
+    A->length = B->length;
+    n_bpoly_normalise(A);
+
     n_poly_clear(lcinv);
+
+    
 }
 
 int nmod_partial_fraction_coeffs(
@@ -371,8 +375,7 @@ try_subset:
             }
         }
         while (subset_next(subset, subset, len));
-sloop_continue:
-        (void)(NULL);
+sloop_continue:;
     }
 
     if (f->length > 1)

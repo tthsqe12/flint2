@@ -283,6 +283,8 @@ void fq_nmod_bpoly_zero(fq_nmod_bpoly_t A, const fq_nmod_ctx_t fqctx)
     A->length = 0;
 }
 
+FLINT_DLL void fq_nmod_bpoly_one(fq_nmod_bpoly_t A, const fq_nmod_ctx_t ctx);
+
 FQ_NMOD_MPOLY_FACTOR_INLINE
 void fq_nmod_bpoly_normalise(fq_nmod_bpoly_t A, const fq_nmod_ctx_t ctx)
 {
@@ -290,13 +292,19 @@ void fq_nmod_bpoly_normalise(fq_nmod_bpoly_t A, const fq_nmod_ctx_t ctx)
         A->length--;
 }
 
+FLINT_DLL int fq_nmod_bpoly_is_canonical(const fq_nmod_bpoly_t A,
+                                                      const fq_nmod_ctx_t ctx);
+
+FLINT_DLL void fq_nmod_bpoly_set(fq_nmod_bpoly_t A, const fq_nmod_bpoly_t B,
+                                                      const fq_nmod_ctx_t ctx);
+
 FLINT_DLL void fq_nmod_bpoly_set_coeff(fq_nmod_bpoly_t A, slong xi,
                          slong yi, const fq_nmod_t c, const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void fq_nmod_bpoly_set_polyx(fq_nmod_bpoly_t A,
+FLINT_DLL void fq_nmod_bpoly_set_poly_var0(fq_nmod_bpoly_t A,
                              const fq_nmod_poly_t B, const fq_nmod_ctx_t ectx);
 
-FLINT_DLL void fq_nmod_bpoly_set_polyy(fq_nmod_bpoly_t A,
+FLINT_DLL void fq_nmod_bpoly_set_poly_var1(fq_nmod_bpoly_t A,
                              const fq_nmod_poly_t B, const fq_nmod_ctx_t ectx);
 
 FLINT_DLL void fq_nmod_bpoly_get_coeff(fq_nmod_t c, const fq_nmod_bpoly_t A,
@@ -336,7 +344,7 @@ FLINT_DLL void fq_nmod_bpoly_sub(
     const fq_nmod_bpoly_t C,
     const fq_nmod_ctx_t ectx);
 
-FLINT_DLL void fq_nmod_bpoly_set(
+FLINT_DLL void fq_nmod_bpoly_derivative(
     fq_nmod_bpoly_t A,
     const fq_nmod_bpoly_t B,
     const fq_nmod_ctx_t ctx);
@@ -372,12 +380,11 @@ FLINT_DLL void fq_nmod_poly_taylor_shift_horner(
     const fq_nmod_t c,
     const fq_nmod_ctx_t ctx);
 
-
-FLINT_DLL void fq_nmod_bpoly_taylor_shift(
+FLINT_DLL void fq_nmod_bpoly_taylor_shift_var1(
     fq_nmod_bpoly_t A,
+    const fq_nmod_bpoly_t B,
     const fq_nmod_t alpha,
     const fq_nmod_ctx_t ctx);
-
 
 FLINT_DLL void fq_nmod_mpoly_get_fq_nmod_bpoly(
     fq_nmod_bpoly_t A,

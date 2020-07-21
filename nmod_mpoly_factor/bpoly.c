@@ -436,6 +436,8 @@ void n_bpoly_mod_derivative(
 {
     slong i;
 
+    FLINT_ASSERT(A != B);
+
     if (B->length < 2)
     {
         n_bpoly_zero(A);

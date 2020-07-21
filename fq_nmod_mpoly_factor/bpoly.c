@@ -58,7 +58,7 @@ void fq_nmod_bpoly_realloc(fq_nmod_bpoly_t A, slong len, const fq_nmod_ctx_t ctx
 }
 
 
-void fq_nmodn_bpoly_print_pretty(
+void fq_nmod_bpoly_print_pretty(
     const fq_nmod_bpoly_t A,
     const char * var0,
     const char * var1,
@@ -87,6 +87,22 @@ void fq_nmodn_bpoly_print_pretty(
         flint_printf("0");
 }
 
+int fq_nmod_bpoly_is_canonical(const fq_nmod_bpoly_t A, const fq_nmod_ctx_t ctx)
+{
+    if (A->length <= 0)
+        return A->length == 0;
+/*
+    slong i;
+
+    for (i = 0; i < A->length; i++)
+    {
+        if (!fq_nmod_poly_is_canonical(A->coeffs + i, ctx))
+            return 0;
+    }
+*/
+    return !fq_nmod_poly_is_zero(A->coeffs + A->length - 1, ctx);
+}
+
 void fq_nmod_bpoly_set_coeff(
     fq_nmod_bpoly_t A,
     slong xi,
@@ -109,7 +125,7 @@ void fq_nmod_bpoly_set_coeff(
 }
 
 
-void fq_nmod_bpoly_set_polyx(
+void fq_nmod_bpoly_set_poly_var0(
     fq_nmod_bpoly_t A,
     const fq_nmod_poly_t B,
     const fq_nmod_ctx_t ectx)
@@ -125,7 +141,7 @@ void fq_nmod_bpoly_set_polyx(
     }    
 }
 
-void fq_nmod_bpoly_set_polyy(
+void fq_nmod_bpoly_set_poly_var1(
     fq_nmod_bpoly_t A,
     const fq_nmod_poly_t B,
     const fq_nmod_ctx_t ectx)
@@ -173,7 +189,7 @@ void fq_nmod_bpoly_mul(
     const fq_nmod_ctx_t ctx)
 {
     slong i, j;
-    n_poly_struct * t;
+    fq_nmod_poly_struct * t;
 
     FLINT_ASSERT(A != B);
     FLINT_ASSERT(A != C);
@@ -200,7 +216,7 @@ void fq_nmod_bpoly_mul(
     }
 
     A->length = B->length + C->length - 1;
-    fq_nmod_bpoly_normalise(A);
+    fq_nmod_bpoly_normalise(A, ctx);
 }
 
 
@@ -262,7 +278,7 @@ void fq_nmod_bpoly_add_poly_shift(
 }
 
 
-void fq_nmod_bpoly_mod_add(
+void fq_nmod_bpoly_add(
     fq_nmod_bpoly_t A,
     const fq_nmod_bpoly_t B,
     const fq_nmod_bpoly_t C,
@@ -274,7 +290,7 @@ void fq_nmod_bpoly_mod_add(
     FLINT_ASSERT(A != B);
     FLINT_ASSERT(A != C);
 
-    fq_nmod_bpoly_fit_length(A, Alen);
+    fq_nmod_bpoly_fit_length(A, Alen, ctx);
 
     A->length = 0;
     for (i = 0; i < Alen; i++)
@@ -299,6 +315,13 @@ void fq_nmod_bpoly_mod_add(
         if (!fq_nmod_poly_is_zero(A->coeffs + i, ctx))
             A->length = i + 1;
     }
+}
+
+void fq_nmod_bpoly_one(fq_nmod_bpoly_t A, const fq_nmod_ctx_t ctx)
+{
+    fq_nmod_bpoly_fit_length(A, 1, ctx);
+    A->length = 1;
+    fq_nmod_poly_one(A->coeffs + 0, ctx);
 }
 
 void fq_nmod_bpoly_sub(
@@ -338,22 +361,35 @@ void fq_nmod_bpoly_sub(
     }
 }
 
-void fq_nmod_bpoly_set(
+void fq_nmod_bpoly_derivative(
     fq_nmod_bpoly_t A,
     const fq_nmod_bpoly_t B,
     const fq_nmod_ctx_t ctx)
 {
     slong i;
+    fq_nmod_t c;
 
-    FLINT_ASSERT(A != B);
+    if (B->length < 2)
+    {
+        A->length = 0;
+        return;
+    }
 
-    fq_nmod_bpoly_fit_length(A, B->length, ctx);
-    A->length = B->length;
+    fq_nmod_init(c, ctx);
 
-    for (i = 0; i < B->length; i++)
-        fq_nmod_poly_set(A->coeffs + i, B->coeffs + i, ctx);
+    fq_nmod_bpoly_fit_length(A, B->length - 1, ctx);
+
+    for (i = 1; i < B->length; i++)
+    {
+        fq_nmod_set_si(c, i, ctx);
+        fq_nmod_poly_scalar_mul_fq_nmod(A->coeffs + i - 1, B->coeffs + i, c, ctx);
+    }
+
+    A->length = B->length - 1;
+    fq_nmod_bpoly_normalise(A, ctx);
+
+    fq_nmod_clear(c, ctx);
 }
-
 
 /*
     division in (Fq[y]/y^order)[x]
@@ -368,7 +404,7 @@ void fq_nmod_bpoly_divrem_series(
     const fq_nmod_ctx_t ctx)
 {
     slong i, qoff;
-    n_poly_t q, t;
+    fq_nmod_poly_t q, t;
 
     FLINT_ASSERT(R != A);
     FLINT_ASSERT(R != B);
@@ -487,6 +523,21 @@ cleanup:
     return divides;
 }
 
+void fq_nmod_bpoly_set(fq_nmod_bpoly_t A, const fq_nmod_bpoly_t B,
+                                                       const fq_nmod_ctx_t ctx)
+{
+    slong i;
+
+    if (A == B)
+        return;
+
+    fq_nmod_bpoly_fit_length(A, B->length, ctx);
+    A->length = B->length;
+
+    for (i = 0; i < B->length; i++)
+        fq_nmod_poly_set(A->coeffs + i, B->coeffs + i, ctx);
+}
+
 void fq_nmod_bpoly_make_primitive(
     fq_nmod_poly_t g,
     fq_nmod_bpoly_t A,
@@ -569,12 +620,14 @@ void fq_nmod_poly_taylor_shift_horner(
 }
 
 
-void fq_nmod_bpoly_taylor_shift(
+void fq_nmod_bpoly_taylor_shift_var1(
     fq_nmod_bpoly_t A,
+    const fq_nmod_bpoly_t B,
     const fq_nmod_t alpha,
     const fq_nmod_ctx_t ctx)
 {
     slong i;
+    fq_nmod_bpoly_set(A, B, ctx);
     for (i = A->length - 1; i >= 0; i--)
         fq_nmod_poly_taylor_shift_horner(A->coeffs + i, A->coeffs + i, alpha, ctx);    
 }
