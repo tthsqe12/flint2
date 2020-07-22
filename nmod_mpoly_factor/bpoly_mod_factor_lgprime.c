@@ -84,7 +84,7 @@ void n_bpoly_mod_mul_mod_poly(
     const n_bpoly_t B,
     const n_bpoly_t C,
     const n_poly_t m,
-    nmod_t mod)
+    nmod_t ctx)
 {
     slong i, j;
     n_poly_t t;
@@ -99,19 +99,15 @@ void n_bpoly_mod_mul_mod_poly(
         n_poly_zero(A->coeffs + i);
 
     for (i = 0; i < B->length; i++)
+    for (j = 0; j < C->length; j++)
     {
-        for (j = 0; j < C->length; j++)
-        {
-            n_poly_mod_mul(t, B->coeffs + i, C->coeffs + j, mod);
-            n_poly_mod_add(A->coeffs + i + j, A->coeffs + i + j, t, mod);
-            n_poly_mod_rem(A->coeffs + i + j, A->coeffs + i + j, m, mod);
-        }
+        n_poly_mod_mul(t, B->coeffs + i, C->coeffs + j, ctx);
+        n_poly_mod_add(A->coeffs + i + j, A->coeffs + i + j, t, ctx);
+        n_poly_mod_rem(A->coeffs + i + j, A->coeffs + i + j, m, ctx);
     }
 
     A->length = B->length + C->length - 1;
-
-    while (A->length > 0 && n_poly_is_zero(A->coeffs + A->length - 1))
-        A->length--;
+    n_bpoly_normalise(A);
 
     n_poly_clear(t);
 }
@@ -154,7 +150,7 @@ void n_bpoly_mod_divrem_mod_poly(
         {
             n_poly_mod_mulmod(t, B->coeffs + i, q, m, ctx);
             n_poly_mod_sub(R->coeffs + i + R->length - B->length,
-                            R->coeffs + i + R->length - B->length, t, ctx);
+                           R->coeffs + i + R->length - B->length, t, ctx);
         }
 
         qoff = R->length - B->length;
@@ -172,8 +168,7 @@ void n_bpoly_mod_divrem_mod_poly(
 
         FLINT_ASSERT(n_poly_is_zero(R->coeffs + R->length - 1));
 
-        while (R->length > 0 && n_poly_is_zero(R->coeffs + R->length - 1))
-            R->length--;
+        n_bpoly_normalise(R);
     }
 
     n_poly_clear(q);
@@ -181,7 +176,7 @@ void n_bpoly_mod_divrem_mod_poly(
     n_poly_clear(Binv);
 }
 
-
+/*
 void n_bpoly_add_fq_nmod_poly_mul(
     n_bpoly_t A,
     const fq_nmod_poly_t B,
@@ -204,6 +199,7 @@ void n_bpoly_add_fq_nmod_poly_mul(
 
     n_poly_clear(t);
 }
+*/
 
 static int _zassenhaus(
     slong limit,

@@ -20,7 +20,7 @@ int fmpq_mpoly_factor(fmpq_mpoly_factor_t f, const fmpq_mpoly_t A,
 
 	fmpz_mpoly_factor_init(zf, ctx->zctx);
 	success = fmpz_mpoly_factor(zf, A->zpoly, ctx->zctx);
-    fmpq_mpoly_factor_swap_fmpz_mpoly_factor(f, zf, A->content, ctx);
+    _fmpq_mpoly_factor_swap_fmpz_mpoly_factor(f, zf, A->content, ctx);
 	fmpz_mpoly_factor_clear(zf, ctx->zctx);
 
 	return success;

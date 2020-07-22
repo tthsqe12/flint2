@@ -247,13 +247,15 @@ FLINT_DLL void nmod_mpoly_univar_divexact_mpoly(
 FLINT_DLL int nmod_mpoly_factor_irred_smprime_default(
     nmod_mpolyv_t fac,
     const nmod_mpoly_t A,
-    const nmod_mpoly_ctx_t ctx);
+    const nmod_mpoly_ctx_t ctx,
+    flint_rand_t state);
 
 FLINT_DLL int nmod_mpoly_factor_irred_lgprime_default(
     nmod_mpolyv_t fac,
     const nmod_mpoly_t A,
-    const nmod_mpoly_ctx_t ctx);
-
+    const nmod_mpoly_ctx_t ctx,
+    flint_rand_t state);
+/*
 FLINT_DLL int nmod_irreducible_bivar_factors_smprime(
     nmod_mpoly_factor_t fac,
     const nmod_mpoly_t A,
@@ -267,7 +269,7 @@ FLINT_DLL int nmod_irreducible_bivar_factors_lgprime(
     slong xvar,
     slong yvar,
     const nmod_mpoly_ctx_t ctx);
-
+*/
 /*****************************************************************************/
 
 NMOD_MPOLY_FACTOR_INLINE

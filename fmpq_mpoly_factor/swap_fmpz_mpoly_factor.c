@@ -19,6 +19,7 @@ void _fmpq_mpoly_factor_swap_fmpz_mpoly_factor(
     const fmpq_t c,
     const fmpq_mpoly_ctx_t ctx)
 {
+    slong i;
 	fmpq_mpoly_factor_fit_length(f, g->num, ctx);
 	for (i = 0; i < g->num; i++)
 	{
@@ -28,5 +29,5 @@ void _fmpq_mpoly_factor_swap_fmpz_mpoly_factor(
         fmpq_mpoly_reduce(f->poly + i, ctx); /* just in case */
 	}
 	f->num = g->num;
-	fmpq_mul_fmpz(f->constant, g->constant, c);
+	fmpq_mul_fmpz(f->constant, c, g->constant);
 }

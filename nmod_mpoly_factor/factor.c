@@ -89,7 +89,7 @@ static int _irreducible_factors(
     nmod_mpoly_init(Abar, ctx);
     nmod_mpoly_init(Bbar, ctx);
     nmod_mpoly_init(nzdpoly, ctx);
-    flint_rand_init(state);
+    flint_randinit(state);
     Adegs = (slong *) flint_malloc(3*nvars*sizeof(slong));
     perm = Adegs + nvars;
     iperm = perm + nvars;
@@ -278,10 +278,10 @@ static int _irreducible_factors(
 		nmod_mpoly_convert_perm(L, Lbits, Lctx, A, ctx, perm);
         nmod_mpoly_make_monic(L, L, ctx);
 
-		success = nmod_mpoly_factor_irred_smprime_default(Lf, L, Lctx);
+		success = nmod_mpoly_factor_irred_smprime_default(Lf, L, Lctx, state);
         if (!success)
         {
-    		success = nmod_mpoly_factor_irred_lgprime_default(Lf, L, Lctx);
+    		success = nmod_mpoly_factor_irred_lgprime_default(Lf, L, Lctx, state);
         }
 
 		if (success)
@@ -307,7 +307,7 @@ cleanup:
     nmod_mpoly_clear(Abar, ctx);
     nmod_mpoly_clear(Bbar, ctx);
     nmod_mpoly_clear(nzdpoly, ctx);
-    flint_rand_clear(state);
+    flint_randclear(state);
     flint_free(Adegs);
 
 #if WANT_ASSERT

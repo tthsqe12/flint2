@@ -126,9 +126,9 @@ cleanup:
 
 int nmod_mpoly_factor_irred_smprime_default(
     nmod_mpolyv_t fac,
-    flint_rand_t state,
     const nmod_mpoly_t A,
-    const nmod_mpoly_ctx_t ctx)
+    const nmod_mpoly_ctx_t ctx,
+    flint_rand_t state)
 {
     int success;
     int tries_remaining = 10;

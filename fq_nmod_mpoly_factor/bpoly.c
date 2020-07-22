@@ -724,3 +724,96 @@ void fq_nmod_mpoly_set_fq_nmod_bpoly(
 
     fq_nmod_mpoly_sort_terms(A, ctx);
 }
+
+
+void fq_nmod_mpoly_get_bpoly(
+    fq_nmod_bpoly_t A,
+    const fq_nmod_mpoly_t B,
+    slong varx,
+    slong vary,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    slong j;
+    slong NB;
+    ulong Bexpx, Bexpy;
+    slong Boffx, Bshiftx, Boffy, Bshifty;
+    ulong mask;
+
+    FLINT_ASSERT(B->bits <= FLINT_BITS);
+    NB = mpoly_words_per_exp_sp(B->bits, ctx->minfo);
+
+    mpoly_gen_offset_shift_sp(&Boffx, &Bshiftx, varx, B->bits, ctx->minfo);
+    mpoly_gen_offset_shift_sp(&Boffy, &Bshifty, vary, B->bits, ctx->minfo);
+    mask = (-UWORD(1)) >> (FLINT_BITS - B->bits);
+
+    fq_nmod_bpoly_zero(A, ctx->fqctx);
+    for (j = 0; j < B->length; j++)
+    {
+        Bexpx = ((B->exps + NB*j)[Boffx] >> Bshiftx) & mask;
+        Bexpy = ((B->exps + NB*j)[Boffy] >> Bshifty) & mask;
+        fq_nmod_bpoly_set_coeff(A, Bexpx, Bexpy, B->coeffs + j, ctx->fqctx);
+    }
+}
+
+
+void fq_nmod_mpoly_set_bpoly(
+    fq_nmod_mpoly_t A,
+    flint_bitcnt_t Abits,
+    const fq_nmod_bpoly_t B,
+    slong varx,
+    slong vary,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    slong n = ctx->minfo->nvars;
+    slong i, j;
+    slong NA;
+    slong Alen;
+    fq_nmod_struct * Acoeff;
+    ulong * Aexp;
+    slong Aalloc;
+    ulong * Aexps;
+    TMP_INIT;
+
+    FLINT_ASSERT(B->length > 0);
+    FLINT_ASSERT(Abits <= FLINT_BITS);
+    TMP_START;
+
+    Aexps = (ulong *) TMP_ALLOC(n*sizeof(ulong));
+    for (i = 0; i < n; i++)
+        Aexps[i] = 0;
+
+    NA = mpoly_words_per_exp(Abits, ctx->minfo);
+
+    fq_nmod_mpoly_fit_length_set_bits(A, 8, Abits, ctx);
+
+    Acoeff = A->coeffs;
+    Aexp = A->exps;
+    Aalloc = A->alloc;
+    Alen = 0;
+    for (i = 0; i < B->length; i++)
+    {
+        fq_nmod_poly_struct * Bc = B->coeffs + i;
+        _fq_nmod_mpoly_fit_length(&Acoeff, &Aexp, &Aalloc, Alen + Bc->length, NA, ctx->fqctx);
+
+        for (j = 0; j < Bc->length; j++)
+        {
+            if (fq_nmod_is_zero(Bc->coeffs + j, ctx->fqctx))
+                continue;
+
+            Aexps[varx] = i;
+            Aexps[vary] = j;
+            fq_nmod_set(Acoeff + Alen, Bc->coeffs + j, ctx->fqctx);
+            mpoly_set_monomial_ui(Aexp + NA*Alen, Aexps, Abits, ctx->minfo);
+            Alen++;
+        }
+    }
+    A->coeffs = Acoeff;
+    A->exps = Aexp;
+    A->alloc = Aalloc;
+    A->length = Alen;
+
+    TMP_END;
+
+    fq_nmod_mpoly_sort_terms(A, ctx);
+}
+

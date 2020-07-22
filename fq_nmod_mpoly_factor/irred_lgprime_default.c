@@ -19,9 +19,9 @@
 */
 int fq_nmod_mpoly_factor_irred_lgprime_default(
     fq_nmod_mpolyv_t fac,
-    flint_rand_t state,
     const fq_nmod_mpoly_t A,
-    const fq_nmod_mpoly_ctx_t ctx)
+    const fq_nmod_mpoly_ctx_t ctx,
+    flint_rand_t state)
 {
     FLINT_ASSERT(0);
     return 0;

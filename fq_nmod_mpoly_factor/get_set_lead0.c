@@ -41,7 +41,7 @@ void _fq_nmod_mpoly_set_lead0(
     FLINT_ASSERT(deg >= 0);
     fq_nmod_mpoly_gen(g, 0, ctx);
     fq_nmod_mpoly_pow_ui(g, g, deg, ctx);
-    _fq_nmod_mpoly_get_lc(t, B, ctx);
+    _fq_nmod_mpoly_get_lead0(t, B, ctx);
     fq_nmod_mpoly_sub(t, c, t, ctx);
     fq_nmod_mpoly_mul(t, t, g, ctx);
     fq_nmod_mpoly_add(A, B, t, ctx);

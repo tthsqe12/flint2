@@ -50,7 +50,7 @@ static int _try_lift(
     FLINT_ASSERT(fq_nmod_mpoly_equal(t, p, ctx));
 #endif
 
-    _fq_nmod_mpoly_get_lc(lcq, q, ctx);
+    _fq_nmod_mpoly_get_lead0(lcq, q, ctx);
     fq_nmod_mpoly_evaluate_one_fq_nmod(lcp, lcq, m, alpha + m - 1, ctx);
 
     FLINT_ASSERT(lcp->length > 0);
@@ -70,11 +70,11 @@ static int _try_lift(
     qfac->length = pfac->length;
     for (i = 0; i < pfac->length; i++)
     {
-        _fq_nmod_mpoly_get_lc(t, pfac->coeffs + i, ctx);
+        _fq_nmod_mpoly_get_lead0(t, pfac->coeffs + i, ctx);
         success = fq_nmod_mpoly_divides(t, lcp, t, ctx);
         FLINT_ASSERT(success);
         fq_nmod_mpoly_mul(qfac->coeffs + i, pfac->coeffs + i, t, ctx);
-        _fq_nmod_mpoly_set_lc(qfac->coeffs + i, qfac->coeffs + i, lcq, ctx);
+        _fq_nmod_mpoly_set_lead0(qfac->coeffs + i, qfac->coeffs + i, lcq, ctx);
     }
 
     success = fq_nmod_mpoly_hlift(m, qfac->coeffs, qfac->length,
@@ -131,9 +131,9 @@ cleanup:
 */
 int fq_nmod_mpoly_factor_irred_smprime_default(
     fq_nmod_mpolyv_t fac,
-    flint_randt_state,
     const fq_nmod_mpoly_t A,
-    const fq_nmod_mpoly_ctx_t ctx)
+    const fq_nmod_mpoly_ctx_t ctx,
+    flint_rand_t state)
 {
     int tries_left = 10;
     int success;
@@ -223,7 +223,7 @@ got_alpha:
         fq_nmod_mpoly_make_monic(Aevals + i, Aevals + i, ctx);
     }
 
-    fq_nmod_mpoly_get_fq_nmod_bpoly(B, Aevals + 1, 0, 1, ctx);
+    fq_nmod_mpoly_get_bpoly(B, Aevals + 1, 0, 1, ctx);
     success = fq_nmod_bpoly_factor_smprime(c, F, B, 1, ctx->fqctx);
     if (!success)
         goto next_alpha;
@@ -234,7 +234,7 @@ got_alpha:
     pfac->length = F->length;
     for (i = 0; i < F->length; i++)
     {
-        fq_nmod_mpoly_set_fq_nmod_bpoly(pfac->coeffs + i, A->bits,
+        fq_nmod_mpoly_set_bpoly(pfac->coeffs + i, A->bits,
                                                      F->coeffs + i, 0, 1, ctx);
         fq_nmod_mpoly_make_monic(pfac->coeffs + i, pfac->coeffs + i, ctx);
     }

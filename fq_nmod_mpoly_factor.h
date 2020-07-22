@@ -31,11 +31,38 @@
  extern "C" {
 #endif
 
-FLINT_DLL int fq_nmod_partial_fraction_coeffs(
-    slong r,
-    fq_nmod_poly_struct * out,
-    const fq_nmod_poly_struct * f,
-    const fq_nmod_ctx_t ectx);
+/*****************************************************************************/
+
+FLINT_DLL int fq_nmod_mpoly_is_fq_nmod_poly(
+    const fq_nmod_mpoly_t A,
+    slong var,
+    const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int fq_nmod_mpoly_get_fq_nmod_poly(
+    fq_nmod_poly_t A,
+    const fq_nmod_mpoly_t B,
+    slong var,
+    const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void fq_nmod_mpoly_fit_length_set_bits(
+    fq_nmod_mpoly_t A,
+    slong len,
+    flint_bitcnt_t bits,
+    const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void _fq_nmod_mpoly_set_fq_nmod_poly(
+    fq_nmod_mpoly_t A,
+    flint_bitcnt_t Abits,
+    const fq_nmod_struct * Bcoeffs,
+    slong Blen,
+    slong var,
+    const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void fq_nmod_mpoly_set_fq_nmod_poly(
+    fq_nmod_mpoly_t A,
+    const fq_nmod_poly_t B,
+    slong var,
+    const fq_nmod_mpoly_ctx_t ctx);
 
 /*****************************************************************************/
 
@@ -119,12 +146,12 @@ int fq_nmod_mpoly_factor_matches(const fq_nmod_mpoly_t a, const fq_nmod_mpoly_fa
     return matches;
 }
 
-FLINT_DLL void _fq_nmod_mpoly_get_lc(
+FLINT_DLL void _fq_nmod_mpoly_get_lead0(
     fq_nmod_mpoly_t c,
     const fq_nmod_mpoly_t A,
     const fq_nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL void _fq_nmod_mpoly_set_lc(
+FLINT_DLL void _fq_nmod_mpoly_set_lead0(
     fq_nmod_mpoly_t A,
     const fq_nmod_mpoly_t B,
     const fq_nmod_mpoly_t c,
@@ -183,15 +210,15 @@ FLINT_DLL void fq_nmod_mpoly_univar_divexact_mpoly(
 
 FLINT_DLL int fq_nmod_mpoly_factor_irred_smprime_default(
     fq_nmod_mpolyv_t fac,
-    flint_rand_t state,
     const fq_nmod_mpoly_t A,
-    const fq_nmod_mpoly_ctx_t ctx);
+    const fq_nmod_mpoly_ctx_t ctx,
+    flint_rand_t state);
 
 FLINT_DLL int fq_nmod_mpoly_factor_irred_lgprime_default(
     fq_nmod_mpolyv_t fac,
-    flint_rand_t state,
     const fq_nmod_mpoly_t A,
-    const fq_nmod_mpoly_ctx_t ctx);
+    const fq_nmod_mpoly_ctx_t ctx,
+    flint_rand_t state);
 
 /*****************************************************************************/
 
@@ -393,15 +420,14 @@ FLINT_DLL void fq_nmod_bpoly_taylor_shift_var1(
     const fq_nmod_t alpha,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void fq_nmod_mpoly_get_fq_nmod_bpoly(
+FLINT_DLL void fq_nmod_mpoly_get_bpoly(
     fq_nmod_bpoly_t A,
     const fq_nmod_mpoly_t B,
     slong varx,
     slong vary,
     const fq_nmod_mpoly_ctx_t ctx);
 
-
-FLINT_DLL void fq_nmod_mpoly_set_fq_nmod_bpoly(
+FLINT_DLL void fq_nmod_mpoly_set_bpoly(
     fq_nmod_mpoly_t A,
     flint_bitcnt_t Abits,
     const fq_nmod_bpoly_t B,
@@ -448,11 +474,12 @@ FLINT_DLL int fq_nmod_bpoly_factor_smprime(
     int allow_shift,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void fq_nmod_bpoly_factor_lgprime(
+FLINT_DLL int fq_nmod_bpoly_factor_lgprime(
     fq_nmod_poly_t c,
     fq_nmod_tpoly_t F,
     fq_nmod_bpoly_t B,
-    const fq_nmod_ctx_t ctx);
+    const fq_nmod_ctx_t ctx,
+    flint_rand_t state);
 
 #ifdef __cplusplus
 }
