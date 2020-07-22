@@ -15,26 +15,15 @@
 int fmpq_mpoly_factor(fmpq_mpoly_factor_t f, const fmpq_mpoly_t A,
                                                     const fmpq_mpoly_ctx_t ctx)
 {
-	slong i;
     int success;
     fmpz_mpoly_factor_t zf;
 
 	fmpz_mpoly_factor_init(zf, ctx->zctx);
 	success = fmpz_mpoly_factor(zf, A->zpoly, ctx->zctx);
-
-	fmpq_mpoly_factor_fit_length(f, zf->num, ctx);
-	fmpq_mul_fmpz(f->constant, A->content, zf->constant);
-	for (i = 0; i < zf->num; i++)
-	{
-		fmpz_swap(f->exp + i, zf->exp + i);
-		fmpq_one(f->poly[i].content);
-		fmpz_mpoly_swap(f->poly[i].zpoly, zf->poly + i, ctx->zctx);
-        fmpq_mpoly_reduce(f->poly + i, ctx); /* just in case */
-	}
-	f->num = zf->num;
-
+    fmpq_mpoly_factor_swap_fmpz_mpoly_factor(f, zf, A->content, ctx);
 	fmpz_mpoly_factor_clear(zf, ctx->zctx);
 
 	return success;
 }
+
 

@@ -911,8 +911,7 @@ got_alpha:
 try_zas:
 
     F->length = 0;
-    success = _zassenhaus(zas_limit, F, final_alpha_pow, N,
-                                                          lift_fac, r, B, ctx);
+    success = _zassenhaus(zas_limit, F, final_alpha_pow, N, lift_fac, r, B, ctx);
     if (success)
         goto cleanup;
 

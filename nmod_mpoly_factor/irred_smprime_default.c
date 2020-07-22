@@ -126,6 +126,7 @@ cleanup:
 
 int nmod_mpoly_factor_irred_smprime_default(
     nmod_mpolyv_t fac,
+    flint_rand_t state,
     const nmod_mpoly_t A,
     const nmod_mpoly_ctx_t ctx)
 {
@@ -134,7 +135,6 @@ int nmod_mpoly_factor_irred_smprime_default(
     const slong n = ctx->minfo->nvars - 1;
     slong i, j, m, r;
 	fmpz_t subset;
-    flint_rand_t randstate;
     mp_limb_t * alpha;
     nmod_mpoly_struct * Aevals;
     slong * deg, * degeval;
@@ -150,7 +150,6 @@ int nmod_mpoly_factor_irred_smprime_default(
     FLINT_ASSERT(A->coeffs[0] == 1);
     FLINT_ASSERT(A->bits <= FLINT_BITS);
 
-    flint_randinit(randstate);
 	fmpz_init(subset);
 	alpha = (mp_limb_t *) flint_malloc(n*sizeof(mp_limb_t));
     Aevals    = (nmod_mpoly_struct *) flint_malloc(n*sizeof(nmod_mpoly_struct));
@@ -181,7 +180,7 @@ next_alpha:
 	}
 
     for (i = 0; i < n; i++)
-        alpha[i] = n_urandint(randstate, ctx->ffinfo->mod.n - 1) + 1;
+        alpha[i] = n_urandint(state, ctx->ffinfo->mod.n - 1) + 1;
 
     /* ensure degrees do not drop under evaluation */
 	for (i = n - 1; i >= 0; i--)
@@ -342,7 +341,6 @@ try_again:
 
 cleanup: 
 
-    flint_randclear(randstate);
 	fmpz_clear(subset);
 	flint_free(alpha);
 	for (i = 0; i < n; i++)

@@ -131,6 +131,7 @@ cleanup:
 */
 int fq_nmod_mpoly_factor_irred_smprime_default(
     fq_nmod_mpolyv_t fac,
+    flint_randt_state,
     const fq_nmod_mpoly_t A,
     const fq_nmod_mpoly_ctx_t ctx)
 {
@@ -148,10 +149,8 @@ int fq_nmod_mpoly_factor_irred_smprime_default(
     fq_nmod_poly_t c;
     fq_nmod_bpoly_t B;
     fq_nmod_tpoly_t F;
-    flint_rand_t randstate;
 
 	fmpz_init(subset);
-    flint_randinit(randstate);
 	alpha = (fq_nmod_struct *) flint_malloc(n*sizeof(fq_nmod_struct));
     for (i = 0; i < n; i++)
         fq_nmod_init(alpha + i, ctx->fqctx);
@@ -159,7 +158,8 @@ int fq_nmod_mpoly_factor_irred_smprime_default(
     deg     = (slong *) flint_malloc((n + 1)*sizeof(slong));
     degeval = (slong *) flint_malloc((n + 1)*sizeof(slong));
 
-    Aevals    = (fq_nmod_mpoly_struct *) flint_malloc(n*sizeof(fq_nmod_mpoly_struct));
+    Aevals    = (fq_nmod_mpoly_struct *) flint_malloc(n*
+                                                 sizeof(fq_nmod_mpoly_struct));
 	for (i = 0; i < n; i++)
 		fq_nmod_mpoly_init(Aevals + i, ctx);
 
@@ -188,7 +188,7 @@ next_alpha:
     }
 
     for (i = 0; i < n; i++)
-        fq_nmod_rand(alpha + i, randstate, ctx->fqctx);
+        fq_nmod_rand(alpha + i, state, ctx->fqctx);
 
 got_alpha:
 

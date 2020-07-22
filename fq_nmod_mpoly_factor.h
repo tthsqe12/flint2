@@ -183,6 +183,13 @@ FLINT_DLL void fq_nmod_mpoly_univar_divexact_mpoly(
 
 FLINT_DLL int fq_nmod_mpoly_factor_irred_smprime_default(
     fq_nmod_mpolyv_t fac,
+    flint_rand_t state,
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int fq_nmod_mpoly_factor_irred_lgprime_default(
+    fq_nmod_mpolyv_t fac,
+    flint_rand_t state,
     const fq_nmod_mpoly_t A,
     const fq_nmod_mpoly_ctx_t ctx);
 

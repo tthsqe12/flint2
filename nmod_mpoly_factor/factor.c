@@ -77,6 +77,7 @@ static int _irreducible_factors(
     nmod_mpoly_t G, Abar, Bbar, nzdpoly;
     flint_bitcnt_t Lbits, Abits;
     int perm_is_id;
+    flint_rand_t state;
 #if WANT_ASSERT
     nmod_mpoly_t Aorg;
 
@@ -88,7 +89,7 @@ static int _irreducible_factors(
     nmod_mpoly_init(Abar, ctx);
     nmod_mpoly_init(Bbar, ctx);
     nmod_mpoly_init(nzdpoly, ctx);
-
+    flint_rand_init(state);
     Adegs = (slong *) flint_malloc(3*nvars*sizeof(slong));
     perm = Adegs + nvars;
     iperm = perm + nvars;
@@ -163,20 +164,20 @@ static int _irreducible_factors(
     }
     if (!nmod_mpoly_is_one(G, ctx))
     {
-        nmod_mpolyv_t newf;
-        nmod_mpolyv_init(newf, ctx);
+        nmod_mpolyv_t Gf;
+        nmod_mpolyv_init(Gf, ctx);
         success = _irreducible_factors(Af, Abar, ctx);
-        success = success && _irreducible_factors(newf, Bbar, ctx);
+        success = success && _irreducible_factors(Gf, G, ctx);
         if (success)
         {
-            nmod_mpolyv_fit_length(Af, Af->length + newf->length, ctx);
-            for (i = 0; i < newf->length; i++)
+            nmod_mpolyv_fit_length(Af, Af->length + Gf->length, ctx);
+            for (i = 0; i < Gf->length; i++)
             {
-                nmod_mpoly_swap(Af->coeffs + Af->length, newf->coeffs + i, ctx);
+                nmod_mpoly_swap(Af->coeffs + Af->length, Gf->coeffs + i, ctx);
                 Af->length++;
             }
         }
-        nmod_mpolyv_clear(newf, ctx);
+        nmod_mpolyv_clear(Gf, ctx);
         goto cleanup;
     }
 
@@ -306,7 +307,7 @@ cleanup:
     nmod_mpoly_clear(Abar, ctx);
     nmod_mpoly_clear(Bbar, ctx);
     nmod_mpoly_clear(nzdpoly, ctx);
-
+    flint_rand_clear(state);
     flint_free(Adegs);
 
 #if WANT_ASSERT

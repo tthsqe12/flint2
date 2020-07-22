@@ -9,24 +9,21 @@
     (at your option) any later version.  See <http://www.gnu.org/licenses/>.
 */
 
-#include "fmpq_mpoly_factor.h"
+#include "nmod_mpoly_factor.h"
+#include "fq_nmod_mpoly_factor.h"
 
-void fmpq_mpoly_factor_clear(fmpq_mpoly_factor_t f, const fmpq_mpoly_ctx_t ctx)
+/*
+    return:
+        1: success
+        0: failed, don't try again
+*/
+int fq_nmod_mpoly_factor_irred_lgprime_default(
+    fq_nmod_mpolyv_t fac,
+    flint_rand_t state,
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_ctx_t ctx)
 {
-    if (f->alloc > 0)
-    {
-        slong i;
-
-        for (i = 0; i < f->alloc; i++)
-        {
-            fmpq_mpoly_clear(f->poly + i, ctx);
-			fmpz_clear(f->exp + i);
-        }
-
-        flint_free(f->poly);
-        flint_free(f->exp);
-    }
-
-    fmpq_clear(f->constant);
+    FLINT_ASSERT(0);
+    return 0;
 }
 

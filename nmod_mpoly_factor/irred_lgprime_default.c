@@ -93,6 +93,7 @@ static void get_conjugates(
 
 int nmod_mpoly_factor_irred_lgprime_default(
     nmod_mpolyv_t fac_,
+    flint_rand_t state,
     const nmod_mpoly_t A_,
     const nmod_mpoly_ctx_t ctx_)
 {
@@ -118,7 +119,7 @@ try_again:
 
 flint_printf("trying extension of degree %wd\n", edeg);
 
-    success = fq_nmod_mpoly_factor_irred_smprime_default(fac, A, ctx);
+    success = fq_nmod_mpoly_factor_irred_smprime_default(fac, state, A, ctx);
     if (success < 1)
     {
         if (success < 0)
