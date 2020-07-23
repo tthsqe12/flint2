@@ -80,11 +80,78 @@ flint_printf("g: "); nmod_mpoly_factor_print_pretty(g, NULL, ctx); flint_printf(
     return res;
 }
 
+
+void init_vars(char *** vars, slong * nvars, const char * s)
+{
+    slong i, sn = strlen(s);
+
+    (*vars) = (char **) flint_malloc(sn * sizeof(char *));
+    for (i = 0; i < sn; i++)
+    {
+        (*vars)[i] = flint_calloc(sn + 1, sizeof(char));
+    }
+
+    (*nvars) = 0;
+    for (i = 0; i < sn; i++)
+    {
+        if (s[i] == ' ')
+        {
+            if (strlen((*vars)[(*nvars)]) != 0)
+            {
+               (*nvars)++;
+            }
+        }
+        else
+        {
+            strncat((*vars)[(*nvars)], s + i, 1);
+        }
+    }
+
+    (*nvars)++;
+}
+
+void clear_vars(char *** vars, slong * nvars, const char * s)
+{
+    slong i, sn = strlen(s);
+    for (i = 0; i < sn; i++)
+        flint_free((*vars)[i]);
+    flint_free((*vars));
+}
+
+void check_omega_str(slong lower, slong upper, const char * s,
+                                        const char * polys, mp_limb_t modulus)
+{
+    slong nvars;
+    char ** vars;
+    nmod_mpoly_ctx_t ctx;
+    nmod_mpoly_t p;
+
+    init_vars(&vars, &nvars, s);
+
+    nmod_mpoly_ctx_init(ctx, nvars, ORD_LEX, modulus);
+    nmod_mpoly_init(p, ctx);
+
+    if (nmod_mpoly_set_str_pretty(p, polys, (const char **) vars, ctx))
+    {
+        flint_printf("bad string input\n");
+        flint_abort();
+    }
+
+    clear_vars(&vars, &nvars, s);
+
+    check_omega(lower, upper, p, ctx);
+
+    nmod_mpoly_clear(p, ctx);
+    nmod_mpoly_ctx_clear(ctx);
+}
+
+
 int
 main(void)
 {
     slong i, j, tmul = 30;
     slong total;
+    int result;
     FLINT_TEST_INIT(state);
 
     flint_printf("factor....");
@@ -186,137 +253,16 @@ flint_printf("2:%wd ", i);
 flint_printf("**********total number of mvar factors: %wd ******\n", total);
 usleep(1000000);
 
-#if 0
-    {
-        nmod_mpoly_ctx_t ctx;
-        nmod_mpoly_t a;
-        nmod_mpoly_factor_t fac;
-        const char * vars[] = {"x", "y", "z", "t"};
-        nmod_mpoly_ctx_init(ctx, 3, ORD_LEX, 2);
-        nmod_mpoly_init(a, ctx);
-        nmod_mpoly_set_str_pretty(a,
-"(z^8*x^8+x^1+y^16+y^1+z^8+z^3)*((y^4+z^3+z)*x^8+x^1+y^16+y^1+z^8+z^3)"
-, vars, ctx);
-printf("\n******** starting example 3 vars ********\n");
-printf("       factoring: "); nmod_mpoly_print_pretty(a, vars, ctx); printf("\n");
-        nmod_mpoly_factor_init(fac, ctx);
-        result = nmod_mpoly_factor(fac, a, 1, ctx);
-        nmod_mpoly_factor_sort(fac, ctx);
-printf("factorization(%d): ", result); nmod_mpoly_factor_print_pretty(fac, vars, ctx); printf("\n");
-        nmod_mpoly_factor_clear(fac, ctx);
-        nmod_mpoly_clear(a, ctx);
-        nmod_mpoly_ctx_clear(ctx);
-    }
-    {
-timeit_t timer;
-        nmod_mpoly_ctx_t ctx;
-        nmod_mpoly_t a;
-        nmod_mpoly_factor_t fac;
-        const char * vars[] = {"x", "y", "z", "t"};
+    check_omega_str(2, 2, "x y z", "(z^8*x^8+x^1+y^16+y^1+z^8+z^3)*((y^4+z^3+z)*x^8+x^1+y^16+y^1+z^8+z^3)", 2);
+    check_omega_str(4, 4, "x y", "(x^8+x+y^16+y)*(x^8+x+y^4+y)", 2);
+    check_omega_str(4, 4, "x y z", "x^8+x+y^8+y+z^8+z", 2);
+    check_omega_str(6, 6, "x y z", "x^16+x+y^16+y+z^16+z", 2);
+    check_omega_str(143, 143, "x y", "(x^2+y+1)*(x+y^2+1)^2*(x*y+1)^13*(x*y+2)^14*(x+y+1)^113", 3);
+    check_omega_str(143, 143, "x y", "(x^2+y+1)*(x+y^2+1)^2*(x*y+1)^13*(x*y+2)^14*(x+y+1)^113", 7);
+    check_omega_str(143, 143, "x y", "(x^2+y+1)*(x+y^2+1)^2*(x*y+1)^13*(x*y+2)^14*(x+y+1)^113", 13);
+    check_omega_str(143, 143, "x y", "(x^2+y+1)*(x+y^2+1)^2*(x*y+1)^13*(x*y+2)^14*(x+y+1)^113", 8191);
+    check_omega_str(4097, 4097, "x", "(x+1)^4097", 2);
 
-        nmod_mpoly_ctx_init(ctx, 2, ORD_LEX, 2);
-        nmod_mpoly_init(a, ctx);
-        nmod_mpoly_set_str_pretty(a, "(x^8+x+y^16+y)*(x^8+x+y^4+y)", vars, ctx);
-
-printf("\n******** starting univar nmod_mpoly ********\n");
-printf("    factoring: "); nmod_mpoly_print_pretty(a, vars, ctx); printf("\n");
-
-        nmod_mpoly_factor_init(fac, ctx);
-timeit_start(timer);
-        nmod_mpoly_factor(fac, a, 1, ctx);
-        nmod_mpoly_factor_sort(fac, ctx);
-timeit_stop(timer);
-printf("factorization: "); nmod_mpoly_factor_print_pretty(fac, vars, ctx); printf("\n");
-flint_printf("         time: %wd\n", timer->wall);
-
-        nmod_mpoly_factor_clear(fac, ctx);
-        nmod_mpoly_clear(a, ctx);
-        nmod_mpoly_ctx_clear(ctx);
-    }
-
-    for (i = 0; i < 4; i++)
-    {
-timeit_t timer;
-        nmod_mpoly_ctx_t ctx;
-        nmod_mpoly_t a;
-        nmod_mpoly_factor_t fac;
-        const char * vars[] = {"x", "y", "z", "t"};
-        const mp_limb_t moduli[] = {3, 7, 13, 8191};
-
-        nmod_mpoly_ctx_init(ctx, 2, ORD_LEX, moduli[i]);
-        nmod_mpoly_init(a, ctx);
-
-flint_printf("\n******* starting bernardin example mod %wu *********\n", ctx->ffinfo->mod.n);
-
-
-        nmod_mpoly_set_str_pretty(a, "(x^2+y+1)*(x+y^2+1)^2*(x*y+1)^13*(x*y+2)^14*(x+y+1)^113", vars, ctx);
-/*
-printf("    factoring: "); nmod_mpoly_print_pretty(a, vars, ctx); printf("\n");
-*/
-        nmod_mpoly_factor_init(fac, ctx);
-timeit_start(timer);
-        nmod_mpoly_factor(fac, a, 1, ctx);
-        nmod_mpoly_factor_sort(fac, ctx);
-timeit_stop(timer);
-printf("factorization: "); nmod_mpoly_factor_print_pretty(fac, vars, ctx); printf("\n");
-flint_printf("         time: %wd\n", timer->wall);
-
-        nmod_mpoly_factor_clear(fac, ctx);
-        nmod_mpoly_clear(a, ctx);
-        nmod_mpoly_ctx_clear(ctx);
-    }
-
-    {
-timeit_t timer;
-        nmod_mpoly_ctx_t ctx;
-        nmod_mpoly_t a;
-        nmod_mpoly_factor_t fac;
-        const char * vars[] = {"x", "y", "z", "t"};
-
-        nmod_mpoly_ctx_init(ctx, 2, ORD_LEX, 2);
-        nmod_mpoly_init(a, ctx);
-        nmod_mpoly_set_str_pretty(a, "(x+1)^4097", vars, ctx);
-
-printf("\n******** starting univar nmod_mpoly ********\n");
-printf("    factoring: "); nmod_mpoly_print_pretty(a, vars, ctx); printf("\n");
-
-        nmod_mpoly_factor_init(fac, ctx);
-timeit_start(timer);
-        nmod_mpoly_factor(fac, a, 1, ctx);
-        nmod_mpoly_factor_sort(fac, ctx);
-timeit_stop(timer);
-printf("factorization: "); nmod_mpoly_factor_print_pretty(fac, vars, ctx); printf("\n");
-flint_printf("         time: %wd\n", timer->wall);
-
-        nmod_mpoly_factor_clear(fac, ctx);
-        nmod_mpoly_clear(a, ctx);
-        nmod_mpoly_ctx_clear(ctx);
-    }
-
-	{
-timeit_t timer;
-		nmod_poly_factor_t fac;
-		nmod_poly_t a;
-
-		nmod_poly_factor_init(fac);
-		nmod_poly_init(a, 2);
-
-		nmod_poly_set_coeff_ui(a, 1, 1);
-		nmod_poly_set_coeff_ui(a, 0, 1);
-		nmod_poly_pow(a, a, 4097);
-
-printf("\n******** starting univar nmod_poly ********\n");
-printf("    factoring: "); nmod_poly_print_pretty(a, "x"); printf("\n");
-timeit_start(timer);
-        nmod_poly_factor(fac, a);
-timeit_stop(timer);
-printf("factorization: "); nmod_poly_factor_print(fac);
-flint_printf("         time: %wd\n", timer->wall);
-
-		nmod_poly_factor_clear(fac);
-		nmod_poly_clear(a);
-	}
-#endif
     FLINT_TEST_CLEANUP(state);
     
     flint_printf("PASS\n");
