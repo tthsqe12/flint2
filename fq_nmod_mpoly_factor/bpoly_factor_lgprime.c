@@ -60,7 +60,8 @@ void fq_nmod_bpoly_make_monic_mod_poly(
     fq_nmod_poly_xgcd(g, lcinv, t, B->coeffs + B->length - 1, m, ctx);
     FLINT_ASSERT(fq_nmod_poly_is_one(g, ctx));
 
-    for (i = 0; i < A->length; i++)
+    fq_nmod_bpoly_fit_length(A, B->length, ctx);
+    for (i = 0; i < B->length; i++)
         fq_nmod_poly_mulmod(A->coeffs + i, B->coeffs + i, lcinv, m, ctx);
 
     A->length = B->length;
@@ -712,7 +713,7 @@ static void _hensel_lift_tree(
     const fq_nmod_poly_t p1,
     const fq_nmod_ctx_t ctx)
 {
-    FLINT_ASSERT(p1 <= p0);
+    FLINT_ASSERT(p1->length <= p0->length);
 
     if (j < 0)
         return;
@@ -760,8 +761,9 @@ int fq_nmod_bpoly_factor_lgprime(
     bad_fq_nmod_mpoly_embed_chooser_t embc;
     bad_fq_nmod_embed_struct * cur_emb;
     fq_nmod_mpoly_ctx_t ectx_mock, ctx_mock;
-
-flint_printf("fq_nmod_bpoly_factor_lgprime = %d\n");
+/*
+flint_printf("fq_nmod_bpoly_factor_lgprime called\n");
+*/
 
     FLINT_ASSERT(Blenx > 1);
 
@@ -941,6 +943,12 @@ cleanup:
     flint_free(lift_fac);
 
     nmod_mat_clear(N);
+
+    fq_nmod_poly_clear(final_alpha_pow, ctx);
+    fq_nmod_poly_clear(curr_alpha_pow, ctx);
+    fq_nmod_poly_clear(prev_alpha_pow, ctx);
+    fq_nmod_poly_clear(next_alpha_pow, ctx);
+    fq_nmod_poly_clear(p1, ctx);
     fq_nmod_poly_clear(Beval, ctx);
     fq_nmod_poly_factor_clear(local_fac, ctx);
     fq_nmod_bpoly_clear(monicB, ctx);
@@ -948,9 +956,10 @@ cleanup:
 
     fq_nmod_clear(Blc, ctx);
 
+    bad_fq_nmod_mpoly_embed_chooser_clear(embc, ectx_mock, ctx_mock, state);
+
 flint_printf("fq_nmod_bpoly_factor_lgprime returning %d\n", success);
 flint_printf("F->length: %wd\n", F->length);
-
 
     return success;
 }

@@ -146,6 +146,10 @@ int fq_nmod_mpoly_factor_matches(const fq_nmod_mpoly_t a, const fq_nmod_mpoly_fa
     return matches;
 }
 
+FLINT_DLL int fq_nmod_mpoly_factor_fix_units(fq_nmod_mpoly_factor_t A,
+                                                const fq_nmod_mpoly_ctx_t ctx);
+
+
 FLINT_DLL void _fq_nmod_mpoly_get_lead0(
     fq_nmod_mpoly_t c,
     const fq_nmod_mpoly_t A,

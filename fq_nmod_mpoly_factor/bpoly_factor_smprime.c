@@ -620,9 +620,9 @@ int fq_nmod_bpoly_factor_smprime(
     slong e[FLINT_BITS];
     slong old_nrows;
     slong zas_limit;
-/*
+
 flint_printf("fq_nmod_bpoly_factor_smprime called allow_shift = %d\n", allow_shift);
-*/
+
     FLINT_ASSERT(Blenx > 1);
 
     fq_nmod_init(alpha, ctx);
@@ -789,10 +789,10 @@ cleanup:
 
     fq_nmod_clear(alpha, ctx);
     fq_nmod_clear(Blc, ctx);
-/*
+
 flint_printf("fq_nmod_bpoly_factor_smprime returning %d\n", success);
 flint_printf("F->length: %wd\n", F->length);
-*/
+
     return success;
 }
 

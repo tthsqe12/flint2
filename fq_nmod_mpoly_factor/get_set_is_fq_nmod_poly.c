@@ -149,7 +149,7 @@ void _fq_nmod_mpoly_set_fq_nmod_poly(
             continue;
 
         FLINT_ASSERT(Alen < A->alloc);
-        A->coeffs[Alen] = Bcoeffs[i];
+        fq_nmod_set(A->coeffs + Alen, Bcoeffs + i, ctx->fqctx);
         if (Abits <= FLINT_BITS)
             mpoly_monomial_mul_ui(A->exps + N*Alen, genexp, N, i);
         else

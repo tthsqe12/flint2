@@ -241,13 +241,16 @@ static int _irreducible_factors(
         fq_nmod_tpoly_init(Abf, ctx->fqctx);
 
         fq_nmod_mpoly_get_bpoly(Ab, A, perm[0], perm[1], ctx);
+/*
         success = fq_nmod_bpoly_factor_smprime(c, Abf, Ab, 1, ctx->fqctx);
         if (!success)
         {
             fq_nmod_mpoly_get_bpoly(Ab, A, perm[0], perm[1], ctx);
+*/
             fq_nmod_bpoly_factor_lgprime(c, Abf, Ab, ctx->fqctx, state);
+/*
         }
-
+*/
         FLINT_ASSERT(fq_nmod_poly_degree(c, ctx->fqctx) == 0);
 
         fq_nmod_mpolyv_fit_length(Af, Abf->length, ctx);

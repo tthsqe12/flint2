@@ -23,7 +23,7 @@ void fq_nmod_mpoly_factor_print_pretty(
     flint_printf(")");
     for (i = 0; i < f->num; i++)
     {
-        flint_printf("*(", i);
+        flint_printf("\n*(", i);
         fq_nmod_mpoly_print_pretty(f->poly + i, vars, ctx);
 		flint_printf(")^");
         fmpz_print(f->exp + i);

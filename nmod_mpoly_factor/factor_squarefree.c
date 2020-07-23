@@ -64,7 +64,11 @@ static void _nmod_mpoly_univar_shift_right(
 }
 
 
-/* 	return 0 no, 1 yes, -1 don't know	*/
+/*
+    return: 0 no
+            1 yes
+           -1 don't know
+*/
 static int nmod_mpoly_factor_is_pairwise_prime(
 	const nmod_mpoly_factor_t f, 
 	const nmod_mpoly_ctx_t ctx)
@@ -79,10 +83,10 @@ static int nmod_mpoly_factor_is_pairwise_prime(
 	for (j = i + 1; j < f->num; j++)
 	{
 		/* make sure factors are monic */
-		if ((f->poly + i)->length < 1 ||
-            (f->poly + j)->length < 1 ||
-            (f->poly + i)->coeffs[0] != 1 ||
-            (f->poly + j)->coeffs[0] != 1)
+		if (f->poly[i].length < 1 ||
+            f->poly[j].length < 1 ||
+            f->poly[i].coeffs[0] != 1 ||
+            f->poly[j].coeffs[0] != 1)
 		{
 			result = 0;
 			goto cleanup;
