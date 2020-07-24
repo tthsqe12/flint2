@@ -158,7 +158,7 @@ main(void)
 
     /* check random bivariate factors */
     total = 0;
-    for (i = 0; i < tmul * flint_test_multiplier(); i++)
+    for (i = 0; i < 0*tmul * flint_test_multiplier(); i++)
     {
         slong lower;
         nmod_mpoly_ctx_t ctx;

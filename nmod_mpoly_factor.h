@@ -31,6 +31,33 @@
  extern "C" {
 #endif
 
+typedef struct {
+    slong deg;
+    unsigned char * pos_degs;
+    slong new_length;
+    slong new_total;
+    slong * new_degs;
+    slong alloc;
+} zassenhaus_prune_struct;
+
+typedef zassenhaus_prune_struct zassenhaus_prune_t[1];
+
+void zassenhaus_prune_init(zassenhaus_prune_t zas);
+
+void zassenhaus_prune_clear(zassenhaus_prune_t zas);
+
+void zassenhaus_prune_set_degree(zassenhaus_prune_t zas, slong d);
+
+void zassenhaus_prune_start_add_factors(zassenhaus_prune_t zas);
+
+void zassenhaus_prune_add_factor(zassenhaus_prune_t zas, slong deg, slong exp);
+
+void zassenhaus_prune_finish_add_factors(zassenhaus_prune_t zas);
+
+int zassenhaus_prune_is_irreducible(const zassenhaus_prune_t zas);
+
+int zassenhaus_prune_degree_is_possible(const zassenhaus_prune_t zas, slong d);
+
 
 /*****************************************************************************/
 
@@ -255,6 +282,15 @@ FLINT_DLL int nmod_mpoly_factor_irred_lgprime_default(
     const nmod_mpoly_t A,
     const nmod_mpoly_ctx_t ctx,
     flint_rand_t state);
+
+FLINT_DLL int nmod_mpoly_factor_irred_smprime_wang(
+    nmod_mpolyv_t fac,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_factor_t lcAfac,
+    const nmod_mpoly_t lcA,
+    const nmod_mpoly_ctx_t ctx,
+    flint_rand_t state);
+
 /*
 FLINT_DLL int nmod_irreducible_bivar_factors_smprime(
     nmod_mpoly_factor_t fac,

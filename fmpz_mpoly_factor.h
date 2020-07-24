@@ -53,7 +53,7 @@ FLINT_DLL void fmpz_mpoly_set_fmpz_poly(fmpz_mpoly_t A, const fmpz_poly_t B,
 
 typedef struct {
     fmpz_t constant;
-    fmpz_t constant_den;        /* currently unused, makes an even 48 bytes */
+    fmpz_t constant_den;        /* currently unused */
     fmpz_mpoly_struct * poly;
     fmpz * exp;
     slong num;
@@ -472,7 +472,9 @@ void fmpz_mpoly_unit_normalize(fmpz_mpoly_t A, const fmpz_mpoly_ctx_t ctx)
 FLINT_DLL int fmpz_mpoly_factor_lcc_wang(
     fmpz_mpolyv_t lc_divs,
     const fmpz_mpoly_factor_t lcAfac,
-    const fmpz_poly_factor_t Aufac,
+    const fmpz_t Auc,
+    const fmpz_poly_struct * Auf,
+    slong r,
     const fmpz * alpha,
     const fmpz_mpoly_ctx_t ctx);
 

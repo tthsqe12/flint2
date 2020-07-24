@@ -200,7 +200,7 @@ void check_omega_str(slong lower, slong upper, const char * s, const char * poly
 int
 main(void)
 {
-    slong i, j, k, tmul = 20, fateman_power = 20;
+    slong i, j, k, tmul = 20, fateman_power = 9;
     timeit_t timer;
 
     FLINT_TEST_INIT(state);

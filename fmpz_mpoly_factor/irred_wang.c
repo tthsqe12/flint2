@@ -10,6 +10,7 @@
 */
 
 #include "fmpz_mpoly_factor.h"
+#include "nmod_mpoly_factor.h"
 
 
 int fmpz_mpoly_factor_irred_wang(
@@ -36,6 +37,7 @@ int fmpz_mpoly_factor_irred_wang(
     fmpz_mpolyv_t new_lcs, lc_divs;
     fmpz_t q;
     slong r;
+    zassenhaus_prune_t zas;
 
     FLINT_ASSERT(n > 1);
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
@@ -70,8 +72,13 @@ flint_printf("A: "); fmpz_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
 
     fmpz_mpolyv_init(tfac, ctx);
     fmpz_mpoly_init(t, ctx);
+    zassenhaus_prune_init(zas);
+
+    /* init done */
 
     fmpz_mpoly_degrees_si(degs, A, ctx);
+
+    zassenhaus_prune_set_degree(zas, degs[0]);
 
     alpha_count = 0;
     alpha_modulus = 1;
@@ -118,14 +125,13 @@ flint_printf("(mod %wd) alpha = ", alpha_modulus); tuple_print(alpha, n);
     FLINT_ASSERT(success);
     fmpz_poly_factor(Aufac, Au);
     r = Aufac->num;
-    for (j = 0; j < r; j++)
-    {
-        if (Aufac->exp[j] != 1)
-            goto next_alpha;
-    }
 
-    /* if the univariate is irreducible, then A irreducible */
-    if (r < 2)
+    zassenhaus_prune_start_add_factors(zas);
+    for (j = 0; j < r; j++)
+        zassenhaus_prune_add_factor(zas, fmpz_poly_degree(Aufac->p + j), Aufac->exp[j]);
+    zassenhaus_prune_finish_add_factors(zas);
+
+    if ((r < 2 && Aufac->exp[0] == 1) || zassenhaus_prune_is_irreducible(zas))
     {
         fmpz_mpolyv_fit_length(fac, 1, ctx);
         fac->length = 1;
@@ -134,9 +140,17 @@ flint_printf("(mod %wd) alpha = ", alpha_modulus); tuple_print(alpha, n);
         goto cleanup;
     }
 
+    for (j = 0; j < r; j++)
+    {
+        if (Aufac->exp[j] != 1)
+            goto next_alpha;
+    }
+
     if (lcAfac->num > 0)
     {
-        if (!fmpz_mpoly_factor_lcc_wang(lc_divs, lcAfac, Aufac, alpha, ctx))
+        success = fmpz_mpoly_factor_lcc_wang(lc_divs, lcAfac,
+                                  &Aufac->c, Aufac->p, Aufac->num, alpha, ctx);
+        if (!success)
             goto next_alpha;
     }
     else

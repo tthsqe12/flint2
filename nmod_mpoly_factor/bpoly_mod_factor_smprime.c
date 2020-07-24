@@ -123,54 +123,6 @@ void n_bpoly_mod_make_monic_series(
     
 }
 
-int nmod_partial_fraction_coeffs(
-    slong r,
-    n_poly_struct * out,
-    const n_poly_struct * f,
-    nmod_t ctx)
-{
-    slong i;
-    n_poly_t num, den, a, b, g, t;
-
-    FLINT_ASSERT(r >= 2);
-
-    n_poly_init(num);
-    n_poly_init(den);
-    n_poly_init(a);
-    n_poly_init(b);
-    n_poly_init(g);
-    n_poly_init(t);
-
-    n_poly_one(num);
-    _n_poly_mod_mul(den, f + 0, f + 1, ctx);
-    for (i = 2; i < r; i++)
-    {
-        _n_poly_mod_mul(g, den, f + i, ctx);
-        n_poly_swap(g, den);
-    }
-
-    for (i = 0; i < r; i++)
-    {
-        n_poly_mod_divrem(den, t, den, f + i, ctx);
-        FLINT_ASSERT(n_poly_is_zero(t));
-        n_poly_mod_xgcd(g, a, b, f + i, den, ctx);
-        if (n_poly_degree(g) != 0)
-            return 0; /* TODO leak */
-        FLINT_ASSERT(n_poly_is_one(g));
-        n_poly_mod_mul(t, b, num, ctx);
-        n_poly_mod_rem(out + i, t, f + i, ctx);
-        n_poly_mod_mul(t, a, num, ctx);
-        n_poly_mod_rem(num, t, den, ctx);
-    }
-
-    n_poly_clear(num);
-    n_poly_clear(den);
-    n_poly_clear(a);
-    n_poly_clear(b);
-    n_poly_clear(g);
-    n_poly_clear(t);
-    return 1;
-}
 
 void n_bpoly_mod_eval(
     n_poly_t E,
@@ -265,6 +217,7 @@ static void _lattice(
 
 
 static int _zassenhaus(
+    const zassenhaus_prune_t zas,
     slong limit,
     n_tpoly_t F,
     mp_limb_t malpha,
@@ -275,6 +228,7 @@ static int _zassenhaus(
     const n_bpoly_t B,
     nmod_t ctx)
 {
+    slong total_deg;
     int success;
     n_bpoly_t Q, R, t1, t2;
     n_poly_t leadf, g;
@@ -334,6 +288,20 @@ static int _zassenhaus(
         subset_first(subset, len, s);
         do {
 try_subset:
+
+            total_deg = 0;
+            for (i = 0; i < len; i++)
+            {
+                if (fmpz_tstbit(subset, i))
+                    total_deg += loc_fac[idx[i]].length - 1;
+            }
+
+            if (!zassenhaus_prune_degree_is_possible(zas, total_deg))
+            {
+flint_printf("sm got one!!!!!!!!!!!!!!1\n");
+                continue;
+            }
+
             n_bpoly_set_poly_var1(t1, leadf);
             for (i = 0; i < len; i++)
             {
@@ -585,13 +553,7 @@ static void _hensel_lift_inv(
     n_bpoly_init(t2);
     n_bpoly_init(q);
     n_bpoly_init(r);
-/*
-flint_printf("_hensel_lift_inv called p0 = %wd, p1 = %wd\n", p0, p1);
-flint_printf("G: "); n_bpoly_print_pretty(G, "x", "y"); flint_printf("\n");
-flint_printf("H: "); n_bpoly_print_pretty(H, "x", "y"); flint_printf("\n");
-flint_printf("a: "); n_bpoly_print_pretty(a, "x", "y"); flint_printf("\n");
-flint_printf("b: "); n_bpoly_print_pretty(a, "x", "y"); flint_printf("\n");
-*/
+
     n_bpoly_mod_mul(t1, G, a, ctx);
     n_bpoly_mod_mul(t2, H, b, ctx);
     n_bpoly_mod_add(c, t1, t2, ctx);
@@ -705,6 +667,7 @@ int n_bpoly_mod_factor_smprime(
     slong e[FLINT_BITS];
     slong old_nrows;
     slong zas_limit;    
+    zassenhaus_prune_t zas;
 
     FLINT_ASSERT(Blenx > 1);
 
@@ -716,6 +679,7 @@ int n_bpoly_mod_factor_smprime(
     starts = (slong *) flint_malloc(Blenx*sizeof(slong));
     link = (slong *) flint_malloc(sizeof(slong));
     lift_fac = (n_bpoly_struct **) flint_malloc(sizeof(n_bpoly_struct *));
+    zassenhaus_prune_init(zas);
 
     /* init done */
 
@@ -729,6 +693,8 @@ int n_bpoly_mod_factor_smprime(
     /* CLD bounds */
     for (i = 0; i < Blenx; i++)
         starts[i] = Bleny;
+
+    zassenhaus_prune_set_degree(zas, Blenx - 1);
 
     alpha = 0;
     goto got_alpha;
@@ -754,22 +720,27 @@ got_alpha:
 
     r = local_fac->num;
 
+    zassenhaus_prune_start_add_factors(zas);
+    for (i = 0; i < r; i++)
+        zassenhaus_prune_add_factor(zas,
+                        n_poly_degree(local_fac->poly + i), local_fac->exp[i]);
+    zassenhaus_prune_finish_add_factors(zas);
+
+    if ((r < 2 && local_fac->exp[0] == 1) || zassenhaus_prune_is_irreducible(zas))
+    {
+        n_tpoly_fit_length(F, 1);
+        F->length = 1;
+        n_bpoly_swap(F->coeffs + 0, B);
+        success = 1;
+        goto cleanup;
+    }
+
     /* if multiple factors, get new alpha */
     for (i = 0; i < r; i++)
     {
         if (local_fac->exp[i] != 1)
             goto next_alpha;
     }
-
-	/* if one factor, A is irreducible */
-	if (r < 2)
-	{
-        n_tpoly_fit_length(F, 1);
-        n_bpoly_swap(F->coeffs + 0, B);
-        F->length = 1;
-        success = 1;
-        goto cleanup;
-	}
 
     for (i = 0; i < r; i++)
     {
@@ -825,17 +796,17 @@ got_alpha:
     prev_lift_order = e[1];
     _hensel_lift_tree(1, link, v, w, monicB, 2*r-4, e[1], e[0]-e[1], ctx);
 
-    zas_limit = 1;
+    zas_limit = 2;
 
 try_zas:
 
     F->length = 0;
-    success = _zassenhaus(zas_limit, F, nmod_neg(alpha, ctx), N,
+    success = _zassenhaus(zas, zas_limit, F, nmod_neg(alpha, ctx), N,
                                              lift_fac, r, final_order, B, ctx);
     if (success)
         goto cleanup;
 
-    zas_limit = 2;
+    zas_limit = 3;
 
 more:
 

@@ -266,22 +266,32 @@ static int _irreducible_factors(
     else
     {
 		nmod_mpoly_ctx_t Lctx;
-		nmod_mpoly_t L;
+		nmod_mpoly_t L, lcL;
 		nmod_mpolyv_t Lf;
+        nmod_mpoly_factor_t lcLf;
 
 		nmod_mpoly_ctx_init(Lctx, mvars, ORD_LEX, ctx->ffinfo->mod.n);
 		nmod_mpoly_init(L, Lctx);
+        nmod_mpoly_init(lcL, Lctx);
 		nmod_mpolyv_init(Lf, Lctx);
+        nmod_mpoly_factor_init(lcLf, Lctx);
 
         Lbits = mpoly_fix_bits(Lbits + 1, Lctx->minfo);
 
 		nmod_mpoly_convert_perm(L, Lbits, Lctx, A, ctx, perm);
         nmod_mpoly_make_monic(L, L, ctx);
 
-		success = nmod_mpoly_factor_irred_smprime_default(Lf, L, Lctx, state);
+        _nmod_mpoly_get_lead0(lcL, L, Lctx);
+        success = nmod_mpoly_factor(lcLf, lcL, Lctx);
+        if (success)
+        {
+            success = nmod_mpoly_factor_irred_smprime_wang(Lf, L, lcLf, lcL, Lctx, state);
+        }
         if (!success)
         {
-    		success = nmod_mpoly_factor_irred_lgprime_default(Lf, L, Lctx, state);
+		    success = nmod_mpoly_factor_irred_smprime_default(Lf, L, Lctx, state);
+            if (!success)
+        		success = nmod_mpoly_factor_irred_lgprime_default(Lf, L, Lctx, state);
         }
 
 		if (success)
@@ -296,8 +306,10 @@ static int _irreducible_factors(
 		    }
         }
 
-	    nmod_mpolyv_clear(Lf, Lctx);
 	    nmod_mpoly_clear(L, Lctx);
+	    nmod_mpoly_clear(lcL, Lctx);
+	    nmod_mpolyv_clear(Lf, Lctx);
+        nmod_mpoly_factor_clear(lcLf, Lctx);
 	    nmod_mpoly_ctx_clear(Lctx);
     }
 

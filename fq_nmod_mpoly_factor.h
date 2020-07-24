@@ -26,10 +26,134 @@
 #define ulong mp_limb_t
 
 #include "fq_nmod_mpoly.h"
+#include "nmod_mpoly_factor.h"
 
 #ifdef __cplusplus
  extern "C" {
 #endif
+
+/*****************************************************************************/
+
+FQ_NMOD_MPOLY_FACTOR_INLINE
+void _fq_nmod_add(
+    mp_limb_t * a,          /* length d */
+    const mp_limb_t * b,    /* length d */
+    const mp_limb_t * c,    /* length d */
+    const fq_nmod_ctx_t ctx)
+{
+    slong d = ctx->modulus->length - 1;
+    FLINT_ASSERT(d > 0);
+    _nmod_vec_add(a, b, c, d, ctx->modulus->mod);
+}
+
+FQ_NMOD_MPOLY_FACTOR_INLINE
+void _fq_nmod_sub(
+    mp_limb_t * a,          /* length d */
+    const mp_limb_t * b,    /* length d */
+    const mp_limb_t * c,    /* length d */
+    const fq_nmod_ctx_t ctx)
+{
+    slong d = ctx->modulus->length - 1;
+    FLINT_ASSERT(d > 0);
+    _nmod_vec_sub(a, b, c, d, ctx->modulus->mod);
+}
+
+FQ_NMOD_MPOLY_FACTOR_INLINE
+void _fq_nmod_reduce2(
+    mp_limb_t * a,          /* length d */
+    mp_limb_t * b,          /* length 2*d - 1 */
+    const fq_nmod_ctx_t ctx,
+    mp_limb_t * t)          /* length d */
+{
+    slong i, k, d = ctx->modulus->length - 1;
+    FLINT_ASSERT(d > 0);
+
+    FLINT_ASSERT(a != b);
+
+    if (ctx->sparse_modulus)
+    {
+        for (i = 2*d - 2; i >= d; i--)
+        {
+            if (b[i] == 0)
+                continue;
+
+            for (k = d - 1; k >= 0; k--)
+            {
+                FLINT_ASSERT(ctx->a[k] > 0);
+                b[ctx->j[k] + i - d] = nmod_addmul(b[ctx->j[k] + i - d],
+                                       b[i], ctx->mod.n - ctx->a[k], ctx->mod);
+            }
+
+            b[i] = 0;
+        }
+
+        for (i = 0; i < d; i++)
+            a[i] = b[i];
+    }
+    else
+    {
+        slong blen = 2*d - 1;
+
+        while (blen > d && b[blen - 1] == 0)
+            blen--;
+
+        _nmod_poly_divrem_newton_n_preinv(t, a, b, blen,
+                                 ctx->modulus->coeffs, ctx->modulus->length,
+                                 ctx->inv->coeffs, ctx->inv->length, ctx->mod);
+    }
+}
+
+FQ_NMOD_MPOLY_FACTOR_INLINE
+void _fq_nmod_mul(
+    mp_limb_t * a,          /* length d */
+    const mp_limb_t * b,    /* length d */
+    const mp_limb_t * c,    /* length d */
+    const fq_nmod_ctx_t ctx,
+    mp_limb_t * t)          /* length 4*d */
+{
+    slong d = ctx->modulus->length - 1;
+    FLINT_ASSERT(d > 0);
+    _nmod_poly_mul(t + 0, b, d, c, d, ctx->modulus->mod);
+    _fq_nmod_reduce2(a, t, ctx, t + 2*d);
+}
+
+FQ_NMOD_MPOLY_FACTOR_INLINE
+void _fq_nmod_inv(
+    mp_limb_t * a,
+    const mp_limb_t * b,
+    const fq_nmod_ctx_t ctx,
+    mp_limb_t * t)  /* length d */
+{
+    slong blen;
+    slong d = ctx->modulus->length - 1;
+    FLINT_ASSERT(d > 0);
+
+    while (blen > 0 && b[blen - 1] == 0)
+        blen--;
+
+    if (blen < 1)
+    {
+        flint_throw(FLINT_ERROR, "impossible inverse in _fq_nmod_inv");
+    }
+    else if (blen == 1)
+    {
+        a[0] = n_invmod(b[0], ctx->mod.n);
+        _nmod_vec_zero(a + 1, d - 1);
+    }
+    else
+    {
+        if (1 != _nmod_poly_gcdinv(t, a, b, blen, ctx->modulus->coeffs, d + 1, ctx->mod))
+        {
+            flint_throw(FLINT_ERROR, "impossible inverse in _fq_nmod_inv");
+        }
+
+        if (t[0] != 1)
+        {
+            _nmod_vec_scalar_mul_nmod(a, a, d, n_invmod(t[0], ctx->mod.n), ctx->mod);
+        }
+    }
+}
+
 
 /*****************************************************************************/
 

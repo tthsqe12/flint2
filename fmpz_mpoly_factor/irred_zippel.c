@@ -2025,6 +2025,7 @@ int fmpz_mpoly_factor_irred_zippel(
     nmod_poly_t Aup;
     mp_limb_t * alphap;
     slong r, L;
+    zassenhaus_prune_t zas;
 
     FLINT_ASSERT(n > 1);
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
@@ -2066,9 +2067,13 @@ int fmpz_mpoly_factor_irred_zippel(
     nmod_mpolyv_init(Alcp, ctxp);
     nmod_poly_init_mod(Aup, ctxp->ffinfo->mod);
 
+    zassenhaus_prune_init(zas);
+
     /* init done */
 
     fmpz_mpoly_degrees_si(degs, A, ctx);
+
+    zassenhaus_prune_set_degree(zas, degs[0]);
 
     alpha_count = 0;
     alpha_bits = 10;
@@ -2120,15 +2125,13 @@ next_alpha:
     FLINT_ASSERT(success);
     fmpz_poly_factor(Aufac, Au);
     r = Aufac->num;
-    FLINT_ASSERT(r >= 1);
-    for (j = 0; j < r; j++)
-    {
-        if (Aufac->exp[j] != 1)
-            goto next_alpha;
-    }
 
-    /* if the univariate is irreducible, then A is irreducible */
-    if (r < 2)
+    zassenhaus_prune_start_add_factors(zas);
+    for (j = 0; j < r; j++)
+        zassenhaus_prune_add_factor(zas, fmpz_poly_degree(Aufac->p + j), Aufac->exp[j]);
+    zassenhaus_prune_finish_add_factors(zas);
+
+    if ((r < 2 && Aufac->exp[0] == 1) || zassenhaus_prune_is_irreducible(zas))
     {
         fmpz_mpolyv_fit_length(fac, 1, ctx);
         fac->length = 1;
@@ -2137,9 +2140,17 @@ next_alpha:
         goto cleanup;
     }
 
+    FLINT_ASSERT(r >= 1);
+    for (j = 0; j < r; j++)
+    {
+        if (Aufac->exp[j] != 1)
+            goto next_alpha;
+    }
+
     if (lcAfac->num > 0)
     {
-        success = fmpz_mpoly_factor_lcc_wang(lc_divs, lcAfac, Aufac, alpha, ctx);
+        success = fmpz_mpoly_factor_lcc_wang(lc_divs, lcAfac,
+                                  &Aufac->c, Aufac->p, Aufac->num, alpha, ctx);
         if (!success)
             goto next_alpha;
     }
@@ -2456,6 +2467,8 @@ cleanup:
     nmod_mpolyv_clear(Alcp, ctxp);
     nmod_poly_clear(Aup);
     nmod_mpoly_ctx_clear(ctxp);
+
+    zassenhaus_prune_clear(zas);
 
     return success;
 }
