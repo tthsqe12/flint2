@@ -133,5 +133,3 @@ void fmpz_mpoly_from_mpolyv(
 
     fmpz_mpoly_clear(T, ctx);
 }
-
-

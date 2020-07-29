@@ -212,6 +212,7 @@ static int _irreducible_factors(
     slong nvars = ctx->minfo->nvars;
     flint_bitcnt_t Lbits, Abits;
     int perm_is_id;
+    flint_rand_t state;
 #if WANT_ASSERT
     fmpz_mpoly_t Aorg;
 
@@ -221,6 +222,7 @@ static int _irreducible_factors(
 
     FLINT_ASSERT(A->length == 0 || fmpz_sgn(A->coeffs + 0) > 0);
 
+    flint_randinit(state);
     Adegs = (slong *) flint_malloc(3*nvars*sizeof(slong));
     perm = Adegs + nvars;
     iperm = perm + nvars;
@@ -328,7 +330,6 @@ static int _irreducible_factors(
         fmpz_mpoly_get_bpoly(Ab, A, perm[0], perm[1], ctx);
         fmpz_bpoly_factor(c, Abf, Ab);
 
-        /* c = +-1 */
         FLINT_ASSERT(c->length == 1 && fmpz_is_pm1(c->coeffs + 0));
 
         fmpz_mpolyv_fit_length(Af, Abf->length, ctx);
@@ -368,9 +369,9 @@ static int _irreducible_factors(
         success = fmpz_mpoly_factor(lcLf, lcL, Lctx);
         if (success)
         {
-            success = fmpz_mpoly_factor_irred_zippel(Lf, L, lcLf, lcL, Lctx);
+            success = fmpz_mpoly_factor_irred_zippel(Lf, L, lcLf, lcL, Lctx, state);
             if (!success)
-                success = fmpz_mpoly_factor_irred_wang(Lf, L, lcLf, lcL, Lctx);
+                success = fmpz_mpoly_factor_irred_wang(Lf, L, lcLf, lcL, Lctx, state);
         }
         if (!success)
             success = fmpz_mpoly_factor_irred_default(Lf, L, Lctx);
@@ -396,6 +397,7 @@ static int _irreducible_factors(
 
 cleanup:
 
+    flint_randclear(state);
     flint_free(Adegs);
 
 #if WANT_ASSERT
@@ -464,4 +466,3 @@ cleanup:
 
     return success;
 }
-

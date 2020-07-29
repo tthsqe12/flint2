@@ -150,23 +150,22 @@ int fmpz_mpoly_pfrac_init(
         fmpz_mpoly_init(I->qt + i, ctx);
         fmpz_mpoly_init(I->newt + i, ctx);
         for (j = 0; j < r; j++)
-            fmpz_mpolyv_init(I->delta_coeffs + i*I->r + j, ctx);
+        {
+            fmpz_mpoly_init(I->deltas + i*r + j, ctx);
+            fmpz_mpolyv_init(I->delta_coeffs + i*r + j, ctx);
+        }
 
         if (i < 1)
             continue;
 
         fmpz_mpoly_gen(I->xalpha + i, i, ctx);
         fmpz_mpoly_sub_fmpz(I->xalpha + i, I->xalpha + i, alpha + i - 1, ctx);
+        fmpz_mpoly_repack_bits_inplace(I->xalpha + i, I->bits, ctx);
     }
 
     fmpq_poly_init(G);
     fmpq_poly_init(S);
     fmpq_poly_init(pq);
-
-    /* initialize deltas */
-    for (i = w; i >= 0; i--)
-        for (j = 0; j < r; j++)
-            fmpz_mpoly_init(I->deltas + i*r + j, ctx);
 
     /* set betas */
     i = w;
@@ -208,7 +207,7 @@ int fmpz_mpoly_pfrac_init(
             if (i > 0)
             {
                 fmpz_mpoly_to_mpolyv(I->prod_mbetas_coeffs + i*r + j,
-                                I->prod_mbetas + i*r + j, I->xalpha + i, ctx);
+                                 I->prod_mbetas + i*r + j, I->xalpha + i, ctx);
             }
         }        
     }
@@ -234,7 +233,6 @@ int fmpz_mpoly_pfrac_init(
                 continue;
             fmpq_poly_mul(pq, pq, I->dbetas + k);
         }
-        fmpq_poly_init(I->inv_prod_dbetas + j);
         fmpq_poly_xgcd(G, S, I->inv_prod_dbetas + j, I->dbetas + j, pq);
         if (!fmpq_poly_is_one(G))
             success = 0;

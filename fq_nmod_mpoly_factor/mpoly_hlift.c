@@ -12,6 +12,296 @@
 #include "fq_nmod_mpoly_factor.h"
 
 
+static int _hlift_quartic2(
+    slong m,
+    fq_nmod_mpoly_struct * f,
+    slong r,
+    const fq_nmod_struct * alpha,
+    const fq_nmod_mpoly_t A,
+    const slong * degs,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    int success;
+    slong i, j;
+    fq_nmod_mpoly_t Aq, t, t2, t3, xalpha;
+    fq_nmod_mpoly_struct * betas, * deltas;
+    fq_nmod_mpoly_pfrac_t I;
+    fq_nmod_mpolyv_struct B[2];
+    slong tdeg;
+    flint_bitcnt_t bits = A->bits;
+
+    FLINT_ASSERT(r == 2);
+    r = 2;
+
+    fq_nmod_mpoly_init(t, ctx);
+    fq_nmod_mpoly_init(t2, ctx);
+    fq_nmod_mpoly_init(t3, ctx);
+    fq_nmod_mpoly_init(xalpha, ctx);
+    fq_nmod_mpoly_init(Aq, ctx);
+
+    fq_nmod_mpoly_gen(xalpha, m, ctx);
+    fq_nmod_mpoly_sub_fq_nmod(xalpha, xalpha, alpha + m - 1, ctx);
+    fq_nmod_mpoly_repack_bits_inplace(xalpha, bits, ctx);
+
+    betas  = (fq_nmod_mpoly_struct * ) flint_malloc(r*sizeof(fq_nmod_mpoly_struct));
+    for (i = 0; i < r; i++)
+    {
+        fq_nmod_mpolyv_init(B + i, ctx);
+        fq_nmod_mpoly_repack_bits_inplace(f + i, bits, ctx);
+        fq_nmod_mpoly_to_mpolyv(B + i, f + i, xalpha, ctx);
+        fq_nmod_mpolyv_fit_length(B + i, degs[m] + 1, ctx);
+        for (j = B[i].length; j <= degs[m]; j++)
+            fq_nmod_mpoly_zero(B[i].coeffs + j, ctx);
+        betas[i] = B[i].coeffs[0];
+    }
+
+    success = fq_nmod_mpoly_pfrac_init(I, bits, r, m - 1, betas, alpha, ctx);
+    FLINT_ASSERT(success == 1);
+
+    deltas = I->deltas + (m - 1)*I->r;
+
+    fq_nmod_mpoly_divrem(t2, t, A, xalpha, ctx);
+    fq_nmod_mpoly_swap(Aq, t2, ctx);
+
+#if WANT_ASSERT
+    fq_nmod_mpoly_one(t2, ctx);
+    for (i = 0; i < r; i++)
+        fq_nmod_mpoly_mul(t2, t2, betas + i, ctx);
+    FLINT_ASSERT(fq_nmod_mpoly_equal(t, t2, ctx));
+#endif
+
+    for (j = 1; j <= degs[m]; j++)
+    {
+        fq_nmod_mpoly_divrem(t2, t, Aq, xalpha, ctx);
+        fq_nmod_mpoly_swap(Aq, t2, ctx);
+
+        for (i = 0; i <= j; i++)
+        {
+            fq_nmod_mpoly_mul(t2, B[0].coeffs + i, B[1].coeffs + j - i, ctx);
+            fq_nmod_mpoly_sub(t3, t, t2, ctx);
+            fq_nmod_mpoly_swap(t, t3, ctx);
+        }
+
+        success = fq_nmod_mpoly_pfrac(m - 1, t, degs, I, ctx);
+        if (success <= 0)
+        {
+            success = 0;
+            goto cleanup;
+        }
+
+        tdeg = 0;
+        for (i = 0; i < r; i++)
+        {
+            fq_nmod_mpoly_add(t3, B[i].coeffs + j, deltas + i, ctx);
+            fq_nmod_mpoly_swap(B[i].coeffs + j, t3, ctx);
+            if (!fq_nmod_mpoly_is_zero(B[i].coeffs + j, ctx))
+                B[i].length = FLINT_MAX(B[i].length, j + 1);
+            FLINT_ASSERT(B[i].length > 0);
+            tdeg += B[i].length - 1;
+        }
+
+        if (tdeg > degs[m])
+        {
+            success = 0;
+            goto cleanup;
+        }
+    }
+
+    success = 1;
+
+cleanup:
+
+    fq_nmod_mpoly_pfrac_clear(I, ctx);
+
+    flint_free(betas);
+
+    for (i = 0; i < r; i++)
+    {
+        if (success)
+            fq_nmod_mpoly_from_mpolyv(f + i, B + i, xalpha, ctx);
+        fq_nmod_mpolyv_clear(B + i, ctx);
+    }
+
+    fq_nmod_mpoly_clear(t, ctx);
+    fq_nmod_mpoly_clear(t2, ctx);
+    fq_nmod_mpoly_clear(t3, ctx);
+    fq_nmod_mpoly_clear(xalpha, ctx);
+    fq_nmod_mpoly_clear(Aq, ctx);
+
+    return success;
+}
+
+
+static int _hlift_quartic(
+    slong m,
+    fq_nmod_mpoly_struct * f,
+    slong r,
+    const fq_nmod_struct * alpha,
+    const fq_nmod_mpoly_t A,
+    const slong * degs,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    int success;
+    slong i, j, k;
+    fq_nmod_mpoly_t t, t1, t2, t3, xalpha;
+    fq_nmod_mpoly_struct * betas, * deltas;
+    fq_nmod_mpoly_pfrac_t I;
+    fq_nmod_mpolyv_t Av;
+    fq_nmod_mpolyv_struct * B, * U;
+    slong tdeg;
+    flint_bitcnt_t bits = A->bits;
+
+    FLINT_ASSERT(r > 2);
+
+    B = (fq_nmod_mpolyv_struct *) flint_malloc(r*sizeof(fq_nmod_mpolyv_struct));
+    U = (fq_nmod_mpolyv_struct *) flint_malloc(r*sizeof(fq_nmod_mpolyv_struct));
+
+    fq_nmod_mpoly_init(t, ctx);
+    fq_nmod_mpoly_init(t1, ctx);
+    fq_nmod_mpoly_init(t2, ctx);
+    fq_nmod_mpoly_init(t3, ctx);
+    fq_nmod_mpoly_init(xalpha, ctx);
+
+    fq_nmod_mpoly_gen(xalpha, m, ctx);
+    fq_nmod_mpoly_sub_fq_nmod(xalpha, xalpha, alpha + m - 1, ctx);
+    fq_nmod_mpoly_repack_bits_inplace(xalpha, bits, ctx);
+
+    fq_nmod_mpolyv_init(Av, ctx);
+    fq_nmod_mpoly_to_mpolyv(Av, A, xalpha, ctx);
+    fq_nmod_mpolyv_fit_length(Av, degs[m] + 1, ctx);
+    for (j = Av->length; j <= degs[m]; j++)
+        fq_nmod_mpoly_zero(Av->coeffs + j, ctx);
+
+    for (k = 0; k < r; k++)
+    {
+        fq_nmod_mpolyv_init(U + k, ctx);
+        fq_nmod_mpolyv_fit_length(U + k, degs[m] + 1, ctx);
+        for (j = 0; j <= degs[m]; j++)
+            fq_nmod_mpoly_zero(U[k].coeffs + j, ctx);
+
+        fq_nmod_mpolyv_init(B + k, ctx);
+        fq_nmod_mpoly_repack_bits_inplace(f + k, bits, ctx);
+        fq_nmod_mpoly_to_mpolyv(B + k, f + k, xalpha, ctx);
+        fq_nmod_mpolyv_fit_length(B + k, degs[m] + 1, ctx);
+        for (j = B[k].length; j <= degs[m]; j++)
+            fq_nmod_mpoly_zero(B[k].coeffs + j, ctx);
+    }
+
+    betas  = (fq_nmod_mpoly_struct *) flint_malloc(r*sizeof(fq_nmod_mpoly_struct));
+    for (i = 0; i < r; i++)
+        betas[i] = B[i].coeffs[0];
+
+    fq_nmod_mpoly_pfrac_init(I, A->bits, r, m - 1, betas, alpha, ctx);
+    deltas = I->deltas + (m - 1)*I->r;
+
+    k = r - 2;
+    fq_nmod_mpoly_mul(U[k].coeffs + 0, B[k].coeffs + 0, B[k + 1].coeffs + 0, ctx);
+    for (k--; k >= 1; k--)
+        fq_nmod_mpoly_mul(U[k].coeffs + 0, B[k].coeffs + 0, U[k + 1].coeffs + 0, ctx);
+
+    for (j = 1; j <= degs[m]; j++)
+    {
+        k = r - 2;
+        fq_nmod_mpoly_zero(U[k].coeffs + j, ctx);
+        for (i = 0; i <= j; i++)
+        {
+            fq_nmod_mpoly_mul(t1, B[k].coeffs + i, B[k + 1].coeffs + j - i, ctx);
+            fq_nmod_mpoly_add(U[k].coeffs + j, U[k].coeffs + j, t1, ctx);
+
+        }
+        for (k--; k >= 1; k--)
+        {
+            fq_nmod_mpoly_zero(U[k].coeffs + j, ctx);
+            for (i = 0; i <= j; i++)
+            {
+                fq_nmod_mpoly_mul(t1, B[k].coeffs + i, U[k + 1].coeffs + j - i, ctx);
+                fq_nmod_mpoly_add(U[k].coeffs + j, U[k].coeffs + j, t1, ctx);
+            }
+        }
+
+        if (j < Av->length)
+            fq_nmod_mpoly_set(t, Av->coeffs + j, ctx);
+        else
+            fq_nmod_mpoly_zero(t, ctx);
+
+        for (i = 0; i <= j; i++)
+        {
+            fq_nmod_mpoly_mul(t2, B[0].coeffs + i, U[1].coeffs + j - i, ctx);
+            fq_nmod_mpoly_sub(t3, t, t2, ctx);
+            fq_nmod_mpoly_swap(t, t3, ctx);
+        }
+
+        if (fq_nmod_mpoly_is_zero(t, ctx))
+            continue;
+
+        success = fq_nmod_mpoly_pfrac(m - 1, t, degs, I, ctx);
+        if (success < 1)
+        {
+            success = 0;
+            goto cleanup;
+        }
+
+        tdeg = 0;
+        for (i = 0; i < r; i++)
+        {
+            fq_nmod_mpoly_add(t3, B[i].coeffs + j, deltas + i, ctx);
+            fq_nmod_mpoly_swap(B[i].coeffs + j, t3, ctx);
+            if (!fq_nmod_mpoly_is_zero(B[i].coeffs + j, ctx))
+                B[i].length = FLINT_MAX(B[i].length, j + 1);
+            FLINT_ASSERT(B[i].length > 0);
+            tdeg += B[i].length - 1;
+        }
+
+        if (tdeg > degs[m])
+        {
+            success = 0;
+            goto cleanup;
+        }
+
+        k = r - 2;
+        fq_nmod_mpoly_mul(t, B[k].coeffs + 0, deltas + k + 1, ctx);
+        fq_nmod_mpoly_mul(t1, deltas + k, B[k + 1].coeffs + 0, ctx);
+        fq_nmod_mpoly_add(t, t, t1, ctx);
+        fq_nmod_mpoly_add(U[k].coeffs + j, U[k].coeffs + j, t, ctx);
+        for (k--; k >= 1; k--)
+        {
+            fq_nmod_mpoly_mul(t1, B[k].coeffs + 0, t, ctx);
+            fq_nmod_mpoly_swap(t, t1, ctx);
+            fq_nmod_mpoly_mul(t1, deltas + k, U[k + 1].coeffs + 0, ctx);
+            fq_nmod_mpoly_add(t, t, t1, ctx);
+            fq_nmod_mpoly_add(U[k].coeffs + j, U[k].coeffs + j, t, ctx);
+        }
+    }
+
+    success = 1;
+
+cleanup:
+
+    fq_nmod_mpoly_pfrac_clear(I, ctx);
+
+    flint_free(betas);
+
+    fq_nmod_mpolyv_clear(Av, ctx);
+    for (i = 0; i < r; i++)
+    {
+        if (success)
+            fq_nmod_mpoly_from_mpolyv(f + i, B + i, xalpha, ctx);
+        fq_nmod_mpolyv_clear(B + i, ctx);
+        fq_nmod_mpolyv_clear(U + i, ctx);
+    }
+
+    flint_free(B);
+    flint_free(U);
+    fq_nmod_mpoly_clear(t, ctx);
+    fq_nmod_mpoly_clear(t1, ctx);
+    fq_nmod_mpoly_clear(t2, ctx);
+    fq_nmod_mpoly_clear(t3, ctx);
+    fq_nmod_mpoly_clear(xalpha, ctx);
+
+    return success;
+}
+
+
 static int _hlift_quintic(
     slong m,
     fq_nmod_mpoly_struct * f,
@@ -40,6 +330,7 @@ static int _hlift_quintic(
     for (i = 0; i < r; i++)
     {
         fq_nmod_mpoly_init(betas + i, ctx);
+        fq_nmod_mpoly_repack_bits_inplace(f + i, bits, ctx);
         fq_nmod_mpoly_evaluate_one_fq_nmod(betas + i, f + i, m, alpha + m - 1, ctx);
     }
 
@@ -55,8 +346,8 @@ static int _hlift_quintic(
     fq_nmod_mpoly_sub_fq_nmod(xalpha, xalpha, alpha + m - 1, ctx);
     fq_nmod_mpoly_repack_bits_inplace(xalpha, bits, ctx);
 
-    fq_nmod_mpoly_pfrac_init(I, r, m - 1, betas, alpha, ctx);
-    deltas = I->deltas + (m - 1)*I->l;
+    fq_nmod_mpoly_pfrac_init(I, bits, r, m - 1, betas, alpha, ctx);
+    deltas = I->deltas + (m - 1)*I->r;
 
     for (j = 1; j <= degs[m]; j++)
     {
@@ -71,9 +362,12 @@ static int _hlift_quintic(
         FLINT_ASSERT(success);
         fq_nmod_mpoly_evaluate_one_fq_nmod(t, q, m, alpha + m - 1, ctx);
 
-        success = fq_nmod_mpoly_pfrac(bits, m - 1, r, t, alpha, degs, I, ctx);
-        if (!success)
+        success = fq_nmod_mpoly_pfrac(m - 1, t, degs, I, ctx);
+        if (success < 1)
+        {
+            success = 0;
             goto cleanup;
+        }
 
         for (i = 0; i < r; i++)
         {
@@ -121,5 +415,10 @@ int fq_nmod_mpoly_hlift(
     FLINT_ASSERT(A->bits <= FLINT_BITS);
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
 
-    return _hlift_quintic(m, f, r, alpha, A, degs, ctx);
+    if (r == 2)
+        return _hlift_quartic2(m, f, r, alpha, A, degs, ctx);
+    else if (r < 20)
+        return _hlift_quartic(m, f, r, alpha, A, degs, ctx);
+    else
+        return _hlift_quintic(m, f, r, alpha, A, degs, ctx);
 }

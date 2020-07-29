@@ -116,9 +116,9 @@ int nmod_mpoly_factor_irred_lgprime_default(
     fq_nmod_mpolyv_init(fac, ctx);
 
 try_again:
-
+/*
 flint_printf("trying extension of degree %wd\n", edeg);
-
+*/
     success = fq_nmod_mpoly_factor_irred_smprime_default(fac, A, ctx, state);
     if (success < 1)
     {

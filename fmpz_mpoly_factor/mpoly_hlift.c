@@ -28,6 +28,7 @@ static int _hlift_quartic2(
     fmpz_mpoly_pfrac_t I;
     fmpz_mpolyv_struct B[2];
     slong tdeg;
+    flint_bitcnt_t bits = A->bits;
 
     FLINT_ASSERT(r == 2);
     r = 2;
@@ -40,11 +41,13 @@ static int _hlift_quartic2(
 
     fmpz_mpoly_gen(xalpha, m, ctx);
     fmpz_mpoly_sub_fmpz(xalpha, xalpha, alpha + m - 1, ctx);
+    fmpz_mpoly_repack_bits_inplace(xalpha, bits, ctx);
 
     betas  = (fmpz_mpoly_struct * ) flint_malloc(r*sizeof(fmpz_mpoly_struct));
     for (i = 0; i < r; i++)
     {
         fmpz_mpolyv_init(B + i, ctx);
+        fmpz_mpoly_repack_bits_inplace(f + i, bits, ctx);
         fmpz_mpoly_to_mpolyv(B + i, f + i, xalpha, ctx);
         fmpz_mpolyv_fit_length(B + i, degs[m] + 1, ctx);
         for (j = B[i].length; j <= degs[m]; j++)
@@ -145,6 +148,7 @@ static int _hlift_quartic(
     fmpz_mpolyv_t Av;
     fmpz_mpolyv_struct * B, * U;
     slong tdeg;
+    flint_bitcnt_t bits = A->bits;
 
     FLINT_ASSERT(r > 2);
 
@@ -159,6 +163,7 @@ static int _hlift_quartic(
 
     fmpz_mpoly_gen(xalpha, m, ctx);
     fmpz_mpoly_sub_fmpz(xalpha, xalpha, alpha + m - 1, ctx);
+    fmpz_mpoly_repack_bits_inplace(xalpha, bits, ctx);
 
     fmpz_mpolyv_init(Av, ctx);
     fmpz_mpoly_to_mpolyv(Av, A, xalpha, ctx);
@@ -174,9 +179,10 @@ static int _hlift_quartic(
             fmpz_mpoly_zero(U[k].coeffs + j, ctx);
 
         fmpz_mpolyv_init(B + k, ctx);
+        fmpz_mpoly_repack_bits_inplace(f + k, bits, ctx);
         fmpz_mpoly_to_mpolyv(B + k, f + k, xalpha, ctx);
         fmpz_mpolyv_fit_length(B + k, degs[m] + 1, ctx);
-        for (j = Av->length; j <= degs[m]; j++)
+        for (j = B[k].length; j <= degs[m]; j++)
             fmpz_mpoly_zero(B[k].coeffs + j, ctx);
     }
 

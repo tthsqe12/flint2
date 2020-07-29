@@ -13,7 +13,7 @@
 
 
 int fmpz_mpoly_factor_lcc_wang(
-    fmpz_mpolyv_t lc_divs,
+    fmpz_mpoly_struct * lc_divs,
     const fmpz_mpoly_factor_t lcAfac,
     const fmpz_t Auc,
     const fmpz_poly_struct * Auf,
@@ -29,10 +29,9 @@ int fmpz_mpoly_factor_lcc_wang(
     fmpz * d = _fmpz_vec_init(1 + lcAfac->num);
     fmpz zero = 0;
     fmpz * dtilde = _fmpz_vec_init(r);
-    fmpz_t delta, Q, R;
+    fmpz_t Q, R;
     fmpz_mpoly_t t;
 
-    fmpz_init(delta);
     fmpz_init(Q);
     fmpz_init(R);
 
@@ -72,14 +71,11 @@ int fmpz_mpoly_factor_lcc_wang(
         fmpz_set(d + i + 1, Q);
     }
 
-    fmpz_mpolyv_fit_length(lc_divs, r, ctx);
-    lc_divs->length = r;
-
     for (j = 0; j < r; j++)
     {
-        fmpz_mpoly_one(lc_divs->coeffs + j, ctx);
-        fmpz_mul(R, Auf[j].coeffs + Auf[j].length - 1, Auc);
+        fmpz_mpoly_one(lc_divs + j, ctx);
         fmpz_one(dtilde + j);
+        fmpz_mul(R, Auf[j].coeffs + Auf[j].length - 1, Auc);
         for (i = lcAfac->num - 1; i >= 0; i--)
         {
             fmpz_abs(Q, lcAfaceval + i);
@@ -87,27 +83,25 @@ int fmpz_mpoly_factor_lcc_wang(
                 continue;
             k = fmpz_remove(R, R, Q);
             fmpz_mpoly_pow_ui(t, lcAfac->poly + i, k, ctx);
-            fmpz_mpoly_mul(lc_divs->coeffs + j, lc_divs->coeffs + j, t, ctx);
+            fmpz_mpoly_mul(lc_divs + j, lc_divs + j, t, ctx);
             fmpz_pow_ui(Q, lcAfaceval + i, k);
             fmpz_mul(dtilde + j, dtilde + j, Q);
         }
     }
 
-    fmpz_set(delta, Auc);
     for (j = 0; j < r; j++)
     {
         FLINT_ASSERT(Auf[j].length > 0);
         fmpz_gcd(R, Auf[j].coeffs + Auf[j].length - 1, dtilde + j);
         FLINT_ASSERT(fmpz_divisible(Auf[j].coeffs + Auf[j].length - 1, R));
         fmpz_divexact(Q, Auf[j].coeffs + Auf[j].length - 1, R);
-        fmpz_mpoly_scalar_mul_fmpz(lc_divs->coeffs + j, lc_divs->coeffs + j, Q, ctx);
+        fmpz_mpoly_scalar_mul_fmpz(lc_divs + j, lc_divs + j, Q, ctx);
     }
 
     success = 1;
 
 cleanup:
 
-    fmpz_clear(delta);
     fmpz_clear(Q);
     fmpz_clear(R);
     fmpz_mpoly_clear(t, ctx);

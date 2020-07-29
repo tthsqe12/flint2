@@ -131,7 +131,7 @@ main(void)
 
     /* check random bivariate factors */
     total = 0;
-    for (i = 0; i < tmul * flint_test_multiplier(); i++)
+    for (i = 0; i < 0*tmul * flint_test_multiplier(); i++)
     {
         slong lower;
         fq_nmod_mpoly_ctx_t ctx;
@@ -212,17 +212,7 @@ flint_printf("2:%wd ", i);
     }
 flint_printf("**********total number of mvar factors: %wd ******\n", total);
 usleep(1000000);
-/*
-    check_omega_str(2, 2, "x y z", "(z^8*x^8+x^1+y^16+y^1+z^8+z^3)*((y^4+z^3+z)*x^8+x^1+y^16+y^1+z^8+z^3)", 2);
-    check_omega_str(4, 4, "x y", "(x^8+x+y^16+y)*(x^8+x+y^4+y)", 2);
-    check_omega_str(4, 4, "x y z", "x^8+x+y^8+y+z^8+z", 2);
-    check_omega_str(6, 6, "x y z", "x^16+x+y^16+y+z^16+z", 2);
-    check_omega_str(143, 143, "x y", "(x^2+y+1)*(x+y^2+1)^2*(x*y+1)^13*(x*y+2)^14*(x+y+1)^113", 3);
-    check_omega_str(143, 143, "x y", "(x^2+y+1)*(x+y^2+1)^2*(x*y+1)^13*(x*y+2)^14*(x+y+1)^113", 7);
-    check_omega_str(143, 143, "x y", "(x^2+y+1)*(x+y^2+1)^2*(x*y+1)^13*(x*y+2)^14*(x+y+1)^113", 13);
-    check_omega_str(143, 143, "x y", "(x^2+y+1)*(x+y^2+1)^2*(x*y+1)^13*(x*y+2)^14*(x+y+1)^113", 8191);
-    check_omega_str(4097, 4097, "x", "(x+1)^4097", 2);
-*/
+
     FLINT_TEST_CLEANUP(state);
     
     flint_printf("PASS\n");

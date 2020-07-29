@@ -11,6 +11,7 @@
 
 #include "fmpz_mpoly_factor.h"
 #include "nmod_mpoly_factor.h"
+#include "ui_factor.h"
 
 
 static void nmod_mpoly_get_mpolyu2(
@@ -2000,7 +2001,8 @@ int fmpz_mpoly_factor_irred_zippel(
     const fmpz_mpoly_t A,
     const fmpz_mpoly_factor_t lcAfac,
     const fmpz_mpoly_t lcA,
-    const fmpz_mpoly_ctx_t ctx)
+    const fmpz_mpoly_ctx_t ctx,
+    flint_rand_t state)
 {
     int success;
     const slong n = ctx->minfo->nvars - 1;
@@ -2014,7 +2016,6 @@ int fmpz_mpoly_factor_irred_zippel(
     fmpz_poly_t Au;
     fmpz_poly_factor_t Aufac;
     slong alpha_bits, alpha_count;
-    flint_rand_t state;
     fmpz_mpoly_t m, mpow;
     fmpz_mpolyv_t Alc, lc_divs;
     fmpz_t q, facBound;
@@ -2031,8 +2032,6 @@ int fmpz_mpoly_factor_irred_zippel(
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
     FLINT_ASSERT(A->bits <= FLINT_BITS);
     FLINT_ASSERT(fmpz_mpoly_factor_matches(lcA, lcAfac, ctx));
-
-    flint_randinit(state);
 
     fmpz_init(facBound);
     fmpz_init(q);
@@ -2080,11 +2079,6 @@ int fmpz_mpoly_factor_irred_zippel(
 
 next_alpha:
 
-    /*
-        choose the αi from +-[1, 2^alpha_bits].
-        alpha_bits is incremented every so often until it gets too high.
-    */
-
     alpha_count++;
     if (alpha_count >= alpha_bits)
     {
@@ -2107,11 +2101,10 @@ next_alpha:
             fmpz_set_ui(alpha + i, 1 + (l & (mask - 1)));
     }
 
-    /* ensure degrees do not drop under evaluation */
     for (i = n - 1; i >= 0; i--)
     {
-        fmpz_mpoly_evaluate_one_fmpz(Aevals + i, i == n - 1 ? A : Aevals + i + 1,
-                                                        i + 1, alpha + i, ctx);
+        fmpz_mpoly_evaluate_one_fmpz(Aevals + i,
+                       i == n - 1 ? A : Aevals + i + 1, i + 1, alpha + i, ctx);
         fmpz_mpoly_degrees_si(tdegs, Aevals + i, ctx);
         for (j = 0; j <= i; j++)
         {
@@ -2120,7 +2113,6 @@ next_alpha:
         }
     }
 
-    /* make sure our univar is squarefree */
     success = fmpz_mpoly_get_fmpz_poly(Au, Aevals + 0, 0, ctx);
     FLINT_ASSERT(success);
     fmpz_poly_factor(Aufac, Au);
@@ -2128,10 +2120,12 @@ next_alpha:
 
     zassenhaus_prune_start_add_factors(zas);
     for (j = 0; j < r; j++)
-        zassenhaus_prune_add_factor(zas, fmpz_poly_degree(Aufac->p + j), Aufac->exp[j]);
-    zassenhaus_prune_finish_add_factors(zas);
+        zassenhaus_prune_add_factor(zas, fmpz_poly_degree(Aufac->p + j),
+                                                                Aufac->exp[j]);
+    zassenhaus_prune_end_add_factors(zas);
 
-    if ((r < 2 && Aufac->exp[0] == 1) || zassenhaus_prune_is_irreducible(zas))
+    if ((r < 2 && Aufac->exp[0] == 1) ||
+        zassenhaus_prune_must_be_irreducible(zas))
     {
         fmpz_mpolyv_fit_length(fac, 1, ctx);
         fac->length = 1;
@@ -2147,51 +2141,24 @@ next_alpha:
             goto next_alpha;
     }
 
+    fmpz_mpolyv_fit_length(lc_divs, r, ctx);
+    lc_divs->length = r;
     if (lcAfac->num > 0)
     {
-        success = fmpz_mpoly_factor_lcc_wang(lc_divs, lcAfac,
+        success = fmpz_mpoly_factor_lcc_wang(lc_divs->coeffs, lcAfac,
                                   &Aufac->c, Aufac->p, Aufac->num, alpha, ctx);
         if (!success)
             goto next_alpha;
     }
     else
     {
-        /* lcA is constant */
-        fmpz_mpolyv_fit_length(lc_divs, r, ctx);
-        lc_divs->length = r;
         for (i = 0; i < r; i++)
         {
             FLINT_ASSERT(Aufac->p[i].length > 0);
             fmpz_mpoly_set_fmpz(lc_divs->coeffs + i,
-                          Aufac->p[i].coeffs + Aufac->p[i].length - 1, ctx);
+                             Aufac->p[i].coeffs + Aufac->p[i].length - 1, ctx);
         }
     }
-
-    /*
-        Assuming no extraneous factors, we have
-
-            A(X, x1, ..., xn) = F1 * ... * Fr
-
-        and lead_divisor[i] is a divisor of lc_X(Fi). We also have the
-        univariate factorization
-
-            A(X, α1, ..., αn) = (c1 X^? + ... ) * ... * (cr X^? + ... )
-
-        Set c(x1, ..., xn) = lc_X(A) and
-
-            m(x1, ..., xn) = c/(prod_i lc_divs[i])   division is exact
-
-        Lift the univariate factorization
-
-            m(α)^(r-1) f(X, α) = (m(α)*lc_divs[0](α) X^? + ...) * ... *
-                                 (m(α)*lc_divs[r-1](α) X^? + ...)
-
-        against
-
-            m(x1, ..., xn)^(r-1) f(X, x1, ..., xn)
-
-        Note m(x1, ..., xn) is usually constant here, but it does not have to be.
-    */
 
     FLINT_ASSERT(r > 1);
     success = fmpz_mpoly_divides(m, lcA, lc_divs->coeffs + 0, ctx);
@@ -2313,13 +2280,11 @@ next_zip_prime:
 
     for (i = 0; i < r; i++)
     {
-        /* check condition 4 */
         _nmod_mpoly_set_fmpz_mpoly(facp->coeffs + i, ctxp, fac->coeffs + i, ctx);
         if (facp->coeffs[i].length != fac->coeffs[i].length)
             goto next_zip_prime;
     }
 
-    /* check condition 3 */
     Aup->mod = ctxp->ffinfo->mod;
     nmod_poly_set_fmpz_poly(Aup, Au);
     if (Aup->length != Au->length || !nmod_poly_is_squarefree(Aup))
@@ -2327,13 +2292,11 @@ next_zip_prime:
 
     for (k = 0; k <= n; k++)
     {
-        /* check condition 1 */
         _nmod_mpoly_set_fmpz_mpoly(Aevalp->coeffs + k, ctxp,
                                                k < n ? Aevals + k : newA, ctx);
         if (Aevalp->coeffs[k].length != (k < n ? Aevals + k : newA)->length)
             goto next_zip_prime;
 
-        /* check condition 2 */
         for (i = 0; i < r; i++)
         {
             _nmod_mpoly_set_fmpz_mpoly(Alcp->coeffs + k*r + i, ctxp,
@@ -2343,7 +2306,6 @@ next_zip_prime:
         }
     }
 
-    /* set alpha's mod p */
     for (i = 0; i < n; i++)
         alphap[i] = fmpz_fdiv_ui(alpha + i, ctxp->ffinfo->mod.n);
 
@@ -2435,8 +2397,6 @@ next_zip_prime:
 
 cleanup:
 
-    flint_randclear(state);
-
     fmpz_clear(facBound);
     fmpz_clear(q);
 
@@ -2472,4 +2432,3 @@ cleanup:
 
     return success;
 }
-

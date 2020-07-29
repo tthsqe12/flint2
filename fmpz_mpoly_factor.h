@@ -311,15 +311,12 @@ typedef struct {
     fmpz_mpolyv_struct * prod_mbetas_coeffs;
     fmpz_mpoly_struct * mbetas;
     fmpz_mpoly_struct * deltas;
-
     fmpz_mpoly_struct * xalpha;
     fmpz_mpoly_struct * q;
     fmpz_mpoly_struct * qt;
     fmpz_mpoly_struct * newt;
     fmpz_mpolyv_struct * delta_coeffs;
-
     fmpq_poly_t dtq, S, R;
-
 } fmpz_mpoly_pfrac_struct;
 
 typedef fmpz_mpoly_pfrac_struct fmpz_mpoly_pfrac_t[1];
@@ -470,7 +467,7 @@ void fmpz_mpoly_unit_normalize(fmpz_mpoly_t A, const fmpz_mpoly_ctx_t ctx)
 }
 
 FLINT_DLL int fmpz_mpoly_factor_lcc_wang(
-    fmpz_mpolyv_t lc_divs,
+    fmpz_mpoly_struct * lc_divs,
     const fmpz_mpoly_factor_t lcAfac,
     const fmpz_t Auc,
     const fmpz_poly_struct * Auf,
@@ -488,14 +485,16 @@ FLINT_DLL int fmpz_mpoly_factor_irred_wang(
     const fmpz_mpoly_t A,
     const fmpz_mpoly_factor_t lcAfac,
     const fmpz_mpoly_t lcA,
-    const fmpz_mpoly_ctx_t ctx);
+    const fmpz_mpoly_ctx_t ctx,
+    flint_rand_t state);
 
 FLINT_DLL int fmpz_mpoly_factor_irred_zippel(
     fmpz_mpolyv_t fac,
     const fmpz_mpoly_t A,
     const fmpz_mpoly_factor_t lcAfac,
     const fmpz_mpoly_t lcA,
-    const fmpz_mpoly_ctx_t ctx);
+    const fmpz_mpoly_ctx_t ctx,
+    flint_rand_t state);
 
 #ifdef __cplusplus
 }

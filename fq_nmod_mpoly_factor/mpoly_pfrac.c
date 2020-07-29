@@ -12,159 +12,191 @@
 #include "fq_nmod_mpoly_factor.h"
 
 
-static void _fq_nmod_to_poly(
-    fq_nmod_poly_t A,
-    const fq_nmod_mpoly_t B,
-    const fq_nmod_mpoly_ctx_t ctx)
-{
-    slong i;
-    ulong * shift, * stride;
-
-    if (B->length == 0)
-    {
-        fq_nmod_poly_zero(A, ctx->fqctx);
-        return;
-    }
-
-    shift = (ulong *) flint_malloc(ctx->minfo->nvars*sizeof(ulong));
-    stride = (ulong *) flint_malloc(ctx->minfo->nvars*sizeof(ulong));
-    for (i = 0; i < ctx->minfo->nvars; i++)
-    {
-        shift[i] = 0;
-        stride[i] = 1;
-    }
-
-    _fq_nmod_mpoly_to_fq_nmod_poly_deflate(A, B, 0, shift, stride, ctx);
-
-    flint_free(shift);
-    flint_free(stride);
-}
-
-static void _fq_nmod_from_poly(
-    fq_nmod_mpoly_t A,
-    flint_bitcnt_t Abits,
-    const fq_nmod_poly_t B,
-    const fq_nmod_mpoly_ctx_t ctx)
-{
-    slong i;
-    ulong * shift, * stride;
-
-    if (B->length == 0)
-    {
-        fq_nmod_mpoly_zero(A, ctx);
-        return;
-    }
-
-    shift = (ulong *) flint_malloc(ctx->minfo->nvars*sizeof(ulong));
-    stride = (ulong *) flint_malloc(ctx->minfo->nvars*sizeof(ulong));
-    for (i = 0; i < ctx->minfo->nvars; i++)
-    {
-        shift[i] = 0;
-        stride[i] = 1;
-    }
-
-    _fq_nmod_mpoly_from_fq_nmod_poly_inflate(A, Abits, B, 0, shift, stride, ctx);
-
-    flint_free(shift);
-    flint_free(stride);
-}
-
-
-void fq_nmod_mpoly_pfrac_init(
+int fq_nmod_mpoly_pfrac_init(
     fq_nmod_mpoly_pfrac_t I,
-    slong l, slong r,
+    flint_bitcnt_t bits,
+    slong r,
+    slong w,
     const fq_nmod_mpoly_struct * betas,
     const fq_nmod_struct * alpha,
     const fq_nmod_mpoly_ctx_t ctx)
 {
+    slong success = 1;
     slong i, j, k;
     fq_nmod_poly_t p;
     fq_nmod_poly_t G, S, pq;
 
-    I->l = l;
-    I->r = r;
+    FLINT_ASSERT(bits <= FLINT_BITS);
 
-    FLINT_ASSERT(l > 0);
+    I->bits = bits;
+    I->r = r;
+    I->w = w;
 
     I->dbetas = (fq_nmod_poly_struct *) flint_malloc(
-                                                l*sizeof(fq_nmod_poly_struct));
+                                                r*sizeof(fq_nmod_poly_struct));
 
     I->inv_prod_dbetas = (fq_nmod_poly_struct *) flint_malloc(
-                                               l* sizeof(fq_nmod_poly_struct));
+                                               r* sizeof(fq_nmod_poly_struct));
 
     I->prod_mbetas = (fq_nmod_mpoly_struct *) flint_malloc(
-                                       (r + 1)*l*sizeof(fq_nmod_mpoly_struct));
+                                       (w + 1)*r*sizeof(fq_nmod_mpoly_struct));
+
+    I->prod_mbetas_coeffs = (fq_nmod_mpolyv_struct *) flint_malloc(
+                                      (w + 1)*r*sizeof(fq_nmod_mpolyv_struct));
 
     I->mbetas = (fq_nmod_mpoly_struct *) flint_malloc(
-                                       (r + 1)*l*sizeof(fq_nmod_mpoly_struct));
+                                       (w + 1)*r*sizeof(fq_nmod_mpoly_struct));
 
     I->deltas = (fq_nmod_mpoly_struct *) flint_malloc(
-                                       (r + 1)*l*sizeof(fq_nmod_mpoly_struct));
+                                       (w + 1)*r*sizeof(fq_nmod_mpoly_struct));
+
+    I->xalpha = (fq_nmod_mpoly_struct *) flint_malloc(
+                                         (w + 1)*sizeof(fq_nmod_mpoly_struct));
+
+    I->q = (fq_nmod_mpoly_struct *) flint_malloc(
+                                         (w + 1)*sizeof(fq_nmod_mpoly_struct));
+
+    I->qt = (fq_nmod_mpoly_struct *) flint_malloc(
+                                         (w + 1)*sizeof(fq_nmod_mpoly_struct));
+
+    I->newt = (fq_nmod_mpoly_struct *) flint_malloc(
+                                         (w + 1)*sizeof(fq_nmod_mpoly_struct));
+
+    I->delta_coeffs = (fq_nmod_mpolyv_struct *) flint_malloc(
+                                      (w + 1)*r*sizeof(fq_nmod_mpolyv_struct));
+
+    for (i = 0; i <= w; i++)
+    {
+        fq_nmod_mpoly_init(I->xalpha + i, ctx);
+        fq_nmod_mpoly_init(I->q + i, ctx);
+        fq_nmod_mpoly_init(I->qt + i, ctx);
+        fq_nmod_mpoly_init(I->newt + i, ctx);
+        for (j = 0; j < r; j++)
+        {
+            fq_nmod_mpoly_init(I->deltas + i*r + j, ctx);
+            fq_nmod_mpolyv_init(I->delta_coeffs + i*r + j, ctx);
+        }
+
+        if (i < 1)
+            continue;
+
+        fq_nmod_mpoly_gen(I->xalpha + i, i, ctx);
+        fq_nmod_mpoly_sub_fq_nmod(I->xalpha + i, I->xalpha + i, alpha + i - 1, ctx);
+        fq_nmod_mpoly_repack_bits_inplace(I->xalpha + i, I->bits, ctx);
+    }
 
     fq_nmod_poly_init(p, ctx->fqctx);
     fq_nmod_poly_init(G, ctx->fqctx);
     fq_nmod_poly_init(S, ctx->fqctx);
     fq_nmod_poly_init(pq, ctx->fqctx);
 
-    for (i = r; i >= 0; i--)
-        for (j = 0; j < l; j++)
-            fq_nmod_mpoly_init(I->deltas + i*l + j, ctx);
-
     /* set betas */
-    i = r;
-    for (j = 0; j < l; j++)
+    i = w;
+    for (j = 0; j < r; j++)
     {
-        fq_nmod_mpoly_init(I->mbetas + i*l + j, ctx);
-        fq_nmod_mpoly_set(I->mbetas + i*l + j, betas + j, ctx);
+        fq_nmod_mpoly_init(I->mbetas + i*r + j, ctx);
+        fq_nmod_mpoly_set(I->mbetas + i*r + j, betas + j, ctx);
     }
     for (i--; i >= 0; i--)
     {
-        for (j = 0; j < l; j++)
+        for (j = 0; j < r; j++)
         {
-            fq_nmod_mpoly_init(I->mbetas + i*l + j, ctx);
-            fq_nmod_mpoly_evaluate_one_fq_nmod(I->mbetas + i*l + j, I->mbetas + (i + 1)*l + j, i + 1, alpha + i, ctx);
+            fq_nmod_mpoly_init(I->mbetas + i*r + j, ctx);
+            fq_nmod_mpoly_evaluate_one_fq_nmod(I->mbetas + i*r + j,
+                             I->mbetas + (i + 1)*r + j, i + 1, alpha + i, ctx);
         }
     }
-    for (j = 0; j < l; j++)
+
+    for (j = 0; j < r; j++)
     {
-        _fq_nmod_to_poly(p, I->mbetas + 0*l + j, ctx);
         fq_nmod_poly_init(I->dbetas + j, ctx->fqctx);
-        fq_nmod_poly_set(I->dbetas + j, p, ctx->fqctx);
+        if (!fq_nmod_mpoly_get_fq_nmod_poly(I->dbetas + j,
+                                                  I->mbetas + 0*r + j, 0, ctx))
+        {
+            success = 0;
+        }
     }
 
     /* set product of betas */
-    for (i = r; i >= 0; i--)
+    for (i = w; i >= 0; i--)
     {
-        for (j = 0; j < l; j++)
+        for (j = 0; j < r; j++)
         {
-            fq_nmod_mpoly_init(I->prod_mbetas + i*l + j, ctx);
-            fq_nmod_mpoly_one(I->prod_mbetas + i*l + j, ctx);
-            for (k = 0; k < l; k++)
+            fq_nmod_mpoly_init(I->prod_mbetas + i*r + j, ctx);
+            fq_nmod_mpoly_one(I->prod_mbetas + i*r + j, ctx);
+            for (k = 0; k < r; k++)
             {
                 if (k == j)
                     continue;
-                fq_nmod_mpoly_mul(I->prod_mbetas + i*l + j, I->prod_mbetas + i*l + j, I->mbetas + i*l + k, ctx);
+                fq_nmod_mpoly_mul(I->prod_mbetas + i*r + j,
+                           I->prod_mbetas + i*r + j, I->mbetas + i*r + k, ctx);
+            }
+            fq_nmod_mpolyv_init(I->prod_mbetas_coeffs + i*r + j, ctx);
+            if (i > 0)
+            {
+                fq_nmod_mpoly_to_mpolyv(I->prod_mbetas_coeffs + i*r + j,
+                                 I->prod_mbetas + i*r + j, I->xalpha + i, ctx);
             }
         }        
     }
-    for (j = 0; j < l; j++)
+
+    for (j = 0; j < r; j++)
+        fq_nmod_poly_init(I->inv_prod_dbetas + j, ctx->fqctx);
+
+    for (j = 0; success && j < r; j++)
+    {
+        if (fq_nmod_poly_degree(I->dbetas + j, ctx->fqctx) !=
+            fq_nmod_mpoly_degree_si(betas + j, 0, ctx))
+        {
+            success = 0;
+        }
+    }
+
+    for (j = 0; success && j < r; j++)
     {
         fq_nmod_poly_one(pq, ctx->fqctx);
-        for (k = 0; k < l; k++)
+        for (k = 0; k < r; k++)
         {
             if (k == j)
                 continue;
             fq_nmod_poly_mul(pq, pq, I->dbetas + k, ctx->fqctx);
         }
-        fq_nmod_poly_init(I->inv_prod_dbetas + j, ctx->fqctx);
-        fq_nmod_poly_xgcd(G, S, I->inv_prod_dbetas + j, I->dbetas + j, pq, ctx->fqctx);
-        FLINT_ASSERT(fq_nmod_poly_is_one(G, ctx->fqctx));
+        fq_nmod_poly_xgcd(G, S, I->inv_prod_dbetas + j,
+                                                I->dbetas + j, pq, ctx->fqctx);
+        if (!fq_nmod_poly_is_one(G, ctx->fqctx))
+        {
+            success = 0;
+        }
     }
 
     fq_nmod_poly_clear(p, ctx->fqctx);
     fq_nmod_poly_clear(G, ctx->fqctx);
     fq_nmod_poly_clear(S, ctx->fqctx);
     fq_nmod_poly_clear(pq, ctx->fqctx);
+
+    I->dbetas_mvar = (fq_nmod_mpoly_struct *) flint_malloc(
+                                               r*sizeof(fq_nmod_mpoly_struct));
+    I->inv_prod_dbetas_mvar = (fq_nmod_mpoly_struct *) flint_malloc(
+                                               r*sizeof(fq_nmod_mpoly_struct));
+    for (j = 0; j < r; j++)
+    {
+        fq_nmod_mpoly_init(I->dbetas_mvar + j, ctx);
+        fq_nmod_mpoly_init(I->inv_prod_dbetas_mvar + j, ctx);
+
+        _fq_nmod_mpoly_set_fq_nmod_poly(I->dbetas_mvar + j, I->bits,
+                             I->dbetas[j].coeffs, I->dbetas[j].length, 0, ctx);
+
+        _fq_nmod_mpoly_set_fq_nmod_poly(I->inv_prod_dbetas_mvar + j, I->bits,
+           I->inv_prod_dbetas[j].coeffs, I->inv_prod_dbetas[j].length, 0, ctx);
+    }
+
+    fq_nmod_mpoly_init(I->T, ctx);
+    fq_nmod_mpoly_init(I->Q, ctx);
+    fq_nmod_mpoly_init(I->R, ctx);
+
+    FLINT_ASSERT(success == 1);
+
+    return success;
 }
 
 
@@ -172,116 +204,126 @@ void fq_nmod_mpoly_pfrac_clear(fq_nmod_mpoly_pfrac_t I, const fq_nmod_mpoly_ctx_
 {
     slong i, j;
 
-    for (j = 0; j < I->l; j++)
+    for (i = 0; i <= I->w; i++)
+    {
+        fq_nmod_mpoly_clear(I->xalpha + i, ctx);
+        fq_nmod_mpoly_clear(I->q + i, ctx);
+        fq_nmod_mpoly_clear(I->qt + i, ctx);
+        fq_nmod_mpoly_clear(I->newt + i, ctx);
+        for (j = 0; j < I->r; j++)
+            fq_nmod_mpolyv_clear(I->delta_coeffs + i*I->r + j, ctx);
+    }
+
+    flint_free(I->xalpha);
+    flint_free(I->q);
+    flint_free(I->qt);
+    flint_free(I->newt);
+    flint_free(I->delta_coeffs);
+
+    for (j = 0; j < I->r; j++)
     {
         fq_nmod_poly_clear(I->inv_prod_dbetas + j, ctx->fqctx);
         fq_nmod_poly_clear(I->dbetas + j, ctx->fqctx);
-        for (i = 0; i <= I->r; i++)
+        for (i = 0; i <= I->w; i++)
         {
-            fq_nmod_mpoly_clear(I->prod_mbetas + i*I->l + j, ctx);
-            fq_nmod_mpoly_clear(I->mbetas + i*I->l + j, ctx);
-            fq_nmod_mpoly_clear(I->deltas + i*I->l + j, ctx);
+            fq_nmod_mpolyv_clear(I->prod_mbetas_coeffs + i*I->r + j, ctx);
+            fq_nmod_mpoly_clear(I->prod_mbetas + i*I->r + j, ctx);
+            fq_nmod_mpoly_clear(I->mbetas + i*I->r + j, ctx);
+            fq_nmod_mpoly_clear(I->deltas + i*I->r + j, ctx);
         }
     }
-
     flint_free(I->inv_prod_dbetas);
     flint_free(I->dbetas);
     flint_free(I->prod_mbetas);
+    flint_free(I->prod_mbetas_coeffs);
     flint_free(I->mbetas);
     flint_free(I->deltas);
+
+    for (j = 0; j < I->r; j++)
+    {
+        fq_nmod_mpoly_clear(I->dbetas_mvar + j, ctx);
+        fq_nmod_mpoly_clear(I->inv_prod_dbetas_mvar + j, ctx);
+    }
+    flint_free(I->dbetas_mvar);
+    flint_free(I->inv_prod_dbetas_mvar);
+
+    fq_nmod_mpoly_clear(I->T, ctx);
+    fq_nmod_mpoly_clear(I->Q, ctx);
+    fq_nmod_mpoly_clear(I->R, ctx);
 }
 
 
 int fq_nmod_mpoly_pfrac(
-    flint_bitcnt_t bits,
-    slong r,
-    slong num,
-    const fq_nmod_mpoly_t t,
-    const fq_nmod_struct * alpha,
-    const slong * deg,
-    const fq_nmod_mpoly_pfrac_t I,
+    slong l,
+    fq_nmod_mpoly_t t,
+    const slong * degs,
+    fq_nmod_mpoly_pfrac_t I,
     const fq_nmod_mpoly_ctx_t ctx)
 {
-    slong i, j;
+    slong i, j, k;
     int success;
-    fq_nmod_mpoly_struct * deltas = I->deltas + r*I->l;
-    fq_nmod_mpoly_struct * newdeltas = I->deltas + (r - 1)*I->l;
+    fq_nmod_mpoly_struct * deltas = I->deltas + l*I->r;
+    fq_nmod_mpoly_struct * newdeltas = I->deltas + (l - 1)*I->r;
+    fq_nmod_mpoly_struct * q = I->q + l;
+    fq_nmod_mpoly_struct * qt = I->qt + l;
+    fq_nmod_mpoly_struct * newt = I->newt + l;
+    fq_nmod_mpolyv_struct * delta_coeffs = I->delta_coeffs + l*I->r;
 
-    if (r < 1)
+    FLINT_ASSERT(l >= 0);
+
+    if (!fq_nmod_mpoly_repack_bits_inplace(t, I->bits, ctx))
+        return -1;
+
+    if (l < 1)
     {
-        fq_nmod_poly_t dtq, S, R;
-
-        fq_nmod_poly_init(dtq, ctx->fqctx);
-        fq_nmod_poly_init(S, ctx->fqctx);
-        fq_nmod_poly_init(R, ctx->fqctx);
-
-        _fq_nmod_to_poly(dtq, t, ctx);
-
-        success = 1;
-        for (i = 0; i < num; i++)
+        for (i = 0; i < I->r; i++)
         {
-            fq_nmod_poly_mul(S, dtq, I->inv_prod_dbetas + i, ctx->fqctx);
-            fq_nmod_poly_rem(R, S, I->dbetas + i, ctx->fqctx);
-            _fq_nmod_from_poly(deltas + i, bits, R, ctx);
+            fq_nmod_mpoly_divrem(I->Q, I->R, t, I->dbetas_mvar + i, ctx);
+            fq_nmod_mpoly_mul(I->T, I->R, I->inv_prod_dbetas_mvar + i, ctx);
+            fq_nmod_mpoly_divrem(I->Q, deltas + i, I->T, I->dbetas_mvar + i, ctx);
         }
-
-        fq_nmod_poly_clear(dtq, ctx->fqctx);
-        fq_nmod_poly_clear(S, ctx->fqctx);
-        fq_nmod_poly_clear(R, ctx->fqctx);
-    }
-    else
-    {
-        fq_nmod_mpoly_t e, tt, pow, g, q, newt;
-
-FLINT_ASSERT(num == I->l);
-
-        fq_nmod_mpoly_init(e, ctx);
-        fq_nmod_mpoly_init(tt, ctx);
-        fq_nmod_mpoly_init(pow, ctx);
-        fq_nmod_mpoly_init(g, ctx);
-        fq_nmod_mpoly_init(q, ctx);
-        fq_nmod_mpoly_init(newt, ctx);
-        for (i = 0; i < num; i++)
-            fq_nmod_mpoly_zero(deltas + i, ctx);
-
-        fq_nmod_mpoly_set(e, t, ctx);
-
-        fq_nmod_mpoly_one(pow, ctx);
-        fq_nmod_mpoly_gen(g, r, ctx);
-        fq_nmod_mpoly_sub_fq_nmod(g, g, alpha + r - 1, ctx);
-        for (j = 0; j <= deg[r]; j++)
-        {
-            success = fq_nmod_mpoly_divides(q, e, pow, ctx);
-            FLINT_ASSERT(success);
-            fq_nmod_mpoly_evaluate_one_fq_nmod(newt, q, r, alpha + r - 1, ctx);
-            success = fq_nmod_mpoly_pfrac(bits, r - 1, num, newt, alpha, deg, I, ctx);
-            if (!success)
-                goto cleanup;
-
-            fq_nmod_mpoly_set(e, t, ctx);
-            for (i = 0; i < num; i++)
-            {
-                fq_nmod_mpoly_mul(tt, newdeltas + i, pow, ctx);
-                fq_nmod_mpoly_add(deltas + i, deltas + i, tt, ctx);
-                fq_nmod_mpoly_mul(tt, deltas + i, I->prod_mbetas + r*I->l + i, ctx);
-                fq_nmod_mpoly_sub(e, e, tt, ctx);
-            }
-
-            fq_nmod_mpoly_mul(pow, pow, g, ctx);
-        }
-
-        success = fq_nmod_mpoly_is_zero(e, ctx);
-
-cleanup:
-
-        fq_nmod_mpoly_clear(e, ctx);
-        fq_nmod_mpoly_clear(tt, ctx);
-        fq_nmod_mpoly_clear(pow, ctx);
-        fq_nmod_mpoly_clear(g, ctx);
-        fq_nmod_mpoly_clear(q, ctx);
-        fq_nmod_mpoly_clear(newt, ctx);
+        return 1;
     }
 
-    return success;
+    for (i = 0; i < I->r; i++)
+        delta_coeffs[i].length = 0;
+
+    for (k = 0; k <= degs[l]; k++)
+    {
+        fq_nmod_mpoly_divrem(q, newt, t, I->xalpha + l, ctx);
+        fq_nmod_mpoly_swap(t, q, ctx);
+        for (j = 0; j < k; j++)
+        for (i = 0; i < I->r; i++)
+        {
+            if (j >= delta_coeffs[i].length)
+                continue;
+            if (k - j >= I->prod_mbetas_coeffs[l*I->r + i].length)
+                continue;
+
+            fq_nmod_mpoly_mul(qt, delta_coeffs[i].coeffs + j,
+                        I->prod_mbetas_coeffs[l*I->r + i].coeffs + k - j, ctx);
+            fq_nmod_mpoly_sub(q, newt, qt, ctx);
+            fq_nmod_mpoly_swap(newt, q, ctx);
+        }
+
+        success = fq_nmod_mpoly_pfrac(l - 1, newt, degs, I, ctx);
+        if (success < 1)
+            return success;
+
+        for (i = 0; i < I->r; i++)
+        {
+            if (fq_nmod_mpoly_is_zero(newdeltas + i, ctx))
+                continue;
+
+            if (k + I->prod_mbetas_coeffs[l*I->r + i].length - 1 > degs[l])
+                return 0;
+
+            fq_nmod_mpolyv_set_coeff(delta_coeffs + i, k, newdeltas + i, ctx);
+        }
+    }
+
+    for (i = 0; i < I->r; i++)
+        fq_nmod_mpoly_from_mpolyv(deltas + i, delta_coeffs + i, I->xalpha + l, ctx);
+
+    return 1;
 }
-

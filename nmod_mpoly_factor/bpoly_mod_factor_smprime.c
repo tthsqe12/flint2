@@ -11,7 +11,8 @@
 
 #include "nmod_mpoly_factor.h"
 #include "fq_nmod_mpoly_factor.h"
-#include "profiler.h"
+#include "ui_factor.h"
+
 
 int nmod_mat_is_reduced(const nmod_mat_t N)
 {
@@ -712,8 +713,8 @@ got_alpha:
 
     n_bpoly_mod_eval(Beval, B, alpha, ctx);
 
-    /* if killed leading/trailing coeff, get new alpha */
-    if (Beval->length != Blenx || Beval->coeffs[0] == 0)
+    /* if killed leading, get new alpha */
+    if (Beval->length != Blenx)
         goto next_alpha;
 
     n_poly_mod_factor(local_fac, Beval, ctx);
@@ -724,9 +725,10 @@ got_alpha:
     for (i = 0; i < r; i++)
         zassenhaus_prune_add_factor(zas,
                         n_poly_degree(local_fac->poly + i), local_fac->exp[i]);
-    zassenhaus_prune_finish_add_factors(zas);
+    zassenhaus_prune_end_add_factors(zas);
 
-    if ((r < 2 && local_fac->exp[0] == 1) || zassenhaus_prune_is_irreducible(zas))
+    if ((r < 2 && local_fac->exp[0] == 1) ||
+         zassenhaus_prune_must_be_irreducible(zas))
     {
         n_tpoly_fit_length(F, 1);
         F->length = 1;

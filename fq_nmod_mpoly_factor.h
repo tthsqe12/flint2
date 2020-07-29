@@ -322,6 +322,24 @@ FLINT_DLL void fq_nmod_mpolyv_print_pretty(const fq_nmod_mpolyv_t poly,
 FLINT_DLL void fq_nmod_mpolyv_fit_length(fq_nmod_mpolyv_t A, slong length,
                                                 const fq_nmod_mpoly_ctx_t ctx);
 
+FLINT_DLL void fq_nmod_mpolyv_set_coeff(
+    fq_nmod_mpolyv_t A,
+    slong i,
+    fq_nmod_mpoly_t c,
+    const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void fq_nmod_mpoly_to_mpolyv(
+    fq_nmod_mpolyv_t A,
+    const fq_nmod_mpoly_t B,
+    const fq_nmod_mpoly_t xalpha,
+    const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void fq_nmod_mpoly_from_mpolyv(
+    fq_nmod_mpoly_t A,
+    const fq_nmod_mpolyv_t B,
+    const fq_nmod_mpoly_t xalpha,
+    const fq_nmod_mpoly_ctx_t ctx);
+
 /*****************************************************************************/
 
 FLINT_DLL int fq_nmod_mpoly_univar_content_mpoly(
@@ -351,21 +369,33 @@ FLINT_DLL int fq_nmod_mpoly_factor_irred_lgprime_default(
 /*****************************************************************************/
 
 typedef struct {
-    slong n;
+    flint_bitcnt_t bits;
+    slong w;
     slong r;
-    slong l;
     fq_nmod_poly_struct * inv_prod_dbetas;
+    fq_nmod_mpoly_struct * inv_prod_dbetas_mvar;
     fq_nmod_poly_struct * dbetas;
+    fq_nmod_mpoly_struct * dbetas_mvar;
     fq_nmod_mpoly_struct * prod_mbetas;
+    fq_nmod_mpolyv_struct * prod_mbetas_coeffs;
     fq_nmod_mpoly_struct * mbetas;
     fq_nmod_mpoly_struct * deltas;
+    fq_nmod_mpoly_struct * xalpha;
+    fq_nmod_mpoly_struct * q;
+    fq_nmod_mpoly_struct * qt;
+    fq_nmod_mpoly_struct * newt;
+    fq_nmod_mpolyv_struct * delta_coeffs;
+    fq_nmod_mpoly_t T;
+    fq_nmod_mpoly_t Q;
+    fq_nmod_mpoly_t R;
 } fq_nmod_mpoly_pfrac_struct;
 
 typedef fq_nmod_mpoly_pfrac_struct fq_nmod_mpoly_pfrac_t[1];
 
 
-FLINT_DLL void fq_nmod_mpoly_pfrac_init(
+FLINT_DLL int fq_nmod_mpoly_pfrac_init(
     fq_nmod_mpoly_pfrac_t I,
+    flint_bitcnt_t bits,
     slong l, slong r,
     const fq_nmod_mpoly_struct * betas,
     const fq_nmod_struct * alpha,
@@ -376,13 +406,10 @@ FLINT_DLL void fq_nmod_mpoly_pfrac_clear(
     const fq_nmod_mpoly_ctx_t ctx);
 
 FLINT_DLL int fq_nmod_mpoly_pfrac(
-    flint_bitcnt_t bits,
     slong r,
-    slong num,
-    const fq_nmod_mpoly_t t,
-    const fq_nmod_struct * alpha,
+    fq_nmod_mpoly_t t,
     const slong * deg,
-    const fq_nmod_mpoly_pfrac_t I,
+    fq_nmod_mpoly_pfrac_t I,
     const fq_nmod_mpoly_ctx_t ctx);
 
 FLINT_DLL int fq_nmod_mpoly_hlift(

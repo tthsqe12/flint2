@@ -11,6 +11,7 @@
 
 #include "nmod_mpoly_factor.h"
 #include "fq_nmod_mpoly_factor.h"
+#include "ui_factor.h"
 
 
 void fq_nmod_bpoly_eval_sm_to_lg(
@@ -276,34 +277,29 @@ static int _zassenhaus(
 {
     int success;
     fq_nmod_bpoly_t Q, R, t1, t2;
-    fq_nmod_poly_t leadf, g;
-    slong * idx;
+    fq_nmod_poly_t g;
     slong i, j, s, len, d = nmod_mat_nrows(N);
-    fmpz_t subset;
+    slong * subset;
     fq_nmod_bpoly_struct * loc_fac;
     fq_nmod_bpoly_struct * f;
     fq_nmod_bpoly_t B_copy;
 
     FLINT_ASSERT(nmod_mat_ncols(N) == r);
 
-    loc_fac = (fq_nmod_bpoly_struct *) flint_malloc(d*
-                                                 sizeof(fq_nmod_bpoly_struct));
-    for (i = 0; i < d; i++)
-        fq_nmod_bpoly_init(loc_fac + i, ctx);
-
-    idx = (slong *) flint_malloc(r * sizeof(slong));
-    for (i = 0; i < r; i++)
-        idx[i] = i;
-
-    fmpz_init(subset);
-
     fq_nmod_poly_init(g, ctx);
     fq_nmod_bpoly_init(Q, ctx);
     fq_nmod_bpoly_init(R, ctx);
     fq_nmod_bpoly_init(t1, ctx);
     fq_nmod_bpoly_init(t2, ctx);
-    fq_nmod_poly_init(leadf, ctx);
     fq_nmod_bpoly_init(B_copy, ctx);
+
+    subset = FLINT_ARRAY_ALLOC(d, slong);
+    loc_fac = FLINT_ARRAY_ALLOC(d, fq_nmod_bpoly_struct);
+    for (i = 0; i < d; i++)
+    {
+        subset[i] = i;
+        fq_nmod_bpoly_init(loc_fac + i, ctx);
+    }
 
     for (i = 0; i < d; i++)
     {
@@ -320,8 +316,6 @@ static int _zassenhaus(
     }
 
     f = (fq_nmod_bpoly_struct *) B;
-    FLINT_ASSERT(f->length > 0);
-    fq_nmod_poly_set(leadf, f->coeffs + f->length - 1, ctx);
 
     len = d;
     for (s = 1; s <= len/2; s++)
@@ -332,15 +326,16 @@ static int _zassenhaus(
             goto cleanup;
         }
 
-        subset_first(subset, len, s);
-        do {
-try_subset:
-            fq_nmod_bpoly_set_poly_var1(t1, leadf, ctx);
+        zassenhaus_subset_first(subset, len, s);
+        while (1)
+        {
+            FLINT_ASSERT(f->length > 0);
+            fq_nmod_bpoly_set_poly_var1(t1, f->coeffs + f->length - 1, ctx);
             for (i = 0; i < len; i++)
             {
-                if (fmpz_tstbit(subset, i))
+                if (subset[i] >= 0)
                 {
-                    fq_nmod_bpoly_mul_mod_poly(t2, t1, loc_fac + idx[i], final_alpha_pow, ctx);
+                    fq_nmod_bpoly_mul_mod_poly(t2, t1, loc_fac + subset[i], final_alpha_pow, ctx);
                     fq_nmod_bpoly_swap(t1, t2, ctx);
                 }
             }
@@ -353,29 +348,16 @@ try_subset:
                 F->length++;
                 f = B_copy;
                 fq_nmod_bpoly_swap(f, Q, ctx);
-                FLINT_ASSERT(f->length > 0);
-                fq_nmod_poly_set(leadf, f->coeffs + f->length - 1, ctx);
-
-                if (f->length <= 1)
-                {
-                    FLINT_ASSERT(f->length == 1);
-                    FLINT_ASSERT(fq_nmod_poly_is_one(f->coeffs + 0, ctx));
-                    success = 1;
-                    goto cleanup;
-                }
-
-                for (j = 0, i = 0; i < len; i++)
-                    if (!fmpz_tstbit(subset, i))
-                        idx[j++] = idx[i];
                 len -= s;
-
-                if (!subset_fix(subset, len + s))
-                    goto sloop_continue;
-                goto try_subset;
+                if (!zassenhaus_subset_next_disjoint(subset, len + s))
+                    break;
+            }
+            else
+            {
+                if (!zassenhaus_subset_next(subset, len))
+                    break;
             }
         }
-        while (subset_next(subset, subset, len));
-sloop_continue:;
     }
 
     if (f->length > 1)
@@ -401,14 +383,12 @@ cleanup:
     fq_nmod_bpoly_clear(R, ctx);
     fq_nmod_bpoly_clear(t1, ctx);
     fq_nmod_bpoly_clear(t2, ctx);
-    fq_nmod_poly_clear(leadf, ctx);
     fq_nmod_bpoly_clear(B_copy, ctx);
 
     for (i = 0; i < d; i++)
         fq_nmod_bpoly_clear(loc_fac + i, ctx);
     flint_free(loc_fac);
-
-    flint_free(idx);
+    flint_free(subset);
 
     return success;
 }
@@ -957,9 +937,9 @@ cleanup:
     fq_nmod_clear(Blc, ctx);
 
     bad_fq_nmod_mpoly_embed_chooser_clear(embc, ectx_mock, ctx_mock, state);
-
+/*
 flint_printf("fq_nmod_bpoly_factor_lgprime returning %d\n", success);
 flint_printf("F->length: %wd\n", F->length);
-
+*/
     return success;
 }

@@ -11,7 +11,7 @@
 
 #include "nmod_mpoly_factor.h"
 #include "fq_nmod_mpoly_factor.h"
-#include "profiler.h"
+#include "ui_factor.h"
 
 
 void n_bpoly_eval_fq_nmod_poly(
@@ -176,30 +176,6 @@ void n_bpoly_mod_divrem_mod_poly(
     n_poly_clear(Binv);
 }
 
-/*
-void n_bpoly_add_fq_nmod_poly_mul(
-    n_bpoly_t A,
-    const fq_nmod_poly_t B,
-    const n_poly_t mpow,
-    nmod_t mod)
-{
-    slong i;
-    n_poly_t t, mock;
-
-    n_poly_init(t);
-
-    FLINT_ASSERT(A->length > B->length);
-
-    for (i = 0; i < B->length; i++)
-    {
-        n_poly_mock(mock, B->coeffs + i);
-        n_poly_mod_mul(t, mock, mpow, mod);
-        n_poly_mod_add(A->coeffs + i, A->coeffs + i, t, mod);
-    }
-
-    n_poly_clear(t);
-}
-*/
 
 static int _zassenhaus(
     const zassenhaus_prune_t zas,
@@ -280,10 +256,7 @@ try_subset:
             }
 
             if (!zassenhaus_prune_degree_is_possible(zas, total_deg))
-            {
-flint_printf("lg got one!!!!!!!!!!!!!!1\n");
                 continue;
-            }
 
             n_bpoly_set_poly_var1(t1, leadf);
             for (i = 0; i < len; i++)
@@ -857,9 +830,10 @@ got_alpha:
     for (i = 0; i < r; i++)
         zassenhaus_prune_add_factor(zas,
             fq_nmod_poly_degree(local_fac->poly + i, ectx), local_fac->exp[i]);
-    zassenhaus_prune_finish_add_factors(zas);
+    zassenhaus_prune_end_add_factors(zas);
 
-    if ((r < 2 && local_fac->exp[0] == 1) || zassenhaus_prune_is_irreducible(zas))
+    if ((r < 2 && local_fac->exp[0] == 1) ||
+        zassenhaus_prune_must_be_irreducible(zas))
     {
         n_tpoly_fit_length(F, 1);
         F->length = 1;

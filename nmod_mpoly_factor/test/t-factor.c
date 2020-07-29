@@ -190,6 +190,7 @@ main(void)
             nmod_mpoly_randtest_bounds(t, state, len, expbounds, ctx);
             if (nmod_mpoly_is_zero(t, ctx))
                 nmod_mpoly_one(t, ctx);
+
             lower += !nmod_mpoly_is_ui(t, ctx);
             nmod_mpoly_mul(a, a, t, ctx);
         }
@@ -238,6 +239,9 @@ usleep(1000000);
             nmod_mpoly_randtest_bound(t, state, len, expbound, ctx);
             if (nmod_mpoly_is_zero(t, ctx))
                 nmod_mpoly_one(t, ctx);
+/*
+flint_printf("multiplying: "); nmod_mpoly_print_pretty(t, NULL, ctx); flint_printf("\n");
+*/
             lower += !nmod_mpoly_is_ui(t, ctx);
             nmod_mpoly_mul(a, a, t, ctx);
         }

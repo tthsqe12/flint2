@@ -149,7 +149,10 @@ int fq_nmod_mpoly_factor_irred_smprime_default(
     fq_nmod_poly_t c;
     fq_nmod_bpoly_t B;
     fq_nmod_tpoly_t F;
-
+/*
+flint_printf("fq_nmod_mpoly_factor_irred_smprime_default called\n");
+flint_printf("A: "); fq_nmod_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
+*/
 	fmpz_init(subset);
 	alpha = (fq_nmod_struct *) flint_malloc(n*sizeof(fq_nmod_struct));
     for (i = 0; i < n; i++)
@@ -251,7 +254,6 @@ got_alpha:
         FLINT_ASSERT(fq_nmod_mpoly_equal(t, p, ctx));
     #endif
 
-        /* if p has only one factor, A must be irreducible */
         if (pfac->length < 2)
         {
 	        fq_nmod_mpolyv_fit_length(fac, 1, ctx);
