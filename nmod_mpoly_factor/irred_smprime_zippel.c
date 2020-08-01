@@ -13,186 +13,30 @@
 #include "fq_nmod_mpoly_factor.h"
 
 
-static void _eval_rest(
-    n_poly_t E,
-    const mp_limb_t * Acoeffs,
-    const ulong * Aexps,
-    slong Alen,
-    slong var,
-    const n_poly_struct * alphabetas,
-    const slong * offsets,
-    const slong * shifts,
-    slong N,
-    ulong mask,
-    slong nvars,
-    nmod_t ctx)
-{
-    slong offset = offsets[var];
-    slong shift = shifts[var];
-    slong start, stop;
-    ulong e, next_e;
-    n_poly_t T;
-
-    n_poly_zero(E);
-
-    if (Alen < 1)
-        return;
-
-    if (var >= nvars)
-    {
-        FLINT_ASSERT(Alen == 1);
-        n_poly_set_ui(E, Acoeffs[0]);
-        return;
-    }
-
-    n_poly_init(T);
-
-    start = 0;
-    e = mask & (Aexps[N*start + offset] >> shift);
-
-next:
-
-    FLINT_ASSERT(start < Alen);
-    FLINT_ASSERT(e == (mask & (Aexps[N*start + offset] >> shift)));
-
-    stop = start + 1;
-    while (stop < Alen && (mask & (Aexps[N*stop + offset] >> shift)) == e)
-        stop++;
-
-    _eval_rest(T, Acoeffs + start, Aexps + N*start, stop - start, var + 1,
-                         alphabetas + 1, offsets, shifts, N, mask, nvars, ctx);
-    n_poly_mod_add(E, E, T, ctx);
-
-    if (stop < Alen)
-    {
-        next_e = (mask & (Aexps[N*stop + offset] >> shift));
-        FLINT_ASSERT(next_e < e);
-        n_poly_mod_pow(T, alphabetas, e - next_e, ctx);
-        n_poly_mod_mul(E, E, T, ctx);
-        e = next_e;
-        start = stop;
-        goto next;
-    }
-    else
-    {
-        n_poly_mod_pow(T, alphabetas, e, ctx);
-        n_poly_mod_mul(E, E, T, ctx);
-    }
-
-    n_poly_clear(T);
-}
-
 void _eval_to_bpoly(
     n_bpoly_t E,
     const nmod_mpoly_t A,
     const n_poly_struct * alphabetas,
-    const nmod_mpoly_ctx_t ctx)
-{
-    slong i, N = mpoly_words_per_exp_sp(A->bits, ctx->minfo);
-    slong * offsets, * shifts;
-    slong offset, shift;
-    slong start, stop;
-    ulong e, mask = (-UWORD(1)) >> (FLINT_BITS - A->bits);
+    const nmod_mpoly_ctx_t ctx);
 
-    E->length = 0;
-    if (A->length < 1)
-        return;
-
-    offsets = (slong *) flint_malloc(ctx->minfo->nvars*sizeof(slong));
-    shifts = (slong *) flint_malloc(ctx->minfo->nvars*sizeof(slong));
-    for (i = 0; i < ctx->minfo->nvars; i++)
-        mpoly_gen_offset_shift_sp(offsets + i, shifts + i, i, A->bits, ctx->minfo);
-
-    offset = offsets[0];
-    shift = shifts[0];
-
-    start = 0;
-    e = mask & (A->exps[N*start + offset] >> shift);
-
-next:
-
-    FLINT_ASSERT(start < A->length);
-    FLINT_ASSERT(e == (mask & (A->exps[N*start + offset] >> shift)));
-
-    stop = start + 1;
-    while (stop < A->length && (mask & (A->exps[N*stop + offset] >> shift)) == e)
-        stop++;
-
-    n_bpoly_fit_length(E, e + 1);
-    while (E->length <= e)
-    {
-        n_poly_zero(E->coeffs + E->length);
-        E->length++;
-    }
-
-    _eval_rest(E->coeffs + e, A->coeffs + start, A->exps + N*start, stop - start, 1,
-                             alphabetas, offsets, shifts, N, mask,
-                                          ctx->minfo->nvars, ctx->ffinfo->mod);
-
-    if (stop < A->length)
-    {
-        FLINT_ASSERT(e > (mask & (A->exps[N*stop + offset] >> shift)));
-        e = (mask & (A->exps[N*stop + offset] >> shift));
-        start = stop;
-        goto next;
-    }
-
-    n_bpoly_normalise(E);
-
-    flint_free(offsets);
-    flint_free(shifts);
-}
-
-
-/* A = B(gen(var), 0) */
 void _nmod_mpoly_set_bpoly_var1_zero(
     nmod_mpoly_t A,
     flint_bitcnt_t Abits,
     const n_bpoly_t B,
     slong var,
-    const nmod_mpoly_ctx_t ctx)
-{
-    slong N = mpoly_words_per_exp(Abits, ctx->minfo);
-    slong i, Alen;
-    slong Blen = B->length;
-    ulong * genexp;
-    TMP_INIT;
+    const nmod_mpoly_ctx_t ctx);
 
-    TMP_START;
+int nmod_mpoly_hlift_zippel(
+    slong m,
+    nmod_mpoly_struct * B,
+    slong r,
+    const mp_limb_t * alpha,
+    const nmod_mpoly_t A,
+    const slong * degs,
+    const nmod_mpoly_ctx_t ctx,
+    flint_rand_t state);
 
-    genexp = (ulong *) TMP_ALLOC(N*sizeof(ulong));
-    if (Abits <= FLINT_BITS)
-        mpoly_gen_monomial_sp(genexp, var, Abits, ctx->minfo);
-    else
-        mpoly_gen_monomial_offset_mp(genexp, var, Abits, ctx->minfo);
-
-    Alen = 2;
-    for (i = 0; i < Blen; i++)
-        Alen += (B->coeffs[i].length > 0);
-
-    nmod_mpoly_fit_length_set_bits(A, Alen, Abits, ctx);
-
-    Alen = 0;
-    for (i = Blen - 1; i >= 0; i--)
-    {
-        mp_limb_t c = n_poly_get_coeff(B->coeffs + i, 0);
-        if (c == 0)
-            continue;
-
-        FLINT_ASSERT(Alen < A->alloc);
-        A->coeffs[Alen] = c;
-        if (Abits <= FLINT_BITS)
-            mpoly_monomial_mul_ui(A->exps + N*Alen, genexp, N, i);
-        else
-            mpoly_monomial_mul_ui_mp(A->exps + N*Alen, genexp, N, i);
-        Alen++;
-    }
-    A->length = Alen;
-
-    TMP_END;
-}
-
-int nmod_mpoly_factor_irred_smprime_wang(
+int nmod_mpoly_factor_irred_smprime_zippel(
     nmod_mpolyv_t fac,
     const nmod_mpoly_t A,
     const nmod_mpoly_factor_t lcAfac,
@@ -228,6 +72,9 @@ flint_printf("   lcA: "); nmod_mpoly_print_pretty(lcA, NULL, ctx); flint_printf(
     FLINT_ASSERT(A->length > 1);
     FLINT_ASSERT(A->coeffs[0] == 1);
     FLINT_ASSERT(A->bits <= FLINT_BITS);
+
+    if (ctx->ffinfo->mod.n < 5 || ctx->ffinfo->mod.n < A->length)
+        return 0;
 
     nmod_mpoly_init(Acopy, ctx);
     nmod_mpoly_init(m, ctx);
@@ -428,8 +275,16 @@ nmod_mpolyv_print_pretty(lc_divs, NULL, ctx);
                                                new_lcs->coeffs + k*r + i, ctx);
         }
 
-        success = nmod_mpoly_hlift(k, tfac->coeffs, r, alpha,
+        if (k > 2)
+        {
+            success = nmod_mpoly_hlift_zippel(k, tfac->coeffs, r, alpha,
+                                  k < n ? Aevals + k : newA, degs, ctx, state);
+        }
+        else
+        {
+            success = nmod_mpoly_hlift(k, tfac->coeffs, r, alpha,
                                          k < n ? Aevals + k : newA, degs, ctx);
+        }
 
         if (!success)
             goto next_alphabetas;
@@ -500,8 +355,10 @@ cleanup:
         nmod_mpoly_clear(prod, ctx);
     }
 #endif
+
 /*
-flint_printf("nmod_mpoly_factor_irred_smprime_wang p = %wu returning %d\n", ctx->ffinfo->mod.n, success);
+if (success)
+flint_printf("nmod_mpoly_factor_irred_smprime_zippel success!!!!!!!\n");
 */
 	return success;
 }

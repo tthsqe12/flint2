@@ -644,7 +644,7 @@ got_alpha:
     fq_nmod_bpoly_eval(Beval, B, alpha, ctx);
 
     /* if killed leading coeff, get new alpha */
-    if (Beval->length != Blenx || fq_nmod_is_zero(Beval->coeffs + 0, ctx))
+    if (Beval->length != Blenx)
         goto next_alpha;
 
     local_fac->num = 0;

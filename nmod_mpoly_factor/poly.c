@@ -1018,30 +1018,3 @@ void n_poly_mod_eval2_pow(
     *vp = nmod_add(p0, q0, mod);
     *vm = nmod_sub(p0, q0, mod);
 }
-
-
-mp_limb_t n_poly_mod_div_root(n_poly_t Q, 
-                                     const n_poly_t A, mp_limb_t c, nmod_t ctx)
-{
-    mp_limb_t rem;
-
-    slong len = A->length;
-
-    if (len < 2)
-    {
-        if (len == 1)
-        {
-            rem = A->coeffs[0];
-            n_poly_zero(Q);
-            return rem;
-        }
-
-        n_poly_zero(Q);
-        return 0;
-    }
-
-    n_poly_fit_length(Q, len - 1);
-    rem = _nmod_poly_div_root(Q->coeffs, A->coeffs, len, c, ctx);
-    Q->length = len - 1;
-    return rem;
-}

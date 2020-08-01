@@ -170,9 +170,10 @@ flint_printf("1:%wd ", i);
         fq_nmod_mpoly_clear(a, ctx);
         fq_nmod_mpoly_ctx_clear(ctx);
     }
+/*
 flint_printf("**********total number of bvar factors: %wd ******\n", total);
 usleep(1000000);
-
+*/
 
     /* check random factors */
     total = 0;
@@ -211,8 +212,8 @@ flint_printf("2:%wd ", i);
         fq_nmod_mpoly_ctx_clear(ctx);
     }
 flint_printf("**********total number of mvar factors: %wd ******\n", total);
-usleep(1000000);
-
+/*usleep(1000000);
+*/
     FLINT_TEST_CLEANUP(state);
     
     flint_printf("PASS\n");

@@ -37,7 +37,6 @@ void n_polyu_realloc(n_polyu_t A, slong len)
 
     if (old_alloc > 0)
     {
-        FLINT_ASSERT(A->terms != NULL);
         A->terms = (n_polyu_term_struct *) flint_realloc(A->terms,
                                        new_alloc*sizeof(n_polyu_term_struct));
     }

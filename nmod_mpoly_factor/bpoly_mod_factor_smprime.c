@@ -13,7 +13,6 @@
 #include "fq_nmod_mpoly_factor.h"
 #include "ui_factor.h"
 
-
 int nmod_mat_is_reduced(const nmod_mat_t N)
 {
     slong i, j, k = 0;
@@ -298,10 +297,7 @@ try_subset:
             }
 
             if (!zassenhaus_prune_degree_is_possible(zas, total_deg))
-            {
-flint_printf("sm got one!!!!!!!!!!!!!!1\n");
                 continue;
-            }
 
             n_bpoly_set_poly_var1(t1, leadf);
             for (i = 0; i < len; i++)

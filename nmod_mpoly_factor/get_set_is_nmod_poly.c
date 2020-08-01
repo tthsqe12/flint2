@@ -63,9 +63,18 @@ int nmod_mpoly_is_nmod_poly(
     return mpoly_is_poly(A->exps, A->length, A->bits, var, ctx->minfo);
 }
 
-
 int nmod_mpoly_get_nmod_poly(
     nmod_poly_t A,
+    const nmod_mpoly_t B,
+    slong var,
+    const nmod_mpoly_ctx_t ctx)
+{
+    A->mod = ctx->ffinfo->mod;
+    return nmod_mpoly_get_n_poly((n_poly_struct *) A, B, var, ctx);
+}
+
+int nmod_mpoly_get_n_poly(
+    n_poly_t A,
     const nmod_mpoly_t B,
     slong var,
     const nmod_mpoly_ctx_t ctx)
@@ -77,9 +86,7 @@ int nmod_mpoly_get_nmod_poly(
     slong i, N = mpoly_words_per_exp(Bbits, ctx->minfo);
     ulong k;
 
-    A->mod = ctx->ffinfo->mod;
-
-    nmod_poly_zero(A);
+    n_poly_zero(A);
 
     if (B->length < 1)
         return 1;
@@ -94,7 +101,7 @@ int nmod_mpoly_get_nmod_poly(
         for (i = 0; i < Blen; i++)
         {
             k = (Bexps[N*i + off] >> shift) & mask;
-            nmod_poly_set_coeff_ui(A, k, Bcoeffs[i]);
+            n_poly_set_coeff(A, k, Bcoeffs[i]);
         }
         return 1;
     }
@@ -115,7 +122,7 @@ int nmod_mpoly_get_nmod_poly(
             if (check != 0 || (slong) k < 0)
                 return 0;
 
-            nmod_poly_set_coeff_ui(A, k, Bcoeffs[i]);
+            n_poly_set_coeff(A, k, Bcoeffs[i]);
         }
         return 1;
     }
@@ -202,9 +209,9 @@ void _nmod_mpoly_set_nmod_poly(
     TMP_END;
 }
 
-void nmod_mpoly_set_nmod_poly(
+void nmod_mpoly_set_n_poly_mod(
     nmod_mpoly_t A,
-    const nmod_poly_t B,
+    const n_poly_t B,
     slong var,
     const nmod_mpoly_ctx_t ctx)
 {
@@ -219,4 +226,13 @@ void nmod_mpoly_set_nmod_poly(
     bits = mpoly_gen_pow_exp_bits_required(var, B->length - 1, ctx->minfo);
     bits = mpoly_fix_bits(bits, ctx->minfo);
     _nmod_mpoly_set_nmod_poly(A, bits, B->coeffs, B->length, var, ctx);
+}
+
+void nmod_mpoly_set_nmod_poly(
+    nmod_mpoly_t A,
+    const nmod_poly_t B,
+    slong var,
+    const nmod_mpoly_ctx_t ctx)
+{
+    nmod_mpoly_set_n_poly_mod(A, (n_poly_struct *) B, var, ctx);
 }

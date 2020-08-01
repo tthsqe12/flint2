@@ -87,6 +87,14 @@ void fq_nmod_bpoly_print_pretty(
         flint_printf("0");
 }
 
+slong fq_nmod_bpoly_degree1(const fq_nmod_bpoly_t A, const fq_nmod_ctx_t ctx)
+{
+    slong i, len = 0;
+    for (i = 0; i < A->length; i++)
+        len = FLINT_MAX(len, A->coeffs[i].length);
+    return len - 1;    
+}
+
 int fq_nmod_bpoly_is_canonical(const fq_nmod_bpoly_t A, const fq_nmod_ctx_t ctx)
 {
     if (A->length <= 0)
@@ -101,6 +109,25 @@ int fq_nmod_bpoly_is_canonical(const fq_nmod_bpoly_t A, const fq_nmod_ctx_t ctx)
     }
 */
     return !fq_nmod_poly_is_zero(A->coeffs + A->length - 1, ctx);
+}
+
+int fq_nmod_bpoly_equal(
+    const fq_nmod_bpoly_t A,
+    const fq_nmod_bpoly_t B,
+    const fq_nmod_ctx_t ctx)
+{
+    slong i;
+
+    if (A->length != B->length)
+        return 0;
+
+    for (i = 0; i < A->length; i++)
+    {
+        if (!fq_nmod_poly_equal(A->coeffs + i, B->coeffs + i, ctx))
+            return 0;
+    }
+
+    return 1;
 }
 
 void fq_nmod_bpoly_set_coeff(
@@ -630,6 +657,32 @@ void fq_nmod_bpoly_taylor_shift_var1(
     fq_nmod_bpoly_set(A, B, ctx);
     for (i = A->length - 1; i >= 0; i--)
         fq_nmod_poly_taylor_shift_horner(A->coeffs + i, A->coeffs + i, alpha, ctx);    
+}
+
+void fq_nmod_bpoly_taylor_shift_var0(
+    fq_nmod_bpoly_t A,
+    const fq_nmod_t alpha,
+    const fq_nmod_ctx_t ctx)
+{
+    slong n, i, j;
+    fq_nmod_poly_t t;
+
+    if (fq_nmod_is_zero(alpha, ctx))
+        return;
+
+    fq_nmod_poly_init(t, ctx);
+    n = A->length;
+
+    for (i = n - 2; i >= 0; i--)
+    {
+        for (j = i; j < n - 1; j++)
+        {
+            fq_nmod_poly_scalar_mul_fq_nmod(t, A->coeffs + j + 1, alpha, ctx);
+            fq_nmod_poly_add(A->coeffs + j, A->coeffs + j, t, ctx);
+        }
+    }
+
+    fq_nmod_poly_clear(t, ctx);
 }
 
 

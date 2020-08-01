@@ -587,7 +587,7 @@ flint_printf("Tvalue: "); n_poly_print_pretty(Tterms[Ti].coeff, "Z"); flint_prin
         0: lift of B0*B1 to true factors is impossible
         1: successfully lifted B0*B1 to true factors BB0*BB1 without changing lc_x
 */
-int n_polyu3_mod_hensel_lift2(
+int n_polyu3_mod_hlift2(
     n_polyun_t BB0,
     n_polyun_t BB1,
     n_polyu_t A,
@@ -677,7 +677,7 @@ flint_printf(" Ap: "); n_bpoly_print_pretty(Ap, vars[0], vars[1]); flint_printf(
 flint_printf("B0p: "); n_bpoly_print_pretty(B0p, vars[0], vars[1]); flint_printf("\n");
 flint_printf("B1p: "); n_bpoly_print_pretty(B1p, vars[0], vars[1]); flint_printf("\n");
 */
-    success = n_bpoly_mod_hensel_lift2(Ap, B0p, B1p, beta, degree_inner, ctx->mod);
+    success = n_bpoly_mod_hlift2(Ap, B0p, B1p, beta, degree_inner, ctx->mod);
     if (success <= 0)
     {
         if (success == 0 || --bad_primes_left < 0)
@@ -693,7 +693,7 @@ flint_printf(" Am: "); n_bpoly_print_pretty(Am, vars[0], vars[1]); flint_printf(
 flint_printf("B0m: "); n_bpoly_print_pretty(B0m, vars[0], vars[1]); flint_printf("\n");
 flint_printf("B1m: "); n_bpoly_print_pretty(B1m, vars[0], vars[1]); flint_printf("\n");
 */
-    success = n_bpoly_mod_hensel_lift2(Am, B0m, B1m, beta, degree_inner, ctx->mod);
+    success = n_bpoly_mod_hlift2(Am, B0m, B1m, beta, degree_inner, ctx->mod);
     if (success <= 0)
     {
         if (success == 0 || --bad_primes_left < 0)
@@ -749,7 +749,7 @@ flint_printf("BB1: "); n_polyu3n_print_pretty(BB1, vars[0], vars[1], "?", vars[2
 cleanup:
 
 /*
-flint_printf("n_polyu3n_hensel_lift2 returning %d\n", success);
+flint_printf("n_polyu3n_hlift2 returning %d\n", success);
 flint_printf("BB0: "); n_polyu3n_print_pretty(BB0, vars[0], vars[1], "?", vars[2]); flint_printf("\n");
 flint_printf("BB1: "); n_polyu3n_print_pretty(BB1, vars[0], vars[1], "?", vars[2]); flint_printf("\n");
 flint_printf("+++++++++++++++++++++++\n");
@@ -789,7 +789,7 @@ flint_printf("+++++++++++++++++++++++\n");
 
 
 /* r factor version */
-int n_polyu3_mod_hensel_lift(
+int n_polyu3_mod_hlift(
     slong r,
     n_polyun_struct * BB,
     n_polyu_t A,
@@ -820,7 +820,7 @@ flint_printf("B[%wd]: ", i); n_polyu3_print_pretty(B + i, "Y", "X", "Z"); flint_
 */
 
     if (r < 3)
-        return n_polyu3_mod_hensel_lift2(BB + 0, BB + 1, A, B + 0, B + 1,
+        return n_polyu3_mod_hlift2(BB + 0, BB + 1, A, B + 0, B + 1,
                                                       beta, degree_inner, ctx);
 
     FLINT_ASSERT(n_polyu_mod_is_canonical(A, ctx->mod));
@@ -893,15 +893,15 @@ fflush(stdout);
 */
     }
 
-    success = n_bpoly_mod_hensel_lift(r, Ap, Bp, beta, degree_inner, ctx->mod);
-    if (success <= 0)
+    success = n_bpoly_mod_hlift(r, Ap, Bp, beta, degree_inner, ctx->mod);
+    if (success < 1)
     {
         if (success == 0 || --bad_primes_left < 0)
             goto cleanup;
         goto choose_prime;
     }
 
-    success = n_bpoly_mod_hensel_lift(r, Am, Bm, beta, degree_inner, ctx->mod);
+    success = n_bpoly_mod_hlift(r, Am, Bm, beta, degree_inner, ctx->mod);
     if (success <= 0)
     {
         if (success == 0 || --bad_primes_left < 0)

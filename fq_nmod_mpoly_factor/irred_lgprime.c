@@ -13,7 +13,7 @@
 #include "fq_nmod_mpoly_factor.h"
 
 
-void _map_sm_to_lg(
+static void _map_sm_to_lg(
     fq_nmod_mpoly_t eA,
     const fq_nmod_mpoly_t A,
     const fq_nmod_mpoly_ctx_t ectx,
@@ -40,7 +40,7 @@ void _map_sm_to_lg(
     fq_nmod_poly_clear(t, emb->smctx);
 }
 
-void _frob_combine(
+static void _frob_combine(
     fq_nmod_mpolyv_t Af,
     fq_nmod_mpolyv_t eAf,
     const fq_nmod_mpoly_ctx_t ctx,
@@ -63,10 +63,10 @@ void _frob_combine(
     fq_nmod_poly_init(c, ctx->fqctx);
 
     fmpz_pow_ui(q, fq_nmod_ctx_prime(ctx->fqctx), fq_nmod_ctx_degree(ctx->fqctx));
-
+/*
 flint_printf("_frob_combine called\n");
 flint_printf("eAf: "); fq_nmod_mpolyv_print_pretty(eAf, NULL, ectx); flint_printf("\n");
-
+*/
     Af->length = 0;
     while (eAf->length > 0)
     {
@@ -131,9 +131,10 @@ flint_printf("eAf: "); fq_nmod_mpolyv_print_pretty(eAf, NULL, ectx); flint_print
 /*
     return:
         1: success
-        0: failed, don't try again
+        0: failed, ran out of primes, don't try again
+       -1: failed, don't try again
 */
-int fq_nmod_mpoly_factor_irred_lgprime_default(
+int fq_nmod_mpoly_factor_irred_lgprime_zassenhaus(
     fq_nmod_mpolyv_t Af,
     const fq_nmod_mpoly_t A,
     const fq_nmod_mpoly_ctx_t ctx,
@@ -158,7 +159,6 @@ choose_prime:
     cur_emb = bad_fq_nmod_mpoly_embed_chooser_next(embc, ectx, ctx, state);
     if (cur_emb == NULL)
     {
-        /* ran out of primes */
         success = 0;
         goto cleanup;
     }
@@ -166,16 +166,12 @@ choose_prime:
 have_prime:
 
     _map_sm_to_lg(eA, A, ectx, ctx, cur_emb);
-    success = fq_nmod_mpoly_factor_irred_smprime_default(eAf, eA, ectx, state);
 
+    success = fq_nmod_mpoly_factor_irred_smprime_zassenhaus(eAf, eA, ectx, state);
     if (success == 0)
         goto choose_prime;
-
     if (success < 0)
-    {
-        success = 0;
         goto cleanup;
-    }
 
     _frob_combine(Af, eAf, ctx, ectx, cur_emb);
 
@@ -184,10 +180,168 @@ have_prime:
 cleanup:
 
     fq_nmod_mpoly_clear(eA, ectx);
-    fq_nmod_mpolyv_clear(eAf, ctx);
+    fq_nmod_mpolyv_clear(eAf, ectx);
+    bad_fq_nmod_mpoly_embed_chooser_clear(embc, ectx, ctx, state);
+
+    return success;
+}
+
+int fq_nmod_mpoly_factor_irred_lgprime_wang(
+    fq_nmod_mpolyv_t Af,
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_factor_t lcAfac,
+    const fq_nmod_mpoly_t lcA,
+    const fq_nmod_mpoly_ctx_t ctx,
+    flint_rand_t state)
+{
+    int success;
+    fq_nmod_mpoly_factor_t elcAfac;
+    fq_nmod_mpolyv_t eAf;
+    fq_nmod_mpoly_t eA, elcA;
+    bad_fq_nmod_mpoly_embed_chooser_t embc;
+    bad_fq_nmod_embed_struct * cur_emb;
+    fq_nmod_mpoly_ctx_t ectx;
+    slong i;
+
+    FLINT_ASSERT(A->length > 0);
+    FLINT_ASSERT(fq_nmod_is_one(A->coeffs + 0, ctx->fqctx));
+    FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
+
+    cur_emb = bad_fq_nmod_mpoly_embed_chooser_init(embc, ectx, ctx, state);
+
+    fq_nmod_mpoly_init(eA, ectx);
+    fq_nmod_mpolyv_init(eAf, ectx);
+    fq_nmod_mpoly_init(elcA, ectx);
+    fq_nmod_mpoly_factor_init(elcAfac, ectx);
+    fq_nmod_mpoly_factor_fit_length(elcAfac, lcAfac->num, ectx);
+    elcAfac->num = lcAfac->num;
+
+    goto have_prime;
+
+choose_prime:
+
+    cur_emb = bad_fq_nmod_mpoly_embed_chooser_next(embc, ectx, ctx, state);
+    if (cur_emb == NULL)
+    {
+        success = 0;
+        goto cleanup;
+    }
+
+have_prime:
+
+    _map_sm_to_lg(eA, A, ectx, ctx, cur_emb);
+    _map_sm_to_lg(elcA, lcA, ectx, ctx, cur_emb);
+    {
+    fq_nmod_poly_t tt;
+    fq_nmod_poly_init(tt, ctx->fqctx);
+    fq_nmod_poly_set_fq_nmod(tt, lcAfac->constant, ctx->fqctx);
+    bad_fq_nmod_embed_sm_to_lg(elcAfac->constant, tt, cur_emb);
+    fq_nmod_poly_clear(tt, ctx->fqctx);
+    }
+    for (i = 0; i < lcAfac->num; i++)
+    {
+        fmpz_set(elcAfac->exp + i, lcAfac->exp + i);
+        _map_sm_to_lg(elcAfac->poly + i, lcAfac->poly + i, ectx, ctx, cur_emb);
+    }
+
+    success = fq_nmod_mpoly_factor_irred_smprime_wang(eAf, eA, elcAfac, elcA, ectx, state);
+    if (success == 0)
+        goto choose_prime;
+    if (success < 0)
+        goto cleanup;
+
+    _frob_combine(Af, eAf, ctx, ectx, cur_emb);
+
+    success = 1;
+
+cleanup:
+
+    fq_nmod_mpoly_clear(eA, ectx);
+    fq_nmod_mpolyv_clear(eAf, ectx);
+    fq_nmod_mpoly_clear(elcA, ectx);
+    fq_nmod_mpoly_factor_clear(elcAfac, ectx);
 
     bad_fq_nmod_mpoly_embed_chooser_clear(embc, ectx, ctx, state);
 
     return success;
 }
 
+int fq_nmod_mpoly_factor_irred_lgprime_zippel(
+    fq_nmod_mpolyv_t Af,
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_factor_t lcAfac,
+    const fq_nmod_mpoly_t lcA,
+    const fq_nmod_mpoly_ctx_t ctx,
+    flint_rand_t state)
+{
+    int success;
+    fq_nmod_mpoly_factor_t elcAfac;
+    fq_nmod_mpolyv_t eAf;
+    fq_nmod_mpoly_t eA, elcA;
+    bad_fq_nmod_mpoly_embed_chooser_t embc;
+    bad_fq_nmod_embed_struct * cur_emb;
+    fq_nmod_mpoly_ctx_t ectx;
+    slong i;
+
+    FLINT_ASSERT(A->length > 0);
+    FLINT_ASSERT(fq_nmod_is_one(A->coeffs + 0, ctx->fqctx));
+    FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
+
+    cur_emb = bad_fq_nmod_mpoly_embed_chooser_init(embc, ectx, ctx, state);
+
+    fq_nmod_mpoly_init(eA, ectx);
+    fq_nmod_mpolyv_init(eAf, ectx);
+    fq_nmod_mpoly_init(elcA, ectx);
+    fq_nmod_mpoly_factor_init(elcAfac, ectx);
+    fq_nmod_mpoly_factor_fit_length(elcAfac, lcAfac->num, ectx);
+    elcAfac->num = lcAfac->num;
+
+    goto have_prime;
+
+choose_prime:
+
+    cur_emb = bad_fq_nmod_mpoly_embed_chooser_next(embc, ectx, ctx, state);
+    if (cur_emb == NULL)
+    {
+        success = 0;
+        goto cleanup;
+    }
+
+have_prime:
+
+    _map_sm_to_lg(eA, A, ectx, ctx, cur_emb);
+    _map_sm_to_lg(elcA, lcA, ectx, ctx, cur_emb);
+    {
+    fq_nmod_poly_t tt;
+    fq_nmod_poly_init(tt, ctx->fqctx);
+    fq_nmod_poly_set_fq_nmod(tt, lcAfac->constant, ctx->fqctx);
+    bad_fq_nmod_embed_sm_to_lg(elcAfac->constant, tt, cur_emb);
+    fq_nmod_poly_clear(tt, ctx->fqctx);
+    }
+    for (i = 0; i < lcAfac->num; i++)
+    {
+        fmpz_set(elcAfac->exp + i, lcAfac->exp + i);
+        _map_sm_to_lg(elcAfac->poly + i, lcAfac->poly + i, ectx, ctx, cur_emb);
+    }
+
+    success = fq_nmod_mpoly_factor_irred_smprime_zippel(eAf, eA, elcAfac, elcA, ectx, state);
+    if (success == 0)
+        goto choose_prime;
+    if (success < 0)
+        goto cleanup;
+
+    _frob_combine(Af, eAf, ctx, ectx, cur_emb);
+
+    success = 1;
+
+cleanup:
+
+    fq_nmod_mpoly_clear(eA, ectx);
+    fq_nmod_mpolyv_clear(eAf, ectx);
+    fq_nmod_mpoly_clear(elcA, ectx);
+    fq_nmod_mpoly_factor_clear(elcAfac, ectx);
+
+    bad_fq_nmod_mpoly_embed_chooser_clear(embc, ectx, ctx, state);
+
+    return success;
+}

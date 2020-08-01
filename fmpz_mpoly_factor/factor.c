@@ -374,7 +374,7 @@ static int _irreducible_factors(
                 success = fmpz_mpoly_factor_irred_wang(Lf, L, lcLf, lcL, Lctx, state);
         }
         if (!success)
-            success = fmpz_mpoly_factor_irred_default(Lf, L, Lctx);
+            success = fmpz_mpoly_factor_irred_zassenhaus(Lf, L, Lctx);
 
         if (success)
         {

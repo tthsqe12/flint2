@@ -241,16 +241,12 @@ static int _irreducible_factors(
         fq_nmod_tpoly_init(Abf, ctx->fqctx);
 
         fq_nmod_mpoly_get_bpoly(Ab, A, perm[0], perm[1], ctx);
-/*
         success = fq_nmod_bpoly_factor_smprime(c, Abf, Ab, 1, ctx->fqctx);
         if (!success)
         {
             fq_nmod_mpoly_get_bpoly(Ab, A, perm[0], perm[1], ctx);
-*/
             fq_nmod_bpoly_factor_lgprime(c, Abf, Ab, ctx->fqctx, state);
-/*
         }
-*/
         FLINT_ASSERT(fq_nmod_poly_degree(c, ctx->fqctx) == 0);
 
         fq_nmod_mpolyv_fit_length(Af, Abf->length, ctx);
@@ -271,24 +267,38 @@ static int _irreducible_factors(
     else
     {
 		fq_nmod_mpoly_ctx_t Lctx;
-		fq_nmod_mpoly_t L;
+		fq_nmod_mpoly_t L, lcL;
 		fq_nmod_mpolyv_t Lf;
+        fq_nmod_mpoly_factor_t lcLf;
 
 		fq_nmod_mpoly_ctx_init(Lctx, mvars, ORD_LEX, ctx->fqctx);
 		fq_nmod_mpoly_init(L, Lctx);
+        fq_nmod_mpoly_init(lcL, Lctx);
 		fq_nmod_mpolyv_init(Lf, Lctx);
+        fq_nmod_mpoly_factor_init(lcLf, Lctx);
 
         Lbits = mpoly_fix_bits(Lbits + 1, Lctx->minfo);
 
 		fq_nmod_mpoly_convert_perm(L, Lbits, Lctx, A, ctx, perm);
         fq_nmod_mpoly_make_monic(L, L, ctx);
 
-		success = fq_nmod_mpoly_factor_irred_smprime_default(Lf, L, Lctx, state);
-        if (success < 1)
+        _fq_nmod_mpoly_get_lead0(lcL, L, Lctx);
+        success = fq_nmod_mpoly_factor(lcLf, lcL, Lctx);
+        if (success)
         {
-    		success = fq_nmod_mpoly_factor_irred_lgprime_default(Lf, L, Lctx, state);
+            success = fq_nmod_mpoly_factor_irred_smprime_wang(Lf, L, lcLf, lcL, Lctx, state);
+            if (success < 1)
+                success = fq_nmod_mpoly_factor_irred_lgprime_wang(Lf, L, lcLf, lcL, Lctx, state);
         }
 
+        if (success < 1)
+        {
+            success = fq_nmod_mpoly_factor_irred_smprime_zassenhaus(Lf, L, Lctx, state);
+            if (success < 1)
+                success = fq_nmod_mpoly_factor_irred_lgprime_zassenhaus(Lf, L, Lctx, state);
+        }
+
+        success = (success > 0);
 		if (success)
         {
             fq_nmod_mpolyv_fit_length(Af, Lf->length, ctx);
@@ -301,6 +311,8 @@ static int _irreducible_factors(
 		    }
         }
 
+		fq_nmod_mpoly_clear(lcL, Lctx);
+		fq_nmod_mpoly_factor_clear(lcLf, Lctx);
 	    fq_nmod_mpolyv_clear(Lf, Lctx);
 	    fq_nmod_mpoly_clear(L, Lctx);
 	    fq_nmod_mpoly_ctx_clear(Lctx);
@@ -315,8 +327,6 @@ cleanup:
     flint_randclear(state);
     flint_free(Adegs);
 
-    FLINT_ASSERT(success == 0 || success == 1);
-
 #if WANT_ASSERT
     if (success)
     {
@@ -330,6 +340,8 @@ cleanup:
         fq_nmod_mpoly_clear(Aorg, ctx);
     }
 #endif
+
+    FLINT_ASSERT(success == 0 || success == 1);
 
     return success;
 }
@@ -382,4 +394,3 @@ cleanup:
 
     return success;
 }
-

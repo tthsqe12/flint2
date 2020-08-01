@@ -19,7 +19,7 @@
         0: lift of B0 and B1 to true factors is impossible
         1: successfully lifted B0 and B1 to true factors without changing lc_x
 */
-int n_bpoly_mod_hensel_lift2(
+int n_bpoly_mod_hlift2(
     n_bpoly_t A, /* clobbered (shifted by alpha) */
     n_bpoly_t B0,
     n_bpoly_t B1,
@@ -31,10 +31,10 @@ int n_bpoly_mod_hensel_lift2(
     slong i, j;
     n_poly_t c, s, t, u, v;
 /*
-flint_printf("n_bpoly_hensel_lift2 called: degree_inner = %wd, alpha = %wu\n", degree_inner, alpha);
-printf(" A: "); n_bpoly_print_pretty(A, "Y", "X"); printf("\n"); fflush(stdout);
-printf("B0: "); n_bpoly_print_pretty(B0, "Y", "X"); printf("\n"); fflush(stdout);
-printf("B1: "); n_bpoly_print_pretty(B1, "Y", "X"); printf("\n"); fflush(stdout);
+flint_printf("n_bpoly_hlift2 called: degree_inner = %wd, alpha = %wu, p = %wu\n", degree_inner, alpha, mod.n);
+printf(" A: "); n_bpoly_print_pretty(A, "Y", "X"); flint_printf("\n");
+printf("B0: "); n_bpoly_print_pretty(B0, "Y", "X"); flint_printf("\n");
+printf("B1: "); n_bpoly_print_pretty(B1, "Y", "X"); flint_printf("\n");
 */
     FLINT_ASSERT(n_bpoly_mod_is_canonical(A, mod));
     FLINT_ASSERT(n_bpoly_mod_is_canonical(B0, mod));
@@ -50,11 +50,10 @@ printf("B1: "); n_bpoly_print_pretty(B1, "Y", "X"); printf("\n"); fflush(stdout)
     n_bpoly_mod_taylor_shift_var0(B0, alpha, mod);
     n_bpoly_mod_taylor_shift_var0(B1, alpha, mod);
 /*
-printf("shift A: "); n_bpoly_print_pretty(A, "Y", "X"); printf("\n"); fflush(stdout);
-printf("shift B0: "); n_bpoly_print_pretty(B0, "Y", "X"); printf("\n"); fflush(stdout);
-printf("shift B1: "); n_bpoly_print_pretty(B1, "Y", "X"); printf("\n"); fflush(stdout);
+flint_printf("shift A: "); n_bpoly_print_pretty(A, "Y", "X"); flint_printf("\n");
+flint_printf("shift B0: "); n_bpoly_print_pretty(B0, "Y", "X"); flint_printf("\n");
+flint_printf("shift B1: "); n_bpoly_print_pretty(B1, "Y", "X"); flint_printf("\n");
 */
-
     if (A->length <= 0 || B0->length <= 0 || B1->length <= 0)
     {
         success = -1;
@@ -131,13 +130,14 @@ printf("shift B1: "); n_bpoly_print_pretty(B1, "Y", "X"); printf("\n"); fflush(s
     success = 1;
 
 cleanup:
+
 /*
-flint_printf("n_bpoly_hensel_lift2 returning %d\n", success);
+flint_printf("n_bpoly_hlift2 returning %d\n", success);
 flint_printf("B0: "); n_bpoly_print_pretty(B0, "Y", "X"); flint_printf("\n");
 flint_printf("B1: "); n_bpoly_print_pretty(B1, "Y", "X"); flint_printf("\n");
 */
 
-    if (success)
+    if (success > 0)
     {
         n_bpoly_t tp1, tp2;
         n_bpoly_init(tp1);
@@ -161,7 +161,7 @@ flint_printf("B1: "); n_bpoly_print_pretty(B1, "Y", "X"); flint_printf("\n");
 }
 
 /* r factor version */
-int n_bpoly_mod_hensel_lift(
+int n_bpoly_mod_hlift(
     slong r,
     n_bpoly_t A, /* clobbered (shifted by alpha) */
     n_bpoly_struct * B,
@@ -175,7 +175,7 @@ int n_bpoly_mod_hensel_lift(
     n_poly_t c, t, u;
     n_bpoly_struct * U;
 /*
-flint_printf("n_bpoly_hensel_lift(%wd) called: degree_inner = %wd, alpha = %wu\n", r, degree_inner, alpha);
+flint_printf("n_bpoly_hlift(%wd) called: degree_inner = %wd, alpha = %wu\n", r, degree_inner, alpha);
 flint_printf(" A: ");
 n_bpoly_print_pretty(A, "y", "x");
 flint_printf("\n");
@@ -341,7 +341,7 @@ flint_printf("\n");
 
 cleanup:
 /*
-flint_printf("n_bpoly_hensel_lift(%wd) returning %d\n", r, success);
+flint_printf("n_bpoly_hlift(%wd) returning %d\n", r, success);
 for (i = 0; i < r; i++)
 {
 flint_printf("B[%wd]: ", i);
@@ -351,7 +351,7 @@ flint_printf("\n");
 
 FLINT_ASSERT(success);
 */
-    if (success)
+    if (success > 0)
     {
         n_bpoly_t tp1, tp2;
         n_bpoly_init(tp1);
@@ -386,4 +386,3 @@ FLINT_ASSERT(success);
 
     return success;
 }
-

@@ -204,8 +204,8 @@ flint_printf("1:%wd ", i);
         nmod_mpoly_clear(a, ctx);
         nmod_mpoly_ctx_clear(ctx);
     }
-flint_printf("**********total number of bvar factors: %wd ******\n", total);
-usleep(1000000);
+/*flint_printf("**********total number of bvar factors: %wd ******\n", total);
+usleep(1000000);*/
 
 
     /* check random factors */
@@ -223,13 +223,13 @@ usleep(1000000);
         p = n_randbits(state, p);
         p = n_nextprime(p, 1);
 
-        nmod_mpoly_ctx_init_rand(ctx, state, 6, p);
+        nmod_mpoly_ctx_init_rand(ctx, state, 10, p);
 
         nmod_mpoly_init(a, ctx);
         nmod_mpoly_init(t, ctx);
 
         nfacs = 1 + (5 + n_randint(state, 5))/ctx->minfo->nvars;
-        expbound = 3 + 40/nfacs/ctx->minfo->nvars;
+        expbound = 3 + 100/nfacs/ctx->minfo->nvars;
 
         lower = 0;
         nmod_mpoly_one(a, ctx);
@@ -254,7 +254,7 @@ flint_printf("2:%wd ", i);
         nmod_mpoly_ctx_clear(ctx);
     }
 flint_printf("**********total number of mvar factors: %wd ******\n", total);
-usleep(1000000);
+/*usleep(1000000);*/
 
     check_omega_str(2, 2, "x y z", "(z^8*x^8+x^1+y^16+y^1+z^8+z^3)*((y^4+z^3+z)*x^8+x^1+y^16+y^1+z^8+z^3)", 2);
     check_omega_str(4, 4, "x y", "(x^8+x+y^16+y)*(x^8+x+y^4+y)", 2);

@@ -9,19 +9,16 @@
     (at your option) any later version.  See <http://www.gnu.org/licenses/>.
 */
 
-#include "nmod_mpoly_factor.h"
-#include "mpn_extras.h"
-#include "nmod_vec.h"
+#include "fq_nmod_mpoly_factor.h"
 
 
-void n_polyun_clear(n_polyun_t A)
+void fq_nmod_polyun_clear(fq_nmod_polyun_t A, const fq_nmod_ctx_t ctx)
 {
     slong i;
     if (A->alloc > 0)
     {
-        FLINT_ASSERT(A->terms != NULL);
         for (i = 0; i < A->alloc; i++)
-            n_poly_clear(A->terms[i].coeff);
+            fq_nmod_poly_clear(A->terms[i].coeff, ctx);
         flint_free(A->terms);
     }
     else
@@ -30,7 +27,7 @@ void n_polyun_clear(n_polyun_t A)
     }
 }
 
-void n_polyun_realloc(n_polyun_t A, slong len)
+void fq_nmod_polyun_realloc(fq_nmod_polyun_t A, slong len, const fq_nmod_ctx_t ctx)
 {
     slong i;
     slong old_alloc = A->alloc;
@@ -42,28 +39,28 @@ void n_polyun_realloc(n_polyun_t A, slong len)
 
     if (old_alloc > 0)
     {
-        FLINT_ASSERT(A->terms != NULL);
-        A->terms = (n_polyun_term_struct *) flint_realloc(A->terms,
-                                      new_alloc*sizeof(n_polyun_term_struct));
+        A->terms = (fq_nmod_polyun_term_struct *) flint_realloc(A->terms,
+                                 new_alloc*sizeof(fq_nmod_polyun_term_struct));
     }
     else
     {
         FLINT_ASSERT(A->terms == NULL);
-        A->terms = (n_polyun_term_struct *) flint_malloc(
-                                      new_alloc*sizeof(n_polyun_term_struct));
+        A->terms = (fq_nmod_polyun_term_struct *) flint_malloc(
+                                 new_alloc*sizeof(fq_nmod_polyun_term_struct));
     }
 
     for (i = old_alloc; i < new_alloc; i++)
-        n_poly_init(A->terms[i].coeff);
+        fq_nmod_poly_init(A->terms[i].coeff, ctx);
 
     A->alloc = new_alloc;
 }
 
-void n_polyu2n_print_pretty(
-    const n_polyun_t A,
+void fq_nmod_polyu2n_print_pretty(
+    const fq_nmod_polyun_t A,
     const char * var0,
     const char * var1,
-    const char * varlast)
+    const char * varlast,
+    const fq_nmod_ctx_t ctx)
 {
     slong i;
     int first = 1;
@@ -74,7 +71,7 @@ void n_polyu2n_print_pretty(
             printf(" + ");
         first = 0;
         flint_printf("(");
-        n_poly_print_pretty(A->terms[i].coeff, varlast);
+        fq_nmod_poly_print_pretty(A->terms[i].coeff, varlast, ctx);
         flint_printf(")*%s^%wu*%s^%wu",
             var0, extract_exp(A->terms[i].exp, 1, 2),
             var1, extract_exp(A->terms[i].exp, 0, 2));
@@ -84,12 +81,13 @@ void n_polyu2n_print_pretty(
         flint_printf("0");
 }
 
-void n_polyu3n_print_pretty(
-    const n_polyun_t A,
+void fq_nmod_polyu3n_print_pretty(
+    const fq_nmod_polyun_t A,
     const char * var0,
     const char * var1,
     const char * var2,
-    const char * varlast)
+    const char * varlast,
+    const fq_nmod_ctx_t ctx)
 {
     slong i;
     int first = 1;
@@ -100,7 +98,7 @@ void n_polyu3n_print_pretty(
             printf(" + ");
         first = 0;
         flint_printf("(");
-        n_poly_print_pretty(A->terms[i].coeff, varlast);
+        fq_nmod_poly_print_pretty(A->terms[i].coeff, varlast, ctx);
         flint_printf(")*%s^%wu*%s^%wu*%s^%wu",
             var0, extract_exp(A->terms[i].exp, 2, 3),
             var1, extract_exp(A->terms[i].exp, 1, 3),
@@ -111,15 +109,14 @@ void n_polyu3n_print_pretty(
         flint_printf("0");
 }
 
-int n_polyun_mod_is_canonical(const n_polyun_t A, nmod_t mod)
+int fq_nmod_polyun_is_canonical(const fq_nmod_polyun_t A, const fq_nmod_ctx_t ctx)
 {
     slong i;
     if (A->length < 0)
         return 0;
     for (i = 0; i < A->length; i++)
     {
-        if (!n_poly_mod_is_canonical(A->terms[i].coeff, mod) ||
-            n_poly_is_zero(A->terms[i].coeff))
+        if (fq_nmod_poly_is_zero(A->terms[i].coeff, ctx))
         {
             return 0;
         }

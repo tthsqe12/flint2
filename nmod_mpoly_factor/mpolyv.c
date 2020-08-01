@@ -64,3 +64,71 @@ void nmod_mpolyv_fit_length(
 
     A->alloc = new_alloc;
 }
+
+void nmod_mpolyv_set_coeff(
+    nmod_mpolyv_t A,
+    slong i,
+    nmod_mpoly_t c, /* clobbered */
+    const nmod_mpoly_ctx_t ctx)
+{
+    slong j;
+    FLINT_ASSERT(!nmod_mpoly_is_zero(c, ctx));
+    nmod_mpolyv_fit_length(A, i + 1, ctx);
+    for (j = A->length; j < i; j++)
+        nmod_mpoly_zero(A->coeffs + j, ctx);
+    nmod_mpoly_swap(A->coeffs + i, c, ctx);
+    A->length = FLINT_MAX(A->length, i + 1);
+}
+
+
+void nmod_mpoly_to_mpolyv(
+    nmod_mpolyv_t A,
+    const nmod_mpoly_t B,
+    const nmod_mpoly_t xalpha,
+    const nmod_mpoly_ctx_t ctx)
+{
+    nmod_mpoly_t Q, T;
+
+    nmod_mpoly_init(Q, ctx);
+    nmod_mpoly_init(T, ctx);
+
+    nmod_mpolyv_fit_length(A, 8, ctx);
+    nmod_mpoly_divrem(Q, A->coeffs + 0, B, xalpha, ctx);
+    A->length = 1;
+
+    while (!nmod_mpoly_is_zero(Q, ctx))
+    {
+        nmod_mpolyv_fit_length(A, A->length + 1, ctx);
+        nmod_mpoly_divrem(T, A->coeffs + A->length, Q, xalpha, ctx);
+        nmod_mpoly_swap(Q, T, ctx);
+        A->length++;
+    }
+
+    while (A->length > 0 && nmod_mpoly_is_zero(A->coeffs + A->length - 1, ctx))
+        A->length--;
+
+    nmod_mpoly_clear(Q, ctx);
+    nmod_mpoly_clear(T, ctx);
+}
+
+
+void nmod_mpoly_from_mpolyv(
+    nmod_mpoly_t A,
+    const nmod_mpolyv_t B,
+    const nmod_mpoly_t xalpha,
+    const nmod_mpoly_ctx_t ctx)
+{
+    slong i;
+    nmod_mpoly_t T;
+
+    nmod_mpoly_init(T, ctx);
+
+    nmod_mpoly_zero(A, ctx);
+    for (i = B->length - 1; i >= 0; i--)
+    {
+        nmod_mpoly_mul(T, A, xalpha, ctx);
+        nmod_mpoly_add(A, T, B->coeffs + i, ctx);
+    }
+
+    nmod_mpoly_clear(T, ctx);
+}

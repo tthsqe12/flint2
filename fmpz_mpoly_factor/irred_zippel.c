@@ -1220,7 +1220,7 @@ slong nmod_mpolyu_find_term(const nmod_mpolyu_t A, ulong e)
     sort A
 
     return
-        -1: singular vandermonde matrix encountered
+        -1: singular system encountered
         0:  inconsistent system encountered
         1:  success
 */
@@ -1361,14 +1361,14 @@ flint_printf("B: "); nmod_mpoly_print_pretty(B, NULL, ctx); flint_printf("\n");
         1: B was successfully updated with the lifted factors
 */
 int nmod_mpoly_hlift_zippel(
-    slong r,
+    slong m,
     nmod_mpoly_struct * B,
-    flint_rand_t state,
+    slong r,
     const mp_limb_t * alpha,
     const nmod_mpoly_t A,
     const slong * degs,
-    slong m,
-    const nmod_mpoly_ctx_t ctx)
+    const nmod_mpoly_ctx_t ctx,
+    flint_rand_t state)
 {
     int success;
     slong i;
@@ -1450,11 +1450,10 @@ next_zip_image:
         n_polyu_mod_eval_step(Beval + i, Beh + i, ctx->ffinfo->mod);
     }
 
-    success = n_polyu3_mod_hensel_lift(r, BBeval, Aeval, Beval,
+    success = n_polyu3_mod_hlift(r, BBeval, Aeval, Beval,
                                              alpha[m - 1], degs0, ctx->ffinfo);
     if (success < 1)
     {
-        FLINT_ASSERT(0 && "spurious failure");
         if (--zip_fails_remaining >= 0)
             goto choose_betas;
         success = 0;
@@ -1689,8 +1688,8 @@ flint_printf("initial B[%wd]: ", i); fmpz_mpoly_print_pretty(B + i, vars, ctx); 
 
     FLINT_ASSERT(r > 1);
 
-    nmod_mpoly_pfrac_init(I, r, n, Bp, alphap, ctxp);
-    deltas = I->deltas + n*I->l;
+    nmod_mpoly_pfrac_init(I, A->bits, r, n, Bp, alphap, ctxp);
+    deltas = I->deltas + n*I->r;
 
     fmpz_init(pk);
     fmpz_one(pk);
@@ -1730,7 +1729,7 @@ flint_printf("e: "); fmpz_mpoly_print_pretty(e, vars, ctx); flint_printf("\n");
         _fmpz_mpoly_modpk_taylor_coeff(pk, tk, ctxp, e, ctx);
 
 flint_printf("calling nmod disolve\n");
-        success = nmod_mpoly_pfrac(A->bits, n, r, tk, alphap, degs, I, ctxp);
+        success = nmod_mpoly_pfrac(n, tk, degs, I, ctxp);
         FLINT_ASSERT(success);
 
         for (i = 0; i < r; i++)
@@ -1910,10 +1909,9 @@ next_zip_image:
         n_bpoly_mod_eval_step(Beval + i, Beh + i, ctxp->ffinfo->mod);
 
     success = n_bpoly_mod_disolve(r, Ceval, Cdegs1, Teval, Beval,
-                                                       ctxp->ffinfo->mod);
-    if (success <= 0)
+                                                            ctxp->ffinfo->mod);
+    if (success < 1)
     {
-        FLINT_ASSERT(0 && "spurious failure");
         success = 0;
         goto cleanup;
     }
@@ -1923,7 +1921,6 @@ next_zip_image:
         success = n_polyu2_add_zip_must_match(Z + i, Ceval + i, cur_zip_image);
         if (!success)
         {
-            FLINT_ASSERT(0 && "spurious failure");
             success = 0;
             goto cleanup;
         }
@@ -1937,9 +1934,8 @@ next_zip_image:
     {
         success = _fmpz_mpoly_modpk_update_zip(pk, B + i, ctx,
                                                     Z + i, H + i, M + i, ctxp);
-        if (success <= 0)
+        if (success < 1)
         {
-            FLINT_ASSERT(0 && "spurious failure");
             success = 0;
             goto cleanup;
         }
@@ -2319,18 +2315,17 @@ next_zip_prime:
 
         if (k > 2)
         {
-            success = nmod_mpoly_hlift_zippel(r, tfacp->coeffs, state,
-                                    alphap, Aevalp->coeffs + k, degs, k, ctxp);
-            if (!success)
-                goto next_zip_prime;
+            success = nmod_mpoly_hlift_zippel(k, tfacp->coeffs, r, alphap,
+                                        Aevalp->coeffs + k, degs, ctxp, state);
         }
         else
         {
             success = nmod_mpoly_hlift(k, tfacp->coeffs, r, alphap,
                                                Aevalp->coeffs + k, degs, ctxp);
-            if (!success)
-                goto next_zip_prime;
         }
+
+        if (!success)
+            goto next_zip_prime;
 
         nmod_mpolyv_swap(tfacp, facp, ctxp);
     }

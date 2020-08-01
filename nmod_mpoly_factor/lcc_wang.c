@@ -18,7 +18,6 @@ int nmod_mpoly_evaluate_all_n_poly(
     const n_poly_struct * C,
     const nmod_mpoly_ctx_t ctx)
 {
-    int success;
     slong i, nvars = ctx->minfo->nvars;
     nmod_poly_t a;
     nmod_poly_struct * t1, ** t2;
@@ -33,14 +32,14 @@ int nmod_mpoly_evaluate_all_n_poly(
         t2[i] = t1 + i;
     }
 
-    success = nmod_mpoly_compose_nmod_poly(a, B, t2, ctx);
+    nmod_mpoly_compose_nmod_poly(a, B, t2, ctx);
 
     n_poly_mock(A, a);
 
     flint_free(t1);
     flint_free(t2);
 
-    return success;
+    return 1;
 }
 
 ulong n_poly_mod_remove(n_poly_t f, const n_poly_t p, nmod_t ctx)
@@ -165,6 +164,7 @@ cleanup:
         n_poly_clear(d + i);
     flint_free(d);
 
+    n_poly_clear(salpha + 0);
     flint_free(salpha);
 
     return success;

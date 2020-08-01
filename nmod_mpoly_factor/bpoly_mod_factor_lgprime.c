@@ -176,6 +176,30 @@ void n_bpoly_mod_divrem_mod_poly(
     n_poly_clear(Binv);
 }
 
+/*
+void n_bpoly_add_fq_nmod_poly_mul(
+    n_bpoly_t A,
+    const fq_nmod_poly_t B,
+    const n_poly_t mpow,
+    nmod_t mod)
+{
+    slong i;
+    n_poly_t t, mock;
+
+    n_poly_init(t);
+
+    FLINT_ASSERT(A->length > B->length);
+
+    for (i = 0; i < B->length; i++)
+    {
+        n_poly_mock(mock, B->coeffs + i);
+        n_poly_mod_mul(t, mock, mpow, mod);
+        n_poly_mod_add(A->coeffs + i, A->coeffs + i, t, mod);
+    }
+
+    n_poly_clear(t);
+}
+*/
 
 static int _zassenhaus(
     const zassenhaus_prune_t zas,
