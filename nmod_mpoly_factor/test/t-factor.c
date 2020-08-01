@@ -19,6 +19,7 @@ slong check_omega(slong lower, slong upper, const nmod_mpoly_t p, const nmod_mpo
     nmod_mpoly_t q;
     nmod_mpoly_factor_t g, g2;
     fmpz_t omega;
+timeit_t timer;
 
     flint_printf("checking %wd <= # <= %wd: length %wd in %wd vars\n",
                   lower, FLINT_MIN(9999, upper), p->length, ctx->minfo->nvars);
@@ -28,11 +29,18 @@ slong check_omega(slong lower, slong upper, const nmod_mpoly_t p, const nmod_mpo
     nmod_mpoly_factor_init(g2, ctx);
     nmod_mpoly_init(q, ctx);
 
+
+flint_printf("p: "); nmod_mpoly_print_pretty(p, NULL, ctx); flint_printf("\n");
+
+timeit_start(timer);
+
     if (!nmod_mpoly_factor(g, p, ctx))
     {
         flint_printf("FAIL:\ncheck factorization could be computed\n");
         flint_abort();        
     }
+timeit_stop(timer);
+flint_printf("factor time: %wd\n", timer->wall);
 
 /*
 flint_printf("p: "); nmod_mpoly_print_pretty(p, NULL, ctx); flint_printf("\n");
@@ -246,6 +254,8 @@ flint_printf("multiplying: "); nmod_mpoly_print_pretty(t, NULL, ctx); flint_prin
             nmod_mpoly_mul(a, a, t, ctx);
         }
 
+
+/*flint_printf("\n---------------------------------------------------\n");*/
 flint_printf("2:%wd ", i);
         total += check_omega(lower, WORD_MAX, a, ctx);
 

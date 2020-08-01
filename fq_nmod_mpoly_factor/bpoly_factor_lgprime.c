@@ -614,6 +614,11 @@ static void _hensel_lift_inv(
     }
 #endif
 
+    for (i = 0; i < b->length; i++)
+        fq_nmod_poly_divrem(tq, b->coeffs + i, b->coeffs + i, p0, ctx);
+    for (i = 0; i < a->length; i++)
+        fq_nmod_poly_divrem(tq, a->coeffs + i, a->coeffs + i, p0, ctx);
+
     fq_nmod_bpoly_mul(t1, G, a, ctx);
     fq_nmod_bpoly_mul(t2, H, b, ctx);
     fq_nmod_bpoly_add(c, t1, t2, ctx);
@@ -635,16 +640,12 @@ static void _hensel_lift_inv(
     fq_nmod_bpoly_divrem_mod_poly(q, r, t1, G, p1, ctx);
     for (i = 0; i < r->length; i++)
         fq_nmod_poly_mul(r->coeffs + i, r->coeffs + i, p0, ctx);
-    for (i = 0; i < b->length; i++)
-        fq_nmod_poly_divrem(tq, b->coeffs + i, b->coeffs + i, p0, ctx);
     fq_nmod_bpoly_add(t1, r, b, ctx);
 
     fq_nmod_bpoly_mul_mod_poly(t2, c, a, p1, ctx);
     fq_nmod_bpoly_divrem_mod_poly(q, r, t2, H, p1, ctx);
     for (i = 0; i < r->length; i++)
         fq_nmod_poly_mul(r->coeffs + i, r->coeffs + i, p0, ctx);
-    for (i = 0; i < a->length; i++)
-        fq_nmod_poly_divrem(tq, a->coeffs + i, a->coeffs + i, p0, ctx);
     fq_nmod_bpoly_add(t2, r, a, ctx);
 
     fq_nmod_bpoly_swap(t1, B, ctx);

@@ -460,11 +460,26 @@ static void _hensel_lift_inv(
     slong i, j;
     fq_nmod_bpoly_t c, t1, t2, q, r;
 
+/*
+flint_printf("lift_inv p0: %wd, p1: %wd\n", p0, p1);
+flint_printf("G: "); fq_nmod_bpoly_print_pretty(G, "X", "Y", ctx); flint_printf("\n");
+flint_printf("H: "); fq_nmod_bpoly_print_pretty(H, "X", "Y", ctx); flint_printf("\n");
+
+flint_printf("a: "); fq_nmod_bpoly_print_pretty(a, "X", "Y", ctx); flint_printf("\n");
+flint_printf("b: "); fq_nmod_bpoly_print_pretty(b, "X", "Y", ctx); flint_printf("\n");
+*/
+
+
     fq_nmod_bpoly_init(c, ctx);
     fq_nmod_bpoly_init(t1, ctx);
     fq_nmod_bpoly_init(t2, ctx);
     fq_nmod_bpoly_init(q, ctx);
     fq_nmod_bpoly_init(r, ctx);
+
+    for (i = 0; i < b->length; i++)
+        fq_nmod_poly_truncate(b->coeffs + i, p0, ctx);
+    for (i = 0; i < a->length; i++)
+        fq_nmod_poly_truncate(a->coeffs + i, p0, ctx);
 
     fq_nmod_bpoly_mul(t1, G, a, ctx);
     fq_nmod_bpoly_mul(t2, H, b, ctx);
@@ -496,22 +511,47 @@ static void _hensel_lift_inv(
 
     fq_nmod_bpoly_mul_series(t1, c, b, p1, ctx);
     fq_nmod_bpoly_divrem_series(q, r, t1, G, p1, ctx);
+/*
+flint_printf("before shift r: ");
+fq_nmod_bpoly_print_pretty(r, "X", "Y", ctx);
+flint_printf("\n");
+*/
+
     for (i = 0; i < r->length; i++)
         fq_nmod_poly_shift_left(r->coeffs + i, r->coeffs + i, p0, ctx);
-    for (i = 0; i < b->length; i++)
-        fq_nmod_poly_truncate(b->coeffs + i, p0, ctx);
+/*
+flint_printf("after shift r: ");
+fq_nmod_bpoly_print_pretty(r, "X", "Y", ctx);
+flint_printf("\n");
+*/
+
     fq_nmod_bpoly_add(t1, r, b, ctx);
 
     fq_nmod_bpoly_mul_series(t2, c, a, p1, ctx);
     fq_nmod_bpoly_divrem_series(q, r, t2, H, p1, ctx);
+/*
+flint_printf("before shift r: ");
+fq_nmod_bpoly_print_pretty(r, "X", "Y", ctx);
+flint_printf("\n");
+*/
+
     for (i = 0; i < r->length; i++)
         fq_nmod_poly_shift_left(r->coeffs + i, r->coeffs + i, p0, ctx);
-    for (i = 0; i < a->length; i++)
-        fq_nmod_poly_truncate(a->coeffs + i, p0, ctx);
+/*
+flint_printf("after shift r: ");
+fq_nmod_bpoly_print_pretty(r, "X", "Y", ctx);
+flint_printf("\n");
+*/
+
+
     fq_nmod_bpoly_add(t2, r, a, ctx);
 
     fq_nmod_bpoly_swap(t1, B, ctx);
     fq_nmod_bpoly_swap(t2, A, ctx);
+/*
+flint_printf("A: "); fq_nmod_bpoly_print_pretty(A, "X", "Y", ctx); flint_printf("\n");
+flint_printf("B: "); fq_nmod_bpoly_print_pretty(B, "X", "Y", ctx); flint_printf("\n");
+*/
 
 #if WANT_ASSERT
     fq_nmod_bpoly_mul(t1, G, A, ctx);
@@ -524,6 +564,11 @@ static void _hensel_lift_inv(
     fq_nmod_poly_add_si(c->coeffs + 0, c->coeffs + 0, 1, ctx);
     fq_nmod_bpoly_normalise(c, ctx);
 
+/*
+flint_printf("p0: %wd, p1: %wd, c: ", p0, p1);
+fq_nmod_bpoly_print_pretty(c, "X", "Y", ctx);
+flint_printf("\n");
+*/
     {
         fq_nmod_t cc;
         fq_nmod_init(cc, ctx);

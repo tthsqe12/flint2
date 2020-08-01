@@ -261,7 +261,7 @@ int fq_nmod_zip_find_coeffs_new2(
         for (j = 0; j < mlength; j++)
         {
             fq_nmod_mul(temp + j, temp + j, monomials + j, ctx);
-            fq_nmod_mul(p0, coeffs + j, master + j, ctx);
+            fq_nmod_mul(p0, coeffs + j, temp + j, ctx);
             fq_nmod_add(V0, V0, p0, ctx);
         }
         fq_nmod_set(V, V0, ctx);
@@ -1394,8 +1394,22 @@ int fq_nmod_mpoly_hlift_zippel(
     FLINT_ASSERT(m > 2);
     FLINT_ASSERT(r > 1);
     FLINT_ASSERT(bits <= FLINT_BITS);
-
+/*
 flint_printf("fq_nmod_mpoly_hlift_zippel called m = %wd\n", m);
+
+flint_printf("alpha[m-1]: "); fq_nmod_print_pretty(alpha + m - 1, ctx->fqctx); flint_printf("\n");
+
+for (i = 0; i < r; i++)
+{
+flint_printf("B[%wd]: ", i);
+fq_nmod_mpoly_print_pretty(B + i, NULL, ctx);
+flint_printf("\n");
+}
+
+flint_printf("A: ", i);
+fq_nmod_mpoly_print_pretty(A, NULL, ctx);
+flint_printf("\n");
+*/
 
 #if WANT_ASSERT
     {
@@ -1455,6 +1469,14 @@ choose_betas:
         fq_nmod_rand(beta + i, state, ctx->fqctx);
         if (fq_nmod_is_zero(beta + i, ctx->fqctx))
             fq_nmod_one(beta + i, ctx->fqctx);
+/*
+if (i >= 2 && i < m)
+{
+flint_printf("beta[%wd]: ", i);
+fq_nmod_print_pretty(beta + i, ctx->fqctx);
+flint_printf("\n");
+}
+*/
     }
 
     fq_nmod_mpolyu_set_eval_helper(Aeh, Au, beta, ctx);
@@ -1474,10 +1496,21 @@ choose_betas:
 next_zip_image:
 
     fq_nmod_polyu_eval_step(Aeval, Aeh, ctx->fqctx);
+/*
+flint_printf("Aeval: ");
+fq_nmod_polyu3_print_pretty(Aeval, "Y", "X", "Z", ctx->fqctx);
+flint_printf("\n");
+*/
     for (i = 0; i < r; i++)
     {
         fq_nmod_polyu_eval_step(Beval + i, Beh + i, ctx->fqctx);
+/*
+flint_printf("Beval[%wd]: ", i);
+fq_nmod_polyu3_print_pretty(Beval + i, "Y", "X", "Z", ctx->fqctx);
+flint_printf("\n");
+*/
     }
+
 
     success = fq_nmod_polyu3_hlift(r, BBeval, Aeval, Beval,
                                              alpha + m - 1, degs0, ctx->fqctx);
@@ -1485,6 +1518,9 @@ next_zip_image:
     {
         if (--zip_fails_remaining >= 0)
             goto choose_betas;
+
+flint_printf("fq_nmod_mpoly_hlift_zippel fail 1\n");
+
         success = 0;
         goto cleanup;
     }
@@ -1504,7 +1540,7 @@ next_zip_image:
         success = fq_nmod_mpoly_from_zip(B + i, Z + i, H + i, Bdegs[i], m, ctx);
         if (success < 1)
         {
-            FLINT_ASSERT(0 && "spurious failure");
+flint_printf("fq_nmod_mpoly_hlift_zippel fail 2\n");
             success = 0;
             goto cleanup;
         }
@@ -1577,16 +1613,21 @@ int fq_nmod_mpoly_factor_irred_smprime_zippel(
     fq_nmod_tpoly_t Abfp;
     fq_nmod_mpoly_t m, mpow;
     fq_nmod_mpolyv_t new_lcs, lc_divs;
-
+/*
 flint_printf("fq_nmod_mpoly_factor_irred_smprime_zippel called\n");
 flint_printf("     A: "); fq_nmod_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
 flint_printf("lcAfac: "); fq_nmod_mpoly_factor_print_pretty(lcAfac, NULL, ctx); flint_printf("\n");
 flint_printf("   lcA: "); fq_nmod_mpoly_print_pretty(lcA, NULL, ctx); flint_printf("\n");
-
+flint_printf("ctx:\n");
+fq_nmod_ctx_print(ctx->fqctx);
+*/
     FLINT_ASSERT(n > 1);
     FLINT_ASSERT(A->length > 1);
     FLINT_ASSERT(fq_nmod_is_one(A->coeffs + 0, ctx->fqctx));
     FLINT_ASSERT(A->bits <= FLINT_BITS);
+
+    if (ctx->fqctx->modulus->length < n_clog(A->length, ctx->fqctx->modulus->mod.n))
+        return 0;
 
     fq_nmod_mpoly_init(Acopy, ctx);
     fq_nmod_mpoly_init(m, ctx);
@@ -1628,7 +1669,14 @@ next_alpha:
 	}
 
     for (i = 0; i < n; i++)
+    {
         fq_nmod_rand(alpha + i, state, ctx->fqctx);
+/*
+flint_printf("alpha[%wd]: ", i);
+fq_nmod_print_pretty(alpha + i, ctx->fqctx);
+flint_printf("\n");
+*/
+    }
 
     /* ensure degrees do not drop under evaluation */
 	for (i = n - 1; i >= 0; i--)
@@ -1653,7 +1701,7 @@ next_alphabetas:
 
     if (--alphabetas_tries_remaining < 0)
     {
-        if (++alphabetas_length > 10)
+        if (++alphabetas_length > 5)
         {
             success = 0;
             goto cleanup;
@@ -1721,7 +1769,11 @@ fq_nmod_mpolyv_print_pretty(lc_divs, NULL, ctx);
         success = fq_nmod_mpoly_divides(m, m, lc_divs->coeffs + i, ctx);
         FLINT_ASSERT(success);
     }
-
+/*
+flint_printf("m: ");
+fq_nmod_mpoly_print_pretty(m, NULL, ctx);
+flint_printf("\n");
+*/
     fq_nmod_mpoly_pow_ui(mpow, m, r - 1, ctx);
     if (fq_nmod_mpoly_is_one(mpow, ctx))
     {
@@ -1792,8 +1844,14 @@ fq_nmod_mpolyv_print_pretty(lc_divs, NULL, ctx);
 
         if (k > 2)
         {
+/*
+flint_printf("starting zippel lift k = %wd\n", k);
+*/
             success = fq_nmod_mpoly_hlift_zippel(k, tfac->coeffs, r, alpha,
                                   k < n ? Aevals + k : newA, degs, ctx, state);
+/*
+flint_printf("finished zippel lift k = %wd, success = %d\n", k, success);
+*/
         }
         else
         {

@@ -159,6 +159,7 @@ flint_printf("A: "); n_polyu3_print_pretty(A, "Y", "X", "Z"); flint_printf("\n")
     e2   = extract_exp(A->exps[i], 0, 3);
 
     fq_nmod_pow_ui(t, alpha, e2, ctx);
+    fq_nmod_mul(t, t, A->coeffs + i, ctx);
 
     for (i = 1; i < A->length; i++)
     {
@@ -182,6 +183,7 @@ flint_printf("A: "); n_polyu3_print_pretty(A, "Y", "X", "Z"); flint_printf("\n")
         cur1 = e1;
 
         fq_nmod_pow_ui(p, alpha, e2, ctx);
+        fq_nmod_mul(p, p, A->coeffs + i, ctx);
         fq_nmod_add(t, t, p, ctx);
     }
 
@@ -233,6 +235,7 @@ flint_printf("B: "); n_bpoly_print_pretty(B, "Y", "X"); flint_printf("\n");
             fq_nmod_polyun_fit_length(T, Ti + 1, ctx);
             T->terms[Ti].exp = pack_exp3(Ai, j, 0);
             fq_nmod_poly_set_fq_nmod(T->terms[Ti].coeff, Ac->coeffs + j, ctx);
+            Ti++;
             lastlength = 1;
         }
     }
@@ -416,7 +419,7 @@ int fq_nmod_polyu3_hlift(
     slong AdegY, AdegX, AdegZ;
     slong bad_primes_left;
 
-
+/*
 flint_printf("+++++++++++++++++++++++\n");
 flint_printf("fq_nmod_polyu3_hlift called: degree_inner = %wd\n", degree_inner);
 fq_nmod_ctx_print(ctx);
@@ -429,7 +432,7 @@ for (i = 0; i < r; i++)
 {
 flint_printf("B[%wd]: ", i); fq_nmod_polyu3_print_pretty(B + i, "Y", "X", "Z", ctx); flint_printf("\n");
 }
-
+*/
 
 /*
     if (r < 3)
@@ -461,7 +464,9 @@ flint_printf("B[%wd]: ", i); fq_nmod_polyu3_print_pretty(B + i, "Y", "X", "Z", c
         success = -1;
         goto cleanup;
     }
-
+/*
+flint_printf("AdegZ: %wd\n", AdegZ);
+*/
     fq_nmod_poly_one(modulus, ctx);
     fq_nmod_poly_gen(tempmod, ctx);
     fq_nmod_poly_neg(tempmod, tempmod, ctx);
@@ -474,39 +479,46 @@ choose_prime:
 
     if (fq_nmod_next(alpha, ctx) == 0)
     {
+flint_printf("fq_nmod_polyu3_hlift fail 1\n");
         success = -1;
         goto cleanup;
     }
-
+/*
 flint_printf("------ alpha: "); fq_nmod_print_pretty(alpha, ctx); flint_printf(" -------\n");
-
+*/
 
     fq_nmod_polyu3_interp_reduce_bpoly(Ap, A, alpha, ctx);
-/*flint_printf(" Ap: "); n_bpoly_print_pretty(Ap, "y", "x"); flint_printf("\n");*/
-
+/*
+flint_printf("Ap: ");
+fq_nmod_bpoly_print_pretty(Ap, "Y", "X", ctx);
+flint_printf("\n");
+*/
     for (i = 0; i < r; i++)
     {
         fq_nmod_polyu3_interp_reduce_bpoly(Bp + i, B + i, alpha, ctx);
 /*
 flint_printf("Bp[%wd]: ", i);
-n_bpoly_print_pretty(Bp + i, "Y", "X");
+fq_nmod_bpoly_print_pretty(Bp + i, "Y", "X", ctx);
 flint_printf("\n");
-fflush(stdout);
 */
     }
-
+/*
 flint_printf("calling fq_nmod_bpoly_hlift r = %wd\n", r);
+*/
     if (r < 3)
         success = fq_nmod_bpoly_hlift2(Ap, Bp + 0, Bp + 1, beta, degree_inner, ctx);
     else
         success = fq_nmod_bpoly_hlift(r, Ap, Bp, beta, degree_inner, ctx);
-
+/*
 flint_printf("returned from fq_nmod_bpoly_hlift success = %d\n", success);
-
+*/
     if (success < 1)
     {
         if (success == 0 || --bad_primes_left < 0)
+        {
+flint_printf("fq_nmod_polyu3_hlift fail 2\n");
             goto cleanup;
+        }
         goto choose_prime;
     }
 
@@ -527,6 +539,11 @@ flint_printf("\n");
         {
             fq_nmod_polyu3n_interp_crt_sm_bpoly(BBdegZ + i, BB + i, T,
                                              Bp + i, modulus, alpha, ctx);
+/*
+flint_printf("crt deg = %wd, BB[%wd]: ", BBdegZ[i], i);
+fq_nmod_polyu3n_print_pretty(BB + i, "Y", "X", "?", "Z", ctx);
+flint_printf("\n");
+*/
         }
     }
     else
@@ -535,6 +552,11 @@ flint_printf("\n");
         {
             fq_nmod_polyu3n_interp_lift_sm_bpoly(BBdegZ + i, BB + i,
                                                        Bp + i, alpha, ctx);
+/*
+flint_printf("lift deg = %wd, BB[%wd]: ", BBdegZ[i], i);
+fq_nmod_polyu3n_print_pretty(BB + i, "Y", "X", "?", "Z", ctx);
+flint_printf("\n");
+*/
         }
     }
 
@@ -555,6 +577,7 @@ flint_printf("\n");
 
     if (j > AdegZ)
     {
+flint_printf("fq_nmod_polyu3_hlift fail 3\n");
         success = 0;
         goto cleanup;
     }
@@ -619,8 +642,6 @@ fflush(stdout);
 
     fq_nmod_clear(alpha, ctx);
     fq_nmod_clear(c, ctx);
-
-FLINT_ASSERT(0);
 
     return success;
 }

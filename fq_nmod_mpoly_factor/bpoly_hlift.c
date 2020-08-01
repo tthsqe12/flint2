@@ -32,12 +32,13 @@ int fq_nmod_bpoly_hlift2(
     fq_nmod_poly_t c, s, t, u, v, g;
     fq_nmod_t malpha;
 
+/*
 flint_printf("fq_nmod_bpoly_hlift2 called: degree_inner = %wd\n", degree_inner);
 flint_printf("alpha: "); fq_nmod_print_pretty(alpha, ctx); flint_printf("\n");
 printf(" A: "); fq_nmod_bpoly_print_pretty(A, "Y", "X", ctx); flint_printf("\n");
 printf("B0: "); fq_nmod_bpoly_print_pretty(B0, "Y", "X", ctx); flint_printf("\n");
 printf("B1: "); fq_nmod_bpoly_print_pretty(B1, "Y", "X", ctx); flint_printf("\n");
-
+*/
     FLINT_ASSERT(fq_nmod_bpoly_is_canonical(A, ctx));
     FLINT_ASSERT(fq_nmod_bpoly_is_canonical(B0, ctx));
     FLINT_ASSERT(fq_nmod_bpoly_is_canonical(B1, ctx));
@@ -55,17 +56,6 @@ printf("B1: "); fq_nmod_bpoly_print_pretty(B1, "Y", "X", ctx); flint_printf("\n"
     fq_nmod_bpoly_taylor_shift_var0(A, alpha, ctx);
     fq_nmod_bpoly_taylor_shift_var0(B0, alpha, ctx);
     fq_nmod_bpoly_taylor_shift_var0(B1, alpha, ctx);
-/*
-flint_printf("shift A: "); n_bpoly_print_pretty(A, "Y", "X"); flint_printf("\n");
-flint_printf("shift B0: "); n_bpoly_print_pretty(B0, "Y", "X"); flint_printf("\n");
-flint_printf("shift B1: "); n_bpoly_print_pretty(B1, "Y", "X"); flint_printf("\n");
-*/
-    if (A->length <= 0 || B0->length <= 0 || B1->length <= 0)
-    {
-flint_printf("fail 1\n");
-        success = -1;
-        goto cleanup;
-    }
 
 #if WANT_ASSERT
     {
@@ -79,7 +69,7 @@ flint_printf("fail 1\n");
 
     if (fq_nmod_poly_degree(A->coeffs + 0, ctx) != degree_inner)
     {
-flint_printf("fail 2\n");
+flint_printf("fq_nmod_bpoly_hlift2 fail 1\n");
         success = -1;
         goto cleanup;
     }
@@ -90,7 +80,7 @@ flint_printf("fail 2\n");
     fq_nmod_poly_xgcd(g, s, t, B1->coeffs + 0, B0->coeffs + 0, ctx);
     if (!fq_nmod_poly_is_one(g, ctx))
     {
-flint_printf("fail 3\n");
+flint_printf("fq_nmod_bpoly_hlift2 fail 2\n");
         success = -2;
         goto cleanup;
     }
@@ -135,7 +125,7 @@ flint_printf("fail 3\n");
 
         if (B0->length - 1 + B1->length - 1 > A->length - 1)
         {
-flint_printf("fail 4\n");
+flint_printf("fq_nmod_bpoly_hlift2 fail 3\n");
             success = 0;
             goto cleanup;
         }
@@ -263,7 +253,7 @@ flint_printf("\n");
 
     if (fq_nmod_poly_degree(A->coeffs + 0, ctx) != degree_inner)
     {
-flint_printf("fail1");
+flint_printf("fq_nmod_bpoly_hlift fail 1\n");
         success = -1;
         goto cleanup;
     }
@@ -283,7 +273,7 @@ flint_printf("fail1");
         fq_nmod_poly_xgcd(g1, s + i, g2, t, B[i].coeffs + 0, ctx);
         if (!fq_nmod_poly_is_one(g1, ctx))
         {
-flint_printf("fail2");
+flint_printf("fq_nmod_bpoly_hlift fail 2\n");
             success = -1;
             goto cleanup;
         }
@@ -353,6 +343,7 @@ flint_printf("fail2");
 
         if (tdeg >= A->length)
         {
+flint_printf("fq_nmod_bpoly_hlift fail 3\n");
             success = 0;
             goto cleanup;
         }

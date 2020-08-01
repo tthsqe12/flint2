@@ -551,6 +551,11 @@ static void _hensel_lift_inv(
     n_bpoly_init(q);
     n_bpoly_init(r);
 
+    for (i = 0; i < a->length; i++)
+        n_poly_truncate(a->coeffs + i, p0);
+    for (i = 0; i < b->length; i++)
+        n_poly_truncate(b->coeffs + i, p0);
+
     n_bpoly_mod_mul(t1, G, a, ctx);
     n_bpoly_mod_mul(t2, H, b, ctx);
     n_bpoly_mod_add(c, t1, t2, ctx);
@@ -573,16 +578,12 @@ static void _hensel_lift_inv(
     n_bpoly_mod_divrem_series(q, r, t1, G, p1, ctx);
     for (i = 0; i < r->length; i++)
         n_poly_shift_left(r->coeffs + i, r->coeffs + i, p0);
-    for (i = 0; i < b->length; i++)
-        n_poly_truncate(b->coeffs + i, p0);
     n_bpoly_mod_add(t1, r, b, ctx);
 
     n_bpoly_mod_mul_series(t2, c, a, p1, ctx);
     n_bpoly_mod_divrem_series(q, r, t2, H, p1, ctx);
     for (i = 0; i < r->length; i++)
         n_poly_shift_left(r->coeffs + i, r->coeffs + i, p0);
-    for (i = 0; i < a->length; i++)
-        n_poly_truncate(a->coeffs + i, p0);
     n_bpoly_mod_add(t2, r, a, ctx);
 
     n_bpoly_swap(t1, B);
