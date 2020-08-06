@@ -12,91 +12,6 @@
 #include "nmod_mpoly_factor.h"
 
 
-void n_bpoly_clear(n_bpoly_t A)
-{
-    slong i;
-    if (A->alloc > 0)
-    {
-        FLINT_ASSERT(A->coeffs != NULL);
-        for (i = 0; i < A->alloc; i++)
-            n_poly_clear(A->coeffs + i);
-        flint_free(A->coeffs);
-    }
-    else
-    {
-        FLINT_ASSERT(A->coeffs == NULL);
-    }
-}
-
-
-void n_bpoly_realloc(n_bpoly_t A, slong len)
-{
-    slong i;
-    slong old_alloc = A->alloc;
-    slong new_alloc = FLINT_MAX(len, old_alloc + 1 + old_alloc/2);
-
-    FLINT_ASSERT(A->alloc >= 0);
-
-    if (len <= A->alloc)
-        return;
-
-    if (A->alloc > 0)
-    {
-        A->coeffs = (n_poly_struct *) flint_realloc(A->coeffs,
-                                       new_alloc * sizeof(n_poly_struct));
-    }
-    else
-    {
-        FLINT_ASSERT(A->coeffs == NULL);
-        A->coeffs = (n_poly_struct *) flint_malloc(
-                                       new_alloc * sizeof(n_poly_struct));
-    }
-
-    for (i = old_alloc; i < new_alloc; i++)
-        n_poly_init(A->coeffs + i);
-
-    A->alloc = len;
-}
-
-
-void n_bpoly_print_pretty(
-    const n_bpoly_t A,
-    const char * xvar,
-    const char * yvar)
-{
-    slong i;
-    int first;
-
-    first = 1;
-    for (i = A->length - 1; i >= 0; i--)
-    {
-        if (n_poly_is_zero(A->coeffs + i))
-            continue;
-
-        if (!first)
-            flint_printf(" + ");
-
-        first = 0;
-
-        flint_printf("(");
-        n_poly_print_pretty(A->coeffs + i, yvar);
-        flint_printf(")*%s^%wd", xvar, i);
-    }
-
-    if (first)
-        flint_printf("0");
-}
-
-
-slong n_bpoly_degree1(const n_bpoly_t A)
-{
-    slong i, len = 0;
-    for (i = 0; i < A->length; i++)
-        len = FLINT_MAX(len, A->coeffs[i].length);
-    return len - 1;    
-}
-
-
 int n_bpoly_mod_is_canonical(const n_bpoly_t A, nmod_t mod)
 {
     slong i;
@@ -113,87 +28,96 @@ int n_bpoly_mod_is_canonical(const n_bpoly_t A, nmod_t mod)
     return !n_poly_is_zero(A->coeffs + A->length - 1);
 }
 
-
-int n_bpoly_equal(const n_bpoly_t A, const n_bpoly_t B)
+void nmod_mpoly_get_bpoly(
+    n_bpoly_t A,
+    const nmod_mpoly_t B,
+    slong varx,
+    slong vary,
+    const nmod_mpoly_ctx_t ctx)
 {
-    slong i;
+    slong j;
+    slong NB;
+    ulong Bexpx, Bexpy;
+    slong Boffx, Bshiftx, Boffy, Bshifty;
+    ulong mask;
 
-    if (A->length != B->length)
-        return 0;
+    FLINT_ASSERT(B->bits <= FLINT_BITS);
+    NB = mpoly_words_per_exp_sp(B->bits, ctx->minfo);
 
-    for (i = 0; i < A->length; i++)
+    mpoly_gen_offset_shift_sp(&Boffx, &Bshiftx, varx, B->bits, ctx->minfo);
+    mpoly_gen_offset_shift_sp(&Boffy, &Bshifty, vary, B->bits, ctx->minfo);
+    mask = (-UWORD(1)) >> (FLINT_BITS - B->bits);
+
+    n_bpoly_zero(A);
+    for (j = 0; j < B->length; j++)
     {
-        if (!n_poly_equal(A->coeffs + i, B->coeffs + i))
-            return 0;
+        Bexpx = ((B->exps + NB*j)[Boffx] >> Bshiftx) & mask;
+        Bexpy = ((B->exps + NB*j)[Boffy] >> Bshifty) & mask;
+        n_bpoly_set_coeff(A, Bexpx, Bexpy, B->coeffs[j]);
     }
-
-    return 1;
 }
 
 
-void _n_bpoly_set(n_bpoly_t A, const n_bpoly_t B)
+void nmod_mpoly_set_bpoly(
+    nmod_mpoly_t A,
+    flint_bitcnt_t Abits,
+    const n_bpoly_t B,
+    slong varx,
+    slong vary,
+    const nmod_mpoly_ctx_t ctx)
 {
-    slong i;
+    slong n = ctx->minfo->nvars;
+    slong i, j;
+    slong NA;
+    slong Alen;
+    mp_limb_t * Acoeff;
+    ulong * Aexp;
+    slong Aalloc;
+    ulong * Aexps;
+    TMP_INIT;
 
-    n_bpoly_fit_length(A, B->length);
-    A->length = B->length;
+    FLINT_ASSERT(B->length > 0);
+    FLINT_ASSERT(Abits <= FLINT_BITS);
+    TMP_START;
 
+    Aexps = (ulong *) TMP_ALLOC(n*sizeof(ulong));
+    for (i = 0; i < n; i++)
+        Aexps[i] = 0;
+
+    NA = mpoly_words_per_exp(Abits, ctx->minfo);
+    nmod_mpoly_fit_bits(A, Abits, ctx);
+    A->bits = Abits;
+
+    Acoeff = A->coeffs;
+    Aexp = A->exps;
+    Aalloc = A->alloc;
+    Alen = 0;
     for (i = 0; i < B->length; i++)
-        n_poly_set(A->coeffs + i, B->coeffs + i);
-}
-
-void n_bpoly_set_coeff_nonzero(n_bpoly_t A, slong xi, slong yi, mp_limb_t c)
-{
-    slong i;
-
-    FLINT_ASSERT(c != 0);
-
-    if (xi >= A->length)
     {
-        n_bpoly_fit_length(A, xi + 1);
-        for (i = A->length; i <= xi; i++)
-            n_poly_zero(A->coeffs + i);
-        A->length = xi + 1;
+        n_poly_struct * Bc = B->coeffs + i;
+        _nmod_mpoly_fit_length(&Acoeff, &Aexp, &Aalloc, Alen + Bc->length, NA);
+
+        for (j = 0; j < Bc->length; j++)
+        {
+            if (0 == Bc->coeffs[j])
+                continue;
+
+            Aexps[varx] = i;
+            Aexps[vary] = j;
+            Acoeff[Alen] = Bc->coeffs[j];
+            mpoly_set_monomial_ui(Aexp + NA*Alen, Aexps, Abits, ctx->minfo);
+            Alen++;
+        }
     }
+    A->coeffs = Acoeff;
+    A->exps = Aexp;
+    A->alloc = Aalloc;
+    A->length = Alen;
 
-    n_poly_set_coeff_nonzero(A->coeffs + xi, yi, c);
-    FLINT_ASSERT(!n_poly_is_zero(A->coeffs + A->length - 1));
+    TMP_END;
+
+    nmod_mpoly_sort_terms(A, ctx);
 }
-
-void n_bpoly_set_coeff(n_bpoly_t A, slong xi, slong yi, mp_limb_t c)
-{
-    slong i;
-
-    if (xi >= A->length)
-    {
-        n_bpoly_fit_length(A, xi + 1);
-        for (i = A->length; i <= xi; i++)
-            n_poly_zero(A->coeffs + i);
-        A->length = xi + 1;
-    }
-
-    n_poly_set_coeff(A->coeffs + xi, yi, c);
-    while (A->length > 0 && n_poly_is_zero(A->coeffs + A->length - 1))
-        A->length--;
-}
-
-void n_bpoly_set_poly_var1(n_bpoly_t A, const n_poly_t B)
-{
-    n_bpoly_fit_length(A, 1);
-	n_poly_set(A->coeffs + 0, B);
-	A->length = !n_poly_is_zero(A->coeffs + 0);
-}
-
-
-void n_bpoly_set_poly_var0(n_bpoly_t A, const n_poly_t B)
-{
-    slong i;
-    n_bpoly_fit_length(A, B->length);
-    for (i = 0; i < B->length; i++)
-        n_poly_set_ui(A->coeffs + i, B->coeffs[i]);
-    A->length = B->length;
-}
-
 
 void n_bpoly_mod_taylor_shift_var1(n_bpoly_t A, const n_bpoly_t B,
                                                       mp_limb_t c, nmod_t ctx)
@@ -205,40 +129,6 @@ void n_bpoly_mod_taylor_shift_var1(n_bpoly_t A, const n_bpoly_t B,
     for (i = A->length - 1; i >= 0; i--)
         n_poly_mod_taylor_shift(A->coeffs + i, c, ctx);
 }
-
-void n_bpoly_mod_taylor_shift_var0(n_bpoly_t A, mp_limb_t c, nmod_t mod)
-{
-    slong n, i, j;
-    n_poly_t t;
-
-    FLINT_ASSERT(c < mod.n);
-
-    if (c == 0)
-        return;
-
-    n_poly_init(t);
-    n = A->length;
-
-    for (i = n - 2; i >= 0; i--)
-    {
-        for (j = i; j < n - 1; j++)
-        {
-            _n_poly_mod_scalar_mul_nmod(t, A->coeffs + j + 1, c, mod);
-            n_poly_mod_add(A->coeffs + j, A->coeffs + j, t, mod);
-        }
-    }
-
-    n_poly_clear(t);
-}
-
-
-void n_bpoly_one(n_bpoly_t A)
-{
-    n_bpoly_fit_length(A, 1);
-    A->length = 1;
-    n_poly_one(A->coeffs + 0);
-}
-
 
 void n_bpoly_mod_sub(
     n_bpoly_t A,
@@ -587,95 +477,29 @@ cleanup:
     return divides;
 }
 
-
-void nmod_mpoly_get_bpoly(
-    n_bpoly_t A,
-    const nmod_mpoly_t B,
-    slong varx,
-    slong vary,
-    const nmod_mpoly_ctx_t ctx)
+void n_bpoly_mod_taylor_shift_var0(n_bpoly_t A, mp_limb_t c, nmod_t mod)
 {
-    slong j;
-    slong NB;
-    ulong Bexpx, Bexpy;
-    slong Boffx, Bshiftx, Boffy, Bshifty;
-    ulong mask;
+    slong n, i, j;
+    n_poly_t t;
 
-    FLINT_ASSERT(B->bits <= FLINT_BITS);
-    NB = mpoly_words_per_exp_sp(B->bits, ctx->minfo);
+    FLINT_ASSERT(c < mod.n);
 
-    mpoly_gen_offset_shift_sp(&Boffx, &Bshiftx, varx, B->bits, ctx->minfo);
-    mpoly_gen_offset_shift_sp(&Boffy, &Bshifty, vary, B->bits, ctx->minfo);
-    mask = (-UWORD(1)) >> (FLINT_BITS - B->bits);
+    if (c == 0)
+        return;
 
-    n_bpoly_zero(A);
-    for (j = 0; j < B->length; j++)
+    n_poly_init(t);
+    n = A->length;
+
+    for (i = n - 2; i >= 0; i--)
     {
-        Bexpx = ((B->exps + NB*j)[Boffx] >> Bshiftx) & mask;
-        Bexpy = ((B->exps + NB*j)[Boffy] >> Bshifty) & mask;
-        n_bpoly_set_coeff(A, Bexpx, Bexpy, B->coeffs[j]);
-    }
-}
-
-
-void nmod_mpoly_set_bpoly(
-    nmod_mpoly_t A,
-    flint_bitcnt_t Abits,
-    const n_bpoly_t B,
-    slong varx,
-    slong vary,
-    const nmod_mpoly_ctx_t ctx)
-{
-    slong n = ctx->minfo->nvars;
-    slong i, j;
-    slong NA;
-    slong Alen;
-    mp_limb_t * Acoeff;
-    ulong * Aexp;
-    slong Aalloc;
-    ulong * Aexps;
-    TMP_INIT;
-
-    FLINT_ASSERT(B->length > 0);
-    FLINT_ASSERT(Abits <= FLINT_BITS);
-    TMP_START;
-
-    Aexps = (ulong *) TMP_ALLOC(n*sizeof(ulong));
-    for (i = 0; i < n; i++)
-        Aexps[i] = 0;
-
-    NA = mpoly_words_per_exp(Abits, ctx->minfo);
-    nmod_mpoly_fit_bits(A, Abits, ctx);
-    A->bits = Abits;
-
-    Acoeff = A->coeffs;
-    Aexp = A->exps;
-    Aalloc = A->alloc;
-    Alen = 0;
-    for (i = 0; i < B->length; i++)
-    {
-        n_poly_struct * Bc = B->coeffs + i;
-        _nmod_mpoly_fit_length(&Acoeff, &Aexp, &Aalloc, Alen + Bc->length, NA);
-
-        for (j = 0; j < Bc->length; j++)
+        for (j = i; j < n - 1; j++)
         {
-            if (0 == Bc->coeffs[j])
-                continue;
-
-            Aexps[varx] = i;
-            Aexps[vary] = j;
-            Acoeff[Alen] = Bc->coeffs[j];
-            mpoly_set_monomial_ui(Aexp + NA*Alen, Aexps, Abits, ctx->minfo);
-            Alen++;
+            _n_poly_mod_scalar_mul_nmod(t, A->coeffs + j + 1, c, mod);
+            n_poly_mod_add(A->coeffs + j, A->coeffs + j, t, mod);
         }
     }
-    A->coeffs = Acoeff;
-    A->exps = Aexp;
-    A->alloc = Aalloc;
-    A->length = Alen;
 
-    TMP_END;
-
-    nmod_mpoly_sort_terms(A, ctx);
+    n_poly_clear(t);
 }
+
 

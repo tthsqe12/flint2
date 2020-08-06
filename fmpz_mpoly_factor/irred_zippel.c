@@ -980,20 +980,23 @@ static mp_limb_t n_poly_mod_eval_step(n_poly_t A, nmod_t mod)
 void n_polyu_mod_eval_step(n_polyu_t E, n_polyun_t A, nmod_t mod)
 {
     slong Ai, Ei;
-    n_polyu_term_struct * Eterms;
+    ulong * Eexps;
+    mp_limb_t * Ecoeffs;
     n_polyun_term_struct * Aterms;
+    slong Alen = A->length;
 
-    n_polyu_fit_length(E, A->length);
+    n_polyu_fit_length(E, Alen);
 
-    Eterms = E->terms;
+    Eexps = E->exps;
+    Ecoeffs = E->coeffs;
     Aterms = A->terms;
     Ei = 0;
-    for (Ai = 0; Ai < A->length; Ai++)
+    for (Ai = 0; Ai < Alen; Ai++)
     {
         FLINT_ASSERT(Ei < E->alloc);
-        Eterms[Ei].exp = Aterms[Ai].exp;
-        Eterms[Ei].coeff = n_poly_mod_eval_step(Aterms[Ai].coeff, mod);
-        Ei += (Eterms[Ei].coeff != 0);
+        Eexps[Ei] = Aterms[Ai].exp;
+        Ecoeffs[Ei] = n_poly_mod_eval_step(Aterms[Ai].coeff, mod);
+        Ei += (Ecoeffs[Ei] != 0);
     }
     E->length = Ei;
 }
@@ -1438,6 +1441,7 @@ choose_betas:
                                           Beh + i, H + i, B + i, beta, m, ctx);
         req_zip_images = FLINT_MAX(req_zip_images, this_zip_images);
         FLINT_ASSERT(Bdegs[i] > 0);
+        Z[i].length = 0;
     }
 
     cur_zip_image = 0;

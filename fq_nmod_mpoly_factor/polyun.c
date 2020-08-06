@@ -12,51 +12,8 @@
 #include "fq_nmod_mpoly_factor.h"
 
 
-void fq_nmod_polyun_clear(fq_nmod_polyun_t A, const fq_nmod_ctx_t ctx)
-{
-    slong i;
-    if (A->alloc > 0)
-    {
-        for (i = 0; i < A->alloc; i++)
-            fq_nmod_poly_clear(A->terms[i].coeff, ctx);
-        flint_free(A->terms);
-    }
-    else
-    {
-        FLINT_ASSERT(A->terms == NULL);
-    }
-}
-
-void fq_nmod_polyun_realloc(fq_nmod_polyun_t A, slong len, const fq_nmod_ctx_t ctx)
-{
-    slong i;
-    slong old_alloc = A->alloc;
-    slong new_alloc = FLINT_MAX(len, old_alloc + 1 + old_alloc/2);
-
-    FLINT_ASSERT(A->alloc >= 0);
-    if (len <= A->alloc)
-        return;
-
-    if (old_alloc > 0)
-    {
-        A->terms = (fq_nmod_polyun_term_struct *) flint_realloc(A->terms,
-                                 new_alloc*sizeof(fq_nmod_polyun_term_struct));
-    }
-    else
-    {
-        FLINT_ASSERT(A->terms == NULL);
-        A->terms = (fq_nmod_polyun_term_struct *) flint_malloc(
-                                 new_alloc*sizeof(fq_nmod_polyun_term_struct));
-    }
-
-    for (i = old_alloc; i < new_alloc; i++)
-        fq_nmod_poly_init(A->terms[i].coeff, ctx);
-
-    A->alloc = new_alloc;
-}
-
-void fq_nmod_polyu2n_print_pretty(
-    const fq_nmod_polyun_t A,
+void n_polyu2n_fq_print_pretty(
+    const n_polyun_t A,
     const char * var0,
     const char * var1,
     const char * varlast,
@@ -71,7 +28,7 @@ void fq_nmod_polyu2n_print_pretty(
             printf(" + ");
         first = 0;
         flint_printf("(");
-        fq_nmod_poly_print_pretty(A->terms[i].coeff, varlast, ctx);
+        n_poly_fq_print_pretty(A->terms[i].coeff, varlast, ctx);
         flint_printf(")*%s^%wu*%s^%wu",
             var0, extract_exp(A->terms[i].exp, 1, 2),
             var1, extract_exp(A->terms[i].exp, 0, 2));
@@ -81,8 +38,8 @@ void fq_nmod_polyu2n_print_pretty(
         flint_printf("0");
 }
 
-void fq_nmod_polyu3n_print_pretty(
-    const fq_nmod_polyun_t A,
+void n_polyu3n_fq_print_pretty(
+    const n_polyun_t A,
     const char * var0,
     const char * var1,
     const char * var2,
@@ -98,7 +55,7 @@ void fq_nmod_polyu3n_print_pretty(
             printf(" + ");
         first = 0;
         flint_printf("(");
-        fq_nmod_poly_print_pretty(A->terms[i].coeff, varlast, ctx);
+        n_poly_fq_print_pretty(A->terms[i].coeff, varlast, ctx);
         flint_printf(")*%s^%wu*%s^%wu*%s^%wu",
             var0, extract_exp(A->terms[i].exp, 2, 3),
             var1, extract_exp(A->terms[i].exp, 1, 3),
@@ -109,17 +66,19 @@ void fq_nmod_polyu3n_print_pretty(
         flint_printf("0");
 }
 
-int fq_nmod_polyun_is_canonical(const fq_nmod_polyun_t A, const fq_nmod_ctx_t ctx)
+int n_polyun_fq_is_canonical(
+    const n_polyun_t A,
+    const fq_nmod_ctx_t ctx)
 {
     slong i;
     if (A->length < 0)
         return 0;
     for (i = 0; i < A->length; i++)
     {
-        if (fq_nmod_poly_is_zero(A->terms[i].coeff, ctx))
-        {
+        if (!n_poly_fq_is_canonical(A->terms[i].coeff, ctx))
             return 0;
-        }
+        if (n_poly_is_zero(A->terms[i].coeff))
+            return 0;
         if (i > 0 && A->terms[i].exp >= A->terms[i - 1].exp)
             return 0;
     }

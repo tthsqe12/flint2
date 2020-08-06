@@ -146,9 +146,9 @@ int fq_nmod_mpoly_factor_irred_smprime_zassenhaus(
     fq_nmod_mpolyv_t qfac, pfac, tfac, dfac;
     fq_nmod_mpoly_t t, p, q;
     fq_nmod_mpoly_univar_t u;
-    fq_nmod_poly_t c;
-    fq_nmod_bpoly_t B;
-    fq_nmod_tpoly_t F;
+    n_poly_t c;
+    n_bpoly_t B;
+    n_tpoly_t F;
 /*
 flint_printf("fq_nmod_mpoly_factor_irred_smprime_default called\n");
 flint_printf("A: "); fq_nmod_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
@@ -158,11 +158,10 @@ flint_printf("A: "); fq_nmod_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n"
     for (i = 0; i < n; i++)
         fq_nmod_init(alpha + i, ctx->fqctx);
 
-    deg     = (slong *) flint_malloc((n + 1)*sizeof(slong));
-    degeval = (slong *) flint_malloc((n + 1)*sizeof(slong));
+    deg     = FLINT_ARRAY_ALLOC(n + 1, slong);
+    degeval = FLINT_ARRAY_ALLOC(n + 1, slong);
 
-    Aevals    = (fq_nmod_mpoly_struct *) flint_malloc(n*
-                                                 sizeof(fq_nmod_mpoly_struct));
+    Aevals = FLINT_ARRAY_ALLOC(n, fq_nmod_mpoly_struct);
 	for (i = 0; i < n; i++)
 		fq_nmod_mpoly_init(Aevals + i, ctx);
 
@@ -174,9 +173,9 @@ flint_printf("A: "); fq_nmod_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n"
 	fq_nmod_mpoly_init(p, ctx);
 	fq_nmod_mpoly_init(q, ctx);
 	fq_nmod_mpoly_univar_init(u, ctx);
-    fq_nmod_poly_init(c, ctx->fqctx);
-    fq_nmod_bpoly_init(B, ctx->fqctx);
-    fq_nmod_tpoly_init(F, ctx->fqctx);
+    n_poly_init(c);
+    n_bpoly_init(B);
+    n_tpoly_init(F);
 
 	fq_nmod_mpoly_degrees_si(deg, A, ctx);
     goto got_alpha;
@@ -226,18 +225,18 @@ got_alpha:
         fq_nmod_mpoly_make_monic(Aevals + i, Aevals + i, ctx);
     }
 
-    fq_nmod_mpoly_get_bpoly(B, Aevals + 1, 0, 1, ctx);
-    success = fq_nmod_bpoly_factor_smprime(c, F, B, 1, ctx->fqctx);
+    fq_nmod_mpoly_get_n_bpoly_fq(B, Aevals + 1, 0, 1, ctx);
+    success = n_bpoly_fq_factor_smprime(c, F, B, 1, ctx->fqctx);
     if (!success)
         goto next_alpha;
 
-    FLINT_ASSERT(fq_nmod_poly_degree(c, ctx->fqctx) == 0);
+    FLINT_ASSERT(n_poly_degree(c) == 0);
 
     fq_nmod_mpolyv_fit_length(pfac, F->length, ctx);
     pfac->length = F->length;
     for (i = 0; i < F->length; i++)
     {
-        fq_nmod_mpoly_set_bpoly(pfac->coeffs + i, A->bits,
+        fq_nmod_mpoly_set_n_bpoly_fq(pfac->coeffs + i, A->bits,
                                                      F->coeffs + i, 0, 1, ctx);
         fq_nmod_mpoly_make_monic(pfac->coeffs + i, pfac->coeffs + i, ctx);
     }
@@ -374,9 +373,9 @@ cleanup:
     fq_nmod_mpoly_clear(p, ctx);
     fq_nmod_mpoly_clear(q, ctx);
     fq_nmod_mpoly_univar_clear(u, ctx);
-    fq_nmod_poly_clear(c, ctx->fqctx);
-    fq_nmod_bpoly_clear(B, ctx->fqctx);
-    fq_nmod_tpoly_clear(F, ctx->fqctx);
+    n_poly_clear(c);
+    n_bpoly_clear(B);
+    n_tpoly_clear(F);
 
     FLINT_ASSERT(success == 0 || success == 1);
 

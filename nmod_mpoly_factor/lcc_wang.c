@@ -42,32 +42,6 @@ int nmod_mpoly_evaluate_all_n_poly(
     return 1;
 }
 
-ulong n_poly_mod_remove(n_poly_t f, const n_poly_t p, nmod_t ctx)
-{
-    n_poly_t q, r;
-    ulong i = 0;
-
-    n_poly_init(q);
-    n_poly_init(r);
-
-    while (1)
-    {
-        if (f->length < p->length)
-            break;
-        n_poly_mod_divrem(q, r, f, p, ctx);
-        if (r->length == 0)
-            n_poly_swap(q, f);
-        else
-            break;
-        i++;
-    }
-
-    n_poly_clear(q);
-    n_poly_clear(r);
-
-    return i;
-}
-
 int nmod_mpoly_factor_lcc_wang(
     nmod_mpoly_struct * lc_divs,
     const nmod_mpoly_factor_t lcAfac,

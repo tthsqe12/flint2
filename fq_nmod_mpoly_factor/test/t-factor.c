@@ -12,6 +12,7 @@
 #include "fq_nmod_mpoly_factor.h"
 #include "profiler.h"
 
+
 /* check total number of factors with multiplicity is between lower and upper */
 slong check_omega(slong lower, slong upper, const fq_nmod_mpoly_t p, const fq_nmod_mpoly_ctx_t ctx)
 {
@@ -39,10 +40,13 @@ flint_printf("p: "); nmod_mpoly_print_pretty(p, NULL, ctx); flint_printf("\n");
 flint_printf("g: "); nmod_mpoly_factor_print_pretty(g, NULL, ctx); flint_printf("\n");
 */
 
-    if (fq_nmod_mpoly_factor_fix_units(g, ctx))
+    for (i = 0; i < g->num; i++)
     {
-        flint_printf("FAIL:\nfactorization is not unit normal\n");
-        flint_abort();
+        if (g->poly[i].length < 1 || !fq_nmod_is_one(g->poly[i].coeffs + 0, ctx->fqctx))
+        {
+            flint_printf("FAIL:\nfactorization is not unit normal\n");
+            flint_abort();
+        }
     }
 
     fmpz_zero(omega);
@@ -129,9 +133,8 @@ main(void)
     flint_printf("factor....");
     fflush(stdout);
 
-    /* check random bivariate factors */
     total = 0;
-    for (i = 0; i < 0*tmul * flint_test_multiplier(); i++)
+    for (i = 0; i < tmul * flint_test_multiplier(); i++)
     {
         slong lower;
         fq_nmod_mpoly_ctx_t ctx;
@@ -140,12 +143,12 @@ main(void)
         ulong expbounds[2];
         ulong expbound;
 
-        fq_nmod_mpoly_ctx_init_rand(ctx, state, 2, 4, 5);
+        fq_nmod_mpoly_ctx_init_rand(ctx, state, 2, FLINT_BITS, 5);
         fq_nmod_mpoly_init(a, ctx);
         fq_nmod_mpoly_init(t, ctx);
 
-        nfacs = 2 + n_randint(state, 5);
-        expbound = 3 + n_randint(state, 3 + 30/nfacs);
+        nfacs = 2 + n_randint(state, 10);
+        expbound = 3 + n_randint(state, 3 + 40/nfacs);
 
         lower = 0;
         fq_nmod_mpoly_one(a, ctx);
@@ -160,9 +163,10 @@ main(void)
             lower += !fq_nmod_mpoly_is_fq_nmod(t, ctx);
             fq_nmod_mpoly_mul(a, a, t, ctx);
         }
+/*
 if (ctx->minfo->nvars == 2)
 flint_printf("nfacs: %wd, degrees (%wd, %wd)\n", nfacs, fq_nmod_mpoly_degree_si(a, 0, ctx), fq_nmod_mpoly_degree_si(a, 1, ctx));
-
+*/
 flint_printf("1:%wd ", i);
         total += check_omega(lower, WORD_MAX, a, ctx);
 
@@ -170,12 +174,14 @@ flint_printf("1:%wd ", i);
         fq_nmod_mpoly_clear(a, ctx);
         fq_nmod_mpoly_ctx_clear(ctx);
     }
-/*
 flint_printf("**********total number of bvar factors: %wd ******\n", total);
-usleep(1000000);
-*/
 
-    /* check random factors */
+    if (total != 2805)
+    {
+        flint_printf("total number of bvar factors should be 2805\n");
+        flinta_abort();
+    }
+
     total = 0;
     for (i = 0; i < tmul * flint_test_multiplier(); i++)
     {
@@ -185,18 +191,18 @@ usleep(1000000);
         slong nfacs, len;
         ulong expbound;
 
-        fq_nmod_mpoly_ctx_init_rand(ctx, state, 6, FLINT_BITS, 5);
+        fq_nmod_mpoly_ctx_init_rand(ctx, state, 8, FLINT_BITS, 5);
         fq_nmod_mpoly_init(a, ctx);
         fq_nmod_mpoly_init(t, ctx);
 
         nfacs = 1 + (5 + n_randint(state, 5))/ctx->minfo->nvars;
-        expbound = 2 + 30/nfacs/ctx->minfo->nvars;
+        expbound = 2 + 60/nfacs/ctx->minfo->nvars;
 
         lower = 0;
         fq_nmod_mpoly_one(a, ctx);
         for (j = 0; j < nfacs; j++)
         {
-            len = 1 + n_randint(state, 10);
+            len = 1 + n_randint(state, 20);
             fq_nmod_mpoly_randtest_bound(t, state, len, expbound, ctx);
             if (fq_nmod_mpoly_is_zero(t, ctx))
                 fq_nmod_mpoly_one(t, ctx);
@@ -212,8 +218,13 @@ flint_printf("2:%wd ", i);
         fq_nmod_mpoly_ctx_clear(ctx);
     }
 flint_printf("**********total number of mvar factors: %wd ******\n", total);
-/*usleep(1000000);
-*/
+
+    if (total != 3443)
+    {
+        flint_printf("total number of mvar factors should be 3443\n");
+        flinta_abort();
+    }
+
     FLINT_TEST_CLEANUP(state);
     
     flint_printf("PASS\n");

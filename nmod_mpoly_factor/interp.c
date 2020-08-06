@@ -39,13 +39,6 @@ mp_limb_t n_poly_mod_div_root(n_poly_t Q,
     return rem;
 }
 
-#define MAC(h, m, l, a, b)                          \
-{                                                   \
-    mp_limb_t p1, p0;                               \
-    umul_ppmm(p1, p0, a, b);                        \
-    add_sssaaaaaa(h, m, l, h, m, l, 0, p1, p0);     \
-}
-
 /********************** p = 1 mod 2 ****************************************/
 
 

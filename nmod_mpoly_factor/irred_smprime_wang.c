@@ -27,9 +27,7 @@ static void _eval_rest(
     slong nvars,
     nmod_t ctx)
 {
-    slong offset = offsets[var];
-    slong shift = shifts[var];
-    slong start, stop;
+    slong offset, shift, start, stop;
     ulong e, next_e;
     n_poly_t T;
 
@@ -44,6 +42,9 @@ static void _eval_rest(
         n_poly_set_ui(E, Acoeffs[0]);
         return;
     }
+
+    offset = offsets[var];
+    shift = shifts[var];
 
     n_poly_init(T);
 

@@ -176,31 +176,6 @@ void n_bpoly_mod_divrem_mod_poly(
     n_poly_clear(Binv);
 }
 
-/*
-void n_bpoly_add_fq_nmod_poly_mul(
-    n_bpoly_t A,
-    const fq_nmod_poly_t B,
-    const n_poly_t mpow,
-    nmod_t mod)
-{
-    slong i;
-    n_poly_t t, mock;
-
-    n_poly_init(t);
-
-    FLINT_ASSERT(A->length > B->length);
-
-    for (i = 0; i < B->length; i++)
-    {
-        n_poly_mock(mock, B->coeffs + i);
-        n_poly_mod_mul(t, mock, mpow, mod);
-        n_poly_mod_add(A->coeffs + i, A->coeffs + i, t, mod);
-    }
-
-    n_poly_clear(t);
-}
-*/
-
 static int _zassenhaus(
     const zassenhaus_prune_t zas,
     slong limit,
@@ -392,9 +367,7 @@ static void _hensel_build_tree(
 
     for (i = r, j = 0; j < 2*r - 4; i++, j += 2)
     {
-        slong s;
-        slong minp, mind;
-        slong tmp;
+        slong s, minp, mind;
 
         minp = j;
         mind = fq_nmod_poly_degree(V + j, ctx);
@@ -407,7 +380,7 @@ static void _hensel_build_tree(
             }
         }
         fq_nmod_poly_swap(V + j, V + minp, ctx);
-        tmp = link[j]; link[j] = link[minp]; link[minp] = tmp;
+        SLONG_SWAP(link[j], link[minp]);
 
         minp = j + 1;
         mind = fq_nmod_poly_degree(V + j + 1, ctx);
@@ -420,7 +393,7 @@ static void _hensel_build_tree(
             }
         }
         fq_nmod_poly_swap(V + j + 1, V + minp, ctx);
-        tmp = link[j + 1]; link[j + 1] = link[minp]; link[minp] = tmp;
+        SLONG_SWAP(link[j + 1], link[minp]);
 
         fq_nmod_poly_mul(V + i, V + j, V + j + 1, ctx);
         link[i] = j;

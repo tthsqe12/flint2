@@ -232,35 +232,35 @@ static int _irreducible_factors(
     }
     else if (mvars == 2)
     {
-        fq_nmod_poly_t c;
-        fq_nmod_bpoly_t Ab;
-        fq_nmod_tpoly_t Abf;
+        n_poly_t c;
+        n_bpoly_t Ab;
+        n_tpoly_t Abf;
 
-        fq_nmod_poly_init(c, ctx->fqctx);
-        fq_nmod_bpoly_init(Ab, ctx->fqctx);
-        fq_nmod_tpoly_init(Abf, ctx->fqctx);
+        n_poly_init(c);
+        n_bpoly_init(Ab);
+        n_tpoly_init(Abf);
 
-        fq_nmod_mpoly_get_bpoly(Ab, A, perm[0], perm[1], ctx);
-        success = fq_nmod_bpoly_factor_smprime(c, Abf, Ab, 1, ctx->fqctx);
+        fq_nmod_mpoly_get_n_bpoly_fq(Ab, A, perm[0], perm[1], ctx);
+        success = n_bpoly_fq_factor_smprime(c, Abf, Ab, 1, ctx->fqctx);
         if (!success)
         {
-            fq_nmod_mpoly_get_bpoly(Ab, A, perm[0], perm[1], ctx);
-            fq_nmod_bpoly_factor_lgprime(c, Abf, Ab, ctx->fqctx, state);
+            fq_nmod_mpoly_get_n_bpoly_fq(Ab, A, perm[0], perm[1], ctx);
+            n_bpoly_fq_factor_lgprime(c, Abf, Ab, ctx->fqctx, state);
         }
-        FLINT_ASSERT(fq_nmod_poly_degree(c, ctx->fqctx) == 0);
+        FLINT_ASSERT(n_poly_degree(c) == 0);
 
         fq_nmod_mpolyv_fit_length(Af, Abf->length, ctx);
         Af->length = Abf->length;
         for (i = 0; i < Abf->length; i++)
         {
-            fq_nmod_mpoly_set_bpoly(Af->coeffs + i, Abits, Abf->coeffs + i,
-                                                        perm[0], perm[1], ctx);
+            fq_nmod_mpoly_set_n_bpoly_fq(Af->coeffs + i, Abits,
+                                       Abf->coeffs + i, perm[0], perm[1], ctx);
             fq_nmod_mpoly_make_monic(Af->coeffs + i, Af->coeffs + i, ctx);
         }
 
-        fq_nmod_poly_clear(c, ctx->fqctx);
-        fq_nmod_bpoly_clear(Ab, ctx->fqctx);
-        fq_nmod_tpoly_clear(Abf, ctx->fqctx);
+        n_poly_clear(c);
+        n_bpoly_clear(Ab);
+        n_tpoly_clear(Abf);
 
         success = 1;
     }
@@ -286,7 +286,11 @@ static int _irreducible_factors(
         success = fq_nmod_mpoly_factor(lcLf, lcL, Lctx);
         if (success)
         {
-            success = fq_nmod_mpoly_factor_irred_smprime_wang(Lf, L, lcLf, lcL, Lctx, state);
+            success = fq_nmod_mpoly_factor_irred_smprime_zippel(Lf, L, lcLf, lcL, Lctx, state);
+            if (success < 1)
+                success = fq_nmod_mpoly_factor_irred_lgprime_zippel(Lf, L, lcLf, lcL, Lctx, state);
+            if (success < 1)
+                success = fq_nmod_mpoly_factor_irred_smprime_wang(Lf, L, lcLf, lcL, Lctx, state);
             if (success < 1)
                 success = fq_nmod_mpoly_factor_irred_lgprime_wang(Lf, L, lcLf, lcL, Lctx, state);
         }

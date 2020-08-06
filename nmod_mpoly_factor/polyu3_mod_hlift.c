@@ -13,6 +13,7 @@
 
 
 #if WANT_ASSERT
+
 static void n_polyu_get_n_polyun(n_polyu_t A, const n_polyun_t B)
 {
     slong i, j;
@@ -24,26 +25,64 @@ static void n_polyu_get_n_polyun(n_polyu_t A, const n_polyun_t B)
             if (B->terms[i].coeff->coeffs[j] == 0)
                 continue;
             n_polyu_fit_length(A, A->length + 1);
-            A->terms[A->length].coeff = B->terms[i].coeff->coeffs[j];
-            A->terms[A->length].exp = B->terms[i].exp + j;
+            A->coeffs[A->length] = B->terms[i].coeff->coeffs[j];
+            A->exps[A->length] = B->terms[i].exp + j;
             A->length++;
         }
     }
 }
 
+
 static void n_polyu_sort_terms(n_polyu_t A)
 {
     slong i, j;
     for (i = 1; i < A->length; i++)
-    for (j = i; j > 0 && A->terms[j - 1].exp < A->terms[j].exp; j--)
-        n_polyu_term_swap(A->terms + j - 1, A->terms + j);
+    for (j = i; j > 0 && A->exps[j - 1] < A->exps[j]; j--)
+    {
+        MP_LIMB_SWAP(A->coeffs[j - 1], A->coeffs[j]);
+        ULONG_SWAP(A->exps[j - 1], A->exps[j]);
+    }
     return;
 }
 
-static void n_polyu_mod_combine_like_terms(n_polyu_t A, nmod_t mod)
+
+int n_polyu_mod_is_canonical(const n_polyu_t A, nmod_t mod)
+{
+    slong i;
+    if (A->length < 0)
+        return 0;
+    for (i = 0; i < A->length; i++)
+    {
+        if (A->coeffs[i] >= mod.n || A->coeffs[i] <= 0)
+            return 0;
+        if (i > 0 && A->exps[i] >= A->exps[i - 1])
+            return 0;
+    }
+    return 1;
+}
+
+
+int n_polyun_mod_is_canonical(const n_polyun_t A, nmod_t mod)
+{
+    slong i;
+    if (A->length < 0)
+        return 0;
+    for (i = 0; i < A->length; i++)
+    {
+        if (!n_poly_mod_is_canonical(A->terms[i].coeff, mod) ||
+            n_poly_is_zero(A->terms[i].coeff))
+        {
+            return 0;
+        }
+        if (i > 0 && A->terms[i].exp >= A->terms[i - 1].exp)
+            return 0;
+    }
+    return 1;
+}
+
+static void n_polyu_mod_combine_like_terms(n_polyu_t A, nmod_t ctx)
 {
     slong in, out;
-    n_polyu_term_struct * Aterms = A->terms;
 
     out = -1;
 
@@ -51,29 +90,29 @@ static void n_polyu_mod_combine_like_terms(n_polyu_t A, nmod_t mod)
     {
         FLINT_ASSERT(in > out);
 
-        if (out >= 0 && Aterms[out].exp == Aterms[in].exp)
+        if (out >= 0 && A->exps[out] == A->exps[in])
         {
-            Aterms[out].coeff = nmod_add(Aterms[out].coeff,
-                                         Aterms[in].coeff, mod);
+            A->coeffs[out] = nmod_add(A->coeffs[out], A->coeffs[in], ctx);
         }
         else
         {
-            if (out < 0 || Aterms[out].coeff != 0)
+            if (out < 0 || A->coeffs[out] != 0)
                 out++;
 
             if (out != in)
             {
-                Aterms[out].exp = Aterms[in].exp;
-                Aterms[out].coeff = Aterms[in].coeff;
+                A->exps[out] = A->exps[in];
+                A->coeffs[out] = A->coeffs[in];
             }
         }
     }
 
-    if (out < 0 || Aterms[out].coeff != 0)
+    if (out < 0 || A->coeffs[out] != 0)
         out++;
 
     A->length = out;
 }
+
 
 static int n_polyu_equal(n_polyu_t A, n_polyu_t B)
 {
@@ -82,9 +121,9 @@ static int n_polyu_equal(n_polyu_t A, n_polyu_t B)
         return 0;
     for (i = 0; i < A->length; i++)
     {
-        if (A->terms[i].coeff != B->terms[i].coeff)
+        if (A->coeffs[i] != B->coeffs[i])
             return 0;
-        if (A->terms[i].exp != B->terms[i].exp)
+        if (A->exps[i] != B->exps[i])
             return 0;
     }
     return 1;
@@ -95,7 +134,7 @@ static void n_polyu_mod_mul(
     n_polyu_t A,
     const n_polyu_t B,
     const n_polyu_t C,
-    nmod_t mod)
+    nmod_t ctx)
 {
     slong Ai, Bi, Ci;
 
@@ -107,17 +146,17 @@ static void n_polyu_mod_mul(
     for (Bi = 0; Bi < B->length; Bi++)
     for (Ci = 0; Ci < C->length; Ci++)
     {
-        A->terms[Ai].exp = B->terms[Bi].exp + C->terms[Ci].exp;
-        A->terms[Ai].coeff = nmod_mul(B->terms[Bi].coeff,
-                                      C->terms[Ci].coeff, mod);
+        A->exps[Ai]   = B->exps[Bi] + C->exps[Ci];
+        A->coeffs[Ai] = nmod_mul(B->coeffs[Bi], C->coeffs[Ci], ctx);
         Ai++;
     }
     A->length = Ai;
     n_polyu_sort_terms(A);
-    n_polyu_mod_combine_like_terms(A, mod);
+    n_polyu_mod_combine_like_terms(A, ctx);
 }
 
 #endif
+
 
 void n_poly_fill_powers(
     n_poly_t alphapow,
@@ -150,11 +189,9 @@ void n_polyu3_mod_interp_reduce_2sm_bpoly(
     slong i;
     slong cur0, cur1, e0, e1, e2;
     ulong tp0, tp1, tp2, tm0, tm1, tm2, p1, p0;
-    n_polyu_term_struct * Aterms = A->terms;
-/*
-flint_printf("n_polyu3_mod_interp_reduce_2sm_bpoly called alpha = %wd\n", alpha->coeffs[1]);
-flint_printf("A: "); n_polyu3_print_pretty(A, "Y", "X", "Z"); flint_printf("\n");
-*/
+    const mp_limb_t * Acoeffs = A->coeffs;
+    const ulong * Aexps = A->exps;
+
     n_bpoly_zero(Ap);
     n_bpoly_zero(Am);
 
@@ -162,23 +199,23 @@ flint_printf("A: "); n_polyu3_print_pretty(A, "Y", "X", "Z"); flint_printf("\n")
 
     i = 0;
 
-    cur0 = extract_exp(Aterms[i].exp, 2, 3);
-    cur1 = extract_exp(Aterms[i].exp, 1, 3);
-    e2   = extract_exp(Aterms[i].exp, 0, 3);
+    cur0 = extract_exp(Aexps[i], 2, 3);
+    cur1 = extract_exp(Aexps[i], 1, 3);
+    e2   = extract_exp(Aexps[i], 0, 3);
 
     n_poly_fill_powers(alpha, e2, mod);
 
     tp2 = tp1 = tp0 = tm2 = tm1 = tm0 = 0;
     if (e2 & 1)
-        umul_ppmm(tm1, tm0, alpha->coeffs[e2], Aterms[i].coeff);
+        umul_ppmm(tm1, tm0, alpha->coeffs[e2], Acoeffs[i]);
     else
-        umul_ppmm(tp1, tp0, alpha->coeffs[e2], Aterms[i].coeff);
+        umul_ppmm(tp1, tp0, alpha->coeffs[e2], Acoeffs[i]);
 
     for (i = 1; i < A->length; i++)
     {
-        e0 = extract_exp(Aterms[i].exp, 2, 3);
-        e1 = extract_exp(Aterms[i].exp, 1, 3);
-        e2 = extract_exp(Aterms[i].exp, 0, 3);
+        e0 = extract_exp(Aexps[i], 2, 3);
+        e1 = extract_exp(Aexps[i], 1, 3);
+        e2 = extract_exp(Aexps[i], 0, 3);
 
         FLINT_ASSERT(e0 <= cur0);
         if (e0 < cur0 || e1 < cur1)
@@ -204,7 +241,7 @@ flint_printf("A: "); n_polyu3_print_pretty(A, "Y", "X", "Z"); flint_printf("\n")
 
         FLINT_ASSERT(alpha->coeffs[e2] == nmod_pow_ui(alpha->coeffs[1], e2, mod));
 
-        umul_ppmm(p1, p0, alpha->coeffs[e2], Aterms[i].coeff);
+        umul_ppmm(p1, p0, alpha->coeffs[e2], Acoeffs[i]);
         if (e2 & 1)
             add_sssaaaaaa(tm2, tm1, tm0, tm2, tm1, tm0, 0, p1, p0);
         else
@@ -215,11 +252,6 @@ flint_printf("A: "); n_polyu3_print_pretty(A, "Y", "X", "Z"); flint_printf("\n")
     NMOD_RED3(tm0, tm2, tm1, tm0, mod);
     n_bpoly_set_coeff(Ap, cur0, cur1, nmod_add(tp0, tm0, mod));
     n_bpoly_set_coeff(Am, cur0, cur1, nmod_sub(tp0, tm0, mod));
-/*
-flint_printf("n_polyu3_mod_interp_reduce_2sm_bpoly returning\n");
-flint_printf("Ap: "); n_bpoly_print_pretty(Ap, "Y", "X"); flint_printf("\n");
-flint_printf("Am: "); n_bpoly_print_pretty(Am, "Y", "X"); flint_printf("\n");
-*/
 }
 
 
@@ -271,8 +303,7 @@ flint_printf("B: "); n_bpoly_print_pretty(B, "Y", "X"); flint_printf("\n");
     {
         if (Ti >= T->alloc)
         {
-            slong extra = FLINT_MAX(Ai, Bi);
-            n_polyun_realloc(T, Ti + extra + 1);
+            n_polyun_fit_length(T, Ti + FLINT_MAX(Ai, Bi) + 1);
             Tterms = T->terms;
         }
 

@@ -285,12 +285,10 @@ static int _irreducible_factors(
         success = nmod_mpoly_factor(lcLf, lcL, Lctx);
         if (success)
         {
-/*
             success = nmod_mpoly_factor_irred_smprime_zippel(Lf, L, lcLf, lcL, Lctx, state);
             if (success < 1)
                 success = nmod_mpoly_factor_irred_lgprime_zippel(Lf, L, lcLf, lcL, Lctx, state);
             if (success < 1)
-*/
                 success = nmod_mpoly_factor_irred_smprime_wang(Lf, L, lcLf, lcL, Lctx, state);
             if (success < 1)
                 success = nmod_mpoly_factor_irred_lgprime_wang(Lf, L, lcLf, lcL, Lctx, state);

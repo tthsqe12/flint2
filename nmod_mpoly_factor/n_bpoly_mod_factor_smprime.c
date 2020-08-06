@@ -13,87 +13,6 @@
 #include "fq_nmod_mpoly_factor.h"
 #include "ui_factor.h"
 
-int nmod_mat_is_reduced(const nmod_mat_t N)
-{
-    slong i, j, k = 0;
-    slong r = nmod_mat_ncols(N);
-    slong d = nmod_mat_nrows(N);
-    
-    for (i = 0; i < d; i++)
-    for (j = 0; j < r; j++)
-    {
-        if (nmod_mat_entry(N, i, j) != 0)
-        {
-            if (nmod_mat_entry(N, i, j) == 1)
-                k++;
-            else
-                return 0;
-        }   
-    }
-    return k == r;
-}
-
-void nmod_mat_init_nullspace_tr(nmod_mat_t X, nmod_mat_t tmp)
-{
-    slong i, j, k, m, n, rank, nullity;
-    slong * p;
-    slong * pivots;
-    slong * nonpivots;
-
-    m = tmp->r;
-    n = tmp->c;
-
-    p = flint_malloc(sizeof(slong) * FLINT_MAX(m, n));
-
-    rank = nmod_mat_rref(tmp);
-
-    nullity = n - rank;
-
-    nmod_mat_init(X, nullity, n, tmp->mod.n);
-
-    if (rank == 0)
-    {
-        for (i = 0; i < nullity; i++)
-            nmod_mat_entry(X, i, i) = UWORD(1);
-    }
-    else if (nullity)
-    {
-        pivots = p;            /* length = rank */
-        nonpivots = p + rank;  /* length = nullity */
-
-        for (i = j = k = 0; i < rank; i++)
-        {
-            while (nmod_mat_entry(tmp, i, j) == UWORD(0))
-            {
-                nonpivots[k] = j;
-                k++;
-                j++;
-            }
-            pivots[i] = j;
-            j++;
-        }
-        while (k < nullity)
-        {
-            nonpivots[k] = j;
-            k++;
-            j++;
-        }
-
-        for (i = 0; i < nullity; i++)
-        {
-            for (j = 0; j < rank; j++)
-            {
-                mp_limb_t c = nmod_mat_entry(tmp, j, nonpivots[i]);
-                nmod_mat_entry(X, i, pivots[j]) = nmod_neg(c, tmp->mod);
-            }
-
-            nmod_mat_entry(X, i, nonpivots[i]) = UWORD(1);
-        }
-    }
-
-    flint_free(p);
-}
-
 
 void n_bpoly_mod_make_monic_series(
     n_bpoly_t A,
@@ -124,18 +43,18 @@ void n_bpoly_mod_make_monic_series(
 }
 
 
-void n_bpoly_mod_eval(
-    n_poly_t E,
+static void n_bpoly_mod_eval(
+    nmod_poly_t E,
     const n_bpoly_t A,
     mp_limb_t alpha,
     nmod_t ctx)
 {
     slong i;
-    n_poly_zero(E);
+    nmod_poly_zero(E);
     for (i = A->length - 1; i >= 0; i--)
     {
         mp_limb_t c = n_poly_mod_evaluate_nmod(A->coeffs + i, alpha, ctx);
-        n_poly_set_coeff(E, i, c);
+        nmod_poly_set_coeff_ui(E, i, c);
     }
 }
 
@@ -383,7 +302,7 @@ static void _hensel_build_tree(
     slong * link,
     n_bpoly_struct * v,
     n_bpoly_struct * w,
-    const n_poly_struct * local_facs,
+    const nmod_poly_struct * local_facs,
     slong r,
     nmod_t ctx)
 {
@@ -404,15 +323,13 @@ static void _hensel_build_tree(
 
     for (i = 0; i < r; i++)
     {
-        n_poly_set(V + i, local_facs + i);
+        n_poly_set_nmod_poly(V + i, local_facs + i);
         link[i] = -i - 1;
     }
 
     for (i = r, j = 0; j < 2*r - 4; i++, j += 2)
     {
-        slong s;
-        slong minp, mind;
-        slong tmp;
+        slong s, minp, mind;
 
         minp = j;
         mind = n_poly_degree(V + j);
@@ -425,7 +342,7 @@ static void _hensel_build_tree(
             }
         }
         n_poly_swap(V + j, V + minp);
-        tmp = link[j]; link[j] = link[minp]; link[minp] = tmp;
+        SLONG_SWAP(link[j], link[minp]);
 
         minp = j + 1;
         mind = n_poly_degree(V + j + 1);
@@ -438,7 +355,7 @@ static void _hensel_build_tree(
             }
         }
         n_poly_swap(V + j + 1, V + minp);
-        tmp = link[j + 1]; link[j + 1] = link[minp]; link[minp] = tmp;
+        SLONG_SWAP(link[j + 1], link[minp]);
 
         n_poly_mod_mul(V + i, V + j, V + j + 1, ctx);
         link[i] = j;
@@ -655,8 +572,8 @@ int n_bpoly_mod_factor_smprime(
     slong final_order, curr_lift_order, prev_lift_order, next_lift_order;
     slong * starts;
     mp_limb_t alpha;
-    n_poly_t Beval;
-    n_poly_factor_t local_fac;
+    nmod_poly_t Beval;
+    nmod_poly_factor_t local_fac;
     n_bpoly_t monicB;
     nmod_mat_t N;
     slong * link;
@@ -669,8 +586,8 @@ int n_bpoly_mod_factor_smprime(
 
     FLINT_ASSERT(Blenx > 1);
 
-    n_poly_init(Beval);
-    n_poly_factor_init(local_fac);
+    nmod_poly_init_mod(Beval, ctx);
+    nmod_poly_factor_init(local_fac);
     n_bpoly_init(monicB);
     n_tpoly_init(tmp);
     nmod_mat_init(N, 0, 0, ctx.n);
@@ -714,14 +631,15 @@ got_alpha:
     if (Beval->length != Blenx)
         goto next_alpha;
 
-    n_poly_mod_factor(local_fac, Beval, ctx);
+    local_fac->num = 0; /* stupid */
+    nmod_poly_factor(local_fac, Beval);
 
     r = local_fac->num;
 
     zassenhaus_prune_start_add_factors(zas);
     for (i = 0; i < r; i++)
         zassenhaus_prune_add_factor(zas,
-                        n_poly_degree(local_fac->poly + i), local_fac->exp[i]);
+                        nmod_poly_degree(local_fac->p + i), local_fac->exp[i]);
     zassenhaus_prune_end_add_factors(zas);
 
     if ((r < 2 && local_fac->exp[0] == 1) ||
@@ -737,23 +655,23 @@ got_alpha:
     /* if multiple factors, get new alpha */
     for (i = 0; i < r; i++)
     {
+        FLINT_ASSERT(local_fac->p[i].length > 1);
+        FLINT_ASSERT(local_fac->p[i].coeffs[local_fac->p[i].length - 1] == 1);
         if (local_fac->exp[i] != 1)
             goto next_alpha;
-    }
-
-    for (i = 0; i < r; i++)
-    {
-        FLINT_ASSERT(local_fac->poly[i].length > 1);
-        FLINT_ASSERT(local_fac->poly[i].coeffs[local_fac->poly[i].length - 1] == 1);
     }
 
     /* done if B is constant in y */
     if (Bleny < 2)
     {
+        n_poly_t mock;
         n_tpoly_fit_length(F, r);
         F->length = r;
         for (i = 0; i < r; i++)
-            n_bpoly_set_poly_var0(F->coeffs + i, local_fac->poly + i);
+        {
+            n_poly_mock(mock, local_fac->p + i);
+            n_bpoly_set_poly_var0(F->coeffs + i, mock);
+        }
         success = 1;
         goto cleanup;
     }
@@ -780,7 +698,7 @@ got_alpha:
 
     n_bpoly_mod_make_monic_series(monicB, B, curr_lift_order, ctx);
 
-    _hensel_build_tree(link, v, w, local_fac->poly, r, ctx);
+    _hensel_build_tree(link, v, w, local_fac->p, r, ctx);
     for (i = 0; i < 2*r - 2; i++)
         if (-link[i] - 1 >= 0)
             lift_fac[-link[i] - 1] = v + i;
@@ -837,8 +755,8 @@ cleanup:
     flint_free(lift_fac);
 
     nmod_mat_clear(N);
-    n_poly_clear(Beval);
-    n_poly_factor_clear(local_fac);
+    nmod_poly_clear(Beval);
+    nmod_poly_factor_clear(local_fac);
     n_bpoly_clear(monicB);
     n_tpoly_clear(tmp);
 
