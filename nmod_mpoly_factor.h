@@ -465,7 +465,57 @@ FLINT_DLL int n_polyu3_mod_hlift(
     slong degree_inner, /* required degree in x */
     const nmodf_ctx_t ctx);
 
+FLINT_DLL int nmod_zip_find_coeffs_new(
+    mp_limb_t * coeffs,
+    const mp_limb_t * monomials,
+    slong mlength,
+    const mp_limb_t * evals,
+    slong elength,
+    const mp_limb_t * master,
+    mp_limb_t * scratch,
+    nmod_t ctx);
 
+FLINT_DLL void _nmod_mpoly_monomial_evals(
+    mp_limb_t * E,
+    const ulong * Aexps,
+    flint_bitcnt_t Abits,
+    slong Alen,
+    const mp_limb_t * alpha,
+    slong vstart,
+    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void nmod_mpolyu_set_eval_helper(
+    n_polyun_t EH,
+    const nmod_mpolyu_t A,
+    const mp_limb_t * alpha,
+    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL mp_limb_t n_poly_mod_eval_step(n_poly_t A, nmod_t ctx);
+
+FLINT_DLL int nmod_mpoly_hlift_zippel(
+    slong m,
+    nmod_mpoly_struct * B,
+    slong r,
+    const mp_limb_t * alpha,
+    const nmod_mpoly_t A,
+    const slong * degs,
+    const nmod_mpoly_ctx_t ctx,
+    flint_rand_t state);
+
+FLINT_DLL void _eval_to_bpoly(
+    n_bpoly_t E,
+    const nmod_mpoly_t A,
+    const n_poly_struct * alphabetas,
+    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void _nmod_mpoly_set_bpoly_var1_zero(
+    nmod_mpoly_t A,
+    flint_bitcnt_t Abits,
+    const n_bpoly_t B,
+    slong var,
+    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL n_polyun_term_struct * n_polyun_get_term(n_polyun_t A, ulong k);
 
 #ifdef __cplusplus
 }

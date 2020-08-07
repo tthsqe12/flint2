@@ -10,7 +10,6 @@
 */
 
 #include "fmpz_mpoly_factor.h"
-#include "nmod_mpoly_factor.h"
 #include "ui_factor.h"
 
 
@@ -44,10 +43,6 @@ int fmpz_mpoly_factor_irred_wang(
     FLINT_ASSERT(A->bits <= FLINT_BITS);
     FLINT_ASSERT(fmpz_mpoly_factor_matches(lcA, lcAfac, ctx));
 
-/*
-flint_printf("_try_wang called n = %wd\n", n);
-flint_printf("A: "); fmpz_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
-*/
     fmpz_init(q);
 
     fmpz_mpoly_init(Acopy, ctx);
@@ -88,7 +83,7 @@ next_alpha:
     {
         alpha_count = 0;
         alpha_modulus++;
-        if (alpha_modulus > 100)
+        if (alpha_modulus/1024 > ctx->minfo->nvars)
         {
             success = 0;
             goto cleanup;
@@ -99,15 +94,14 @@ next_alpha:
         fmpz_set_si(alpha + i, n_urandint(state, alpha_modulus) - alpha_modulus/2);
 
 got_alpha:
-/*
-usleep(1000);
-flint_printf("---------------------------\n");
-flint_printf("(mod %wd) alpha = ", alpha_modulus); tuple_print(alpha, n);
-*/
+
+    /* TODO quick check if lcc is going to fail */
+
     /* ensure degrees do not drop under evaluation */
     for (i = n - 1; i >= 0; i--)
     {
-        fmpz_mpoly_evaluate_one_fmpz(Aevals + i, i == n - 1 ? A : Aevals + i + 1, i + 1, alpha + i, ctx);
+        fmpz_mpoly_evaluate_one_fmpz(Aevals + i,
+                       i == n - 1 ? A : Aevals + i + 1, i + 1, alpha + i, ctx);
         fmpz_mpoly_degrees_si(degeval, Aevals + i, ctx);
         for (j = 0; j <= i; j++)
         {
@@ -186,7 +180,7 @@ flint_printf("(mod %wd) alpha = ", alpha_modulus); tuple_print(alpha, n);
 
     if (newA->bits > FLINT_BITS)
     {
-        success = 0;
+        success = -1;
         goto cleanup;
     }
 
@@ -300,6 +294,7 @@ cleanup:
     flint_free(degeval);
     fmpz_mpolyv_clear(tfac, ctx);
     fmpz_mpoly_clear(t, ctx);
+    zassenhaus_prune_clear(zas);
 
     fmpz_mpoly_clear(Acopy, ctx);
     fmpz_mpoly_clear(m, ctx);

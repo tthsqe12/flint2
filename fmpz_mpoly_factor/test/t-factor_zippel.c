@@ -23,9 +23,15 @@ void check_omega(slong lower, slong upper, const fmpz_mpoly_t p, const fmpz_mpol
     fmpz_mpoly_factor_init(h, ctx);
     fmpz_mpoly_init(q, ctx);
 
-    if (!fmpz_mpoly_factor(g, p, ctx))
+    if (!fmpz_mpoly_factor_zippel(g, p, ctx))
     {
-        flint_printf("check factorization could be computed\n");
+        flint_printf("check factorization 1 could be computed\n");
+        flint_abort();
+    }
+
+    if (!fmpz_mpoly_factor(h, p, ctx))
+    {
+        flint_printf("check factorization 2 could be computed\n");
         flint_abort();
     }
 
@@ -56,6 +62,14 @@ void check_omega(slong lower, slong upper, const fmpz_mpoly_t p, const fmpz_mpol
         flint_abort();        
     }
 
+    fmpz_mpoly_factor_sort(g, ctx);
+    fmpz_mpoly_factor_sort(h, ctx);
+    if (fmpz_mpoly_factor_cmp(g, h, ctx) != 0)
+    {
+        flint_printf("factorizations do not match\n");
+        flint_abort();        
+    }
+
     for (i = 0; i < g->num; i++)
     {
         fmpz_mpoly_factor(h, g->poly + i, ctx);
@@ -77,11 +91,11 @@ void check_omega(slong lower, slong upper, const fmpz_mpoly_t p, const fmpz_mpol
 int
 main(void)
 {
-    slong i, j, tmul = 25;
+    slong i, j, tmul = 20;
 
     FLINT_TEST_INIT(state);
 
-    flint_printf("factor....");
+    flint_printf("factor_zippel....");
     fflush(stdout);
 
     for (i = 0; i < tmul * flint_test_multiplier(); i++)
@@ -93,7 +107,7 @@ main(void)
         slong nfacs, len;
         ulong expbound, powbound, pow;
 
-        fmpz_mpoly_ctx_init_rand(ctx, state, 8);
+        fmpz_mpoly_ctx_init_rand(ctx, state, 7);
 
         fmpz_mpoly_init(a, ctx);
         fmpz_mpoly_init(t, ctx);

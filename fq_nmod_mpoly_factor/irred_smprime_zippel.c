@@ -1512,6 +1512,7 @@ flint_printf("B: "); nmod_mpoly_print_pretty(B, NULL, ctx); flint_printf("\n");
 }
 
 
+/* bit counts of all degrees should be < FLINT_BITS/3 */
 int fq_nmod_mpoly_hlift_zippel(
     slong m,
     fq_nmod_mpoly_struct * B,
@@ -1539,36 +1540,36 @@ int fq_nmod_mpoly_hlift_zippel(
     FLINT_ASSERT(m > 2);
     FLINT_ASSERT(r > 1);
     FLINT_ASSERT(bits <= FLINT_BITS);
-/*
-flint_printf("fq_nmod_mpoly_hlift_zippel called m = %wd\n", m);
-
-flint_printf("alpha[m-1]: "); fq_nmod_print_pretty(alpha + m - 1, ctx->fqctx); flint_printf("\n");
-
-for (i = 0; i < r; i++)
-{
-flint_printf("B[%wd]: ", i);
-fq_nmod_mpoly_print_pretty(B + i, NULL, ctx);
-flint_printf("\n");
-}
-
-flint_printf("A: ", i);
-fq_nmod_mpoly_print_pretty(A, NULL, ctx);
-flint_printf("\n");
-*/
 
 #if WANT_ASSERT
     {
         fq_nmod_mpoly_t T;
+        slong j, * check_degs = FLINT_ARRAY_ALLOC(ctx->minfo->nvars, slong);
+
         fq_nmod_mpoly_init(T, ctx);
+
+        fq_nmod_mpoly_degrees_si(check_degs, A, ctx);
+        for (j = 0; j < ctx->minfo->nvars; j++)
+            FLINT_ASSERT(FLINT_BIT_COUNT(check_degs[j]) < FLINT_BITS/3);
+
         fq_nmod_mpoly_one(T, ctx);
         for (i = 0; i < r; i++)
+        {
+            fq_nmod_mpoly_degrees_si(check_degs, B + i, ctx);
+            for (j = 0; j < ctx->minfo->nvars; j++)
+                FLINT_ASSERT(FLINT_BIT_COUNT(check_degs[j]) < FLINT_BITS/3);
             fq_nmod_mpoly_mul(T, T, B + i, ctx);
+        }
         fq_nmod_mpoly_sub(T, A, T, ctx);
+
         fq_nmod_mpoly_evaluate_one_fq_nmod(T, T, m, alpha + m - 1, ctx);
         FLINT_ASSERT(fq_nmod_mpoly_is_zero(T, ctx));
+
         fq_nmod_mpoly_clear(T, ctx);
+        flint_free(check_degs);
     }
 #endif
+
 
     beta = FLINT_ARRAY_ALLOC(ctx->minfo->nvars, fq_nmod_struct);
     for (i = 0; i < ctx->minfo->nvars; i++)
@@ -1605,11 +1606,6 @@ flint_printf("\n");
     zip_fails_remaining = 3;
 
     fq_nmod_mpoly_get_mpolyu3(Au, A, m, 0, 1, ctx);
-/*
-flint_printf("Au: ");
-fq_nmod_mpolyu3_print_pretty(Au, "Y", "X", "Z", NULL, ctx);
-flint_printf("\n");
-*/
 
 choose_betas:
 
@@ -1619,14 +1615,6 @@ choose_betas:
         fq_nmod_rand(beta + i, state, ctx->fqctx);
         if (fq_nmod_is_zero(beta + i, ctx->fqctx))
             fq_nmod_one(beta + i, ctx->fqctx);
-/*
-if (2 <= i && i < m)
-{
-flint_printf("beta[%wd]: ", i);
-fq_nmod_print_pretty(beta + i, ctx->fqctx);
-flint_printf("\n");
-}
-*/
     }
 
     fq_nmod_mpolyu_set_eval_helper(Aeh, Au, beta, ctx);
@@ -1648,34 +1636,18 @@ flint_printf("\n");
 next_zip_image:
 
     fq_nmod_polyu_eval_step(Aeval, Aeh, ctx->fqctx);
-/*
-flint_printf("Aeval: ");
-fq_nmod_polyu3_print_pretty(Aeval, "Y", "X", "Z", ctx->fqctx);
-flint_printf("\n");
-*/
+
     for (i = 0; i < r; i++)
-    {
         fq_nmod_polyu_eval_step(Beval + i, Beh + i, ctx->fqctx);
-/*
-flint_printf("Beval[%wd]: ", i);
-fq_nmod_polyu3_print_pretty(Beval + i, "Y", "X", "Z", ctx->fqctx);
-flint_printf("\n");
-*/
-    }
 
 
     success = n_polyu3_fq_hlift(r, BBeval, Aeval, Beval,
                                              alpha + m - 1, degs0, ctx->fqctx);
     if (success < 1)
     {
-/*
-flint_printf("fq_nmod_mpoly_hlift_zippel fail 0\n");
-*/
         if (--zip_fails_remaining >= 0)
             goto choose_betas;
-/*
-flint_printf("fq_nmod_mpoly_hlift_zippel fail 1\n");
-*/
+
         success = 0;
         goto cleanup;
     }
@@ -1695,9 +1667,6 @@ flint_printf("fq_nmod_mpoly_hlift_zippel fail 1\n");
         success = fq_nmod_mpoly_from_zip(B + i, Z + i, H + i, Bdegs[i], m, ctx);
         if (success < 1)
         {
-/*
-flint_printf("fq_nmod_mpoly_hlift_zippel fail 2\n");
-*/
             success = 0;
             goto cleanup;
         }
@@ -1745,7 +1714,11 @@ cleanup:
 }
 
 
-
+/*
+    return 1: success
+           0: failed
+          -1: exception
+*/
 int fq_nmod_mpoly_factor_irred_smprime_zippel(
     fq_nmod_mpolyv_t fac,
     const fq_nmod_mpoly_t A,
@@ -1771,15 +1744,7 @@ int fq_nmod_mpoly_factor_irred_smprime_zippel(
     n_tpoly_t Abfp;
     fq_nmod_mpoly_t m, mpow;
     fq_nmod_mpolyv_t new_lcs, lc_divs;
-/*
-flint_printf("fq_nmod_mpoly_factor_irred_smprime_zippel called\n");
-usleep(100000);
-flint_printf("     A: "); fq_nmod_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
-flint_printf("lcAfac: "); fq_nmod_mpoly_factor_print_pretty(lcAfac, NULL, ctx); flint_printf("\n");
-flint_printf("   lcA: "); fq_nmod_mpoly_print_pretty(lcA, NULL, ctx); flint_printf("\n");
-flint_printf("ctx:\n");
-fq_nmod_ctx_print(ctx->fqctx);
-*/
+
     FLINT_ASSERT(n > 1);
     FLINT_ASSERT(A->length > 1);
     FLINT_ASSERT(fq_nmod_is_one(A->coeffs + 0, ctx->fqctx));
@@ -1830,11 +1795,8 @@ next_alpha:
     for (i = 0; i < n; i++)
     {
         fq_nmod_rand(alpha + i, state, ctx->fqctx);
-/*
-flint_printf("alpha[%wd]: ", i);
-fq_nmod_print_pretty(alpha + i, ctx->fqctx);
-flint_printf("\n");
-*/
+        if (fq_nmod_is_zero(alpha + i, ctx->fqctx))
+            fq_nmod_one(alpha + i, ctx->fqctx);
     }
 
     /* ensure degrees do not drop under evaluation */
@@ -1876,19 +1838,9 @@ next_alphabetas:
             alphabetas[i].coeffs[j] = n_urandint(state, ctx->fqctx->mod.n);
         alphabetas[i].length = alphabetas_length;
         _n_poly_fq_normalise(alphabetas + i, d);
-/*
-flint_printf("alphabetas[%wd]: ", i);
-n_poly_fq_print_pretty(alphabetas + i, "Y", ctx->fqctx);
-flint_printf("\n");
-*/
     }
 
     _fq_nmod_eval_to_bpoly(Ab, A, alphabetas, ctx);
-/*
-flint_printf("Ab: ");
-n_bpoly_fq_print_pretty(Ab, "X", "Y", ctx->fqctx);
-flint_printf("\n");
-*/
 
     success = n_bpoly_fq_factor_smprime(Abfc, Abfp, Ab, 0, ctx->fqctx);
     if (!success)
@@ -1896,11 +1848,7 @@ flint_printf("\n");
         FLINT_ASSERT(0 && "this should not happen");
         goto next_alpha;
     }
-/*
-flint_printf("Abfc: ");
-n_poly_fq_print_pretty(Abfc, "Y", ctx->fqctx);
-flint_printf("\n");
-*/
+
     r = Abfp->length;
 
     if (r < 2)
@@ -1926,10 +1874,6 @@ flint_printf("\n");
         for (i = 0; i < r; i++)
             fq_nmod_mpoly_one(lc_divs->coeffs + i, ctx);
     }
-/*
-flint_printf("lc_divs:\n");
-fq_nmod_mpolyv_print_pretty(lc_divs, NULL, ctx);
-*/
 
     success = fq_nmod_mpoly_divides(m, lcA, lc_divs->coeffs + 0, ctx);
     FLINT_ASSERT(success);
@@ -1938,11 +1882,7 @@ fq_nmod_mpolyv_print_pretty(lc_divs, NULL, ctx);
         success = fq_nmod_mpoly_divides(m, m, lc_divs->coeffs + i, ctx);
         FLINT_ASSERT(success);
     }
-/*
-flint_printf("m: ");
-fq_nmod_mpoly_print_pretty(m, NULL, ctx);
-flint_printf("\n");
-*/
+
     fq_nmod_mpoly_pow_ui(mpow, m, r - 1, ctx);
     if (fq_nmod_mpoly_is_one(mpow, ctx))
     {
@@ -1961,6 +1901,15 @@ flint_printf("\n");
     }
 
     fq_nmod_mpoly_degrees_si(degs, newA, ctx);
+
+    for (i = 0; i < n + 1; i++)
+    {
+        if (FLINT_BIT_COUNT(degs[i]) >= FLINT_BITS/3)
+        {
+            success = -1;
+            goto cleanup;
+        }
+    }
 
     fq_nmod_mpoly_set(t, mpow, ctx);
     for (i = n - 1; i >= 0; i--)
@@ -2039,6 +1988,7 @@ flint_printf("\n");
             if (!success)
             {
                 fq_nmod_mpoly_univar_clear(u, ctx);
+                success = -1;
                 goto cleanup;
             }
             success = fq_nmod_mpoly_divides(fac->coeffs + i,
@@ -2093,8 +2043,6 @@ cleanup:
         fq_nmod_mpoly_clear(prod, ctx);
     }
 #endif
-/*
-flint_printf("fq_nmod_mpoly_factor_irred_smprime_wang returning %d\n", success);
-*/
+
 	return success;
 }

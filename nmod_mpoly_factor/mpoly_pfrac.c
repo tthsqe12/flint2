@@ -62,7 +62,7 @@ int nmod_mpoly_pfrac_init(
 
         nmod_mpoly_gen(I->xalpha + i, i, ctx);
         nmod_mpoly_sub_ui(I->xalpha + i, I->xalpha + i, alpha[i - 1], ctx);
-        nmod_mpoly_repack_bits_inplace(I->xalpha, I->bits, ctx);
+        nmod_mpoly_repack_bits_inplace(I->xalpha + i, I->bits, ctx);
     }
 
     n_poly_init(p);

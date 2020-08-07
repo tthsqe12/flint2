@@ -16,137 +16,9 @@
 #include "mpn_extras.h"
 #include "nmod_vec.h"
 
-/*
-    fmpz_mod_mpoly_t
-    sparse multivariates with fmpz_mod coeffs
-*/
-typedef struct
-{
-   fmpz * coeffs;
-   ulong * exps;  
-   slong alloc;
-   slong length;
-   flint_bitcnt_t bits;     /* number of bits per exponent */
-} fmpz_mod_mpoly_struct;
-
-typedef fmpz_mod_mpoly_struct fmpz_mod_mpoly_t[1];
-
-void fmpz_mod_mpoly_clear(
-    fmpz_mod_mpoly_t poly,
-    const fmpz_mod_mpoly_ctx_t ctx)
-{
-   if (poly->coeffs != NULL)
-   {
-      slong i;
-
-      for (i = 0; i < poly->alloc; i++)
-         _fmpz_demote(poly->coeffs + i);
-
-      flint_free(poly->coeffs);
-      flint_free(poly->exps);
-   }
-}
-
-
-void fmpz_mod_mpoly_init(
-    fmpz_mod_mpoly_t A,
-    const fmpz_mod_mpoly_ctx_t ctx)
-{
-    A->coeffs = NULL;
-    A->exps = NULL;
-    A->alloc = 0;
-    A->length = 0;
-    A->bits = MPOLY_MIN_BITS;
-}
-
-void fmpz_mod_mpoly_init3(
-    fmpz_mod_mpoly_t A,
-    slong alloc,
-    flint_bitcnt_t bits,
-    const fmpz_mod_mpoly_ctx_t ctx)
-{
-    if (alloc > 0)
-    {
-        slong N = mpoly_words_per_exp(bits, ctx->minfo);
-        A->exps   = (ulong *) flint_malloc(alloc*N*sizeof(ulong));
-        A->coeffs = (fmpz *) flint_calloc(alloc, sizeof(fmpz));
-    }
-    else
-    {
-        alloc = 0;
-        A->coeffs = NULL;
-        A->exps = NULL;
-    }
-    A->alloc = alloc;
-    A->length = 0;
-    A->bits = bits;
-}
-
-void fmpz_mod_mpoly_truncate(
-    fmpz_mod_mpoly_t A,
-    slong newlen,
-    const fmpz_mod_mpoly_ctx_t ctx)
-{
-    if (A->length > newlen)
-    {
-        slong i;
-
-        for (i = newlen; i < A->length; i++)
-            _fmpz_demote(A->coeffs + i);
-
-        A->length = newlen;
-    }  
-}
-
-void fmpz_mod_mpoly_realloc(
-    fmpz_mod_mpoly_t poly,
-    slong alloc,
-    const fmpz_mod_mpoly_ctx_t ctx)
-{
-    slong N;
-
-    if (alloc <= 0)             /* Clear up, reinitialise */
-    {
-        fmpz_mod_mpoly_clear(poly, ctx);
-        fmpz_mod_mpoly_init(poly, ctx);
-        return;
-    }
-
-    N = mpoly_words_per_exp(poly->bits, ctx->minfo);
-
-    if (poly->alloc != 0)            /* Realloc */
-    {
-        fmpz_mod_mpoly_truncate(poly, alloc, ctx);
-
-        poly->coeffs = (fmpz *) flint_realloc(poly->coeffs, alloc*sizeof(fmpz));
-        poly->exps = (ulong *) flint_realloc(poly->exps, alloc*N*sizeof(ulong));
-
-        if (alloc > poly->alloc)
-            memset(poly->coeffs + poly->alloc, 0,
-                                           (alloc - poly->alloc)*sizeof(fmpz));
-    }
-    else                        /* Nothing allocated already so do it now */
-    {
-        poly->coeffs = (fmpz *) flint_calloc(alloc, sizeof(fmpz));
-        poly->exps   = (ulong *) flint_malloc(alloc*N*sizeof(ulong));
-    }
-
-    poly->alloc = alloc;
-}
-
-void fmpz_mod_mpoly_fit_length(
-    fmpz_mod_mpoly_t poly,
-    slong len,
-    const fmpz_mod_mpoly_ctx_t ctx)
-{
-    if (len > poly->alloc)
-    {
-        /* At least double number of allocated coeffs */
-        if (len < 2 * poly->alloc)
-            len = 2 * poly->alloc;
-        fmpz_mod_mpoly_realloc(poly, len, ctx);
-    }
-}
+#define USE_ZAS 1
+#define USE_WANG 2
+#define USE_ZIP 4
 
 
 
@@ -204,7 +76,8 @@ void fmpz_mpoly_convert_perm(
 static int _irreducible_factors(
     fmpz_mpolyv_t Af,
     fmpz_mpoly_t A,
-    const fmpz_mpoly_ctx_t ctx)
+    const fmpz_mpoly_ctx_t ctx,
+    unsigned int algo)
 {
     int success;
     slong i, mvars;
@@ -365,17 +238,33 @@ static int _irreducible_factors(
         fmpz_mpoly_convert_perm(L, Lbits, Lctx, A, ctx, perm);
         fmpz_mpoly_unit_normalize(L, ctx);
 
-        _fmpz_mpoly_get_lead0(lcL, L, Lctx);
-        success = fmpz_mpoly_factor(lcLf, lcL, Lctx);
-        if (success)
-        {
-            success = fmpz_mpoly_factor_irred_zippel(Lf, L, lcLf, lcL, Lctx, state);
-            if (!success)
-                success = fmpz_mpoly_factor_irred_wang(Lf, L, lcLf, lcL, Lctx, state);
-        }
-        if (!success)
-            success = fmpz_mpoly_factor_irred_zassenhaus(Lf, L, Lctx);
+        success = 0;
 
+        if (algo & (USE_WANG | USE_ZIP))
+        {
+            _fmpz_mpoly_get_lead0(lcL, L, Lctx);
+            if (fmpz_mpoly_factor(lcLf, lcL, Lctx))
+            {
+                if ((algo & USE_ZIP) && (success == 0))
+                {
+                    success = fmpz_mpoly_factor_irred_zippel(Lf, L,
+                                                       lcLf, lcL, Lctx, state);
+                }
+
+                if ((algo & USE_WANG) && (success == 0))
+                {
+                    success = fmpz_mpoly_factor_irred_wang(Lf, L,
+                                                       lcLf, lcL, Lctx, state);
+                }
+            }
+        }
+
+        if ((algo & USE_ZAS) && (success == 0))
+        {
+            success = fmpz_mpoly_factor_irred_zassenhaus(Lf, L, Lctx);
+        }
+
+        success = (success > 0);
         if (success)
         {
             fmpz_mpolyv_fit_length(Af, Lf->length, ctx);
@@ -418,10 +307,11 @@ cleanup:
 }
 
 
-int fmpz_mpoly_factor(
+int fmpz_mpoly_factor_algo(
     fmpz_mpoly_factor_t f,
     const fmpz_mpoly_t A,
-    const fmpz_mpoly_ctx_t ctx)
+    const fmpz_mpoly_ctx_t ctx,
+    unsigned int algo)
 {
     int success;
     slong i, j;
@@ -441,7 +331,7 @@ int fmpz_mpoly_factor(
     g->num = 0;
     for (j = 0; j < f->num; j++)
     {
-        success = _irreducible_factors(t, f->poly + j, ctx);
+        success = _irreducible_factors(t, f->poly + j, ctx, algo);
         if (!success)
             goto cleanup;
 
@@ -465,4 +355,40 @@ cleanup:
     FLINT_ASSERT(!success || fmpz_mpoly_factor_matches(A, f, ctx));
 
     return success;
+}
+
+
+int fmpz_mpoly_factor(
+    fmpz_mpoly_factor_t f,
+    const fmpz_mpoly_t A,
+    const fmpz_mpoly_ctx_t ctx)
+{
+    return fmpz_mpoly_factor_algo(f, A, ctx, USE_ZAS | USE_WANG | USE_ZIP);
+}
+
+
+int fmpz_mpoly_factor_zassenhaus(
+    fmpz_mpoly_factor_t f,
+    const fmpz_mpoly_t A,
+    const fmpz_mpoly_ctx_t ctx)
+{
+    return fmpz_mpoly_factor_algo(f, A, ctx, USE_ZAS);
+}
+
+
+int fmpz_mpoly_factor_wang(
+    fmpz_mpoly_factor_t f,
+    const fmpz_mpoly_t A,
+    const fmpz_mpoly_ctx_t ctx)
+{
+    return fmpz_mpoly_factor_algo(f, A, ctx, USE_WANG);
+}
+
+
+int fmpz_mpoly_factor_zippel(
+    fmpz_mpoly_factor_t f,
+    const fmpz_mpoly_t A,
+    const fmpz_mpoly_ctx_t ctx)
+{
+    return fmpz_mpoly_factor_algo(f, A, ctx, USE_ZIP);
 }

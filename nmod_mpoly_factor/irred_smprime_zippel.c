@@ -10,32 +10,12 @@
 */
 
 #include "nmod_mpoly_factor.h"
-#include "fq_nmod_mpoly_factor.h"
 
-
-void _eval_to_bpoly(
-    n_bpoly_t E,
-    const nmod_mpoly_t A,
-    const n_poly_struct * alphabetas,
-    const nmod_mpoly_ctx_t ctx);
-
-void _nmod_mpoly_set_bpoly_var1_zero(
-    nmod_mpoly_t A,
-    flint_bitcnt_t Abits,
-    const n_bpoly_t B,
-    slong var,
-    const nmod_mpoly_ctx_t ctx);
-
-int nmod_mpoly_hlift_zippel(
-    slong m,
-    nmod_mpoly_struct * B,
-    slong r,
-    const mp_limb_t * alpha,
-    const nmod_mpoly_t A,
-    const slong * degs,
-    const nmod_mpoly_ctx_t ctx,
-    flint_rand_t state);
-
+/*
+    return 1: success
+           0: failed
+          -1: exception (large exps)
+*/
 int nmod_mpoly_factor_irred_smprime_zippel(
     nmod_mpolyv_t fac,
     const nmod_mpoly_t A,
@@ -60,13 +40,6 @@ int nmod_mpoly_factor_irred_smprime_zippel(
     n_tpoly_t Abfp;
     nmod_mpoly_t m, mpow;
     nmod_mpolyv_t new_lcs, lc_divs;
-
-/*
-flint_printf("nmod_mpoly_factor_irred_smprime_wang called p = %wu\n", ctx->ffinfo->mod.n);
-flint_printf("     A: "); nmod_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
-flint_printf("lcAfac: "); nmod_mpoly_factor_print_pretty(lcAfac, NULL, ctx); flint_printf("\n");
-flint_printf("   lcA: "); nmod_mpoly_print_pretty(lcA, NULL, ctx); flint_printf("\n");
-*/
 
     FLINT_ASSERT(n > 1);
     FLINT_ASSERT(A->length > 1);
@@ -156,11 +129,6 @@ next_alphabetas:
             alphabetas[i].coeffs[j] = n_urandint(state, ctx->ffinfo->mod.n);
         alphabetas[i].length = alphabetas_length;
         _n_poly_normalise(alphabetas + i);
-/*
-flint_printf("alphabetas[%wd]: ", i);
-n_poly_print_pretty(alphabetas + i, "Y");
-flint_printf("\n");
-*/
     }
 
     _eval_to_bpoly(Ab, A, alphabetas, ctx);
@@ -196,10 +164,6 @@ flint_printf("\n");
         for (i = 0; i < r; i++)
             nmod_mpoly_one(lc_divs->coeffs + i, ctx);
     }
-/*
-flint_printf("lc_divs:\n");
-nmod_mpolyv_print_pretty(lc_divs, NULL, ctx);
-*/
 
     success = nmod_mpoly_divides(m, lcA, lc_divs->coeffs + 0, ctx);
     FLINT_ASSERT(success);
@@ -227,6 +191,15 @@ nmod_mpolyv_print_pretty(lc_divs, NULL, ctx);
     }
 
     nmod_mpoly_degrees_si(degs, newA, ctx);
+
+    for (i = 0; i < n + 1; i++)
+    {
+        if (FLINT_BIT_COUNT(degs[i]) >= FLINT_BITS/3)
+        {
+            success = -1;
+            goto cleanup;
+        }
+    }
 
     nmod_mpoly_set(t, mpow, ctx);
     for (i = n - 1; i >= 0; i--)
@@ -303,6 +276,7 @@ nmod_mpolyv_print_pretty(lc_divs, NULL, ctx);
             if (!success)
             {
                 nmod_mpoly_univar_clear(u, ctx);
+                success = -1;
                 goto cleanup;
             }
             success = nmod_mpoly_divides(fac->coeffs + i,
@@ -356,9 +330,5 @@ cleanup:
     }
 #endif
 
-/*
-if (success)
-flint_printf("nmod_mpoly_factor_irred_smprime_zippel success!!!!!!!\n");
-*/
 	return success;
 }

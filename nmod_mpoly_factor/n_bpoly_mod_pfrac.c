@@ -126,7 +126,7 @@ int n_bpoly_mod_interp_crt_2sm_poly(
     for (i = 0; i < Tlen; i++)
     {
         Fvalue = (i < Flen) ? Fcoeffs + i : zero;
-        n_poly_mod_eval2_pow(&FvalueA, &FvalueB, Fcoeffs + i, alphapow, mod);
+        n_poly_mod_eval2_pow(&FvalueA, &FvalueB, Fvalue, alphapow, mod);
         Avalue = (i < Alen) ? Acoeffs[i] : 0;
         Bvalue = (i < Blen) ? Bcoeffs[i] : 0;
         FvalueA = nmod_sub(FvalueA, Avalue, mod);

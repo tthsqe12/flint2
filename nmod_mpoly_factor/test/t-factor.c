@@ -48,12 +48,6 @@ flint_printf("g: "); nmod_mpoly_factor_print_pretty(g, NULL, ctx); flint_printf(
         }
     }
 
-    if (nmod_mpoly_factor_fix_units(g, ctx))
-    {
-        flint_printf("FAIL:\nfactorization is not unit normal\n");
-        flint_abort();
-    }
-
     fmpz_zero(omega);
     for (i = 0; i < g->num; i++)
         fmpz_add(omega, omega, g->exp + i);
@@ -218,7 +212,7 @@ flint_printf("**********total number of bvar factors: %wd ******\n", total);
     if (total != 3414)
     {
         flint_printf("total number of bvar factors should be 3414\n");
-        flinta_abort();
+        flint_abort();
     }
 
     total = 0;
