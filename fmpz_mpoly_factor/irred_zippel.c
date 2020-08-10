@@ -14,49 +14,72 @@
 #include "ui_factor.h"
 
 
-static void nmod_mpoly_get_mpolyu2(
-    nmod_mpolyu_t A,
-    const nmod_mpoly_t B,
-    slong var0,
-    slong var1,
+static void nmod_mpoly_get_eval_helper2(
+    n_polyun_t EH,
+    const nmod_mpoly_t A,
+    const mp_limb_t * betas,
     const nmod_mpoly_ctx_t ctx)
 {
-    slong i;
-    nmod_mpoly_struct * Ac;
-    ulong * Bexps;
-    slong NA, NB;
+    slong start, Ai, j, n;
+    slong e0, e1, EHi;
+    n_polyun_term_struct * EHterms;
+    mp_limb_t * p;
+    flint_bitcnt_t bits = A->bits;
+    const mp_limb_t * Acoeffs = A->coeffs;
+    slong Alen = A->length;
+    const ulong * Aexps = A->exps;
+    ulong mask = (-UWORD(1)) >> (FLINT_BITS - bits);
+    slong N = mpoly_words_per_exp_sp(bits, ctx->minfo);
+    slong off0, off1, shift0, shift1;
 
-    FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
+    FLINT_ASSERT(Alen > 0);
 
-    FLINT_ASSERT(var0 < ctx->minfo->nvars);
-    FLINT_ASSERT(var1 < ctx->minfo->nvars);
+    mpoly_gen_offset_shift_sp(&off0, &shift0, 0, bits, ctx->minfo);
+    mpoly_gen_offset_shift_sp(&off1, &shift1, 1, bits, ctx->minfo);
 
-    Bexps = (ulong *) flint_malloc(ctx->minfo->nvars*sizeof(ulong));
+    Ai = 0;
+    EHi = 0;
 
-    NA = mpoly_words_per_exp_sp(A->bits, ctx->minfo);
-    NB = mpoly_words_per_exp(B->bits, ctx->minfo);
-
-    A->length = 0;
-    for (i = 0; i < B->length; i++)
+    while (Ai < Alen)
     {
-        mpoly_get_monomial_ui(Bexps, B->exps + NB*i, B->bits, ctx->minfo);
-        FLINT_ASSERT(FLINT_BIT_COUNT(Bexps[var0]) < FLINT_BITS/2);
-        FLINT_ASSERT(FLINT_BIT_COUNT(Bexps[var1]) < FLINT_BITS/2);
-        Ac = _nmod_mpolyu_get_coeff(A, pack_exp2(Bexps[var0], Bexps[var1]), ctx);
-        FLINT_ASSERT(Ac->bits == A->bits);
-        nmod_mpoly_fit_length(Ac, Ac->length + 1, ctx);
-        Ac->coeffs[Ac->length] = B->coeffs[i];
-        Bexps[var0] = 0;
-        Bexps[var1] = 0;
-        mpoly_set_monomial_ui(Ac->exps + NA*Ac->length, Bexps, A->bits, ctx->minfo);
-        Ac->length++;
+        start = Ai;
+        e0 = (Aexps[N*Ai + off0] >> shift0) & mask;
+        e1 = (Aexps[N*Ai + off1] >> shift1) & mask;
+        while (1)
+        {
+            Ai++;
+            if (Ai >= Alen)
+                break;
+            if (((Aexps[N*Ai + off0] >> shift0) & mask) != e0)
+                break;
+            if (((Aexps[N*Ai + off1] >> shift1) & mask) != e1)
+                break;
+        }
+
+        n = Ai - start;
+
+        n_polyun_fit_length(EH, EHi + 1);
+        EHterms = EH->terms;
+        EHterms[EHi].exp = pack_exp2(e0, e1);
+        n_poly_fit_length(EHterms[EHi].coeff, 3*n);
+        EHterms[EHi].coeff->length = n;
+        p = EHterms[EHi].coeff->coeffs;
+        EHi++;
+
+        _nmod_mpoly_monomial_evals(p, Aexps + N*start, bits, n, betas, 2, ctx);
+
+        for (j = n - 1; j >= 0; j--)
+        {
+            mp_limb_t t2 = Acoeffs[start + j];
+            mp_limb_t t1 = p[j];
+            p[3*j + 0] = t1;
+            p[3*j + 1] = t2;
+            p[3*j + 2] = t1;
+        }
     }
 
-    flint_free(Bexps);
-
-    FLINT_ASSERT(nmod_mpolyu_is_canonical(A, ctx));
+    EH->length = EHi;
 }
-
 
 static slong nmod_mpoly_set_eval_helper_and_zip_form2(
     slong * deg1_, /* degree of B wrt main var 1 */
@@ -289,7 +312,6 @@ static int _fmpz_mpoly_modpk_update_zip(
 }
 
 
-
 static void _nmod_mpoly_set_fmpz_mpoly(
     nmod_mpoly_t Ap,
     const nmod_mpoly_ctx_t ctxp,
@@ -314,6 +336,7 @@ static void _nmod_mpoly_set_fmpz_mpoly(
     }
     Ap->length = Ap_len;
 }
+
 
 static void _fmpz_mpoly_modpk_taylor_coeff(
     const fmpz_t pk,
@@ -346,6 +369,7 @@ static void _fmpz_mpoly_modpk_taylor_coeff(
 
     fmpz_clear(t);
 }
+
 
 void fmpz_set_nmods(fmpz_t a, ulong n, ulong p)
 {
@@ -568,7 +592,6 @@ int fmpz_mfactor_lift_prime_power_zippel(
     slong L)
 {
     slong req_zip_images, cur_zip_image;
-    flint_bitcnt_t bits = A->bits;
     slong n = ctxp->minfo->nvars;
     int success;
     slong i, j, k;
@@ -576,7 +599,6 @@ int fmpz_mfactor_lift_prime_power_zippel(
     n_bpoly_struct * Ceval, * Beval, Teval[1];
     slong * Cdegs1;
     nmod_mpoly_t Tp;
-    nmod_mpolyu_t Tu;
     n_polyun_t Teh;
     fmpz_t pk;
     mp_limb_t * betas;
@@ -591,7 +613,6 @@ int fmpz_mfactor_lift_prime_power_zippel(
     fmpz_mpoly_init(t2, ctx);
 
     nmod_mpoly_init(Tp, ctxp);
-    nmod_mpolyu_init(Tu, bits, ctxp);
     n_polyun_init(Teh);
 
     Cdegs1 = (slong *) flint_malloc(r*sizeof(slong));
@@ -626,6 +647,13 @@ int fmpz_mfactor_lift_prime_power_zippel(
     for (i = 0; i < r; i++)
     {
         slong this_images;
+
+        if (Bp[i].bits >= FLINT_BITS)
+        {
+            success = 0;
+            goto cleanup;
+        }
+
         this_images = nmod_mpoly_set_eval_helper_and_zip_form2(Cdegs1 + i,
                                    Beh + i, H + i, M + i, Bp + i, betas, ctxp);
         req_zip_images = FLINT_MAX(req_zip_images, this_images);
@@ -665,7 +693,7 @@ next_power:
         goto cleanup;
     }
 
-    if (k > L)
+    if (k > L || e->bits >= FLINT_BITS)
     {
 FLINT_ASSERT(0 && "spurious failure");
         success = 0;
@@ -673,10 +701,8 @@ FLINT_ASSERT(0 && "spurious failure");
     }
 
     _fmpz_mpoly_modpk_taylor_coeff(pk, Tp, ctxp, e, ctx);
+    nmod_mpoly_get_eval_helper2(Teh, Tp, betas, ctxp);
 
-    nmod_mpoly_get_mpolyu2(Tu, Tp, 0, 1, ctxp);
-
-    nmod_mpolyu_set_eval_helper(Teh, Tu, betas, ctxp);
     if (fmpz_cmp_ui(pk, ctxp->ffinfo->mod.n) > 0)
     {
         for (i = 0; i < r; i++)
@@ -735,7 +761,6 @@ cleanup:
     fmpz_mpoly_clear(t2, ctx);
 
     nmod_mpoly_clear(Tp, ctxp);
-    nmod_mpolyu_clear(Tu, ctxp);
     n_polyun_clear(Teh);
 
     flint_free(Cdegs1);

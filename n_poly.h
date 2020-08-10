@@ -188,7 +188,6 @@ void n_poly_init(n_poly_t A)
 N_POLY_INLINE
 void n_poly_init2(n_poly_t A, slong alloc)
 {
-    FLINT_ASSERT(A->alloc >= 0);
     A->length = 0;
     A->alloc = alloc;
     A->coeffs = NULL;
@@ -1406,6 +1405,36 @@ slong n_poly_stack_size(const n_poly_stack_t S)
 {
     return S->top;
 }
+
+/*****************************************************************************/
+
+typedef struct {
+    ulong key;
+    slong up;
+    slong left;
+    slong right;
+    int color;
+} mpoly_rbnode_ui_struct;
+
+typedef struct {
+    slong length;
+    mpoly_rbnode_ui_struct * nodes;
+    slong node_alloc;
+    char * data;
+    slong data_alloc;
+} mpoly_rbtree_ui_struct;
+
+typedef mpoly_rbtree_ui_struct mpoly_rbtree_ui_t[1];
+
+FLINT_DLL void mpoly_rbtree_ui_init(mpoly_rbtree_ui_t T);
+
+FLINT_DLL void mpoly_rbtree_ui_clear(mpoly_rbtree_ui_t T);
+
+FLINT_DLL void * mpoly_rbtree_ui_lookup(
+    mpoly_rbtree_ui_t T,
+    int * its_new,
+    ulong rcx,
+    slong dsize);
 
 
 

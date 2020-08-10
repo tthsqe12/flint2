@@ -152,6 +152,7 @@ void check_omega_str(slong lower, slong upper, const char * s,
 int
 main(void)
 {
+int check = 0;
     slong i, j, tmul = 30;
     slong total;
     FLINT_TEST_INIT(state);
@@ -160,6 +161,8 @@ main(void)
     fflush(stdout);
 
     total = 0;
+if (check)
+{
     for (i = 0; i < tmul * flint_test_multiplier(); i++)
     {
         slong lower;
@@ -196,10 +199,7 @@ main(void)
             lower += !nmod_mpoly_is_ui(t, ctx);
             nmod_mpoly_mul(a, a, t, ctx);
         }
-/*
-if (ctx->minfo->nvars == 2)
-flint_printf("nfacs: %wd, degrees (%wd, %wd)\n", nfacs, nmod_mpoly_degree_si(a, 0, ctx), nmod_mpoly_degree_si(a, 1, ctx));
-*/
+
 flint_printf("1:%wd ", i);
         total += check_omega(lower, WORD_MAX, a, ctx);
 
@@ -214,7 +214,7 @@ flint_printf("**********total number of bvar factors: %wd ******\n", total);
         flint_printf("total number of bvar factors should be 3414\n");
         flint_abort();
     }
-
+}
     total = 0;
     for (i = 0; i < tmul * flint_test_multiplier(); i++)
     {
@@ -245,9 +245,6 @@ flint_printf("**********total number of bvar factors: %wd ******\n", total);
             nmod_mpoly_randtest_bound(t, state, len, expbound, ctx);
             if (nmod_mpoly_is_zero(t, ctx))
                 nmod_mpoly_one(t, ctx);
-/*
-flint_printf("multiplying: "); nmod_mpoly_print_pretty(t, NULL, ctx); flint_printf("\n");
-*/
             lower += !nmod_mpoly_is_ui(t, ctx);
             nmod_mpoly_mul(a, a, t, ctx);
         }
@@ -261,11 +258,14 @@ flint_printf("2:%wd ", i);
     }
 flint_printf("**********total number of mvar factors: %wd ******\n", total);
 
+if (check)
+{
     if (total != 7217)
     {
         flint_printf("total number of mvar factors should be 7217\n");
         flint_abort();
     }
+}
 
     check_omega_str(2, 2, "x y z", "(z^8*x^8+x^1+y^16+y^1+z^8+z^3)*((y^4+z^3+z)*x^8+x^1+y^16+y^1+z^8+z^3)", 2);
     check_omega_str(4, 4, "x y", "(x^8+x+y^16+y)*(x^8+x+y^4+y)", 2);

@@ -551,6 +551,21 @@ FLINT_DLL int n_polyu3_fq_hlift(
     slong degree_inner, /* required degree in x */
     const fq_nmod_ctx_t ctx);
 
+FLINT_DLL void n_poly_fq_product_roots_n_fq(
+    n_poly_t master,
+    const mp_limb_t * monomials,
+    slong mlength,
+    const fq_nmod_ctx_t ctx);
+
+FLINT_DLL void _fq_nmod_mpoly_monomial_evals(
+    mp_limb_t * E,
+    const ulong * Aexps,
+    flint_bitcnt_t Abits,
+    slong Alen,
+    const fq_nmod_struct * alpha,
+    slong vstart,
+    const fq_nmod_mpoly_ctx_t ctx);
+
 #ifdef __cplusplus
 }
 #endif

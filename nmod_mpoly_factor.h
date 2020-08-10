@@ -323,6 +323,14 @@ FLINT_DLL int nmod_mpoly_factor_irred_smprime_wang(
     const nmod_mpoly_ctx_t ctx,
     flint_rand_t state);
 
+FLINT_DLL int nmod_mpoly_factor_irred_medprime_wang(
+    nmod_mpolyv_t Af,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_factor_t lcAfac,
+    const nmod_mpoly_t lcA,
+    const nmod_mpoly_ctx_t ctx,
+    flint_rand_t state);
+
 FLINT_DLL int nmod_mpoly_factor_irred_lgprime_wang(
     nmod_mpolyv_t Af,
     const nmod_mpoly_t A,
@@ -333,6 +341,14 @@ FLINT_DLL int nmod_mpoly_factor_irred_lgprime_wang(
 
 FLINT_DLL int nmod_mpoly_factor_irred_smprime_zippel(
     nmod_mpolyv_t fac,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_factor_t lcAfac,
+    const nmod_mpoly_t lcA,
+    const nmod_mpoly_ctx_t ctx,
+    flint_rand_t state);
+
+FLINT_DLL int nmod_mpoly_factor_irred_medprime_zippel(
+    nmod_mpolyv_t Af,
     const nmod_mpoly_t A,
     const nmod_mpoly_factor_t lcAfac,
     const nmod_mpoly_t lcA,
@@ -357,7 +373,6 @@ flint_bitcnt_t mpoly_gen_pow_exp_bits_required(
 {
     return 1 + FLINT_BIT_COUNT(e); /* only lex and deg supported */
 }
-
 
 
 
@@ -484,12 +499,6 @@ FLINT_DLL void _nmod_mpoly_monomial_evals(
     slong vstart,
     const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL void nmod_mpolyu_set_eval_helper(
-    n_polyun_t EH,
-    const nmod_mpolyu_t A,
-    const mp_limb_t * alpha,
-    const nmod_mpoly_ctx_t ctx);
-
 FLINT_DLL mp_limb_t n_poly_mod_eval_step(n_poly_t A, nmod_t ctx);
 
 FLINT_DLL int nmod_mpoly_hlift_zippel(
@@ -514,8 +523,6 @@ FLINT_DLL void _nmod_mpoly_set_bpoly_var1_zero(
     const n_bpoly_t B,
     slong var,
     const nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL n_polyun_term_struct * n_polyun_get_term(n_polyun_t A, ulong k);
 
 #ifdef __cplusplus
 }

@@ -179,7 +179,7 @@ flint_printf("**********total number of bvar factors: %wd ******\n", total);
     if (total != 2805)
     {
         flint_printf("total number of bvar factors should be 2805\n");
-        flinta_abort();
+        flint_abort();
     }
 
     total = 0;
@@ -222,7 +222,7 @@ flint_printf("**********total number of mvar factors: %wd ******\n", total);
     if (total != 3443)
     {
         flint_printf("total number of mvar factors should be 3443\n");
-        flinta_abort();
+        flint_abort();
     }
 
     FLINT_TEST_CLEANUP(state);

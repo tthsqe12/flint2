@@ -410,8 +410,6 @@ int nmod_mpoly_hlift(
     const slong * degs,
     const nmod_mpoly_ctx_t ctx)
 {
-    slong i;
-
     FLINT_ASSERT(r >= 2);
     FLINT_ASSERT(A->bits <= FLINT_BITS);
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);

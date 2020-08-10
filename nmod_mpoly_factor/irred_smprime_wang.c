@@ -12,14 +12,21 @@
 #include "nmod_mpoly_factor.h"
 #include "fq_nmod_mpoly_factor.h"
 
-
-static void _eval_rest(
-    n_poly_t E,
+/*
+    only E and alphas are shifted by "var"
+    so output is in E[0]
+*/
+int _nmod_mpoly_evaluate_rest_n_poly(
+    n_poly_struct * E,
+    slong * starts,
+    slong * ends,
+    slong * stops,
+    ulong * es,
     const mp_limb_t * Acoeffs,
     const ulong * Aexps,
     slong Alen,
     slong var,
-    const n_poly_struct * alphabetas,
+    const n_poly_struct * alphas,
     const slong * offsets,
     const slong * shifts,
     slong N,
@@ -27,61 +34,85 @@ static void _eval_rest(
     slong nvars,
     nmod_t ctx)
 {
-    slong offset, shift, start, stop;
-    ulong e, next_e;
-    n_poly_t T;
+    slong v, stop;
+    ulong next_e;
 
-    n_poly_zero(E);
+    FLINT_ASSERT(var < nvars);
+
+    E -= var;
+    alphas -= var;
+
+    v = var;
+    starts[v] = 0;
+    ends[v] = Alen;
+    n_poly_zero(E + v);
 
     if (Alen < 1)
-        return;
+        return 1;
 
-    if (var >= nvars)
-    {
-        FLINT_ASSERT(Alen == 1);
-        n_poly_set_ui(E, Acoeffs[0]);
-        return;
-    }
+calculate:
+/*
+    input:
+        v
+        starts[v]
+        ends[v]
+*/
+    FLINT_ASSERT(ends[v] > starts[v]);
+    es[v] = mask & (Aexps[N*starts[v] + offsets[v]] >> shifts[v]);
 
-    offset = offsets[var];
-    shift = shifts[var];
-
-    n_poly_init(T);
-
-    start = 0;
-    e = mask & (Aexps[N*start + offset] >> shift);
+    n_poly_zero(E + v);
 
 next:
 
-    FLINT_ASSERT(start < Alen);
-    FLINT_ASSERT(e == (mask & (Aexps[N*start + offset] >> shift)));
+    FLINT_ASSERT(es[v] == (mask & (Aexps[N*starts[v] + offsets[v]] >> shifts[v])));
 
-    stop = start + 1;
-    while (stop < Alen && (mask & (Aexps[N*stop + offset] >> shift)) == e)
-        stop++;
-
-    _eval_rest(T, Acoeffs + start, Aexps + N*start, stop - start, var + 1,
-                         alphabetas + 1, offsets, shifts, N, mask, nvars, ctx);
-    n_poly_mod_add(E, E, T, ctx);
-
-    if (stop < Alen)
+    stop = starts[v] + 1;
+    while (stop < ends[v] &&
+           (mask & (Aexps[N*stop + offsets[v]] >> shifts[v])) == es[v])
     {
-        next_e = (mask & (Aexps[N*stop + offset] >> shift));
-        FLINT_ASSERT(next_e < e);
-        n_poly_mod_pow(T, alphabetas, e - next_e, ctx);
-        n_poly_mod_mul(E, E, T, ctx);
-        e = next_e;
-        start = stop;
+        stop++;
+    }
+    stops[v] = stop;
+
+    if (v + 1 < nvars)
+    {
+        starts[v + 1] = starts[v];
+        ends[v + 1] = stops[v];
+        v++;
+        goto calculate;
+calculate_return:
+        n_poly_mod_add(E + v, E + v, E + v + 1, ctx);
+    }
+    else
+    {
+        n_poly_mod_add_ui(E + v, E + v, Acoeffs[starts[v]], ctx);
+    }
+
+    if (stops[v] < ends[v])
+    {
+        next_e = mask & (Aexps[N*stops[v] + offsets[v]] >> shifts[v]);
+        FLINT_ASSERT(next_e < es[v]);
+        n_poly_mod_pow(E + v + 1, alphas + v, es[v] - next_e, ctx);
+        n_poly_mod_mul(E + v, E + v, E + v + 1, ctx);
+        es[v] = next_e;
+        starts[v] = stops[v];
         goto next;
     }
     else
     {
-        n_poly_mod_pow(T, alphabetas, e, ctx);
-        n_poly_mod_mul(E, E, T, ctx);
+        n_poly_mod_pow(E + v + 1, alphas + v, es[v], ctx);
+        n_poly_mod_mul(E + v, E + v, E + v + 1, ctx);
     }
 
-    n_poly_clear(T);
+    if (v > var)
+    {
+        v--;
+        goto calculate_return;
+    }
+
+    return 1;
 }
+
 
 void _eval_to_bpoly(
     n_bpoly_t E,
@@ -89,15 +120,27 @@ void _eval_to_bpoly(
     const n_poly_struct * alphabetas,
     const nmod_mpoly_ctx_t ctx)
 {
+    slong n = ctx->minfo->nvars;
     slong i, N = mpoly_words_per_exp_sp(A->bits, ctx->minfo);
     slong * offsets, * shifts;
     slong offset, shift;
     slong start, stop;
     ulong e, mask = (-UWORD(1)) >> (FLINT_BITS - A->bits);
+    slong * starts, * ends, * stops;
+    ulong * es;
+    n_poly_struct * realE;
 
     E->length = 0;
     if (A->length < 1)
         return;
+
+    starts = FLINT_ARRAY_ALLOC(n, slong);
+    ends   = FLINT_ARRAY_ALLOC(n, slong);
+    stops  = FLINT_ARRAY_ALLOC(n, slong);
+    es     = FLINT_ARRAY_ALLOC(n, ulong);
+    realE  = FLINT_ARRAY_ALLOC(n + 1, n_poly_struct);
+    for (i = 0; i < n + 1; i++)
+        n_poly_init(realE + i);
 
     offsets = (slong *) flint_malloc(ctx->minfo->nvars*sizeof(slong));
     shifts = (slong *) flint_malloc(ctx->minfo->nvars*sizeof(slong));
@@ -126,9 +169,11 @@ next:
         E->length++;
     }
 
-    _eval_rest(E->coeffs + e, A->coeffs + start, A->exps + N*start, stop - start, 1,
-                             alphabetas, offsets, shifts, N, mask,
+    _nmod_mpoly_evaluate_rest_n_poly(realE, starts, ends, stops, es,
+                    A->coeffs + start, A->exps + N*start, stop - start, 1,
+                                        alphabetas, offsets, shifts, N, mask,
                                           ctx->minfo->nvars, ctx->ffinfo->mod);
+    n_poly_set(E->coeffs + e, realE + 0);
 
     if (stop < A->length)
     {
@@ -139,6 +184,14 @@ next:
     }
 
     n_bpoly_normalise(E);
+
+    for (i = 0; i < n + 1; i++)
+        n_poly_clear(realE + i);
+    flint_free(realE);
+    flint_free(starts);
+    flint_free(ends);
+    flint_free(stops);
+    flint_free(es);
 
     flint_free(offsets);
     flint_free(shifts);
@@ -269,7 +322,9 @@ next_alpha:
 	}
 
     for (i = 0; i < n; i++)
+    {
         alpha[i] = n_urandint(state, ctx->ffinfo->mod.n - 1) + 1;
+    }
 
     /* ensure degrees do not drop under evaluation */
 	for (i = n - 1; i >= 0; i--)

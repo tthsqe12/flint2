@@ -287,9 +287,13 @@ static int _irreducible_factors(
         {
             success = nmod_mpoly_factor_irred_smprime_zippel(Lf, L, lcLf, lcL, Lctx, state);
             if (success < 1)
+                success = nmod_mpoly_factor_irred_medprime_zippel(Lf, L, lcLf, lcL, Lctx, state);
+            if (success < 1)
                 success = nmod_mpoly_factor_irred_lgprime_zippel(Lf, L, lcLf, lcL, Lctx, state);
             if (success < 1)
                 success = nmod_mpoly_factor_irred_smprime_wang(Lf, L, lcLf, lcL, Lctx, state);
+            if (success < 1)
+                success = nmod_mpoly_factor_irred_medprime_wang(Lf, L, lcLf, lcL, Lctx, state);
             if (success < 1)
                 success = nmod_mpoly_factor_irred_lgprime_wang(Lf, L, lcLf, lcL, Lctx, state);
         }
@@ -344,6 +348,7 @@ cleanup:
     }
 #endif
 
+    FLINT_ASSERT(success == 0 || success == 1);
     return success;
 }
 
