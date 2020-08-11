@@ -222,67 +222,6 @@ UI_FACTOR_INLINE mp_limb_t * flint_mpz_fit_length(mpz_ptr z, mp_size_t n)
     }
 }
 
-
-/* zassenhaus ****************************************************************/
-
-FLINT_DLL void zassenhaus_subset_first(slong * s, slong r, slong m);
-
-FLINT_DLL int zassenhaus_subset_next(slong * s, slong r);
-
-FLINT_DLL slong zassenhaus_subset_next_disjoint(slong * s, slong r);
-
-typedef struct {
-    slong deg;
-    unsigned char * pos_degs;   /* possible degrees: entries are 0 or 1*/
-    slong new_length;
-    slong new_total;
-    slong * new_degs;
-    slong alloc;
-} zassenhaus_prune_struct;
-
-typedef zassenhaus_prune_struct zassenhaus_prune_t[1];
-
-UI_FACTOR_INLINE
-void zassenhaus_prune_init(zassenhaus_prune_t Z)
-{
-    Z->deg = 0;
-    Z->pos_degs = NULL;
-    Z->new_length = 0;
-    Z->new_total = 0;
-    Z->new_degs = NULL;
-    Z->alloc = 0;
-}
-
-FLINT_DLL void zassenhaus_prune_clear(zassenhaus_prune_t Z);
-
-FLINT_DLL void zassenhaus_prune_set_degree(zassenhaus_prune_t Z, slong d);
-
-UI_FACTOR_INLINE
-void zassenhaus_prune_start_add_factors(zassenhaus_prune_t Z)
-{
-    Z->new_length = 0;
-    Z->new_total = 0;
-}
-
-FLINT_DLL void zassenhaus_prune_add_factor(zassenhaus_prune_t Z,
-                                                         slong deg, slong exp);
-
-FLINT_DLL void zassenhaus_prune_end_add_factors(zassenhaus_prune_t Z);
-
-FLINT_DLL int zassenhaus_prune_must_be_irreducible(const zassenhaus_prune_t Z);
-
-UI_FACTOR_INLINE
-int zassenhaus_prune_degree_is_possible(const zassenhaus_prune_t Z, slong d)
-{
-    if (d <= 0)
-        return d == 0;
-
-    if (d >= Z->deg)
-        return d == Z->deg;
-
-    return Z->pos_degs[d];
-}
-
 #ifdef __cplusplus
 }
 #endif
