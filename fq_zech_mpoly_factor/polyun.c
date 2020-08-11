@@ -111,3 +111,19 @@ void fq_zech_polyu3n_print_pretty(
         flint_printf("0");
 }
 
+int fq_zech_polyun_is_canonical(
+    const fq_zech_polyun_t A,
+    const fq_zech_ctx_t ctx)
+{
+    slong i;
+    if (A->length < 0)
+        return 0;
+    for (i = 0; i < A->length; i++)
+    {
+        if (fq_zech_poly_is_zero(A->terms[i].coeff, ctx))
+            return 0;
+        if (i > 0 && A->terms[i].exp >= A->terms[i - 1].exp)
+            return 0;
+    }
+    return 1;
+}

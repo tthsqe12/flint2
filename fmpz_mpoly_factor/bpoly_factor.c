@@ -638,11 +638,7 @@ static void _bivar_lift_quintic(bpoly_info_t I)
     slong i, j, k;
     fmpz_mod_bpoly_t tp, tp1, error;
     fmpz_mod_poly_t ss, tt;
-/*
-timeit_t timer;
 
-timeit_start(timer);
-*/
     fmpz_mod_poly_init(ss, I->pk);
     fmpz_mod_poly_init(tt, I->pk);
     fmpz_mod_bpoly_init(tp, I->pk);
@@ -691,16 +687,7 @@ timeit_start(timer);
         }
         fmpz_mod_bpoly_sub(error, I->Btilde, tp);
     }
-/*
-flint_printf("------------------\n");
-for (k = 0; k < I->r; k++)
-{
-flint_printf("newBitilde[%wd]: ", k); fmpz_mod_bpoly_print(I->newBitilde + k, "x", "y"); printf("\n");
-}
 
-timeit_stop(timer);
-flint_printf("_bivar_lift_quintic time: %wd\n", timer->wall);
-*/
     fmpz_mod_poly_clear(ss);
     fmpz_mod_poly_clear(tt);
     fmpz_mod_bpoly_clear(tp);
@@ -733,10 +720,7 @@ static void _bivar_lift_quartic2(bpoly_info_t I)
     fmpz_mod_poly_t t, t1;
     fmpz_mod_bpoly_t btilde;
     fmpz_mod_bpoly_struct newbitilde[2];
-/*
-timeit_t timer;
-timeit_start(timer);
-*/
+
     FLINT_ASSERT(I->r == 2);
 
     fmpz_mod_poly_init(t, I->pk);
@@ -775,15 +759,6 @@ timeit_start(timer);
 
     for (k = 0; k < I->r; k++)
         fmpz_mod_bpoly_reverse_vars(I->newBitilde + k, newbitilde + k);
-/*
-flint_printf("------------------\n");
-for (k = 0; k < I->r; k++)
-{
-flint_printf("newBitilde[%wd]: ", k); fmpz_mod_bpoly_print(I->newBitilde + k, "x", "y"); printf("\n");
-}
-timeit_stop(timer);
-flint_printf("_bivar_lift_quartic2 time: %wd\n", timer->wall);
-*/
 
     fmpz_mod_poly_clear(t);
     fmpz_mod_poly_clear(t1);
@@ -917,11 +892,7 @@ static void _recombine_naive(
     slong i, j, r, len;
     fmpz_t subset, tsubset, test;
     slong * idx;
-/*
-flint_printf("_recombine_naive alpha: "); fmpz_print(alpha); flint_printf("\n");
-flint_printf("I->r: %wd\n", I->r);
-flint_printf("B: "); fmpz_bpoly_print_pretty(B, "x1", "x2"); flint_printf("\n");
-*/
+
     fmpz_init(test);
     fmpz_init(tsubset);
     fmpz_init(subset);

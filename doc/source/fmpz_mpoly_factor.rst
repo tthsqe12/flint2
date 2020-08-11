@@ -33,7 +33,7 @@ Basic manipulation
 --------------------------------------------------------------------------------
 
 
-.. function:: void fmpz_mpoly_swap(fmpz_mpoly_t f, fmpz_mpoly_t g, const fmpz_mpoly_ctx_t ctx)
+.. function:: void fmpz_mpoly_factor_swap(fmpz_mpoly_factor_t f, fmpz_mpoly_factor_t g, const fmpz_mpoly_ctx_t ctx)
 
     Efficiently swap `f` and ``g``.
 
@@ -42,8 +42,7 @@ Basic manipulation
     Return the length of the product in `f`.
 
 .. function:: void fmpz_mpoly_factor_get_constant_fmpz(fmpz_t c, const fmpz_mpoly_factor_t f, const fmpz_mpoly_ctx_t ctx)
-
-.. function:: void fmpz_mpoly_factor_get_constant_fmpq(fmpq_t c, const fmpz_mpoly_factor_t f, const fmpz_mpoly_ctx_t ctx)
+              void fmpz_mpoly_factor_get_constant_fmpq(fmpq_t c, const fmpz_mpoly_factor_t f, const fmpz_mpoly_ctx_t ctx)
 
     Set `c` to the constant of `f`.
 
@@ -55,6 +54,10 @@ Basic manipulation
 .. function:: slong fmpz_mpoly_factor_get_exp_si(fmpz_mpoly_factor_t f, slong i, const fmpz_mpoly_ctx_t ctx)
 
     Return the exponent of the term of index `i` in `A`. It is assumed to fit an ``slong``.
+
+.. function:: void fmpz_mpoly_factor_sort(fmpz_mpoly_factor_t f, const fmpz_mpoly_ctx_t ctx)
+
+    Sort the product of `f` first by exponent and then by base.
 
 
 Factorisation

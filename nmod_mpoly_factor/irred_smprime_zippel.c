@@ -272,7 +272,7 @@ next_alphabetas:
         for (i = 0; i < r; i++)
         {
             nmod_mpoly_to_univar(u, fac->coeffs + i, 0, ctx);
-            success = nmod_mpoly_univar_content_mpoly(t, u, ctx);
+            success = _nmod_mpoly_vec_content_mpoly(t, u->coeffs, u->length, ctx);
             if (!success)
             {
                 nmod_mpoly_univar_clear(u, ctx);
@@ -298,6 +298,7 @@ cleanup:
 
     n_poly_clear(Abfc);
     n_tpoly_clear(Abfp);
+    n_bpoly_clear(Ab);
 
 	for (i = 0; i < n; i++)
     {

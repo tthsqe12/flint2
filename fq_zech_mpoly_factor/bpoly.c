@@ -107,6 +107,15 @@ int fq_zech_bpoly_is_canonical(const fq_zech_bpoly_t A, const fq_zech_ctx_t ctx)
     return 1;
 }
 
+
+slong fq_zech_bpoly_degree1(const fq_zech_bpoly_t A, const fq_zech_ctx_t ctx)
+{
+    slong i, len = 0;
+    for (i = 0; i < A->length; i++)
+        len = FLINT_MAX(len, A->coeffs[i].length);
+    return len - 1;    
+}
+
 int fq_zech_bpoly_equal(
     const fq_zech_bpoly_t A,
     const fq_zech_bpoly_t B,

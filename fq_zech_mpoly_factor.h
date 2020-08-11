@@ -336,6 +336,14 @@ void fq_zech_polyu_fit_length(fq_zech_polyu_t A, slong len, const fq_zech_ctx_t 
         fq_zech_polyu_realloc(A, len, ctx);
 }
 
+FQ_ZECH_MPOLY_FACTOR_INLINE
+void fq_zech_polyu_swap(fq_zech_polyu_t A, fq_zech_polyu_t B, const fq_zech_ctx_t ctx)
+{
+    fq_zech_polyu_struct t = *B;
+    *B = *A;
+    *A = t;
+}
+
 FLINT_DLL void fq_zech_polyu3_print_pretty(
     const fq_zech_polyu_t A,
     const char * var0,
@@ -349,7 +357,7 @@ FLINT_DLL void fq_zech_polyu3_degrees(
     slong * deg2,
     const fq_zech_polyu_t A);
 
-FLINT_DLL int n_polyu_fq_is_canonical(
+FLINT_DLL int fq_zech_polyu_is_canonical(
     const fq_zech_polyu_t A,
     const fq_zech_ctx_t ctx);
 

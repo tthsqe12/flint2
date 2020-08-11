@@ -612,28 +612,12 @@ void fq_nmod_mpolyu_set_eval_helper(
     for (i = 0; i < A->length; i++)
     {
         EHterms[i].exp = A->exps[i];
-/*
-flint_printf("coeff[y = %wu, x = %wu, z = %wu]: ",
-extract_exp(A->exps[i], 0, 3),
-extract_exp(A->exps[i], 1, 3),
-extract_exp(A->exps[i], 2, 3));
-fq_nmod_mpoly_print_pretty(A->coeffs + i, NULL, ctx);
-flint_printf("\n");
-*/
         n = A->coeffs[i].length;
         n_poly_fit_length(EHterms[i].coeff, d*3*n);
         fq_nmod_mpoly_monomial_evals(EHterms[i].coeff, A->coeffs + i, alpha, ctx);
         FLINT_ASSERT(n == EHterms[i].coeff->length);
         p = EHterms[i].coeff->coeffs;
         q = A->coeffs[i].coeffs;
-/*
-for (j = 0; j < n; j++)
-{
-flint_printf("meval[%wd]: ", j);
-_n_fq_print_pretty(p + d*j, ctx->fqctx);
-flint_printf("\n");
-}
-*/
         for (j = n - 1; j >= 0; j--)
         {
             _n_fq_set(p + d*(3*j + 2), p + d*j, d);
@@ -680,20 +664,14 @@ slong fq_nmod_mpolyu_set_eval_helper_and_zip_form(
 {
     slong d = fq_nmod_ctx_degree(ctx->fqctx);
     slong i, j, n;
-    ulong x, y, z;
+    ulong x, z;
     n_polyun_term_struct * EHterms;
     mp_limb_t * p;
     const fq_nmod_struct * q;
     fq_nmod_mpoly_struct * Hc;
     slong old_len, zip_length = 0;
     slong N = mpoly_words_per_exp(B->bits, ctx->minfo);
-/*
-flint_printf("nmod_mpolyu_set_eval_helper_and_zip_form called\n");
-flint_printf("deg = %wu\n", deg);
-flint_printf("B: ");
-nmod_mpolyu3_print_pretty(B, "Y", "X", "Z", NULL, ctx);
-flint_printf("\n");
-*/
+
     n_polyun_fit_length(EH, B->length);
     EH->length = B->length;
     EHterms = EH->terms;
@@ -703,7 +681,6 @@ flint_printf("\n");
     for (i = 0; i < B->length; i++)
     {
         EHterms[i].exp = B->exps[i];
-        y = extract_exp(EHterms[i].exp, 2, 3);
         x = extract_exp(EHterms[i].exp, 1, 3);
         z = extract_exp(EHterms[i].exp, 0, 3);
         n = B->coeffs[i].length;
@@ -715,7 +692,7 @@ flint_printf("\n");
 
         if (x < deg)
         {
-            FLINT_ASSERT(y == 0 && "strange but ok");
+            FLINT_ASSERT(extract_exp(EHterms[i].exp, 2, 3) == 0 && "strange but ok");
             Hc = _fq_nmod_mpolyu_get_coeff(H, pack_exp3(0, x, z), ctx);
             fq_nmod_mpoly_fit_length(Hc, n, ctx);
             old_len = Hc->length;
@@ -818,13 +795,7 @@ static slong fq_nmod_mpoly_set_eval_helper_and_zip_form3(
     ulong * ind;
     n_polyun_t T;
     ulong deg;
-/*
-flint_printf("nmod_mpoly_set_eval_helper_and_zip_form called\n");
-flint_printf("deg = %wu\n", deg);
-flint_printf("B: ");
-nmod_mpoly_print_pretty(B, NULL, ctx);
-flint_printf("\n");
-*/
+
     FLINT_ASSERT(bits <= FLINT_BITS);
     FLINT_ASSERT(bits == B->bits);
     FLINT_ASSERT(bits == H->bits);
@@ -842,8 +813,7 @@ flint_printf("\n");
         mpoly_gen_offset_shift_sp(&xoff, &xshift, xvar, bits, ctx->minfo);
         mpoly_gen_offset_shift_sp(&zoff, &zshift, zvar, bits, ctx->minfo);
 
-    deg = (Bexps[N*0 + xoff] >> xshift) & mask;
-
+        deg = (Bexps[N*0 + xoff] >> xshift) & mask;
 
         mpoly_rbtree_ui_init(W);
         for (i = 0; i < Blen; i++)
@@ -931,9 +901,7 @@ flint_printf("\n");
     n_polyun_clear(T);
 
     *deg_ = deg;
-/*
-flint_printf("nmod_mpoly_set_eval_helper_and_zip_form returning\n");
-*/
+
     return zip_length;
 }
 
@@ -1248,7 +1216,8 @@ static int fq_nmod_mpoly_from_zip(
     fq_nmod_mpolyu_t H,
     ulong deg,
     slong yvar,     /* Y = gen(yvar) */
-    const fq_nmod_mpoly_ctx_t ctx)
+    const fq_nmod_mpoly_ctx_t ctx,
+    n_polyun_t M)
 {
     slong d = fq_nmod_ctx_degree(ctx->fqctx);
     int success;
@@ -1266,15 +1235,6 @@ static int fq_nmod_mpoly_from_zip(
     fq_nmod_mpoly_struct * Hc;
     slong Hlen = H->length;
 
-    n_polyun_t M;  /* temp */
-    n_polyun_init(M);
-/*
-flint_printf("-----------------");
-flint_printf("nmod_mpoly_from_zip called vars %wd, %wd, %wd\n", yvar, xvar, zvar);
-flint_printf("Z: "); n_polyu3n_print_pretty(Z, "Y", "X", "Z", "_"); printf("\n");
-flint_printf("H: "); nmod_mpolyu3_print_pretty(H, "Y", "X", "Z", NULL, ctx); printf("\n");
-flint_printf("deg: %wd\n", deg);
-*/
     FLINT_ASSERT(bits == H->bits);
 
     n_polyun_fit_length(M, Hlen + 1);
@@ -1345,11 +1305,6 @@ flint_printf("deg: %wd\n", deg);
     B->length = Bi;
     fq_nmod_mpoly_sort_terms(B, ctx);
     FLINT_ASSERT(fq_nmod_mpoly_is_canonical(B, ctx));
-/*
-flint_printf("nmod_mpoly_from_zip returning good\n");
-flint_printf("B: "); nmod_mpoly_print_pretty(B, NULL, ctx); flint_printf("\n");
-*/
-    n_polyun_clear(M);
 
     return 1;
 }
@@ -1371,9 +1326,8 @@ int fq_nmod_mpoly_hlift_zippel(
     slong zip_fails_remaining;
     slong req_zip_images, cur_zip_image;
     fq_nmod_mpolyu_struct * H;
-    n_polyun_struct Aeh[1], * Beh;
+    n_polyun_struct M[1], Aeh[1], * Beh, * BBeval, * Z;
     n_polyu_struct Aeval[1], * Beval;
-    n_polyun_struct * BBeval, * Z;
     fq_nmod_struct * beta;
     flint_bitcnt_t bits = A->bits;
     fq_nmod_mpoly_t T1, T2;
@@ -1427,6 +1381,7 @@ int fq_nmod_mpoly_hlift_zippel(
 
     n_polyun_init(Aeh);
     n_polyu_init(Aeval);
+    n_polyun_init(M);
     for (i = 0; i < r; i++)
     {
         fq_nmod_mpolyu_init(H + i, bits, ctx);
@@ -1503,7 +1458,7 @@ next_zip_image:
 
     for (i = 0; i < r; i++)
     {
-        success = fq_nmod_mpoly_from_zip(B + i, Z + i, H + i, Bdegs[i], m, ctx);
+        success = fq_nmod_mpoly_from_zip(B + i, Z + i, H + i, Bdegs[i], m, ctx, M);
         if (success < 1)
         {
             success = 0;
@@ -1528,6 +1483,7 @@ cleanup:
 
     n_polyun_clear(Aeh);
     n_polyu_clear(Aeval);
+    n_polyun_clear(M);
     for (i = 0; i < r; i++)
     {
         fq_nmod_mpolyu_clear(H + i, ctx);
@@ -1822,7 +1778,7 @@ next_alphabetas:
         for (i = 0; i < r; i++)
         {
             fq_nmod_mpoly_to_univar(u, fac->coeffs + i, 0, ctx);
-            success = fq_nmod_mpoly_univar_content_mpoly(t, u, ctx);
+            success = _fq_nmod_mpoly_vec_content_mpoly(t, u->coeffs, u->length, ctx);
             if (!success)
             {
                 fq_nmod_mpoly_univar_clear(u, ctx);

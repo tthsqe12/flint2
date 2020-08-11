@@ -142,6 +142,45 @@ FLINT_DLL void nmod_mpoly_factor_fit_length(nmod_mpoly_factor_t f, slong len,
 FLINT_DLL void nmod_mpoly_factor_clear(nmod_mpoly_factor_t f,
                                                    const nmod_mpoly_ctx_t ctx);
 
+NMOD_MPOLY_FACTOR_INLINE
+slong nmod_mpoly_factor_length(const nmod_mpoly_factor_t f,
+                                                    const nmod_mpoly_ctx_t ctx)
+{
+    return f->num;
+}
+
+NMOD_MPOLY_FACTOR_INLINE
+ulong nmod_mpoly_factor_get_constant_ui(const nmod_mpoly_factor_t f,
+                                                    const nmod_mpoly_ctx_t ctx)
+{
+    return f->constant;
+}
+
+NMOD_MPOLY_FACTOR_INLINE
+void nmod_mpoly_factor_get_base(nmod_mpoly_t p, const nmod_mpoly_factor_t f,
+                                           slong i, const nmod_mpoly_ctx_t ctx)
+{
+    FLINT_ASSERT(i < (ulong) f->num);
+    nmod_mpoly_set(p, f->poly + i, ctx);
+}
+
+NMOD_MPOLY_FACTOR_INLINE
+void nmod_mpoly_factor_swap_base(nmod_mpoly_t p, nmod_mpoly_factor_t f,
+                                           slong i, const nmod_mpoly_ctx_t ctx)
+{
+    FLINT_ASSERT(i < (ulong) f->num);
+    nmod_mpoly_swap(p, f->poly + i, ctx);
+}
+
+NMOD_MPOLY_FACTOR_INLINE
+slong nmod_mpoly_factor_get_exp_si(nmod_mpoly_factor_t f,
+                                           slong i, const nmod_mpoly_ctx_t ctx)
+{
+    FLINT_ASSERT(i < (ulong) f->num);
+    return fmpz_get_si(f->exp + i);
+}
+
+
 FLINT_DLL void nmod_mpoly_factor_append_ui(nmod_mpoly_factor_t f,
                     const nmod_mpoly_t A, ulong e, const nmod_mpoly_ctx_t ctx);
 
@@ -162,6 +201,11 @@ FLINT_DLL int nmod_mpoly_factor(nmod_mpoly_factor_t f, const nmod_mpoly_t A,
 
 FLINT_DLL void nmod_mpoly_factor_sort(nmod_mpoly_factor_t f,
                                                    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int nmod_mpoly_factor_cmp(
+    const nmod_mpoly_factor_t A,
+    const nmod_mpoly_factor_t B,
+    const nmod_mpoly_ctx_t ctx);
 
 FLINT_DLL int nmod_mpoly_factor_expand(nmod_mpoly_t A,
                       const nmod_mpoly_factor_t f, const nmod_mpoly_ctx_t ctx);
@@ -280,16 +324,10 @@ FLINT_DLL void nmod_mpoly_from_mpolyv(
     const nmod_mpoly_t xalpha,
     const nmod_mpoly_ctx_t ctx);
 
-/*****************************************************************************/
-
-FLINT_DLL int nmod_mpoly_univar_content_mpoly(
+FLINT_DLL int _nmod_mpoly_vec_content_mpoly(
     nmod_mpoly_t g,
-    const nmod_mpoly_univar_t A,
-    const nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL void nmod_mpoly_univar_divexact_mpoly(
-    nmod_mpoly_univar_t A,
-    const nmod_mpoly_t b,
+    const nmod_mpoly_struct * A,
+    slong Alen,
     const nmod_mpoly_ctx_t ctx);
 
 /*****************************************************************************/
@@ -304,6 +342,12 @@ FLINT_DLL int nmod_mpoly_factor_lcc_wang(
     const nmod_mpoly_ctx_t ctx);
 
 FLINT_DLL int nmod_mpoly_factor_irred_smprime_zassenhaus(
+    nmod_mpolyv_t fac,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_ctx_t ctx,
+    flint_rand_t state);
+
+FLINT_DLL int nmod_mpoly_factor_irred_medprime_zassenhaus(
     nmod_mpolyv_t fac,
     const nmod_mpoly_t A,
     const nmod_mpoly_ctx_t ctx,
@@ -446,14 +490,13 @@ FLINT_DLL int nmod_mpoly_hlift(
     const slong * degs,
     const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL int n_bpoly_mod_disolve(
+FLINT_DLL int n_bpoly_mod_pfrac(
     slong r,
     n_bpoly_struct * C,
     slong * C_deg1_bound,
     n_bpoly_t A,
     n_bpoly_struct * B,
     nmod_t mod);
-
 
 FLINT_DLL int n_bpoly_mod_hlift2(
     n_bpoly_t A, /* clobbered (shifted by alpha) */
@@ -522,6 +565,21 @@ FLINT_DLL void _nmod_mpoly_set_bpoly_var1_zero(
     flint_bitcnt_t Abits,
     const n_bpoly_t B,
     slong var,
+    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int nmod_mpoly_factor_zassenhaus(
+    nmod_mpoly_factor_t f,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int nmod_mpoly_factor_wang(
+    nmod_mpoly_factor_t f,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int nmod_mpoly_factor_zippel(
+    nmod_mpoly_factor_t f,
+    const nmod_mpoly_t A,
     const nmod_mpoly_ctx_t ctx);
 
 #ifdef __cplusplus

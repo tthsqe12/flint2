@@ -455,15 +455,6 @@ int fmpz_mfactor_lift_prime_power(
     nmod_mpoly_struct * deltas;
     fmpz_mpoly_t e, t1, t2;
     nmod_mpoly_t tk;
-    const char * vars [] = {"x", "y", "z", "w", "t", "u" ,"v"};
-
-flint_printf("fmpz_mfactor_lift_prime_power\n");
-
-    for (i = 0; i < r; i++)
-    {
-flint_printf("initial B[%wd]: ", i); fmpz_mpoly_print_pretty(B + i, vars, ctx); printf("\n");
-    }
-
 
     FLINT_ASSERT(r > 1);
 
@@ -490,8 +481,6 @@ flint_printf("initial B[%wd]: ", i); fmpz_mpoly_print_pretty(B + i, vars, ctx); 
             fmpz_mpoly_swap(t1, t2, ctx);
         }
         fmpz_mpoly_sub(e, A, t1, ctx);
-
-flint_printf("e: "); fmpz_mpoly_print_pretty(e, vars, ctx); flint_printf("\n");
 
         if (fmpz_mpoly_is_zero(e, ctx))
         {
@@ -695,7 +684,6 @@ next_power:
 
     if (k > L || e->bits >= FLINT_BITS)
     {
-FLINT_ASSERT(0 && "spurious failure");
         success = 0;
         goto cleanup;
     }
@@ -717,7 +705,7 @@ next_zip_image:
     for (i = 0; i < r; i++)
         n_bpoly_mod_eval_step(Beval + i, Beh + i, ctxp->ffinfo->mod);
 
-    success = n_bpoly_mod_disolve(r, Ceval, Cdegs1, Teval, Beval,
+    success = n_bpoly_mod_pfrac(r, Ceval, Cdegs1, Teval, Beval,
                                                             ctxp->ffinfo->mod);
     if (success < 1)
     {
@@ -1180,7 +1168,7 @@ next_zip_prime:
         for (i = 0; i < r; i++)
         {
             fmpz_mpoly_to_univar(u, fac->coeffs + i, 0, ctx);
-            success = fmpz_mpoly_univar_content_mpoly(t, u, ctx);
+            success = _fmpz_mpoly_vec_content_mpoly(t, u->coeffs, u->length, ctx);
             if (!success)
             {
                 fmpz_mpoly_univar_clear(u, ctx);

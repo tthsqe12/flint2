@@ -271,13 +271,6 @@ int nmod_mpoly_factor_irred_smprime_wang(
     nmod_mpoly_t m, mpow;
     nmod_mpolyv_t new_lcs, lc_divs;
 
-/*
-flint_printf("nmod_mpoly_factor_irred_smprime_wang called p = %wu\n", ctx->ffinfo->mod.n);
-flint_printf("     A: "); nmod_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
-flint_printf("lcAfac: "); nmod_mpoly_factor_print_pretty(lcAfac, NULL, ctx); flint_printf("\n");
-flint_printf("   lcA: "); nmod_mpoly_print_pretty(lcA, NULL, ctx); flint_printf("\n");
-*/
-
     FLINT_ASSERT(n > 1);
     FLINT_ASSERT(A->length > 1);
     FLINT_ASSERT(A->coeffs[0] == 1);
@@ -365,11 +358,6 @@ next_alphabetas:
             alphabetas[i].coeffs[j] = n_urandint(state, ctx->ffinfo->mod.n);
         alphabetas[i].length = alphabetas_length;
         _n_poly_normalise(alphabetas + i);
-/*
-flint_printf("alphabetas[%wd]: ", i);
-n_poly_print_pretty(alphabetas + i, "Y");
-flint_printf("\n");
-*/
     }
 
     _eval_to_bpoly(Ab, A, alphabetas, ctx);
@@ -405,10 +393,6 @@ flint_printf("\n");
         for (i = 0; i < r; i++)
             nmod_mpoly_one(lc_divs->coeffs + i, ctx);
     }
-/*
-flint_printf("lc_divs:\n");
-nmod_mpolyv_print_pretty(lc_divs, NULL, ctx);
-*/
 
     success = nmod_mpoly_divides(m, lcA, lc_divs->coeffs + 0, ctx);
     FLINT_ASSERT(success);
@@ -500,7 +484,7 @@ nmod_mpolyv_print_pretty(lc_divs, NULL, ctx);
         for (i = 0; i < r; i++)
         {
             nmod_mpoly_to_univar(u, fac->coeffs + i, 0, ctx);
-            success = nmod_mpoly_univar_content_mpoly(t, u, ctx);
+            success = _nmod_mpoly_vec_content_mpoly(t, u->coeffs, u->length, ctx);
             if (!success)
             {
                 nmod_mpoly_univar_clear(u, ctx);
@@ -525,6 +509,7 @@ cleanup:
 
     n_poly_clear(Abfc);
     n_tpoly_clear(Abfp);
+    n_bpoly_clear(Ab);
 
 	for (i = 0; i < n; i++)
     {

@@ -25,10 +25,16 @@ void check_omega(slong lower, slong upper, const nmod_mpoly_t p, const nmod_mpol
     nmod_mpoly_factor_init(h, ctx);
     nmod_mpoly_init(q, ctx);
 
-    if (!nmod_mpoly_factor(g, p, ctx))
+    if (!nmod_mpoly_factor_zippel(g, p, ctx))
     {
-        flint_printf("FAIL:\ncheck factorization could be computed\n");
+        flint_printf("FAIL:\nfactorization could be computed\n");
         flint_abort();        
+    }
+
+    if (!nmod_mpoly_factor(h, p, ctx))
+    {
+        flint_printf("FAIL:\nfactorization 2 could be computed\n");
+        flint_abort();
     }
 
     for (i = 0; i < g->num; i++)
@@ -57,6 +63,14 @@ void check_omega(slong lower, slong upper, const nmod_mpoly_t p, const nmod_mpol
         flint_abort();        
     }
 
+    nmod_mpoly_factor_sort(g, ctx);
+    nmod_mpoly_factor_sort(h, ctx);
+    if (nmod_mpoly_factor_cmp(g, h, ctx) != 0)
+    {
+        flint_printf("FAIL:\nfactorizations do not match\n");
+        flint_abort();        
+    }
+
     for (i = 0; i < g->num; i++)
     {
         nmod_mpoly_factor(h, g->poly + i, ctx);
@@ -80,7 +94,7 @@ main(void)
     slong i, j, tmul = 30;
     FLINT_TEST_INIT(state);
 
-    flint_printf("factor....");
+    flint_printf("factor_zippel....");
     fflush(stdout);
 
     for (i = 0; i < tmul * flint_test_multiplier(); i++)
@@ -104,7 +118,7 @@ main(void)
         nfacs = 1 + (6 + n_randint(state, 6))/ctx->minfo->nvars;
         powbound = 1 + n_randint(state, 3);
         powbound = 1 + n_randint(state, powbound);
-        expbound = 3 + 100/nfacs/ctx->minfo->nvars/powbound;
+        expbound = 2 + 80/nfacs/ctx->minfo->nvars/powbound;
 
         lower = 0;
         nmod_mpoly_one(a, ctx);

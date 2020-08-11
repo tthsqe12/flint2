@@ -135,3 +135,25 @@ void fq_nmod_mpoly_from_mpolyv(
 
     fq_nmod_mpoly_clear(T, ctx);
 }
+
+
+int _fq_nmod_mpoly_vec_content_mpoly(
+    fq_nmod_mpoly_t g,
+    const fq_nmod_mpoly_struct * A,
+    slong Alen,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    slong i;
+    int success;
+
+    fq_nmod_mpoly_zero(g, ctx);
+
+    for (i = 0; i < Alen; i++)
+    {
+        success = fq_nmod_mpoly_gcd(g, g, A + i, ctx);
+        if (!success)
+            return 0;
+    }
+
+    return 1;
+}

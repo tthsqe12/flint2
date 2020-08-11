@@ -85,7 +85,7 @@ static int _try_lift(
     for (i = 0; i < qfac->length; i++)
     {
         fq_nmod_mpoly_to_univar(u, qfac->coeffs + i, 0, ctx);
-        success = fq_nmod_mpoly_univar_content_mpoly(t, u, ctx);
+        success = _fq_nmod_mpoly_vec_content_mpoly(t, u->coeffs, u->length, ctx);
         if (!success)
         {
             success = -1;
@@ -149,10 +149,7 @@ int fq_nmod_mpoly_factor_irred_smprime_zassenhaus(
     n_poly_t c;
     n_bpoly_t B;
     n_tpoly_t F;
-/*
-flint_printf("fq_nmod_mpoly_factor_irred_smprime_default called\n");
-flint_printf("A: "); fq_nmod_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
-*/
+
 	fmpz_init(subset);
 	alpha = (fq_nmod_struct *) flint_malloc(n*sizeof(fq_nmod_struct));
     for (i = 0; i < n; i++)
@@ -217,7 +214,7 @@ got_alpha:
     for (i = n - 1; i > 0; i--)
     {
         fq_nmod_mpoly_to_univar(u, Aevals + i, 0, ctx);
-        success = fq_nmod_mpoly_univar_content_mpoly(t, u, ctx);
+        success = _fq_nmod_mpoly_vec_content_mpoly(t, u->coeffs, u->length, ctx);
         if (!success)
             goto cleanup;
         success = fq_nmod_mpoly_divides(Aevals + i, Aevals + i, t, ctx);

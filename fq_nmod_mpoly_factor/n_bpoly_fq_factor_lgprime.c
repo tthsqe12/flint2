@@ -738,9 +738,6 @@ int n_bpoly_fq_factor_lgprime(
     bad_fq_nmod_mpoly_embed_chooser_t embc;
     bad_fq_nmod_embed_struct * cur_emb;
     fq_nmod_mpoly_ctx_t ectx_mock, ctx_mock;
-/*
-flint_printf("fq_nmod_bpoly_factor_lgprime called\n");
-*/
 
     FLINT_ASSERT(Blenx > 1);
 
@@ -936,9 +933,7 @@ cleanup:
     fq_nmod_clear(Blc, ctx);
 
     bad_fq_nmod_mpoly_embed_chooser_clear(embc, ectx_mock, ctx_mock, state);
-/*
-flint_printf("fq_nmod_bpoly_factor_lgprime returning %d\n", success);
-flint_printf("F->length: %wd\n", F->length);
-*/
+
     return success;
 }
+

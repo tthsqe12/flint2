@@ -475,6 +475,9 @@ FLINT_DLL void n_poly_mod_addmul_linear(n_poly_t A, const n_poly_t B,
 FLINT_DLL void n_poly_mod_eval2_pow(mp_limb_t * vp, mp_limb_t * vm,
                               const n_poly_t P, n_poly_t alphapow, nmod_t mod);
 
+FLINT_DLL mp_limb_t n_poly_mod_div_root(n_poly_t Q, 
+                                    const n_poly_t A, mp_limb_t c, nmod_t ctx);
+
 N_POLY_INLINE
 void _n_poly_mod_mul(n_poly_t A, const n_poly_t B, const n_poly_t C, nmod_t mod)
 {
@@ -993,7 +996,6 @@ FLINT_DLL void n_poly_fq_neg(
     n_poly_t A,
     const n_poly_t B,
     const fq_nmod_ctx_t ctx);
-
 
 FLINT_DLL void n_poly_fq_add_si(
     n_poly_t A,

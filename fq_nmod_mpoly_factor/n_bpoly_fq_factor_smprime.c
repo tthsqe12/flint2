@@ -379,16 +379,9 @@ static void _hensel_lift_fac(
     slong p1,
     const fq_nmod_ctx_t ctx)
 {
-    slong i, j;
+    slong i;
     n_bpoly_t c, t1, t2, q, r;
-/*
-flint_printf("lift_fac p0: %wd, p1: %wd\n", p0, p1);
-flint_printf("f: "); n_bpoly_fq_print_pretty(f, "X", "Y", ctx); flint_printf("\n");
-flint_printf("g: "); n_bpoly_fq_print_pretty(g, "X", "Y", ctx); flint_printf("\n");
-flint_printf("h: "); n_bpoly_fq_print_pretty(h, "X", "Y", ctx); flint_printf("\n");
-flint_printf("a: "); n_bpoly_fq_print_pretty(a, "X", "Y", ctx); flint_printf("\n");
-flint_printf("b: "); n_bpoly_fq_print_pretty(b, "X", "Y", ctx); flint_printf("\n");
-*/
+
     n_bpoly_init(c);
     n_bpoly_init(t1);
     n_bpoly_init(t2);
@@ -397,15 +390,12 @@ flint_printf("b: "); n_bpoly_fq_print_pretty(b, "X", "Y", ctx); flint_printf("\n
 
     n_bpoly_fq_mul(t1, g, h, ctx);
     n_bpoly_fq_sub(c, f, t1, ctx);
-/*
-flint_printf("c: "); n_bpoly_fq_print_pretty(c, "X", "Y", ctx); flint_printf("\n");
-*/
 
     for (i = 0; i < c->length; i++)
     {
     #if WANT_ASSERT
         {
-            slong d = fq_nmod_ctx_degree(ctx);
+            slong j, d = fq_nmod_ctx_degree(ctx);
             for (j = 0; j < p0; j++)
             {
                 FLINT_ASSERT(j >= c->coeffs[i].length ||
@@ -435,14 +425,10 @@ flint_printf("c: "); n_bpoly_fq_print_pretty(c, "X", "Y", ctx); flint_printf("\n
 
     n_bpoly_swap(G, t1);
     n_bpoly_swap(H, t2);
-/*
-flint_printf("G: "); n_bpoly_fq_print_pretty(G, "X", "Y", ctx); flint_printf("\n");
-flint_printf("H: "); n_bpoly_fq_print_pretty(H, "X", "Y", ctx); flint_printf("\n");
-*/
 
 #if WANT_ASSERT
     {
-        slong d = fq_nmod_ctx_degree(ctx);
+        slong j, d = fq_nmod_ctx_degree(ctx);
         n_bpoly_fq_mul(t1, G, H, ctx);
         n_bpoly_fq_sub(c, f, t1, ctx);
 
@@ -473,17 +459,8 @@ static void _hensel_lift_inv(
     slong p1,
     const fq_nmod_ctx_t ctx)
 {
-    slong i, j;
+    slong i;
     n_bpoly_t c, t1, t2, q, r;
-
-/*
-flint_printf("lift_inv p0: %wd, p1: %wd\n", p0, p1);
-flint_printf("G: "); n_bpoly_fq_print_pretty(G, "X", "Y", ctx); flint_printf("\n");
-flint_printf("H: "); n_bpoly_fq_print_pretty(H, "X", "Y", ctx); flint_printf("\n");
-
-flint_printf("a: "); n_bpoly_fq_print_pretty(a, "X", "Y", ctx); flint_printf("\n");
-flint_printf("b: "); n_bpoly_fq_print_pretty(b, "X", "Y", ctx); flint_printf("\n");
-*/
 
     n_bpoly_init(c);
     n_bpoly_init(t1);
@@ -510,7 +487,7 @@ flint_printf("b: "); n_bpoly_fq_print_pretty(b, "X", "Y", ctx); flint_printf("\n
     {
     #if WANT_ASSERT
         {
-            slong d = fq_nmod_ctx_degree(ctx);
+            slong j, d = fq_nmod_ctx_degree(ctx);
             for (j = 0; j < p0; j++)
             {
                 FLINT_ASSERT(j >= c->coeffs[i].length ||
@@ -524,47 +501,22 @@ flint_printf("b: "); n_bpoly_fq_print_pretty(b, "X", "Y", ctx); flint_printf("\n
 
     n_bpoly_fq_mul_series(t1, c, b, p1, ctx);
     n_bpoly_fq_divrem_series(q, r, t1, G, p1, ctx);
-/*
-flint_printf("before shift r: ");
-fq_nmod_bpoly_print_pretty(r, "X", "Y", ctx);
-flint_printf("\n");
-*/
 
     for (i = 0; i < r->length; i++)
         n_poly_fq_shift_left(r->coeffs + i, r->coeffs + i, p0, ctx);
-/*
-flint_printf("after shift r: ");
-fq_nmod_bpoly_print_pretty(r, "X", "Y", ctx);
-flint_printf("\n");
-*/
 
     n_bpoly_fq_add(t1, r, b, ctx);
 
     n_bpoly_fq_mul_series(t2, c, a, p1, ctx);
     n_bpoly_fq_divrem_series(q, r, t2, H, p1, ctx);
-/*
-flint_printf("before shift r: ");
-fq_nmod_bpoly_print_pretty(r, "X", "Y", ctx);
-flint_printf("\n");
-*/
 
     for (i = 0; i < r->length; i++)
         n_poly_fq_shift_left(r->coeffs + i, r->coeffs + i, p0, ctx);
-/*
-flint_printf("after shift r: ");
-fq_nmod_bpoly_print_pretty(r, "X", "Y", ctx);
-flint_printf("\n");
-*/
-
 
     n_bpoly_fq_add(t2, r, a, ctx);
 
     n_bpoly_swap(t1, B);
     n_bpoly_swap(t2, A);
-/*
-flint_printf("A: "); fq_nmod_bpoly_print_pretty(A, "X", "Y", ctx); flint_printf("\n");
-flint_printf("B: "); fq_nmod_bpoly_print_pretty(B, "X", "Y", ctx); flint_printf("\n");
-*/
 
 #if WANT_ASSERT
     n_bpoly_fq_mul(t1, G, A, ctx);
@@ -577,13 +529,8 @@ flint_printf("B: "); fq_nmod_bpoly_print_pretty(B, "X", "Y", ctx); flint_printf(
     n_poly_fq_add_si(c->coeffs + 0, c->coeffs + 0, 1, ctx);
     n_bpoly_normalise(c);
 
-/*
-flint_printf("p0: %wd, p1: %wd, c: ", p0, p1);
-fq_nmod_bpoly_print_pretty(c, "X", "Y", ctx);
-flint_printf("\n");
-*/
     {
-        slong d = fq_nmod_ctx_degree(ctx);
+        slong j, d = fq_nmod_ctx_degree(ctx);
         for (i = 0; i < c->length; i++)        
         for (j = 0; j < p0 + p1; j++)
         {
@@ -654,9 +601,7 @@ int n_bpoly_fq_factor_smprime(
     slong e[FLINT_BITS];
     slong old_nrows;
     slong zas_limit;
-/*
-flint_printf("fq_nmod_bpoly_factor_smprime called allow_shift = %d\n", allow_shift);
-*/
+
     FLINT_ASSERT(Blenx > 1);
 
     fq_nmod_init(alpha, ctx);
@@ -822,10 +767,7 @@ cleanup:
     fq_nmod_poly_factor_clear(local_fac, ctx);
     fq_nmod_clear(alpha, ctx);
     fq_nmod_clear(Blc, ctx);
-/*
-flint_printf("fq_nmod_bpoly_factor_smprime returning %d\n", success);
-flint_printf("F->length: %wd\n", F->length);
-*/
+
     return success;
 }
 

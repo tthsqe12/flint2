@@ -117,10 +117,7 @@ static void _frob_combine(
     fq_nmod_poly_init(c, ctx->fqctx);
 
     fmpz_pow_ui(q, fq_nmod_ctx_prime(ctx->fqctx), fq_nmod_ctx_degree(ctx->fqctx));
-/*
-flint_printf("_frob_combine called\n");
-flint_printf("eAf: "); fq_nmod_mpolyv_print_pretty(eAf, NULL, ectx); flint_printf("\n");
-*/
+
     Af->length = 0;
     while (eAf->length > 0)
     {
@@ -399,3 +396,4 @@ cleanup:
 
     return success;
 }
+

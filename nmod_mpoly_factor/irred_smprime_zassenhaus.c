@@ -85,7 +85,7 @@ static int _try_lift(
     for (i = 0; i < qfac->length; i++)
     {
         nmod_mpoly_to_univar(u, qfac->coeffs + i, 0, ctx);
-        success = nmod_mpoly_univar_content_mpoly(t, u, ctx);
+        success = _nmod_mpoly_vec_content_mpoly(t, u->coeffs, u->length, ctx);
         if (!success)
         {
             success = -1;
@@ -203,7 +203,7 @@ next_alpha:
     for (i = n - 1; i > 0; i--)
     {
     	nmod_mpoly_to_univar(u, Aevals + i, 0, ctx);
-        success = nmod_mpoly_univar_content_mpoly(t, u, ctx);
+        success = _nmod_mpoly_vec_content_mpoly(t, u->coeffs, u->length, ctx);
         if (!success)
             goto cleanup;
         success = nmod_mpoly_divides(Aevals + i, Aevals + i, t, ctx);

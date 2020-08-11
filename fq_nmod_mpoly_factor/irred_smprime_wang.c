@@ -271,12 +271,7 @@ int fq_nmod_mpoly_factor_irred_smprime_wang(
     n_tpoly_t Abfp;
     fq_nmod_mpoly_t m, mpow;
     fq_nmod_mpolyv_t new_lcs, lc_divs;
-/*
-flint_printf("fq_nmod_mpoly_factor_irred_smprime_wang called p = %wu\n", ctx->fqctx->modulus->mod.n);
-flint_printf("     A: "); fq_nmod_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
-flint_printf("lcAfac: "); fq_nmod_mpoly_factor_print_pretty(lcAfac, NULL, ctx); flint_printf("\n");
-flint_printf("   lcA: "); fq_nmod_mpoly_print_pretty(lcA, NULL, ctx); flint_printf("\n");
-*/
+
     FLINT_ASSERT(n > 1);
     FLINT_ASSERT(A->length > 1);
     FLINT_ASSERT(fq_nmod_is_one(A->coeffs + 0, ctx->fqctx));
@@ -491,7 +486,7 @@ next_alphabetas:
         for (i = 0; i < r; i++)
         {
             fq_nmod_mpoly_to_univar(u, fac->coeffs + i, 0, ctx);
-            success = fq_nmod_mpoly_univar_content_mpoly(t, u, ctx);
+            success = _fq_nmod_mpoly_vec_content_mpoly(t, u->coeffs, u->length, ctx);
             if (!success)
             {
                 fq_nmod_mpoly_univar_clear(u, ctx);

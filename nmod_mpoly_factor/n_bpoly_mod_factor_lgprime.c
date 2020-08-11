@@ -42,7 +42,6 @@ void n_bpoly_eval_fq_nmod_poly(
 void n_bpoly_mod_make_monic_mod(n_bpoly_t A, n_poly_t mk, nmod_t mod)
 {
     slong i;
-    int success;
     n_poly_t t, lcinv;
 
     FLINT_ASSERT(A->length > 0);
@@ -50,8 +49,10 @@ void n_bpoly_mod_make_monic_mod(n_bpoly_t A, n_poly_t mk, nmod_t mod)
 
     n_poly_init(t);
     n_poly_init(lcinv);
-    success = n_poly_mod_invmod(lcinv, A->coeffs + A->length - 1, mk, mod);
-    FLINT_ASSERT(success);
+    if (!n_poly_mod_invmod(lcinv, A->coeffs + A->length - 1, mk, mod))
+    {
+        FLINT_ASSERT(0);
+    }
 
     for (i = 0; i < A->length; i++)
     {
@@ -121,7 +122,6 @@ void n_bpoly_mod_divrem_mod_poly(
     const n_poly_t m,
     nmod_t ctx)
 {
-    int success;
     slong i, qoff;
     n_poly_t q, t, Binv;
 
@@ -139,8 +139,10 @@ void n_bpoly_mod_divrem_mod_poly(
 
     Q->length = 0;
 
-    success = n_poly_mod_invmod(Binv, B->coeffs + B->length - 1, m, ctx);
-    FLINT_ASSERT(success);
+    if (!n_poly_mod_invmod(Binv, B->coeffs + B->length - 1, m, ctx))
+    {
+        FLINT_ASSERT(0);
+    }
 
     while (R->length >= B->length)
     {

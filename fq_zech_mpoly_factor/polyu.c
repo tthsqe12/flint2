@@ -106,3 +106,19 @@ void fq_zech_polyu3_degrees(
     *deg2 = extract_exp(m, 0, 3);
 }
 
+int fq_zech_polyu_is_canonical(
+    const fq_zech_polyu_t A,
+    const fq_zech_ctx_t ctx)
+{
+    slong i;
+    if (A->length < 0)
+        return 0;
+    for (i = 0; i < A->length; i++)
+    {
+        if (fq_zech_is_zero(A->coeffs + i, ctx))
+            return 0;
+        if (i > 0 && A->exps[i] >= A->exps[i - 1])
+            return 0;
+    }
+    return 1;
+}

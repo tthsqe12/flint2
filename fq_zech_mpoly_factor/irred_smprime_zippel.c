@@ -132,7 +132,7 @@ int fq_zech_zip_find_coeffs_new(
             fq_zech_add(V0, V0, p0, ctx);
         }
         fq_zech_set(V, V0, ctx);
-        if (fq_zech_equal(V, evals + i, ctx))
+        if (!fq_zech_equal(V, evals + i, ctx))
         {
             success = 0;
             goto cleanup;
@@ -464,28 +464,12 @@ void fq_zech_mpolyu_set_eval_helper(
     for (i = 0; i < A->length; i++)
     {
         EHterms[i].exp = A->exps[i];
-/*
-flint_printf("coeff[y = %wu, x = %wu, z = %wu]: ",
-extract_exp(A->exps[i], 0, 3),
-extract_exp(A->exps[i], 1, 3),
-extract_exp(A->exps[i], 2, 3));
-fq_zech_mpoly_print_pretty(A->coeffs + i, NULL, ctx);
-flint_printf("\n");
-*/
         n = A->coeffs[i].length;
         fq_zech_poly_fit_length(EHterms[i].coeff, 3*n, ctx->fqctx);
         fq_zech_mpoly_monomial_evals(EHterms[i].coeff, A->coeffs + i, alpha, ctx);
         FLINT_ASSERT(n == EHterms[i].coeff->length);
         p = EHterms[i].coeff->coeffs;
         q = A->coeffs[i].coeffs;
-/*
-for (j = 0; j < n; j++)
-{
-flint_printf("meval[%wd]: ", j);
-_n_fq_print_pretty(p + d*j, ctx->fqctx);
-flint_printf("\n");
-}
-*/
         for (j = n - 1; j >= 0; j--)
         {
             fq_zech_set(p + 3*j + 2, p + j, ctx->fqctx);
@@ -592,13 +576,7 @@ static slong fq_zech_mpoly_set_eval_helper_and_zip_form3(
     ulong * ind;
     n_polyun_t T;
     ulong deg;
-/*
-flint_printf("nmod_mpoly_set_eval_helper_and_zip_form called\n");
-flint_printf("deg = %wu\n", deg);
-flint_printf("B: ");
-nmod_mpoly_print_pretty(B, NULL, ctx);
-flint_printf("\n");
-*/
+
     FLINT_ASSERT(bits <= FLINT_BITS);
     FLINT_ASSERT(bits == B->bits);
     FLINT_ASSERT(bits == H->bits);
@@ -616,8 +594,7 @@ flint_printf("\n");
         mpoly_gen_offset_shift_sp(&xoff, &xshift, xvar, bits, ctx->minfo);
         mpoly_gen_offset_shift_sp(&zoff, &zshift, zvar, bits, ctx->minfo);
 
-    deg = (Bexps[N*0 + xoff] >> xshift) & mask;
-
+        deg = (Bexps[N*0 + xoff] >> xshift) & mask;
 
         mpoly_rbtree_ui_init(W);
         for (i = 0; i < Blen; i++)
@@ -706,9 +683,7 @@ flint_printf("\n");
     n_polyun_clear(T);
 
     *deg_ = deg;
-/*
-flint_printf("nmod_mpoly_set_eval_helper_and_zip_form returning\n");
-*/
+
     return zip_length;
 }
 
@@ -1020,7 +995,8 @@ static int fq_zech_mpoly_from_zip(
     fq_zech_mpolyu_t H,
     ulong deg,
     slong yvar,     /* Y = gen(yvar) */
-    const fq_zech_mpoly_ctx_t ctx)
+    const fq_zech_mpoly_ctx_t ctx,
+    fq_zech_polyun_t M)
 {
     int success;
     slong Hi, Zi, Bi, i, j;
@@ -1037,15 +1013,6 @@ static int fq_zech_mpoly_from_zip(
     fq_zech_mpoly_struct * Hc;
     slong Hlen = H->length;
 
-    fq_zech_polyun_t M;  /* temp */
-    fq_zech_polyun_init(M, ctx->fqctx);
-/*
-flint_printf("-----------------");
-flint_printf("nmod_mpoly_from_zip called vars %wd, %wd, %wd\n", yvar, xvar, zvar);
-flint_printf("Z: "); n_polyu3n_print_pretty(Z, "Y", "X", "Z", "_"); printf("\n");
-flint_printf("H: "); nmod_mpolyu3_print_pretty(H, "Y", "X", "Z", NULL, ctx); printf("\n");
-flint_printf("deg: %wd\n", deg);
-*/
     FLINT_ASSERT(bits == H->bits);
 
     fq_zech_polyun_fit_length(M, Hlen + 1, ctx->fqctx);
@@ -1116,11 +1083,6 @@ flint_printf("deg: %wd\n", deg);
     B->length = Bi;
     fq_zech_mpoly_sort_terms(B, ctx);
     FLINT_ASSERT(fq_zech_mpoly_is_canonical(B, ctx));
-/*
-flint_printf("nmod_mpoly_from_zip returning good\n");
-flint_printf("B: "); nmod_mpoly_print_pretty(B, NULL, ctx); flint_printf("\n");
-*/
-    fq_zech_polyun_clear(M, ctx->fqctx);
 
     return 1;
 }
@@ -1141,9 +1103,8 @@ int fq_zech_mpoly_hlift_zippel(
     slong zip_fails_remaining;
     slong req_zip_images, cur_zip_image;
     fq_zech_mpolyu_struct * H;
-    fq_zech_polyun_struct Aeh[1], * Beh;
+    fq_zech_polyun_struct M[1], Aeh[1], * Beh, * BBeval, * Z;
     fq_zech_polyu_struct Aeval[1], * Beval;
-    fq_zech_polyun_struct * BBeval, * Z;
     fq_zech_struct * beta;
     flint_bitcnt_t bits = A->bits;
     fq_zech_mpoly_t T1, T2;
@@ -1196,6 +1157,7 @@ int fq_zech_mpoly_hlift_zippel(
 
     fq_zech_polyun_init(Aeh, ctx->fqctx);
     fq_zech_polyu_init(Aeval, ctx->fqctx);
+    fq_zech_polyun_init(M, ctx->fqctx);
     for (i = 0; i < r; i++)
     {
         fq_zech_mpolyu_init(H + i, bits, ctx);
@@ -1272,7 +1234,7 @@ next_zip_image:
 
     for (i = 0; i < r; i++)
     {
-        success = fq_zech_mpoly_from_zip(B + i, Z + i, H + i, Bdegs[i], m, ctx);
+        success = fq_zech_mpoly_from_zip(B + i, Z + i, H + i, Bdegs[i], m, ctx, M);
         if (success < 1)
         {
             success = 0;
@@ -1297,6 +1259,7 @@ cleanup:
 
     fq_zech_polyun_clear(Aeh, ctx->fqctx);
     fq_zech_polyu_clear(Aeval, ctx->fqctx);
+    fq_zech_polyun_clear(M, ctx->fqctx);
     for (i = 0; i < r; i++)
     {
         fq_zech_mpolyu_clear(H + i, ctx);
@@ -1581,9 +1544,6 @@ next_alphabetas:
 
     if (!fq_zech_mpoly_is_fq_zech(m, ctx))
     {
-        success = 0;
-        goto cleanup;
-#if 0
         fq_zech_mpoly_univar_t u;
         fq_zech_mpoly_univar_init(u, ctx);
         for (i = 0; i < r; i++)
@@ -1601,7 +1561,6 @@ next_alphabetas:
             FLINT_ASSERT(success);
         }
         fq_zech_mpoly_univar_clear(u, ctx);
-#endif
     }
 
     for (i = 0; i < r; i++)

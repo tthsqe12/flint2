@@ -11,14 +11,7 @@
 
 #include "nmod_mpoly_factor.h"
 
-/*
-    input A, B0, B1 with A(y,x) = B0(y,x) * B1(y,x) mod (y-alpha)
-    return
-       -1: B0(alpha,x) & B1(alpha,x) are not pairwise prime, or
-           A(alpha,x) has wrong degree w.r.t x
-        0: lift of B0 and B1 to true factors is impossible
-        1: successfully lifted B0 and B1 to true factors without changing lc_x
-*/
+
 int n_bpoly_mod_hlift2(
     n_bpoly_t A, /* clobbered (shifted by alpha) */
     n_bpoly_t B0,
@@ -30,12 +23,7 @@ int n_bpoly_mod_hlift2(
     int success;
     slong i, j;
     n_poly_t c, s, t, u, v;
-/*
-flint_printf("n_bpoly_hlift2 called: degree_inner = %wd, alpha = %wu, p = %wu\n", degree_inner, alpha, mod.n);
-printf(" A: "); n_bpoly_print_pretty(A, "Y", "X"); flint_printf("\n");
-printf("B0: "); n_bpoly_print_pretty(B0, "Y", "X"); flint_printf("\n");
-printf("B1: "); n_bpoly_print_pretty(B1, "Y", "X"); flint_printf("\n");
-*/
+
     FLINT_ASSERT(n_bpoly_mod_is_canonical(A, mod));
     FLINT_ASSERT(n_bpoly_mod_is_canonical(B0, mod));
     FLINT_ASSERT(n_bpoly_mod_is_canonical(B1, mod));
@@ -49,11 +37,7 @@ printf("B1: "); n_bpoly_print_pretty(B1, "Y", "X"); flint_printf("\n");
     n_bpoly_mod_taylor_shift_var0(A, alpha, mod);
     n_bpoly_mod_taylor_shift_var0(B0, alpha, mod);
     n_bpoly_mod_taylor_shift_var0(B1, alpha, mod);
-/*
-flint_printf("shift A: "); n_bpoly_print_pretty(A, "Y", "X"); flint_printf("\n");
-flint_printf("shift B0: "); n_bpoly_print_pretty(B0, "Y", "X"); flint_printf("\n");
-flint_printf("shift B1: "); n_bpoly_print_pretty(B1, "Y", "X"); flint_printf("\n");
-*/
+
     if (A->length <= 0 || B0->length <= 0 || B1->length <= 0)
     {
         success = -1;
@@ -131,12 +115,6 @@ flint_printf("shift B1: "); n_bpoly_print_pretty(B1, "Y", "X"); flint_printf("\n
 
 cleanup:
 
-/*
-flint_printf("n_bpoly_hlift2 returning %d\n", success);
-flint_printf("B0: "); n_bpoly_print_pretty(B0, "Y", "X"); flint_printf("\n");
-flint_printf("B1: "); n_bpoly_print_pretty(B1, "Y", "X"); flint_printf("\n");
-*/
-
     if (success > 0)
     {
         n_bpoly_t tp1, tp2;
@@ -160,7 +138,14 @@ flint_printf("B1: "); n_bpoly_print_pretty(B1, "Y", "X"); flint_printf("\n");
     return success;
 }
 
-/* r factor version */
+/*
+    input A, B0, B1 with A(y,x) = B0(y,x) * B1(y,x) mod (y-alpha)
+    return
+       -1: B0(alpha,x) & B1(alpha,x) are not pairwise prime, or
+           A(alpha,x) has wrong degree w.r.t x
+        0: lift of B0 and B1 to true factors is impossible
+        1: successfully lifted B0 and B1 to true factors without changing lc_x
+*/
 int n_bpoly_mod_hlift(
     slong r,
     n_bpoly_t A, /* clobbered (shifted by alpha) */
@@ -174,18 +159,7 @@ int n_bpoly_mod_hlift(
     n_poly_struct * s, * v;
     n_poly_t c, t, u;
     n_bpoly_struct * U;
-/*
-flint_printf("n_bpoly_hlift(%wd) called: degree_inner = %wd, alpha = %wu\n", r, degree_inner, alpha);
-flint_printf(" A: ");
-n_bpoly_print_pretty(A, "y", "x");
-flint_printf("\n");
-for (i = 0; i < r; i++)
-{
-flint_printf("B[%wd]: ", i);
-n_bpoly_print_pretty(B + i, "y", "x");
-flint_printf("\n");
-}
-*/
+
     FLINT_ASSERT(r > 2);
     FLINT_ASSERT(n_bpoly_mod_is_canonical(A, mod));
 
@@ -340,17 +314,7 @@ flint_printf("\n");
     success = 1;
 
 cleanup:
-/*
-flint_printf("n_bpoly_hlift(%wd) returning %d\n", r, success);
-for (i = 0; i < r; i++)
-{
-flint_printf("B[%wd]: ", i);
-n_bpoly_print_pretty(B + i, "y", "x");
-flint_printf("\n");
-}
 
-FLINT_ASSERT(success);
-*/
     if (success > 0)
     {
         n_bpoly_t tp1, tp2;

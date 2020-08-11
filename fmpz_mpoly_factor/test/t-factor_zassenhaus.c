@@ -17,10 +17,7 @@ void check_omega(slong lower, slong upper, const fmpz_mpoly_t p, const fmpz_mpol
     fmpz_mpoly_t q;
     fmpz_mpoly_factor_t g, h;
     fmpz_t omega;
-/*
-    flint_printf("checking %wd <= # <= %wd: length %wd in %wd vars\n",
-                                   lower, upper, p->length, ctx->minfo->nvars);
-*/
+
     fmpz_init(omega);
     fmpz_mpoly_factor_init(g, ctx);
     fmpz_mpoly_factor_init(h, ctx);

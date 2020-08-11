@@ -133,3 +133,25 @@ void fmpz_mpoly_from_mpolyv(
 
     fmpz_mpoly_clear(T, ctx);
 }
+
+
+int _fmpz_mpoly_vec_content_mpoly(
+    fmpz_mpoly_t g,
+    const fmpz_mpoly_struct * A,
+    slong Alen,
+    const fmpz_mpoly_ctx_t ctx)
+{
+    slong i;
+    int success;
+
+    fmpz_mpoly_zero(g, ctx);
+
+    for (i = 0; i < Alen; i++)
+    {
+        success = fmpz_mpoly_gcd(g, g, A + i, ctx);
+        if (!success)
+            return 0;
+    }
+
+    return 1;
+}

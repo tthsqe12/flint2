@@ -159,7 +159,7 @@ int n_bpoly_mod_interp_crt_2sm_poly(
 }
 
 
-int n_bpoly_mod_disolve2(
+int n_bpoly_mod_pfrac2(
     n_bpoly_t C1, n_bpoly_t C2,
     slong C1_deg1_bound, slong C2_deg1_bound,
     n_bpoly_t A,
@@ -174,9 +174,7 @@ int n_bpoly_mod_disolve2(
     n_poly_t Aevalm, B1evalm, B2evalm, C1evalm, C2evalm;
     n_poly_t modulus, alphapow, t1, t2;
     n_bpoly_t T;
-/*
-    const char * vars[] = {"x", "y"};
-*/
+
     n_poly_init(Aevalp);
     n_poly_init(B1evalp);
     n_poly_init(B2evalp);
@@ -197,12 +195,7 @@ int n_bpoly_mod_disolve2(
     A_deg1 = n_bpoly_degree1(A);
     B1_deg1 = n_bpoly_degree1(B1);
     B2_deg1 = n_bpoly_degree1(B2);
-/*
-flint_printf("n_bpoly_mod_disolve2 called p = %wu\n", mod.n);
-flint_printf(" A(deg1 %wd): ", A_deg1); n_bpoly_print_pretty(A, vars[0], vars[1]); flint_printf("\n");
-flint_printf("B1(deg1 %wd): ", B1_deg1); n_bpoly_print_pretty(B1, vars[0], vars[1]); flint_printf("\n");
-flint_printf("B2(deg1 %wd): ", B2_deg1); n_bpoly_print_pretty(B2, vars[0], vars[1]); flint_printf("\n");
-*/
+
     if (B1_deg1 < 1 || B2_deg1 < 1)
     {
         success = -2;
@@ -359,11 +352,7 @@ cleanup:
     n_poly_clear(t2);
 
     n_bpoly_clear(T);
-/*
-flint_printf("n_bpoly_mod_disolve2 returning success = %d\n", success);
-flint_printf("C1: "); n_bpoly_print_pretty(C1, vars[0], vars[1]); flint_printf("\n");
-flint_printf("C2: "); n_bpoly_print_pretty(C2, vars[0], vars[1]); flint_printf("\n");
-*/
+
     return success;
 }
 
@@ -377,7 +366,7 @@ flint_printf("C2: "); n_bpoly_print_pretty(C2, vars[0], vars[1]); flint_printf("
        -1: could not find enough evaluation points where the Bi are pariwise prime
        -2: found no evaluation points where the Bi are pariwise prime
 */
-int n_bpoly_mod_disolve(
+int n_bpoly_mod_pfrac(
     slong r,
     n_bpoly_struct * C,
     slong * C_deg1_bound,
@@ -393,12 +382,11 @@ int n_bpoly_mod_disolve(
     n_poly_t modulus, alphapow, t1, t2;
     n_bpoly_t T;
     slong * B_deg1, * C_deg1, B_deg1_total, A_deg1;
-/*    const char * vars[] = {"x", "y"};*/
     TMP_INIT;
 
     if (r < 3)
     {
-        return n_bpoly_mod_disolve2(C + 0, C + 1, C_deg1_bound[0],
+        return n_bpoly_mod_pfrac2(C + 0, C + 1, C_deg1_bound[0],
                                         C_deg1_bound[1], A, B + 0, B + 1, mod);
     }
 
@@ -438,15 +426,6 @@ int n_bpoly_mod_disolve(
             goto cleanup;
         }
     }
-
-/*
-printf("n_bpoly_mod_disolve called\n");
-flint_printf(" A(deg %wd): ", A_deg1); n_bpoly_print_pretty(A, vars[0], vars[1]); flint_printf("\n");
-for (i = 0; i < r; i++)
-{
-flint_printf("B[%wd](deg %wd): ", i, B_deg1[i]); n_bpoly_print_pretty(B + i, vars[0], vars[1]); flint_printf("\n");
-}
-*/
 
     B_deg1_total = B_deg1[0];
     for (i = 1; i < r; i++)
@@ -626,12 +605,6 @@ cleanup:
     n_bpoly_clear(T);
 
     TMP_END;
-/*
-flint_printf("n_bpoly_mod_disolve returning success = %d\n", success);
-for (i = 0; i < r; i++)
-{
-flint_printf("C[%wd]: ", i); n_bpoly_print_pretty(C + i, vars[0], vars[1]); flint_printf("\n");
-}
-*/
+
     return success;
 }

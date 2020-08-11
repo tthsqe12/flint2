@@ -760,6 +760,8 @@ cleanup:
     n_bpoly_clear(monicB);
     n_tpoly_clear(tmp);
 
+    zassenhaus_prune_clear(zas);
+
     return success;
 }
 

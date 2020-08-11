@@ -132,3 +132,24 @@ void nmod_mpoly_from_mpolyv(
 
     nmod_mpoly_clear(T, ctx);
 }
+
+
+int _nmod_mpoly_vec_content_mpoly(
+    nmod_mpoly_t g,
+    const nmod_mpoly_struct * A,
+    slong Alen,
+    const nmod_mpoly_ctx_t ctx)
+{
+    slong i;
+
+    nmod_mpoly_zero(g, ctx);
+
+    for (i = 0; i < Alen; i++)
+    {
+		if (!nmod_mpoly_gcd(g, g, A + i, ctx))
+			return 0;
+    }
+
+    return 1;
+}
+

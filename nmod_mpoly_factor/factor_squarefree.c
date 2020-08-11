@@ -50,20 +50,8 @@ static void nmod_mpoly_factor_mul_mpoly_ui(
 	}
 }
 
-static void _nmod_mpoly_univar_shift_right(
-    nmod_mpoly_univar_t A,
-    const fmpz_t shift,
-    const nmod_mpoly_ctx_t ctx)
-{
-    slong i;
-    for (i = 0; i < A->length; i++)
-    {
-        fmpz_sub(A->exps + i, A->exps + i, shift);
-        FLINT_ASSERT(fmpz_sgn(A->exps + i) >= 0);
-    }
-}
 
-
+#if WANT_ASSERT
 /*
     return: 0 no
             1 yes
@@ -115,6 +103,7 @@ cleanup:
 
 	return result;
 }
+#endif
 
 /*
 	b and c are pairwise prime
@@ -392,16 +381,19 @@ int nmod_mpoly_factor_squarefree(
             nmod_mpoly_to_univar(u, f->poly + j, v, ctx);
             FLINT_ASSERT(u->length > 0);
 
-            success = nmod_mpoly_univar_content_mpoly(c, u, ctx);
+            success = _nmod_mpoly_vec_content_mpoly(c, u->coeffs, u->length, ctx);
             if (!success)
                 goto cleanup;
 
-            nmod_mpoly_univar_divexact_mpoly(u, c, ctx);
+            fmpz_add(var_powers + v, var_powers + v, u->exps + u->length - 1);
+            for (i = 0; i < u->length; i++)
+            {
+                fmpz_sub(u->exps + i, u->exps + i, u->exps + u->length - 1);
+                success = nmod_mpoly_divides(u->coeffs + i, u->coeffs + i, c, ctx);
+                FLINT_ASSERT(success);
+            }
 
             nmod_mpoly_factor_mul_mpoly_ui(g, c, 1, ctx);
-
-            fmpz_add(var_powers + v, var_powers + v, u->exps + u->length - 1);
-            _nmod_mpoly_univar_shift_right(u, u->exps + u->length - 1, ctx);
 
             if (u->length > 1)
             {

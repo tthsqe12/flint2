@@ -404,16 +404,10 @@ FLINT_DLL void fq_nmod_mpoly_from_mpolyv(
     const fq_nmod_mpoly_t xalpha,
     const fq_nmod_mpoly_ctx_t ctx);
 
-/*****************************************************************************/
-
-FLINT_DLL int fq_nmod_mpoly_univar_content_mpoly(
+FLINT_DLL int _fq_nmod_mpoly_vec_content_mpoly(
     fq_nmod_mpoly_t g,
-    const fq_nmod_mpoly_univar_t A,
-    const fq_nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL void fq_nmod_mpoly_univar_divexact_mpoly(
-    fq_nmod_mpoly_univar_t A,
-    const fq_nmod_mpoly_t b,
+    const fq_nmod_mpoly_struct * A,
+    slong Alen,
     const fq_nmod_mpoly_ctx_t ctx);
 
 /*****************************************************************************/

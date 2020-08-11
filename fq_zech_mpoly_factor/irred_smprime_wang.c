@@ -269,12 +269,7 @@ int fq_zech_mpoly_factor_irred_smprime_wang(
     fq_zech_tpoly_t Abfp;
     fq_zech_mpoly_t m, mpow;
     fq_zech_mpolyv_t new_lcs, lc_divs;
-/*
-flint_printf("fq_nmod_mpoly_factor_irred_smprime_wang called p = %wu\n", ctx->fqctx->modulus->mod.n);
-flint_printf("     A: "); fq_nmod_mpoly_print_pretty(A, NULL, ctx); flint_printf("\n");
-flint_printf("lcAfac: "); fq_nmod_mpoly_factor_print_pretty(lcAfac, NULL, ctx); flint_printf("\n");
-flint_printf("   lcA: "); fq_nmod_mpoly_print_pretty(lcA, NULL, ctx); flint_printf("\n");
-*/
+
     FLINT_ASSERT(n > 1);
     FLINT_ASSERT(A->length > 1);
     FLINT_ASSERT(fq_zech_is_one(A->coeffs + 0, ctx->fqctx));
@@ -483,26 +478,22 @@ next_alphabetas:
 
     if (!fq_zech_mpoly_is_fq_zech(m, ctx))
     {
-        success = 0;
-        goto cleanup;
-#if 0
         fq_zech_mpoly_univar_t u;
         fq_zech_mpoly_univar_init(u, ctx);
         for (i = 0; i < r; i++)
         {
-            fq_nmod_mpoly_to_univar(u, fac->coeffs + i, 0, ctx);
-            success = fq_nmod_mpoly_univar_content_mpoly(t, u, ctx);
+            fq_zech_mpoly_to_univar(u, fac->coeffs + i, 0, ctx);
+            success = fq_zech_mpoly_univar_content_mpoly(t, u, ctx);
             if (!success)
             {
-                fq_nmod_mpoly_univar_clear(u, ctx);
+                fq_zech_mpoly_univar_clear(u, ctx);
                 goto cleanup;
             }
-            success = fq_nmod_mpoly_divides(fac->coeffs + i,
+            success = fq_zech_mpoly_divides(fac->coeffs + i,
                                             fac->coeffs + i, t, ctx);
             FLINT_ASSERT(success);
         }
-        fq_nmod_mpoly_univar_clear(u, ctx);
-#endif
+        fq_zech_mpoly_univar_clear(u, ctx);
     }
 
     for (i = 0; i < r; i++)
@@ -549,10 +540,6 @@ cleanup:
         fq_zech_mpoly_clear(prod, ctx);
     }
 #endif
-
-flint_printf("fq_zech_mpoly_factor_irred_smprime_wang returning %d\n", success);
-usleep(1000000);
-
 
 	return success;
 }

@@ -259,7 +259,7 @@ got_alpha:
         for (i = 0; i < r; i++)
         {
             fmpz_mpoly_to_univar(u, fac->coeffs + i, 0, ctx);
-            success = fmpz_mpoly_univar_content_mpoly(t, u, ctx);
+            success = _fmpz_mpoly_vec_content_mpoly(t, u->coeffs, u->length, ctx);
             if (!success)
             {
                 fmpz_mpoly_univar_clear(u, ctx);

@@ -146,12 +146,7 @@ void fq_nmod_polyu3_interp_reduce_bpoly(
     slong i;
     slong cur0, cur1, e0, e1, e2;
     fq_nmod_t p, t, q;
-/*
-    const fq_nmod_struct * Acoeffs = A->coeffs;
-    const ulong * Aexps = A->exps;
-flint_printf("n_polyu3_mod_interp_reduce_2sm_bpoly called alpha = %wd\n", alpha->coeffs[1]);
-flint_printf("A: "); n_polyu3_print_pretty(A, "Y", "X", "Z"); flint_printf("\n");
-*/
+
     fq_nmod_init(p, ctx);
     fq_nmod_init(t, ctx);
     fq_nmod_init(q, ctx);
@@ -202,12 +197,6 @@ flint_printf("A: "); n_polyu3_print_pretty(A, "Y", "X", "Z"); flint_printf("\n")
     fq_nmod_clear(p, ctx);
     fq_nmod_clear(t, ctx);
     fq_nmod_clear(q, ctx);
-
-/*
-flint_printf("n_polyu3_mod_interp_reduce_2sm_bpoly returning\n");
-flint_printf("Ap: "); n_bpoly_print_pretty(Ap, "Y", "X"); flint_printf("\n");
-flint_printf("Am: "); n_bpoly_print_pretty(Am, "Y", "X"); flint_printf("\n");
-*/
 }
 
 
@@ -229,11 +218,7 @@ void fq_nmod_polyu3n_interp_lift_sm_bpoly(
     slong lastlength = 0;
     slong Ti;
     slong Ai, j;
-/*
-flint_printf("n_polyu3n_mod_interp_lift_2sm_bpoly called\n");
-flint_printf("A: "); n_bpoly_print_pretty(A, "Y", "X"); flint_printf("\n");
-flint_printf("B: "); n_bpoly_print_pretty(B, "Y", "X"); flint_printf("\n");
-*/
+
     Ti = 0;
 
     for (Ai = A->length - 1; Ai >= 0; Ai--)
@@ -254,10 +239,6 @@ flint_printf("B: "); n_bpoly_print_pretty(B, "Y", "X"); flint_printf("\n");
     T->length = Ti;
 
     *lastdeg = lastlength - 1;
-/*
-flint_printf("n_polyu3n_mod_interp_lift_2sm_bpoly returning lastdeg = %wd\n", lastlength - 1);
-flint_printf("T: "); n_polyu3n_print_pretty(T, "Y", "X", "?", "Z"); flint_printf("\n");
-*/
 
     return;
 }
@@ -289,11 +270,6 @@ int fq_nmod_polyu3n_interp_crt_sm_bpoly(
     mp_limb_t * v = FLINT_ARRAY_ALLOC(d, mp_limb_t);
 
     n_poly_init(tp);
-/*
-flint_printf("n_polyu3n_mod_interp_crt_2sm_bpoly called alpha = %wu\n", alpha);
-flint_printf("+: "); n_bpoly_print_pretty(A, "Y", "X"); flint_printf("\n");
-flint_printf("-: "); n_bpoly_print_pretty(B, "Y", "X"); flint_printf("\n");
-*/
 
     FLINT_ASSERT(n_bpoly_fq_is_canonical(A, ctx));
     FLINT_ASSERT(n_polyun_fq_is_canonical(F, ctx));
@@ -433,27 +409,6 @@ int n_polyu3_fq_hlift(
     mp_limb_t * alpha_ = FLINT_ARRAY_ALLOC(d, mp_limb_t);
     mp_limb_t * c = FLINT_ARRAY_ALLOC(d, mp_limb_t);
 
-/*
-flint_printf("+++++++++++++++++++++++\n");
-flint_printf("fq_nmod_polyu3_hlift called: degree_inner = %wd\n", degree_inner);
-fq_nmod_ctx_print(ctx);
-
-flint_printf("beta: "); fq_nmod_print_pretty(beta, ctx); flint_printf("\n");
-
-
-flint_printf("A: "); fq_nmod_polyu3_print_pretty(A, "Y", "X", "Z", ctx); printf("\n");
-for (i = 0; i < r; i++)
-{
-flint_printf("B[%wd]: ", i); fq_nmod_polyu3_print_pretty(B + i, "Y", "X", "Z", ctx); flint_printf("\n");
-}
-
-usleep(100000);
-*/
-/*
-    if (r < 3)
-        return fq_nmod_polyu3_mod_hlift2(BB + 0, BB + 1, A, B + 0, B + 1,
-                                                      beta, degree_inner, ctx);
-*/
     fq_nmod_init(alpha, ctx);
 
     FLINT_ASSERT(n_polyu_fq_is_canonical(A, ctx));
@@ -475,9 +430,7 @@ usleep(100000);
         success = -1;
         goto cleanup;
     }
-/*
-flint_printf("AdegZ: %wd\n", AdegZ);
-*/
+
     _n_poly_fq_one(modulus, d);
 
     fq_nmod_zero(alpha, ctx);
@@ -488,59 +441,28 @@ choose_prime:
 
     if (fq_nmod_next(alpha, ctx) == 0)
     {
-flint_printf("fq_nmod_polyu3_hlift fail 1\n");
         success = -1;
         goto cleanup;
     }
 
     n_fq_set_fq_nmod(alpha_, alpha, ctx);
-/*
-flint_printf("------ alpha: "); fq_nmod_print_pretty(alpha, ctx); flint_printf(" -------\n");
-*/
 
     fq_nmod_polyu3_interp_reduce_bpoly(Ap, A, alpha, ctx);
-/*
-flint_printf("Ap: ");
-fq_nmod_bpoly_print_pretty(Ap, "Y", "X", ctx);
-flint_printf("\n");
-*/
     for (i = 0; i < r; i++)
-    {
         fq_nmod_polyu3_interp_reduce_bpoly(Bp + i, B + i, alpha, ctx);
-/*
-flint_printf("Bp[%wd]: ", i);
-fq_nmod_bpoly_print_pretty(Bp + i, "Y", "X", ctx);
-flint_printf("\n");
-*/
-    }
-/*
-flint_printf("calling fq_nmod_bpoly_hlift r = %wd\n", r);
-*/
+
     if (r < 3)
         success = n_bpoly_fq_hlift2(Ap, Bp + 0, Bp + 1, beta, degree_inner, ctx);
     else
         success = n_bpoly_fq_hlift(r, Ap, Bp, beta, degree_inner, ctx);
-/*
-flint_printf("returned from fq_nmod_bpoly_hlift success = %d\n", success);
-*/
+
     if (success < 1)
     {
         if (success == 0 || --bad_primes_left < 0)
-        {
-flint_printf("fq_nmod_polyu3_hlift fail 2\n");
             goto cleanup;
-        }
         goto choose_prime;
     }
 
-/*
-for (i = 0; i < r; i++)
-{
-flint_printf("lifted Bp[%wd]: ", i);
-n_bpoly_print_pretty(Bp + i, "y", "x");
-flint_printf("\n");
-}
-*/
     if (n_poly_degree(modulus) > 0)
     {
         n_poly_fq_evaluate_n_fq(c, modulus, alpha_, ctx);
@@ -550,46 +472,25 @@ flint_printf("\n");
         for (i = 0; i < r; i++)
         {
             fq_nmod_polyu3n_interp_crt_sm_bpoly(BBdegZ + i, BB + i, T,
-                                             Bp + i, modulus, alpha_, ctx);
-/*
-flint_printf("crt deg = %wd, BB[%wd]: ", BBdegZ[i], i);
-fq_nmod_polyu3n_print_pretty(BB + i, "Y", "X", "?", "Z", ctx);
-flint_printf("\n");
-*/
+                                                 Bp + i, modulus, alpha_, ctx);
         }
     }
     else
     {
         for (i = 0; i < r; i++)
         {
-            fq_nmod_polyu3n_interp_lift_sm_bpoly(BBdegZ + i, BB + i,
-                                                       Bp + i, ctx);
-/*
-flint_printf("lift deg = %wd, BB[%wd]: ", BBdegZ[i], i);
-fq_nmod_polyu3n_print_pretty(BB + i, "Y", "X", "?", "Z", ctx);
-flint_printf("\n");
-*/
+            fq_nmod_polyu3n_interp_lift_sm_bpoly(BBdegZ + i, BB + i, Bp + i, ctx);
         }
     }
 
     n_poly_fq_shift_left_scalar_submul(modulus, 1, alpha_, ctx);
 
-/*
-flint_printf("modulus: "); n_poly_fq_print_pretty(modulus, "Z", ctx); flint_printf("\n");
-for (i = 0; i < r; i++)
-{
-flint_printf("BB[%wd]: ", i);
-fq_nmod_polyu3n_print_pretty(BB + i, "Y", "X", "1", "Z", ctx);
-flint_printf("\n");
-}
-*/
     j = BBdegZ[0];
     for (i = 1; i < r; i++)
         j += BBdegZ[i];
 
     if (j > AdegZ)
     {
-flint_printf("fq_nmod_polyu3_hlift fail 3\n");
         success = 0;
         goto cleanup;
     }
@@ -602,16 +503,6 @@ flint_printf("fq_nmod_polyu3_hlift fail 3\n");
     success = 1;
 
 cleanup:
-/*
-flint_printf("+++++++++++++++++++++++\n");
-flint_printf("n_polyu3_mod_factor_lift returning %d\n", success);
-for (i = 0; i < r; i++)
-{
-flint_printf("BB[%wd]: ", i);
-fq_nmod_polyu3n_print_pretty(BB + i, "Y", "X", "1", "Z", ctx);
-flint_printf("\n");
-}
-*/
 
 #if WANT_ASSERT
     if (success == 1)

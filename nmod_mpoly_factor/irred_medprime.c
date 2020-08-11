@@ -11,6 +11,7 @@
 
 #include "nmod_mpoly_factor.h"
 #include "fq_zech_mpoly_factor.h"
+#include "profiler.h"
 
 
 static void _fq_zech_mpoly_set_nmod_mpoly(
@@ -52,9 +53,6 @@ static void _frob_combine(
 
     fq_zech_mpoly_init(t, ectx);
     fq_zech_mpolyv_init(tfac, ectx);
-
-flint_printf("_frob_combine called\n");
-flint_printf("eAf: "); fq_zech_mpolyv_print_pretty(eAf, NULL, ectx); flint_printf("\n");
 
     Af->length = 0;
     while (eAf->length > 0)
@@ -127,6 +125,66 @@ flint_printf("eAf: "); fq_zech_mpolyv_print_pretty(eAf, NULL, ectx); flint_print
         0: failed, ran out of primes, don't try again
        -1: failed, don't try again
 */
+int nmod_mpoly_factor_irred_medprime_zassenhaus(
+    nmod_mpolyv_t Af,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_ctx_t ctx,
+    flint_rand_t state)
+{
+    int success;
+    fq_zech_mpolyv_t eAf;
+    fq_zech_mpoly_t eA;
+    fq_zech_mpoly_ctx_t ectx;
+    slong edeg, max_degree = n_flog(1000000, ctx->ffinfo->mod.n);
+
+    FLINT_ASSERT(A->length > 0);
+    FLINT_ASSERT(A->coeffs[0] == 1);
+    FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
+
+    edeg = 1 + n_clog(A->length + 1, ctx->ffinfo->mod.n)/2;
+    edeg = FLINT_MAX(2, edeg);
+    if (edeg > max_degree)
+        return 0;
+
+    fq_zech_mpoly_ctx_init_deg(ectx, ctx->minfo->nvars, ORD_LEX, ctx->ffinfo->mod.n, edeg);
+    fq_zech_mpoly_init(eA, ectx);
+    fq_zech_mpolyv_init(eAf, ectx);
+
+    goto have_prime;
+
+choose_prime:
+
+    edeg++;
+    if (edeg > max_degree)
+    {
+        success = 0;
+        goto cleanup;
+    }
+    fq_zech_mpoly_ctx_change_modulus(ectx, edeg);
+
+have_prime:
+
+    _fq_zech_mpoly_set_nmod_mpoly(eA, ectx, A, ctx);
+
+    success = fq_zech_mpoly_factor_irred_smprime_zassenhaus(eAf, eA, ectx, state);
+    if (success == 0)
+        goto choose_prime;
+    if (success < 0)
+        goto cleanup;
+
+    _frob_combine(Af, eAf, ctx, ectx);
+
+    success = 1;
+
+cleanup:
+
+    fq_zech_mpoly_clear(eA, ectx);
+    fq_zech_mpolyv_clear(eAf, ectx);
+    fq_zech_mpoly_ctx_clear(ectx);
+
+    return success;
+}
+
 
 int nmod_mpoly_factor_irred_medprime_wang(
     nmod_mpolyv_t Af,
@@ -137,34 +195,24 @@ int nmod_mpoly_factor_irred_medprime_wang(
     flint_rand_t state)
 {
     int success;
+    slong i;
+    const slong n = ctx->minfo->nvars - 1;
     fq_zech_mpoly_factor_t elcAfac;
     fq_zech_mpolyv_t eAf;
     fq_zech_mpoly_t eA, elcA;
     fq_zech_mpoly_ctx_t ectx;
-    slong edeg;
-    const slong n = ctx->minfo->nvars - 1;
-    slong i;
-
-flint_printf("nmod_mpoly_factor_irred_medprime_wang called p = %wu\n", ctx->ffinfo->mod.n);
-flint_printf("A: ");
-nmod_mpoly_print_pretty(A, NULL, ctx);
-flint_printf("\n");
+    slong edeg, max_degree = n_flog(1000000, ctx->ffinfo->mod.n);
 
     FLINT_ASSERT(A->length > 0);
     FLINT_ASSERT(A->coeffs[0] == 1);
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
 
-    edeg = 1 + n_clog(A->length + 1, ctx->ffinfo->mod.n);
+    edeg = 1 + n_clog(A->length + 1, ctx->ffinfo->mod.n)/2;
     edeg = FLINT_MAX(2, edeg);
-    if (edeg * n_clog(ctx->ffinfo->mod.n, 2) >= 20)
+    if (edeg > max_degree)
         return 0;
 
-flint_printf("edeg: %wd\n", edeg);
-
     fq_zech_mpoly_ctx_init_deg(ectx, n + 1, ORD_LEX, ctx->ffinfo->mod.n, edeg);
-
-flint_printf("ectx:\n");
-fq_zech_ctx_print(ectx->fqctx);
 
     fq_zech_mpoly_init(eA, ectx);
     fq_zech_mpolyv_init(eAf, ectx);
@@ -178,7 +226,7 @@ fq_zech_ctx_print(ectx->fqctx);
 choose_prime:
 
     edeg++;
-    if (edeg * n_clog(ctx->ffinfo->mod.n, 2) >= 20)
+    if (edeg > max_degree)
     {
         success = 0;
         goto cleanup;
@@ -210,6 +258,8 @@ cleanup:
 
     fq_zech_mpoly_clear(eA, ectx);
     fq_zech_mpolyv_clear(eAf, ectx);
+    fq_zech_mpoly_clear(elcA, ectx);
+    fq_zech_mpoly_factor_clear(elcAfac, ectx);
     fq_zech_mpoly_ctx_clear(ectx);
 
     return success;
@@ -224,18 +274,13 @@ int nmod_mpoly_factor_irred_medprime_zippel(
     flint_rand_t state)
 {
     int success;
+    slong i;
+    const slong n = ctx->minfo->nvars - 1;
     fq_zech_mpoly_factor_t elcAfac;
     fq_zech_mpolyv_t eAf;
     fq_zech_mpoly_t eA, elcA;
     fq_zech_mpoly_ctx_t ectx;
-    slong edeg;
-    const slong n = ctx->minfo->nvars - 1;
-    slong i;
-
-flint_printf("nmod_mpoly_factor_irred_medprime_zippel called p = %wu\n", ctx->ffinfo->mod.n);
-flint_printf("A: ");
-nmod_mpoly_print_pretty(A, NULL, ctx);
-flint_printf("\n");
+    slong edeg, max_degree = n_flog(1000000, ctx->ffinfo->mod.n);
 
     FLINT_ASSERT(A->length > 0);
     FLINT_ASSERT(A->coeffs[0] == 1);
@@ -243,16 +288,10 @@ flint_printf("\n");
 
     edeg = 1 + n_clog(A->length + 1, ctx->ffinfo->mod.n);
     edeg = FLINT_MAX(2, edeg);
-    if (edeg * n_clog(ctx->ffinfo->mod.n, 2) >= 20)
+    if (edeg > max_degree)
         return 0;
 
-flint_printf("edeg: %wd\n", edeg);
-
     fq_zech_mpoly_ctx_init_deg(ectx, n + 1, ORD_LEX, ctx->ffinfo->mod.n, edeg);
-
-flint_printf("ectx:\n");
-fq_zech_ctx_print(ectx->fqctx);
-
 
     fq_zech_mpoly_init(eA, ectx);
     fq_zech_mpolyv_init(eAf, ectx);
@@ -266,7 +305,7 @@ fq_zech_ctx_print(ectx->fqctx);
 choose_prime:
 
     edeg++;
-    if (edeg * n_clog(ctx->ffinfo->mod.n, 2) >= 20)
+    if (edeg > max_degree)
     {
         success = 0;
         goto cleanup;
@@ -298,6 +337,8 @@ cleanup:
 
     fq_zech_mpoly_clear(eA, ectx);
     fq_zech_mpolyv_clear(eAf, ectx);
+    fq_zech_mpoly_clear(elcA, ectx);
+    fq_zech_mpoly_factor_clear(elcAfac, ectx);
     fq_zech_mpoly_ctx_clear(ectx);
 
     return success;

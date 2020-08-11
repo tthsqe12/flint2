@@ -55,10 +55,7 @@ static void _frob_combine(
 
     fq_nmod_mpoly_init(t, ectx);
     fq_nmod_mpolyv_init(tfac, ectx);
-/*
-flint_printf("_frob_combine called\n");
-flint_printf("eAf: "); fq_nmod_mpolyv_print_pretty(eAf, NULL, ectx); flint_printf("\n");
-*/
+
     Af->length = 0;
     while (eAf->length > 0)
     {
@@ -199,7 +196,9 @@ int nmod_mpoly_factor_irred_lgprime_wang(
     FLINT_ASSERT(A->coeffs[0] == 1);
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
 
-    edeg = 2;
+    edeg = 1 + n_clog(A->length + 1, ctx->ffinfo->mod.n)/2;
+    edeg = FLINT_MAX(2, edeg);
+
     fq_nmod_mpoly_ctx_init_deg(ectx, n + 1, ORD_LEX, ctx->ffinfo->mod.n, edeg);
     fq_nmod_mpoly_init(eA, ectx);
     fq_nmod_mpolyv_init(eAf, ectx);
@@ -240,6 +239,8 @@ cleanup:
 
     fq_nmod_mpoly_clear(eA, ectx);
     fq_nmod_mpolyv_clear(eAf, ectx);
+    fq_nmod_mpoly_clear(elcA, ectx);
+    fq_nmod_mpoly_factor_clear(elcAfac, ectx);
     fq_nmod_mpoly_ctx_clear(ectx);
 
     return success;
@@ -308,7 +309,10 @@ cleanup:
 
     fq_nmod_mpoly_clear(eA, ectx);
     fq_nmod_mpolyv_clear(eAf, ectx);
+    fq_nmod_mpoly_clear(elcA, ectx);
+    fq_nmod_mpoly_factor_clear(elcAfac, ectx);
     fq_nmod_mpoly_ctx_clear(ectx);
 
     return success;
 }
+

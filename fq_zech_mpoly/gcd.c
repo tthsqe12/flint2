@@ -12,9 +12,16 @@
 #include "fq_zech_mpoly.h"
 
 
-int fq_zech_mpoly_gcd(fq_zech_mpoly_t G, const fq_zech_mpoly_t A,
-                       const fq_zech_mpoly_t B, const fq_zech_mpoly_ctx_t ctx)
+int fq_zech_mpoly_gcd(
+    fq_zech_mpoly_t G,
+    const fq_zech_mpoly_t A,
+    const fq_zech_mpoly_t B,
+    const fq_zech_mpoly_ctx_t ctx)
 {
+    int success;
+    fq_nmod_mpoly_ctx_t ctx2;
+    fq_nmod_mpoly_t A2, B2, G2;
+
     if (fq_zech_mpoly_is_zero(A, ctx))
     {
         if (fq_zech_mpoly_is_zero(B, ctx))
@@ -30,8 +37,23 @@ int fq_zech_mpoly_gcd(fq_zech_mpoly_t G, const fq_zech_mpoly_t A,
         return 1;
     }
 
-    flint_printf("fq_zech_mpoly_gcd not implemented\n");
-    flint_abort();
+    *ctx2->minfo = *ctx->minfo;
+    *ctx2->fqctx = *ctx->fqctx->fq_nmod_ctx;
 
-    return 0;
+    fq_nmod_mpoly_init(A2, ctx2);
+    fq_nmod_mpoly_init(B2, ctx2);
+    fq_nmod_mpoly_init(G2, ctx2);
+
+    _fq_zech_mpoly_get_fq_nmod_mpoly(A2, ctx2, A, ctx);
+    _fq_zech_mpoly_get_fq_nmod_mpoly(B2, ctx2, B, ctx);
+    success = fq_nmod_mpoly_gcd(G2, A2, B2, ctx2);
+    if (success)
+        _fq_zech_mpoly_set_fq_nmod_mpoly(G, ctx, G2, ctx2);
+
+    fq_nmod_mpoly_clear(A2, ctx2);
+    fq_nmod_mpoly_clear(B2, ctx2);
+    fq_nmod_mpoly_clear(G2, ctx2);
+
+    return success;
 }
+
