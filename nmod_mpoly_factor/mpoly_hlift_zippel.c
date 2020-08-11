@@ -287,21 +287,7 @@ int nmod_zip_find_coeffs_new(
     return 1;
 }
 
-/*
-    for each Y^y*X^x*Z^z in B with x = deg,
-        keep the Y^y*X^x*Z^z*poly(x1,...) in B
-    for each Y^y*X^x*Z^z in Z,
-        assert that x < deg
-        if there is no Y^0*X^x*Z^y in H, fail
-        find coefficients of poly using this entry in H
-        output Y^y*X^x*Z^z*poly(x1,...) to A
-    sort A
 
-    return
-       -1: singular
-        0: inconsistent
-        1: success
-*/
 static int nmod_mpoly_from_zip(
     nmod_mpoly_t B,
     const n_polyun_t Z,

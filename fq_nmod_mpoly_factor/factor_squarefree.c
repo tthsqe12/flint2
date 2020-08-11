@@ -400,6 +400,8 @@ int fq_nmod_mpoly_factor_squarefree(
                 FLINT_ASSERT(success);
             }
 
+            fq_nmod_mpoly_factor_mul_mpoly_ui(g, c, 1, ctx);
+
             if (u->length > 1)
             {
                 fq_nmod_mpoly_from_univar_bits(c, A->bits, u, v, ctx);

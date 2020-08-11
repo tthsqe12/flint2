@@ -11,6 +11,39 @@
 
 #include "fq_zech_mpoly_factor.h"
 
+
+static void fq_zech_mpoly_delete_duplicate_terms(
+    fq_zech_mpoly_t A,
+    const fq_zech_mpoly_ctx_t ctx)
+{
+    slong i, j;
+    slong N = mpoly_words_per_exp(A->bits, ctx->minfo);
+    j = -1;
+    for (i = 0; i < A->length; i++)
+    {
+        if (j >= 0 && mpoly_monomial_equal(A->exps + N*j, A->exps + N*i, N))
+        {
+            FLINT_ASSERT(fq_zech_equal(A->coeffs + j, A->coeffs + i, ctx->fqctx));
+            continue;
+        }
+        j++;
+        fq_zech_set(A->coeffs + j, A->coeffs + i, ctx->fqctx);
+        mpoly_monomial_set(A->exps + N*j, A->exps + N*i, N);
+    }
+    j++;
+    A->length = j;
+}
+
+
+slong fq_zech_mpolyu_find_term(const fq_zech_mpolyu_t A, ulong e)
+{
+    slong i;
+    for (i = 0; i < A->length; i++)
+        if (A->exps[i] == e)
+            return i;
+    return -1;
+}
+
 void _fq_zech_mpoly_set_fq_zech_bpoly_var1_zero(
     fq_zech_mpoly_t A,
     flint_bitcnt_t Abits,
@@ -55,6 +88,161 @@ void _fq_zech_mpoly_set_n_bpoly_var1_zero(
     slong var,
     const fq_zech_mpoly_ctx_t ctx);
 
+
+void _fq_zech_mpoly_monomial_evals(
+    fq_zech_struct * E,
+    const ulong * Aexps,
+    flint_bitcnt_t Abits,
+    slong Alen,
+    const fq_zech_struct * alpha,
+    slong vstart,
+    const fq_zech_mpoly_ctx_t ctx)
+{
+    slong i, j;
+    slong offset, shift;
+    slong N = mpoly_words_per_exp_sp(Abits, ctx->minfo);
+    slong nvars = ctx->minfo->nvars;
+    slong * LUToffset;
+    ulong * LUTmask;
+    fq_zech_struct * LUTvalue;
+    slong LUTlen;
+    fq_zech_t xpoweval;
+    ulong * inputexpmask;
+
+    inputexpmask = FLINT_ARRAY_ALLOC(N, ulong);
+    LUToffset = FLINT_ARRAY_ALLOC(N*FLINT_BITS, slong);
+    LUTmask   = FLINT_ARRAY_ALLOC(N*FLINT_BITS, ulong);
+    LUTvalue  = FLINT_ARRAY_ALLOC(N*FLINT_BITS, fq_zech_struct);
+    for (i = 0; i < N*FLINT_BITS; i++)
+        fq_zech_init(LUTvalue + i, ctx->fqctx);
+    fq_zech_init(xpoweval, ctx->fqctx);
+
+    mpoly_monomial_zero(inputexpmask, N);
+    for (i = 0; i < Alen; i++)
+    {
+        for (j = 0; j < N; j++)
+        {
+            inputexpmask[j] |= (Aexps + N*i)[j];
+        }
+    }
+
+    LUTlen = 0;
+    for (j = nvars - 1; j >= vstart; j--)
+    {
+        mpoly_gen_offset_shift_sp(&offset, &shift, j, Abits, ctx->minfo);
+
+        fq_zech_set(xpoweval, alpha + j, ctx->fqctx); /* xpoweval = alpha[i]^(2^i) */
+        for (i = 0; i < Abits; i++)
+        {
+            LUToffset[LUTlen] = offset;
+            LUTmask[LUTlen] = (UWORD(1) << (shift + i));
+            fq_zech_set(LUTvalue + LUTlen, xpoweval, ctx->fqctx);
+            if ((inputexpmask[offset] & LUTmask[LUTlen]) != 0)
+                LUTlen++;
+            fq_zech_mul(xpoweval, xpoweval, xpoweval, ctx->fqctx);
+        }
+    }
+    FLINT_ASSERT(LUTlen < N*FLINT_BITS);
+
+    for (i = 0; i < Alen; i++)
+    {
+        fq_zech_one(xpoweval, ctx->fqctx);
+        for (j = 0; j < LUTlen; j++)
+        {
+            if (((Aexps + N*i)[LUToffset[j]] & LUTmask[j]) != 0)
+            {
+                fq_zech_mul(xpoweval, xpoweval, LUTvalue + j, ctx->fqctx);
+            }
+        }
+        fq_zech_set(E + i, xpoweval, ctx->fqctx);
+    }
+
+    flint_free(inputexpmask);
+    flint_free(LUToffset);
+    flint_free(LUTmask);
+    flint_free(LUTvalue);
+}
+
+
+static void _fq_zech_mpoly_monomial_evals_indirect(
+    fq_zech_struct * E,
+    const ulong * Aexps,
+    flint_bitcnt_t Abits,
+    ulong * Aind,
+    slong Alen,
+    const fq_zech_struct * alpha,
+    slong vstart,
+    slong vstop,
+    const fq_zech_mpoly_ctx_t ctx)
+{
+    slong i, j;
+    slong offset, shift;
+    slong N = mpoly_words_per_exp_sp(Abits, ctx->minfo);
+    slong * LUToffset;
+    ulong * LUTmask;
+    fq_zech_struct * LUTvalue;
+    slong LUTlen;
+    fq_zech_t xpoweval;
+    ulong * inputexpmask;
+    const ulong * thisAexp;
+
+    FLINT_ASSERT(0 <= vstart);
+    FLINT_ASSERT(vstart < vstop);
+    FLINT_ASSERT(vstop <= ctx->minfo->nvars);
+
+    inputexpmask = FLINT_ARRAY_ALLOC(N, ulong);
+    LUToffset = FLINT_ARRAY_ALLOC(N*FLINT_BITS, slong);
+    LUTmask   = FLINT_ARRAY_ALLOC(N*FLINT_BITS, ulong);
+    LUTvalue  = FLINT_ARRAY_ALLOC(N*FLINT_BITS, fq_zech_struct);
+    for (i = 0; i < N*FLINT_BITS; i++)
+        fq_zech_init(LUTvalue + i, ctx->fqctx);
+    fq_zech_init(xpoweval, ctx->fqctx);
+
+    mpoly_monomial_zero(inputexpmask, N);
+    for (i = 0; i < Alen; i++)
+    {
+        thisAexp = Aexps + N*Aind[i];
+        for (j = 0; j < N; j++)
+            inputexpmask[j] |= thisAexp[j];
+    }
+
+    LUTlen = 0;
+    for (j = vstop - 1; j >= vstart; j--)
+    {
+        mpoly_gen_offset_shift_sp(&offset, &shift, j, Abits, ctx->minfo);
+
+        fq_zech_set(xpoweval, alpha + j, ctx->fqctx); /* xpoweval = alpha[i]^(2^i) */
+        for (i = 0; i < Abits; i++)
+        {
+            LUToffset[LUTlen] = offset;
+            LUTmask[LUTlen] = (UWORD(1) << (shift + i));
+            fq_zech_set(LUTvalue + LUTlen, xpoweval, ctx->fqctx);
+            if ((inputexpmask[offset] & LUTmask[LUTlen]) != 0)
+                LUTlen++;
+            fq_zech_mul(xpoweval, xpoweval, xpoweval, ctx->fqctx);
+        }
+    }
+    FLINT_ASSERT(LUTlen < N*FLINT_BITS);
+
+    for (i = 0; i < Alen; i++)
+    {
+        thisAexp = Aexps + N*Aind[i];
+        fq_zech_one(xpoweval, ctx->fqctx);
+        for (j = 0; j < LUTlen; j++)
+        {
+            if ((thisAexp[LUToffset[j]] & LUTmask[j]) != 0)
+            {
+                fq_zech_mul(xpoweval, xpoweval, LUTvalue + j, ctx->fqctx);
+            }
+        }
+        fq_zech_set(E + i, xpoweval, ctx->fqctx);
+    }
+
+    flint_free(inputexpmask);
+    flint_free(LUToffset);
+    flint_free(LUTmask);
+    flint_free(LUTvalue);
+}
 
 
 int fq_zech_zip_find_coeffs_new(
@@ -155,355 +343,6 @@ cleanup:
 
 
 
-/*
-    B vars: x0 x1 x2 x3 x4 xv           2 < v
-    A vars: xv x0 x1 : 0 0 x2 x3 x4 0
-*/
-
-static void fq_zech_mpoly_get_mpolyu3(
-    fq_zech_mpolyu_t A,
-    const fq_zech_mpoly_t B,
-    slong var0,
-    slong var1,
-    slong var2,
-    const fq_zech_mpoly_ctx_t ctx)
-{
-    slong i;
-    fq_zech_mpoly_struct * Ac;
-    ulong * Bexps;
-    slong NA, NB;
-
-    FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
-
-    FLINT_ASSERT(var0 < ctx->minfo->nvars);
-    FLINT_ASSERT(var1 < ctx->minfo->nvars);
-    FLINT_ASSERT(var2 < ctx->minfo->nvars);
-
-    Bexps = FLINT_ARRAY_ALLOC(ctx->minfo->nvars, ulong);
-
-    NA = mpoly_words_per_exp_sp(A->bits, ctx->minfo);
-    NB = mpoly_words_per_exp(B->bits, ctx->minfo);
-
-    A->length = 0;
-    for (i = 0; i < B->length; i++)
-    {
-        mpoly_get_monomial_ui(Bexps, B->exps + NB*i, B->bits, ctx->minfo);
-        FLINT_ASSERT(FLINT_BIT_COUNT(Bexps[var0]) < FLINT_BITS/3);
-        FLINT_ASSERT(FLINT_BIT_COUNT(Bexps[var1]) < FLINT_BITS/3);
-        FLINT_ASSERT(FLINT_BIT_COUNT(Bexps[var2]) < FLINT_BITS/3);
-        Ac = _fq_zech_mpolyu_get_coeff(A, pack_exp3(Bexps[var0], Bexps[var1], Bexps[var2]), ctx);
-        FLINT_ASSERT(Ac->bits == A->bits);
-        fq_zech_mpoly_fit_length(Ac, Ac->length + 1, ctx);
-        fq_zech_set(Ac->coeffs + Ac->length, B->coeffs + i, ctx->fqctx);
-        Bexps[var0] = 0;
-        Bexps[var1] = 0;
-        Bexps[var2] = 0;
-        mpoly_set_monomial_ui(Ac->exps + NA*Ac->length, Bexps, A->bits, ctx->minfo);
-        Ac->length++;
-    }
-
-    flint_free(Bexps);
-/*
-printf("nmod_mpoly_get_mpolyu3 returning: "); nmod_mpolyu3_print_pretty(A, ourvars[var0], ourvars[var1], ourvars[var2], ourvars, ctx); printf("\n");
-*/
-    FLINT_ASSERT(fq_zech_mpolyu_is_canonical(A, ctx));
-}
-
-void fq_zech_mpoly_monomial_evals(
-    fq_zech_poly_t E,
-    const fq_zech_mpoly_t A,
-    const fq_zech_struct * alpha,
-    const fq_zech_mpoly_ctx_t ctx)
-{
-    slong i, j;
-    slong offset, shift;
-    slong N = mpoly_words_per_exp_sp(A->bits, ctx->minfo);
-    slong nvars = ctx->minfo->nvars;
-    ulong * Aexp;
-    slong * LUToffset;
-    ulong * LUTmask;
-    fq_zech_struct * LUTvalue;
-    slong LUTlen;
-    fq_zech_t xpoweval;
-    ulong * inputexpmask;
-
-    FLINT_ASSERT(A->bits <= FLINT_BITS);
-
-    inputexpmask = FLINT_ARRAY_ALLOC(N, ulong);
-    LUToffset = FLINT_ARRAY_ALLOC(N*FLINT_BITS, slong);
-    LUTmask   = FLINT_ARRAY_ALLOC(N*FLINT_BITS, ulong);
-    LUTvalue  = FLINT_ARRAY_ALLOC(N*FLINT_BITS, fq_zech_struct);
-    for (i = 0; i < N*FLINT_BITS; i++)
-        fq_zech_init(LUTvalue + i, ctx->fqctx);
-    fq_zech_init(xpoweval, ctx->fqctx);
-
-    Aexp = A->exps;
-
-    mpoly_monomial_zero(inputexpmask, N);
-    for (i = 0; i < A->length; i++)
-    {
-        for (j = 0; j < N; j++)
-        {
-            inputexpmask[j] |= (Aexp + N*i)[j];
-        }
-    }
-
-    LUTlen = 0;
-    for (j = nvars - 1; j >= 0; j--)
-    {
-        mpoly_gen_offset_shift_sp(&offset, &shift, j, A->bits, ctx->minfo);
-
-        fq_zech_set(xpoweval, alpha + j, ctx->fqctx); /* xpoweval = alpha[i]^(2^i) */
-        for (i = 0; i < A->bits; i++)
-        {
-            LUToffset[LUTlen] = offset;
-            LUTmask[LUTlen] = (UWORD(1) << (shift + i));
-            fq_zech_set(LUTvalue + LUTlen, xpoweval, ctx->fqctx);
-            if ((inputexpmask[offset] & LUTmask[LUTlen]) != 0)
-            {
-                LUTlen++;
-            }
-            fq_zech_mul(xpoweval, xpoweval, xpoweval, ctx->fqctx);
-        }
-    }
-    FLINT_ASSERT(LUTlen < N*FLINT_BITS);
-
-    fq_zech_poly_fit_length(E, A->length, ctx->fqctx);
-    E->length = A->length;
-    for (i = 0; i < A->length; i++)
-    {
-        fq_zech_one(xpoweval, ctx->fqctx);
-        for (j = 0; j < LUTlen; j++)
-        {
-            if (((Aexp + N*i)[LUToffset[j]] & LUTmask[j]) != 0)
-            {
-                fq_zech_mul(xpoweval, xpoweval, LUTvalue + j, ctx->fqctx);
-            }
-        }
-        fq_zech_set(E->coeffs + i, xpoweval, ctx->fqctx);
-    }
-
-    flint_free(inputexpmask);
-    flint_free(LUToffset);
-    flint_free(LUTmask);
-    flint_free(LUTvalue);
-}
-
-
-void _fq_zech_mpoly_monomial_evals(
-    fq_zech_struct * E,
-    const ulong * Aexps,
-    flint_bitcnt_t Abits,
-    slong Alen,
-    const fq_zech_struct * alpha,
-    slong vstart,
-    const fq_zech_mpoly_ctx_t ctx)
-{
-    slong i, j;
-    slong offset, shift;
-    slong N = mpoly_words_per_exp_sp(Abits, ctx->minfo);
-    slong nvars = ctx->minfo->nvars;
-    slong * LUToffset;
-    ulong * LUTmask;
-    fq_zech_struct * LUTvalue;
-    slong LUTlen;
-    fq_zech_t xpoweval;
-    ulong * inputexpmask;
-
-    inputexpmask = FLINT_ARRAY_ALLOC(N, ulong);
-    LUToffset = FLINT_ARRAY_ALLOC(N*FLINT_BITS, slong);
-    LUTmask   = FLINT_ARRAY_ALLOC(N*FLINT_BITS, ulong);
-    LUTvalue  = FLINT_ARRAY_ALLOC(N*FLINT_BITS, fq_zech_struct);
-    for (i = 0; i < N*FLINT_BITS; i++)
-        fq_zech_init(LUTvalue + i, ctx->fqctx);
-    fq_zech_init(xpoweval, ctx->fqctx);
-
-    mpoly_monomial_zero(inputexpmask, N);
-    for (i = 0; i < Alen; i++)
-    {
-        for (j = 0; j < N; j++)
-        {
-            inputexpmask[j] |= (Aexps + N*i)[j];
-        }
-    }
-
-    LUTlen = 0;
-    for (j = nvars - 1; j >= vstart; j--)
-    {
-        mpoly_gen_offset_shift_sp(&offset, &shift, j, Abits, ctx->minfo);
-
-        fq_zech_set(xpoweval, alpha + j, ctx->fqctx); /* xpoweval = alpha[i]^(2^i) */
-        for (i = 0; i < Abits; i++)
-        {
-            LUToffset[LUTlen] = offset;
-            LUTmask[LUTlen] = (UWORD(1) << (shift + i));
-            fq_zech_set(LUTvalue + LUTlen, xpoweval, ctx->fqctx);
-            if ((inputexpmask[offset] & LUTmask[LUTlen]) != 0)
-                LUTlen++;
-            fq_zech_mul(xpoweval, xpoweval, xpoweval, ctx->fqctx);
-        }
-    }
-    FLINT_ASSERT(LUTlen < N*FLINT_BITS);
-
-    for (i = 0; i < Alen; i++)
-    {
-        fq_zech_one(xpoweval, ctx->fqctx);
-        for (j = 0; j < LUTlen; j++)
-        {
-            if (((Aexps + N*i)[LUToffset[j]] & LUTmask[j]) != 0)
-            {
-                fq_zech_mul(xpoweval, xpoweval, LUTvalue + j, ctx->fqctx);
-            }
-        }
-        fq_zech_set(E + i, xpoweval, ctx->fqctx);
-    }
-
-    flint_free(inputexpmask);
-    flint_free(LUToffset);
-    flint_free(LUTmask);
-    flint_free(LUTvalue);
-}
-
-
-void _fq_zech_mpoly_monomial_evals_indirect(
-    fq_zech_struct * E,
-    const ulong * Aexps,
-    flint_bitcnt_t Abits,
-    ulong * Aind,
-    slong Alen,
-    const fq_zech_struct * alpha,
-    slong vstart,
-    slong vstop,
-    const fq_zech_mpoly_ctx_t ctx)
-{
-    slong i, j;
-    slong offset, shift;
-    slong N = mpoly_words_per_exp_sp(Abits, ctx->minfo);
-    slong * LUToffset;
-    ulong * LUTmask;
-    fq_zech_struct * LUTvalue;
-    slong LUTlen;
-    fq_zech_t xpoweval;
-    ulong * inputexpmask;
-    const ulong * thisAexp;
-
-    FLINT_ASSERT(0 <= vstart);
-    FLINT_ASSERT(vstart < vstop);
-    FLINT_ASSERT(vstop <= ctx->minfo->nvars);
-
-    inputexpmask = FLINT_ARRAY_ALLOC(N, ulong);
-    LUToffset = FLINT_ARRAY_ALLOC(N*FLINT_BITS, slong);
-    LUTmask   = FLINT_ARRAY_ALLOC(N*FLINT_BITS, ulong);
-    LUTvalue  = FLINT_ARRAY_ALLOC(N*FLINT_BITS, fq_zech_struct);
-    for (i = 0; i < N*FLINT_BITS; i++)
-        fq_zech_init(LUTvalue + i, ctx->fqctx);
-    fq_zech_init(xpoweval, ctx->fqctx);
-
-    mpoly_monomial_zero(inputexpmask, N);
-    for (i = 0; i < Alen; i++)
-    {
-        thisAexp = Aexps + N*Aind[i];
-        for (j = 0; j < N; j++)
-            inputexpmask[j] |= thisAexp[j];
-    }
-
-    LUTlen = 0;
-    for (j = vstop - 1; j >= vstart; j--)
-    {
-        mpoly_gen_offset_shift_sp(&offset, &shift, j, Abits, ctx->minfo);
-
-        fq_zech_set(xpoweval, alpha + j, ctx->fqctx); /* xpoweval = alpha[i]^(2^i) */
-        for (i = 0; i < Abits; i++)
-        {
-            LUToffset[LUTlen] = offset;
-            LUTmask[LUTlen] = (UWORD(1) << (shift + i));
-            fq_zech_set(LUTvalue + LUTlen, xpoweval, ctx->fqctx);
-            if ((inputexpmask[offset] & LUTmask[LUTlen]) != 0)
-                LUTlen++;
-            fq_zech_mul(xpoweval, xpoweval, xpoweval, ctx->fqctx);
-        }
-    }
-    FLINT_ASSERT(LUTlen < N*FLINT_BITS);
-
-    for (i = 0; i < Alen; i++)
-    {
-        thisAexp = Aexps + N*Aind[i];
-        fq_zech_one(xpoweval, ctx->fqctx);
-        for (j = 0; j < LUTlen; j++)
-        {
-            if ((thisAexp[LUToffset[j]] & LUTmask[j]) != 0)
-            {
-                fq_zech_mul(xpoweval, xpoweval, LUTvalue + j, ctx->fqctx);
-            }
-        }
-        fq_zech_set(E + i, xpoweval, ctx->fqctx);
-    }
-
-    flint_free(inputexpmask);
-    flint_free(LUToffset);
-    flint_free(LUTmask);
-    flint_free(LUTvalue);
-}
-
-
-void fq_zech_mpolyu_set_eval_helper(
-    fq_zech_polyun_t EH,
-    const fq_zech_mpolyu_t A,
-    const fq_zech_struct * alpha,
-    const fq_zech_mpoly_ctx_t ctx)
-{
-    slong i, j, n;
-    fq_zech_polyun_term_struct * EHterms;
-    fq_zech_struct * p;
-    const fq_zech_struct * q;
-
-    fq_zech_polyun_fit_length(EH, A->length, ctx->fqctx);
-    EH->length = A->length;
-    EHterms = EH->terms;
-
-    for (i = 0; i < A->length; i++)
-    {
-        EHterms[i].exp = A->exps[i];
-        n = A->coeffs[i].length;
-        fq_zech_poly_fit_length(EHterms[i].coeff, 3*n, ctx->fqctx);
-        fq_zech_mpoly_monomial_evals(EHterms[i].coeff, A->coeffs + i, alpha, ctx);
-        FLINT_ASSERT(n == EHterms[i].coeff->length);
-        p = EHterms[i].coeff->coeffs;
-        q = A->coeffs[i].coeffs;
-        for (j = n - 1; j >= 0; j--)
-        {
-            fq_zech_set(p + 3*j + 2, p + j, ctx->fqctx);
-            fq_zech_set(p + 3*j + 0, p + 3*j + 2, ctx->fqctx);
-            fq_zech_set(p + 3*j + 1, q + j, ctx->fqctx);
-        }
-    }
-}
-
-void fq_zech_mpoly_delete_duplicate_terms(
-    fq_zech_mpoly_t A,
-    const fq_zech_mpoly_ctx_t ctx)
-{
-    slong i, j;
-    slong N = mpoly_words_per_exp(A->bits, ctx->minfo);
-    j = -1;
-    for (i = 0; i < A->length; i++)
-    {
-        if (j >= 0 && mpoly_monomial_equal(A->exps + N*j, A->exps + N*i, N))
-        {
-            FLINT_ASSERT(fq_zech_equal(A->coeffs + j, A->coeffs + i, ctx->fqctx));
-            continue;
-        }
-        j++;
-        fq_zech_set(A->coeffs + j, A->coeffs + i, ctx->fqctx);
-        mpoly_monomial_set(A->exps + N*j, A->exps + N*i, N);
-    }
-    j++;
-    A->length = j;
-}
-
-
-
-
 static void _clearit(
     n_polyun_t W,
     mpoly_rbtree_ui_t T,
@@ -533,15 +372,86 @@ static void fq_zech_mpoly_set_eval_helper3(
     const fq_zech_struct * alpha,
     const fq_zech_mpoly_ctx_t ctx)
 {
+    slong xvar = 0;
+    slong zvar = 1;
+    slong i, j, n;
+    ulong y, x, z;
+    slong yoff, xoff, zoff;
+    slong yshift, xshift, zshift;
+    fq_zech_polyun_term_struct * EHterms;
+    fq_zech_struct * p;
     flint_bitcnt_t bits = A->bits;
+    slong Alen = A->length;
+    const ulong * Aexps = A->exps;
+    const fq_zech_struct * Acoeffs = A->coeffs;
+    slong N = mpoly_words_per_exp(bits, ctx->minfo);
+    ulong mask = (-UWORD(1)) >> (FLINT_BITS - bits);
+    ulong * ind;
+    n_polyun_t T;
+    mpoly_rbtree_ui_t W;
 
+    n_polyun_init(T);
+
+    mpoly_gen_offset_shift_sp(&yoff, &yshift, yvar, bits, ctx->minfo);
+    mpoly_gen_offset_shift_sp(&xoff, &xshift, xvar, bits, ctx->minfo);
+    mpoly_gen_offset_shift_sp(&zoff, &zshift, zvar, bits, ctx->minfo);
+
+    mpoly_rbtree_ui_init(W);
+    for (i = 0; i < Alen; i++)
     {
-        fq_zech_mpolyu_t Au;
-        fq_zech_mpolyu_init(Au, bits, ctx);
-        fq_zech_mpoly_get_mpolyu3(Au, A, yvar, 0, 1, ctx);
-        fq_zech_mpolyu_set_eval_helper(EH, Au, alpha, ctx);
-        fq_zech_mpolyu_clear(Au, ctx);
+        n_poly_struct * Wc;
+        int its_new;
+
+        y = (Aexps[N*i + yoff] >> yshift) & mask;
+        x = (Aexps[N*i + xoff] >> xshift) & mask;
+        z = (Aexps[N*i + zoff] >> zshift) & mask;
+        Wc = mpoly_rbtree_ui_lookup(W, &its_new, pack_exp3(y, x, z),
+                                                        sizeof(n_poly_struct));
+        if (its_new)
+        {
+            n_poly_init2(Wc, 4);
+            Wc->coeffs[0] = i;                
+            Wc->length = 1;
+        }
+        else
+        {
+            n_poly_fit_length(Wc, Wc->length + 1);
+            Wc->coeffs[Wc->length] = i;
+            Wc->length++;
+        }
     }
+
+    FLINT_ASSERT(W->length > 0);
+
+    T->terms = flint_malloc(W->length*sizeof(n_polyun_term_struct));
+    T->alloc = W->length;
+    T->length = 0;
+    _clearit(T, W, W->nodes[2 - 1].left);
+    mpoly_rbtree_ui_clear(W);
+
+    fq_zech_polyun_fit_length(EH, T->length, ctx->fqctx);
+    EH->length = T->length;
+    EHterms = EH->terms;
+
+    for (i = 0; i < T->length; i++)
+    {
+        EHterms[i].exp = T->terms[i].exp;
+        n = T->terms[i].coeff->length;
+        fq_zech_poly_fit_length(EHterms[i].coeff, 3*n, ctx->fqctx);
+        EHterms[i].coeff->length = n;
+        p = EHterms[i].coeff->coeffs;
+        ind = T->terms[i].coeff->coeffs;
+        _fq_zech_mpoly_monomial_evals_indirect(p, Aexps, bits, ind, n, alpha,
+                                                                2, yvar, ctx);
+        for (j = n - 1; j >= 0; j--)
+        {
+            fq_zech_set(p + 3*j + 2, p + j, ctx->fqctx);
+            fq_zech_set(p + 3*j + 0, p + 3*j + 2, ctx->fqctx);
+            fq_zech_set(p + 3*j + 1, Acoeffs + ind[j], ctx->fqctx);
+        }
+    }
+
+    n_polyun_clear(T);
 }
 
 
@@ -676,7 +586,6 @@ static slong fq_zech_mpoly_set_eval_helper_and_zip_form3(
             fq_zech_set(p + 3*j + 2, p + j, ctx->fqctx);
             fq_zech_set(p + 3*j + 0, p + 3*j + 2, ctx->fqctx);
             fq_zech_set(p + 3*j + 1, Bcoeffs + ind[j], ctx->fqctx);
-
         }
     }
 
@@ -742,101 +651,6 @@ void fq_zech_polyu_eval_step(
     E->length = Ei;
 }
 
-#if 0
-void fq_zech_bpoly_eval_step(
-    fq_zech_bpoly_t E,
-    fq_zech_polyun_t A,
-    fq_zech_ctx_t ctx)
-{
-    slong Ai;
-    fq_zech_t c;
-    ulong e0, e1;
-    fq_zech_polyun_term_struct * Aterms = A->terms;
-
-    fq_zech_init(c, ctx);
-
-    fq_zech_bpoly_zero(E, ctx);
-    for (Ai = 0; Ai < A->length; Ai++)
-    {
-        fq_zech_poly_eval_step(c, Aterms[Ai].coeff, ctx);
-        e0 = extract_exp(Aterms[Ai].exp, 1, 2);
-        e1 = extract_exp(Aterms[Ai].exp, 0, 2);
-        if (fq_zech_is_zero(c, ctx))
-            continue;
-        fq_zech_bpoly_set_coeff(E, e0, e1, c, ctx);
-    }
-
-    fq_zech_clear(c, ctx);
-}
-
-void fq_zech_poly_eval_reset(n_poly_t A, const fq_zech_ctx_t ctx)
-{
-    slong d = fq_zech_ctx_degree(ctx);
-    slong i, Alen = A->length;
-    mp_limb_t * Acoeffs = A->coeffs;
-
-    FLINT_ASSERT(d*3*Alen <= A->alloc);
-
-    for (i = 0; i < Alen; i++)
-        _n_fq_set(Acoeffs + d*(3*i + 0), Acoeffs + d*(3*i + 2), d);
-}
-
-void fq_zech_polyun_eval_reset(n_polyun_t A, const fq_zech_ctx_t ctx)
-{
-    slong Ai;
-    for (Ai = 0; Ai < A->length; Ai++)
-        fq_zech_poly_eval_reset(A->terms[Ai].coeff, ctx);
-}
-
-
-int fq_zech_polyu2_add_zip_must_match(
-    fq_zech_polyun_t Z,
-    const fq_zech_bpoly_t A,
-    slong cur_length,
-    const fq_zech_ctx_t ctx)
-{
-    slong i, Ai, ai;
-    fq_zech_polyun_term_struct * Zt = Z->terms;
-    const fq_zech_poly_struct * Acoeffs = A->coeffs;
-
-    Ai = A->length - 1;
-    ai = (Ai < 0) ? 0 : fq_zech_poly_degree(A->coeffs + Ai, ctx);
-
-    for (i = 0; i < Z->length; i++)
-    {
-        if (Ai >= 0 && Zt[i].exp == pack_exp2(Ai, ai))
-        {
-            /* Z present, A present */
-            fq_zech_set(Zt[i].coeff->coeffs + cur_length, Acoeffs[Ai].coeffs + ai, ctx);
-            Zt[i].coeff->length = cur_length + 1;
-            do {
-                ai--;
-            } while (ai >= 0 && fq_zech_is_zero(Acoeffs[Ai].coeffs + ai, ctx));
-            if (ai < 0)
-            {
-                do {
-                    Ai--;
-                } while (Ai >= 0 && Acoeffs[Ai].length == 0);
-                if (Ai >= 0)
-                    ai = fq_zech_poly_degree(Acoeffs + Ai, ctx);
-            }
-        }
-        else if (Ai < 0 || Zt[i].exp > pack_exp2(Ai, ai))
-        {
-            /* Z present, A missing */
-            fq_zech_zero(Zt[i].coeff->coeffs + cur_length, ctx);
-            Zt[i].coeff->length = cur_length + 1;
-        }
-        else
-        {
-            /* Z missing, A present */
-            return 0;
-        }
-    }
-
-    return 1;
-}
-#endif
 
 void fq_zech_polyu3_add_zip_limit1(
     fq_zech_polyun_t Z,
@@ -965,30 +779,7 @@ in_both:
     }
 }
 
-slong fq_zech_mpolyu_find_term(const fq_zech_mpolyu_t A, ulong e)
-{
-    slong i;
-    for (i = 0; i < A->length; i++)
-        if (A->exps[i] == e)
-            return i;
-    return -1;
-}
 
-/*
-    for each Y^y*X^x*Z^z in B with x = deg,
-        keep the Y^y*X^x*Z^z*poly(x1,...) in B
-    for each Y^y*X^x*Z^z in Z,
-        assert that x < deg
-        if there is no Y^0*X^x*Z^y in H, fail
-        find coefficients of poly using this entry in H
-        output Y^y*X^x*Z^z*poly(x1,...) to A
-    sort A
-
-    return
-        -1: singular vandermonde matrix encountered
-        0:  inconsistent system encountered
-        1:  success
-*/
 static int fq_zech_mpoly_from_zip(
     fq_zech_mpoly_t B,
     const fq_zech_polyun_t Z,

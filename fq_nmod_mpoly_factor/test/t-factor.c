@@ -126,6 +126,7 @@ void clear_vars(char *** vars, slong * nvars, const char * s)
 int
 main(void)
 {
+int check = 0;
     slong i, j, tmul = 30;
     slong total;
     FLINT_TEST_INIT(state);
@@ -133,6 +134,8 @@ main(void)
     flint_printf("factor....");
     fflush(stdout);
 
+if (check)
+{
     total = 0;
     for (i = 0; i < tmul * flint_test_multiplier(); i++)
     {
@@ -163,10 +166,7 @@ main(void)
             lower += !fq_nmod_mpoly_is_fq_nmod(t, ctx);
             fq_nmod_mpoly_mul(a, a, t, ctx);
         }
-/*
-if (ctx->minfo->nvars == 2)
-flint_printf("nfacs: %wd, degrees (%wd, %wd)\n", nfacs, fq_nmod_mpoly_degree_si(a, 0, ctx), fq_nmod_mpoly_degree_si(a, 1, ctx));
-*/
+
 flint_printf("1:%wd ", i);
         total += check_omega(lower, WORD_MAX, a, ctx);
 
@@ -181,6 +181,7 @@ flint_printf("**********total number of bvar factors: %wd ******\n", total);
         flint_printf("total number of bvar factors should be 2805\n");
         flint_abort();
     }
+}
 
     total = 0;
     for (i = 0; i < tmul * flint_test_multiplier(); i++)
@@ -219,11 +220,14 @@ flint_printf("2:%wd ", i);
     }
 flint_printf("**********total number of mvar factors: %wd ******\n", total);
 
+if (check)
+{
     if (total != 3443)
     {
         flint_printf("total number of mvar factors should be 3443\n");
         flint_abort();
     }
+}
 
     FLINT_TEST_CLEANUP(state);
     
