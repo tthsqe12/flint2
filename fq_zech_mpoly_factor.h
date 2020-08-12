@@ -760,7 +760,7 @@ FLINT_DLL void _fq_zech_mpoly_monomial_evals(
     slong vstart,
     const fq_zech_mpoly_ctx_t ctx);
 
-FLINT_DLL int _fq_zech_mpoly_evaluate_rest_n_poly_fq(
+FLINT_DLL int _fq_zech_mpoly_eval_rest_fq_zech_poly(
     fq_zech_poly_struct * E,
     slong * starts,
     slong * ends,
@@ -777,6 +777,19 @@ FLINT_DLL int _fq_zech_mpoly_evaluate_rest_n_poly_fq(
     ulong mask,
     slong nvars,
     const fq_zech_ctx_t ctx);
+
+FLINT_DLL void _fq_zech_mpoly_eval_to_bpoly(
+    fq_zech_bpoly_t E,
+    const fq_zech_mpoly_t A,
+    const fq_zech_poly_struct * alphabetas,
+    const fq_zech_mpoly_ctx_t ctx);
+
+FLINT_DLL void _fq_zech_mpoly_set_fq_zech_bpoly_var1_zero(
+    fq_zech_mpoly_t A,
+    flint_bitcnt_t Abits,
+    const fq_zech_bpoly_t B,
+    slong var,
+    const fq_zech_mpoly_ctx_t ctx);
 
 #ifdef __cplusplus
 }

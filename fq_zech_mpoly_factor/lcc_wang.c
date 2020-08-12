@@ -12,58 +12,6 @@
 #include "fq_zech_mpoly_factor.h"
 
 
-void fq_zech_mpoly_evaluate_all_fq_zech_poly(
-    fq_zech_poly_t E,
-    const fq_zech_mpoly_t A,
-    const fq_zech_poly_struct * alphabetas,
-    const fq_zech_mpoly_ctx_t ctx)
-{
-    slong n = ctx->minfo->nvars;
-    slong i, N = mpoly_words_per_exp_sp(A->bits, ctx->minfo);
-    slong * offsets, * shifts;
-    ulong mask = (-UWORD(1)) >> (FLINT_BITS - A->bits);
-    slong * starts, * ends, * stops;
-    ulong * es;
-    fq_zech_poly_struct * realE;
-
-    if (A->length < 1)
-    {
-        fq_zech_poly_zero(E, ctx->fqctx);
-        return;
-    }
-
-    starts = FLINT_ARRAY_ALLOC(n, slong);
-    ends   = FLINT_ARRAY_ALLOC(n, slong);
-    stops  = FLINT_ARRAY_ALLOC(n, slong);
-    es     = FLINT_ARRAY_ALLOC(n, ulong);
-    realE  = FLINT_ARRAY_ALLOC(n + 1, fq_zech_poly_struct);
-    for (i = 0; i < n + 1; i++)
-        fq_zech_poly_init(realE + i, ctx->fqctx);
-
-    offsets = FLINT_ARRAY_ALLOC(n, slong);
-    shifts  = FLINT_ARRAY_ALLOC(n, slong);
-    for (i = 0; i < ctx->minfo->nvars; i++)
-        mpoly_gen_offset_shift_sp(offsets + i, shifts + i, i, A->bits, ctx->minfo);
-
-    _fq_zech_mpoly_evaluate_rest_n_poly_fq(realE, starts, ends, stops, es,
-                    A->coeffs + 0, A->exps, A->length, 0,
-                                        alphabetas, offsets, shifts, N, mask,
-                                                ctx->minfo->nvars, ctx->fqctx);
-    fq_zech_poly_swap(E, realE + 0, ctx->fqctx);
-
-    for (i = 0; i < n + 1; i++)
-        fq_zech_poly_clear(realE + i, ctx->fqctx);
-    flint_free(realE);
-    flint_free(starts);
-    flint_free(ends);
-    flint_free(stops);
-    flint_free(es);
-
-    flint_free(offsets);
-    flint_free(shifts);
-}
-
-
 int fq_zech_mpoly_factor_lcc_wang(
     fq_zech_mpoly_struct * lc_divs,
     const fq_zech_mpoly_factor_t lcAfac,
@@ -77,19 +25,16 @@ int fq_zech_mpoly_factor_lcc_wang(
     slong i, j, k;
     const slong n = ctx->minfo->nvars - 1;
     fq_zech_poly_struct * lcAfaceval;
-    fq_zech_poly_struct * salpha;
     fq_zech_poly_struct * d;
     fq_zech_poly_t Q, R;
     fq_zech_mpoly_t t;
+    slong N, * offsets, * shifts, * starts, * ends, * stops;
+    ulong mask, * es;
+    fq_zech_poly_struct * T;
 
     fq_zech_poly_init(Q, ctx->fqctx);
     fq_zech_poly_init(R, ctx->fqctx);
     fq_zech_mpoly_init(t, ctx);
-
-    salpha = FLINT_ARRAY_ALLOC((n + 1), fq_zech_poly_struct);
-    fq_zech_poly_init(salpha + 0, ctx->fqctx);
-    for (i = 0; i < n; i++)
-        salpha[i + 1] = alpha[i];
 
     lcAfaceval = FLINT_ARRAY_ALLOC(lcAfac->num, fq_zech_poly_struct);
     for (i = 0; i < lcAfac->num; i++)
@@ -99,10 +44,35 @@ int fq_zech_mpoly_factor_lcc_wang(
     for (i = 0; i < lcAfac->num + 1; i++)
         fq_zech_poly_init(d + i, ctx->fqctx);
 
+    starts = FLINT_ARRAY_ALLOC(n + 1, slong);
+    ends   = FLINT_ARRAY_ALLOC(n + 1, slong);
+    stops  = FLINT_ARRAY_ALLOC(n + 1, slong);
+    es     = FLINT_ARRAY_ALLOC(n + 1, ulong);
+    T      = FLINT_ARRAY_ALLOC(n + 2, fq_zech_poly_struct);
+    for (i = 0; i < n + 2; i++)
+        fq_zech_poly_init(T + i, ctx->fqctx);
+
+    offsets = FLINT_ARRAY_ALLOC(n + 1, slong);
+    shifts  = FLINT_ARRAY_ALLOC(n + 1, slong);
+
     /* init done */
 
     for (j = 0; j < lcAfac->num; j++)
-        fq_zech_mpoly_evaluate_all_fq_zech_poly(lcAfaceval + j, lcAfac->poly + j, salpha, ctx);
+    {
+        fq_zech_mpoly_struct * P = lcAfac->poly + j;
+
+        for (i = 0; i < n + 1; i++)
+            mpoly_gen_offset_shift_sp(offsets + i, shifts + i, i, P->bits, ctx->minfo);
+
+
+        mask = (-UWORD(1)) >> (FLINT_BITS - P->bits);
+        N = mpoly_words_per_exp_sp(P->bits, ctx->minfo);
+        _fq_zech_mpoly_eval_rest_fq_zech_poly(T, starts, ends, stops, es,
+                                      P->coeffs, P->exps, P->length, 1, alpha,
+                                  offsets, shifts, N, mask, n + 1, ctx->fqctx);
+
+        fq_zech_poly_set(lcAfaceval + j, T + 0, ctx->fqctx);
+    }
 
     fq_zech_poly_set(d + 0, Auc, ctx->fqctx);
     for (i = 0; i < lcAfac->num; i++)
@@ -119,8 +89,8 @@ int fq_zech_mpoly_factor_lcc_wang(
             while (fq_zech_poly_degree(R, ctx->fqctx) > 0)
             {
                 fq_zech_poly_gcd(R, R, Q, ctx->fqctx);
-                fq_zech_poly_divrem(Q, salpha + 0, Q, R, ctx->fqctx);
-                FLINT_ASSERT(fq_zech_poly_is_zero(salpha + 0, ctx->fqctx));
+                fq_zech_poly_divrem(Q, T + 0, Q, R, ctx->fqctx);
+                FLINT_ASSERT(fq_zech_poly_is_zero(T + 0, ctx->fqctx));
                 if (fq_zech_poly_degree(Q, ctx->fqctx) < 1)
                 {
                     success = 0;
@@ -162,8 +132,16 @@ cleanup:
         fq_zech_poly_clear(d + i, ctx->fqctx);
     flint_free(d);
 
-    fq_zech_poly_clear(salpha + 0, ctx->fqctx);
-    flint_free(salpha);
+    for (i = 0; i < n + 2; i++)
+        fq_zech_poly_clear(T + i, ctx->fqctx);
+    flint_free(T);
+    flint_free(starts);
+    flint_free(ends);
+    flint_free(stops);
+    flint_free(es);
+
+    flint_free(offsets);
+    flint_free(shifts);
 
     return success;
 }

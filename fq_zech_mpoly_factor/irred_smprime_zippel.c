@@ -44,12 +44,6 @@ slong fq_zech_mpolyu_find_term(const fq_zech_mpolyu_t A, ulong e)
     return -1;
 }
 
-void _fq_zech_mpoly_set_fq_zech_bpoly_var1_zero(
-    fq_zech_mpoly_t A,
-    flint_bitcnt_t Abits,
-    const fq_zech_bpoly_t B,
-    slong var,
-    const fq_zech_mpoly_ctx_t ctx);
 
 void fq_zech_poly_product_roots(fq_zech_poly_t P, fq_zech_struct * r,
                                             slong n, const fq_zech_ctx_t fqctx)
@@ -74,20 +68,6 @@ void fq_zech_poly_product_roots(fq_zech_poly_t P, fq_zech_struct * r,
 
 fq_zech_mpoly_struct * _fq_zech_mpolyu_get_coeff(fq_zech_mpolyu_t A,
                                      ulong pow, const fq_zech_mpoly_ctx_t uctx);
-
-void _fq_zech_eval_to_bpoly(
-    fq_zech_bpoly_t E,
-    const fq_zech_mpoly_t A,
-    const fq_zech_poly_struct * alphabetas,
-    const fq_zech_mpoly_ctx_t ctx);
-
-void _fq_zech_mpoly_set_n_bpoly_var1_zero(
-    fq_zech_mpoly_t A,
-    flint_bitcnt_t Abits,
-    const n_bpoly_t B,
-    slong var,
-    const fq_zech_mpoly_ctx_t ctx);
-
 
 void _fq_zech_mpoly_monomial_evals(
     fq_zech_struct * E,
@@ -1197,7 +1177,7 @@ next_alphabetas:
         _fq_zech_poly_normalise(alphabetas + i, ctx->fqctx);
     }
 
-    _fq_zech_eval_to_bpoly(Ab, A, alphabetas, ctx);
+    _fq_zech_mpoly_eval_to_bpoly(Ab, A, alphabetas, ctx);
     success = fq_zech_bpoly_factor_smprime(Abfc, Abfp, Ab, 0, ctx->fqctx);
     if (!success)
     {

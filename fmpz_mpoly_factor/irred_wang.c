@@ -19,7 +19,9 @@ int fmpz_mpoly_factor_irred_wang(
     const fmpz_mpoly_factor_t lcAfac,
     const fmpz_mpoly_t lcA,
     const fmpz_mpoly_ctx_t ctx,
-    flint_rand_t state)
+    flint_rand_t state,
+    zassenhaus_prune_t zas,
+    int allow_shift)
 {
     int success;
     const slong n = ctx->minfo->nvars - 1;
@@ -36,7 +38,6 @@ int fmpz_mpoly_factor_irred_wang(
     fmpz_mpoly_t m, mpow;
     fmpz_mpolyv_t new_lcs, lc_divs;
     fmpz_t q;
-    zassenhaus_prune_t zas;
 
     FLINT_ASSERT(n > 1);
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
@@ -64,19 +65,22 @@ int fmpz_mpoly_factor_irred_wang(
 
     fmpz_mpolyv_init(tfac, ctx);
     fmpz_mpoly_init(t, ctx);
-    zassenhaus_prune_init(zas);
 
     /* init done */
 
     fmpz_mpoly_degrees_si(degs, A, ctx);
-
-    zassenhaus_prune_set_degree(zas, degs[0]);
 
     alpha_count = 0;
     alpha_modulus = 1;
     goto got_alpha;
 
 next_alpha:
+
+    if (!allow_shift)
+    {
+        success = 0;
+        goto cleanup;
+    }
 
     alpha_count++;
     if (alpha_count >= alpha_modulus)
@@ -294,7 +298,6 @@ cleanup:
     flint_free(degeval);
     fmpz_mpolyv_clear(tfac, ctx);
     fmpz_mpoly_clear(t, ctx);
-    zassenhaus_prune_clear(zas);
 
     fmpz_mpoly_clear(Acopy, ctx);
     fmpz_mpoly_clear(m, ctx);

@@ -27,6 +27,7 @@
 
 #include "fmpz_mpoly.h"
 #include "fmpq_poly.h"
+#include "fmpz_poly_factor.h"
 
 #ifdef __cplusplus
  extern "C" {
@@ -486,7 +487,8 @@ FLINT_DLL int fmpz_mpoly_factor_lcc_wang(
 FLINT_DLL int fmpz_mpoly_factor_irred_zassenhaus(
     fmpz_mpolyv_t fac,
     const fmpz_mpoly_t A,
-    const fmpz_mpoly_ctx_t ctx);
+    const fmpz_mpoly_ctx_t ctx,
+    zassenhaus_prune_t Z);
 
 FLINT_DLL int fmpz_mpoly_factor_irred_wang(
     fmpz_mpolyv_t fac,
@@ -494,7 +496,9 @@ FLINT_DLL int fmpz_mpoly_factor_irred_wang(
     const fmpz_mpoly_factor_t lcAfac,
     const fmpz_mpoly_t lcA,
     const fmpz_mpoly_ctx_t ctx,
-    flint_rand_t state);
+    flint_rand_t state,
+    zassenhaus_prune_t Z,
+    int allow_shift);
 
 FLINT_DLL int fmpz_mpoly_factor_irred_zippel(
     fmpz_mpolyv_t fac,
@@ -502,7 +506,8 @@ FLINT_DLL int fmpz_mpoly_factor_irred_zippel(
     const fmpz_mpoly_factor_t lcAfac,
     const fmpz_mpoly_t lcA,
     const fmpz_mpoly_ctx_t ctx,
-    flint_rand_t state);
+    flint_rand_t state,
+    zassenhaus_prune_t Z);
 
 FLINT_DLL int fmpz_mpoly_factor_zassenhaus(
     fmpz_mpoly_factor_t f,
@@ -517,6 +522,29 @@ FLINT_DLL int fmpz_mpoly_factor_wang(
 FLINT_DLL int fmpz_mpoly_factor_zippel(
     fmpz_mpoly_factor_t f,
     const fmpz_mpoly_t A,
+    const fmpz_mpoly_ctx_t ctx);
+
+FLINT_DLL int _fmpz_mpoly_evaluate_rest_fmpz(
+    fmpz * E,
+    slong * starts,
+    slong * ends,
+    slong * stops,
+    ulong * es,
+    const fmpz * Acoeffs,
+    const ulong * Aexps,
+    slong Alen,
+    slong var,
+    const fmpz * alphas,
+    const slong * offsets,
+    const slong * shifts,
+    slong N,
+    ulong mask,
+    slong nvars);
+
+FLINT_DLL void _fmpz_mpoly_eval_rest_to_poly(
+    fmpz_poly_t E,
+    const fmpz_mpoly_t A,
+    const fmpz * alphas,
     const fmpz_mpoly_ctx_t ctx);
 
 #ifdef __cplusplus

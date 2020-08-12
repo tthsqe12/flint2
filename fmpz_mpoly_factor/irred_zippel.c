@@ -799,7 +799,8 @@ int fmpz_mpoly_factor_irred_zippel(
     const fmpz_mpoly_factor_t lcAfac,
     const fmpz_mpoly_t lcA,
     const fmpz_mpoly_ctx_t ctx,
-    flint_rand_t state)
+    flint_rand_t state,
+    zassenhaus_prune_t zas)
 {
     int success;
     const slong n = ctx->minfo->nvars - 1;
@@ -823,7 +824,6 @@ int fmpz_mpoly_factor_irred_zippel(
     nmod_poly_t Aup;
     mp_limb_t * alphap;
     slong r, L;
-    zassenhaus_prune_t zas;
 
     FLINT_ASSERT(n > 1);
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
@@ -863,13 +863,9 @@ int fmpz_mpoly_factor_irred_zippel(
     nmod_mpolyv_init(Alcp, ctxp);
     nmod_poly_init_mod(Aup, ctxp->ffinfo->mod);
 
-    zassenhaus_prune_init(zas);
-
     /* init done */
 
     fmpz_mpoly_degrees_si(degs, A, ctx);
-
-    zassenhaus_prune_set_degree(zas, degs[0]);
 
     alpha_count = 0;
     alpha_bits = 10;
@@ -1216,8 +1212,6 @@ cleanup:
     nmod_mpolyv_clear(Alcp, ctxp);
     nmod_poly_clear(Aup);
     nmod_mpoly_ctx_clear(ctxp);
-
-    zassenhaus_prune_clear(zas);
 
     return success;
 }

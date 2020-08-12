@@ -128,7 +128,8 @@ cleanup:
 int fmpz_mpoly_factor_irred_zassenhaus(
     fmpz_mpolyv_t fac,
     const fmpz_mpoly_t A,
-    const fmpz_mpoly_ctx_t ctx)
+    const fmpz_mpoly_ctx_t ctx,
+    zassenhaus_prune_t zas)
 {
     int success;
     const slong n = ctx->minfo->nvars - 1;
