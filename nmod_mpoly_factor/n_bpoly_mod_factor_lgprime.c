@@ -193,9 +193,8 @@ static int _zassenhaus(
     slong total_deg;
     n_bpoly_t Q, R, t1, t2;
     n_poly_t leadf, g;
-    slong * idx;
-    slong i, j, s, len, d = nmod_mat_nrows(N);
-    fmpz_t subset;
+    slong i, j, k, len, d = nmod_mat_nrows(N);
+    slong * subset;
     n_bpoly_struct * loc_fac;
     n_bpoly_struct * f;
     n_bpoly_t B_copy;
@@ -205,12 +204,6 @@ static int _zassenhaus(
     loc_fac = (n_bpoly_struct *) flint_malloc(d*sizeof(n_bpoly_struct));
     for (i = 0; i < d; i++)
         n_bpoly_init(loc_fac + i);
-
-    idx = (slong *) flint_malloc(r * sizeof(slong));
-    for (i = 0; i < r; i++)
-        idx[i] = i;
-
-    fmpz_init(subset);
 
     n_poly_init(g);
     n_bpoly_init(Q);
@@ -237,34 +230,42 @@ static int _zassenhaus(
     FLINT_ASSERT(f->length > 0);
     n_poly_set(leadf, f->coeffs + f->length - 1);
 
+    subset = (slong *) flint_malloc(d * sizeof(slong));
+    for (k = 0; k < d; k++)
+        subset[k] = k;
+
     len = d;
-    for (s = 1; s <= len/2; s++)
+    for (k = 1; k <= len/2; k++)
     {
-        if (s > limit)
+        if (k > limit)
         {
             success = 0;
             goto cleanup;
         }
 
-        subset_first(subset, len, s);
-        do {
-try_subset:
+        zassenhaus_subset_first(subset, len, k);
+        while (1)
+        {
             total_deg = 0;
             for (i = 0; i < len; i++)
             {
-                if (fmpz_tstbit(subset, i))
-                    total_deg += loc_fac[idx[i]].length - 1;
+                if (subset[i] >= 0)
+                    total_deg += loc_fac[subset[i]].length - 1;
             }
 
             if (!zassenhaus_prune_degree_is_possible(zas, total_deg))
+            {
+                if (!zassenhaus_subset_next(subset, len))
+                    break;
                 continue;
+            }
 
             n_bpoly_set_poly_var1(t1, leadf);
             for (i = 0; i < len; i++)
             {
-                if (fmpz_tstbit(subset, i))
+                if (subset[i] >= 0)
                 {
-                    n_bpoly_mod_mul_mod_poly(t2, t1, loc_fac + idx[i], finalmpow, ctx);
+                    n_bpoly_mod_mul_mod_poly(t2, t1, loc_fac + subset[i], finalmpow, ctx);
                     n_bpoly_swap(t1, t2);
                 }
             }
@@ -280,26 +281,16 @@ try_subset:
                 FLINT_ASSERT(f->length > 0);
                 n_poly_set(leadf, f->coeffs + f->length - 1);
 
-                if (f->length <= 1)
-                {
-                    FLINT_ASSERT(f->length == 1);
-                    FLINT_ASSERT(n_poly_is_one(f->coeffs + 0));
-                    success = 1;
-                    goto cleanup;
-                }
-
-                for (j = 0, i = 0; i < len; i++)
-                    if (!fmpz_tstbit(subset, i))
-                        idx[j++] = idx[i];
-                len -= s;
-
-                if (!subset_fix(subset, len + s))
-                    goto sloop_continue;
-                goto try_subset;
+                len -= k;
+                if (!zassenhaus_subset_next_disjoint(subset, len + k))
+                    break;
+            }
+            else
+            {
+                if (!zassenhaus_subset_next(subset, len))
+                    break;
             }
         }
-        while (subset_next(subset, subset, len));
-sloop_continue:;
     }
 
     if (f->length > 1)
@@ -318,7 +309,7 @@ sloop_continue:;
 
 cleanup:
 
-    fmpz_clear(subset);
+    flint_free(subset);
 
     n_poly_clear(g);
     n_bpoly_clear(Q);
@@ -331,8 +322,6 @@ cleanup:
     for (i = 0; i < d; i++)
         n_bpoly_clear(loc_fac + i);
     flint_free(loc_fac);
-
-    flint_free(idx);
 
     return success;
 }

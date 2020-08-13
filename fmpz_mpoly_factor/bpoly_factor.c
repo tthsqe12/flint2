@@ -889,13 +889,9 @@ static void _recombine_naive(
     fmpz_bpoly_t Q, R, trymez;
     fmpz_mod_bpoly_t tryme, trymet;
     fmpz_mod_poly_t leadB;
-    slong i, j, r, len;
-    fmpz_t subset, tsubset, test;
-    slong * idx;
+    slong i, k, len;
+    slong * subset;
 
-    fmpz_init(test);
-    fmpz_init(tsubset);
-    fmpz_init(subset);
     fmpz_poly_init(g);
     fmpz_bpoly_init(Q);
     fmpz_bpoly_init(R);
@@ -910,22 +906,22 @@ static void _recombine_naive(
     fmpz_mod_poly_set_fmpz_poly(leadB, B->coeffs + B->length - 1);
 
     len = I->r;
-    idx = (slong *) flint_malloc(I->r * sizeof(slong));
-    for (i = 0; i < len; i++)
-        idx[i] = i;
+    subset = (slong *) flint_malloc(len * sizeof(slong));
+    for (k = 0; k < len; k++)
+        subset[k] = k;
 
-    for (r = 1; r <= len/2; r++)
+    for (k = 1; k <= len/2; k++)
     {
-        subset_first(subset, len, r);
-        do {
-try_subset:
-
+        zassenhaus_subset_first(subset, len, k);
+        while (1)
+        {
             fmpz_mod_bpoly_set_polyy(tryme, leadB);
             for (i = 0; i < len; i++)
             {
-                if (fmpz_tstbit(subset, i))
+                if (subset[i] >= 0)
                 {
-                    fmpz_mod_bpoly_mul(trymet, tryme, I->newBitilde + idx[i], I->lifting_prec);
+                    fmpz_mod_bpoly_mul(trymet, tryme,
+                                   I->newBitilde + subset[i], I->lifting_prec);
                     fmpz_mod_bpoly_swap(trymet, tryme);
                 }
             }
@@ -944,30 +940,16 @@ try_subset:
                 FLINT_ASSERT(B->length > 0);
                 fmpz_mod_poly_set_fmpz_poly(leadB, B->coeffs + B->length - 1);
 
-                /* fix indices */
-                j = 0;
-                for (i = 0; i < len; i++)
-                {
-                    if (!fmpz_tstbit(subset, i))
-                        idx[j++] = idx[i];
-                }
-                len -= r;
-
-                /* fix subsets */
-                fmpz_set(tsubset, subset);
-                do {
-                    if (!subset_next(tsubset, tsubset, len + r))
-                        goto rloop_continue;
-                    fmpz_and(test, tsubset, subset);
-                } while (!fmpz_is_zero(test));
-                subset_map_down(test, tsubset, subset);
-                fmpz_swap(test, subset);
-                goto try_subset;
+                len -= k;
+                if (!zassenhaus_subset_next_disjoint(subset, len + k))
+                    break;
+            }
+            else
+            {
+                if (!zassenhaus_subset_next(subset, len))
+                    break;
             }
         }
-        while (subset_next(subset, subset, len));
-rloop_continue:
-        (void)(NULL);
     }
 
     fmpz_neg(alpha, alpha);
@@ -993,10 +975,7 @@ rloop_continue:
     fmpz_mod_bpoly_clear(trymet);
     fmpz_mod_poly_clear(leadB);
 
-    fmpz_clear(subset);
-    fmpz_clear(tsubset);
-    fmpz_clear(test);
-    flint_free(idx);
+    flint_free(subset);
 }
 
 
