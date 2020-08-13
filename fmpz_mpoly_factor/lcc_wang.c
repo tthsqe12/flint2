@@ -10,6 +10,7 @@
 */
 
 #include "fmpz_mpoly_factor.h"
+#include "n_poly.h"
 
 
 int fmpz_mpoly_factor_lcc_wang(
@@ -25,25 +26,44 @@ int fmpz_mpoly_factor_lcc_wang(
     slong i, j, k;
     const slong n = ctx->minfo->nvars - 1;
     fmpz * lcAfaceval = _fmpz_vec_init(lcAfac->num);
-    const fmpz ** salpha = (const fmpz **) flint_malloc((n + 1)*sizeof(fmpz *));
     fmpz * d = _fmpz_vec_init(1 + lcAfac->num);
-    fmpz zero = 0;
     fmpz * dtilde = _fmpz_vec_init(r);
     fmpz_t Q, R;
     fmpz_mpoly_t t;
+    slong N, * offsets, * shifts, * starts, * ends, * stops;
+    ulong mask, * es;
+    fmpz * T;
 
     fmpz_init(Q);
     fmpz_init(R);
 
     fmpz_mpoly_init(t, ctx);
 
-    salpha[0] = &zero;
-    for (i = 0; i < n; i++)
-        salpha[i + 1] = alpha + i;
+    starts = FLINT_ARRAY_ALLOC(n + 1, slong);
+    ends   = FLINT_ARRAY_ALLOC(n + 1, slong);
+    stops  = FLINT_ARRAY_ALLOC(n + 1, slong);
+    es     = FLINT_ARRAY_ALLOC(n + 1, ulong);
+    T      = FLINT_ARRAY_ALLOC(n + 2, fmpz);
+    for (i = 0; i < n + 2; i++)
+        fmpz_init(T + i);
+
+    offsets = FLINT_ARRAY_ALLOC(n + 1, slong);
+    shifts  = FLINT_ARRAY_ALLOC(n + 1, slong);
 
     for (j = 0; j < lcAfac->num; j++)
-        fmpz_mpoly_evaluate_all_fmpz(lcAfaceval + j, lcAfac->poly + j,
-                                                 (fmpz * const *) salpha, ctx);
+    {
+        fmpz_mpoly_struct * P = lcAfac->poly + j;
+
+        for (i = 0; i < n + 1; i++)
+            mpoly_gen_offset_shift_sp(offsets + i, shifts + i, i, P->bits, ctx->minfo);
+
+        mask = (-UWORD(1)) >> (FLINT_BITS - P->bits);
+        N = mpoly_words_per_exp_sp(P->bits, ctx->minfo);
+        _fmpz_mpoly_evaluate_rest_fmpz(T, starts, ends, stops, es,
+                                      P->coeffs, P->exps, P->length, 1, alpha,
+                                              offsets, shifts, N, mask, n + 1);
+        fmpz_set(lcAfaceval + j, T + 0);
+    }
 
     fmpz_mul(d + 0, Auc, lcAfac->constant);
     for (i = 0; i < lcAfac->num; i++)
@@ -108,7 +128,17 @@ cleanup:
     _fmpz_vec_clear(lcAfaceval, lcAfac->num);
     _fmpz_vec_clear(d, 1 + lcAfac->num);
     _fmpz_vec_clear(dtilde, r);
-    flint_free(salpha);
+
+    for (i = 0; i < n + 2; i++)
+        fmpz_clear(T + i);
+    flint_free(T);
+    flint_free(starts);
+    flint_free(ends);
+    flint_free(stops);
+    flint_free(es);
+
+    flint_free(offsets);
+    flint_free(shifts);
 
     return success;
 }

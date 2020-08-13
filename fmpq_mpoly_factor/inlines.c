@@ -9,7 +9,7 @@
     (at your option) any later version.  See <http://www.gnu.org/licenses/>.
 */
 
-#define NMOD_MPOLY_FACTOR_INLINES_C
+#define FMPQ_MPOLY_FACTOR_INLINES_C
 
 #define ulong ulongxx /* interferes with system includes */
 #include <stdlib.h>
@@ -18,5 +18,5 @@
 #include <gmp.h>
 #include "flint.h"
 #include "ulong_extras.h"
-#include "nmod_mpoly_factor.h"
+#include "fmpq_mpoly_factor.h"
 

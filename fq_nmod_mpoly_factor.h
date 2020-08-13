@@ -34,6 +34,140 @@
 
 /*****************************************************************************/
 
+typedef struct {
+    fq_nmod_t constant;
+    fq_nmod_mpoly_struct * poly;
+    fmpz * exp;
+    slong num;
+    slong alloc;
+} fq_nmod_mpoly_factor_struct;
+
+typedef fq_nmod_mpoly_factor_struct fq_nmod_mpoly_factor_t[1];
+
+FLINT_DLL void fq_nmod_mpoly_factor_init(fq_nmod_mpoly_factor_t f,
+                                                const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void fq_nmod_mpoly_factor_realloc(fq_nmod_mpoly_factor_t f,
+                                   slong alloc, const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void fq_nmod_mpoly_factor_fit_length(fq_nmod_mpoly_factor_t f,
+                                     slong len, const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void fq_nmod_mpoly_factor_clear(fq_nmod_mpoly_factor_t f,
+                                                const fq_nmod_mpoly_ctx_t ctx);
+
+FQ_NMOD_MPOLY_FACTOR_INLINE
+slong fq_nmod_mpoly_factor_length(const fq_nmod_mpoly_factor_t f,
+                                                 const fq_nmod_mpoly_ctx_t ctx)
+{
+    return f->num;
+}
+
+FQ_NMOD_MPOLY_FACTOR_INLINE
+void fq_nmod_mpoly_factor_get_constant_fq_nmod(fq_nmod_t c,
+                 const fq_nmod_mpoly_factor_t f, const fq_nmod_mpoly_ctx_t ctx)
+{
+    fq_nmod_set(c, f->constant, ctx->fqctx);
+}
+
+FQ_NMOD_MPOLY_FACTOR_INLINE
+void fq_nmod_mpoly_factor_get_base(fq_nmod_mpoly_t p,
+        const fq_nmod_mpoly_factor_t f, slong i, const fq_nmod_mpoly_ctx_t ctx)
+{
+    FLINT_ASSERT(i < (ulong) f->num);
+    fq_nmod_mpoly_set(p, f->poly + i, ctx);
+}
+
+FQ_NMOD_MPOLY_FACTOR_INLINE
+void fq_nmod_mpoly_factor_swap_base(fq_nmod_mpoly_t p,
+        const fq_nmod_mpoly_factor_t f, slong i, const fq_nmod_mpoly_ctx_t ctx)
+{
+    FLINT_ASSERT(i < (ulong) f->num);
+    fq_nmod_mpoly_swap(p, f->poly + i, ctx);
+}
+
+FQ_NMOD_MPOLY_FACTOR_INLINE
+slong fq_nmod_mpoly_factor_get_exp_si(fq_nmod_mpoly_factor_t f,
+                                        slong i, const fq_nmod_mpoly_ctx_t ctx)
+{
+    FLINT_ASSERT(i < (ulong) f->num);
+    return fmpz_get_si(f->exp + i);
+}
+
+
+FLINT_DLL void fq_nmod_mpoly_factor_set(fq_nmod_mpoly_factor_t a,
+                const fq_nmod_mpoly_factor_t b, const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void fq_nmod_mpoly_factor_print_pretty(const fq_nmod_mpoly_factor_t f,
+                            const char ** vars, const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void fq_nmod_mpoly_factor_append_ui(fq_nmod_mpoly_factor_t f,
+              const fq_nmod_mpoly_t A, ulong e, const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void fq_nmod_mpoly_factor_append_fmpz(fq_nmod_mpoly_factor_t f,
+       const fq_nmod_mpoly_t A, const fmpz_t e, const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int fq_nmod_mpoly_factor_squarefree(fq_nmod_mpoly_factor_t f,
+                       const fq_nmod_mpoly_t A, const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int fq_nmod_mpoly_factor(fq_nmod_mpoly_factor_t f,
+                       const fq_nmod_mpoly_t A, const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void fq_nmod_mpoly_factor_sort(fq_nmod_mpoly_factor_t f,
+                                                const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int fq_nmod_mpoly_factor_cmp(
+    const fq_nmod_mpoly_factor_t A,
+    const fq_nmod_mpoly_factor_t B,
+    const fq_nmod_mpoly_ctx_t ctx);
+
+FQ_NMOD_MPOLY_FACTOR_INLINE
+void fq_nmod_mpoly_factor_swap(fq_nmod_mpoly_factor_t A,
+                       fq_nmod_mpoly_factor_t B, const fq_nmod_mpoly_ctx_t ctx)
+{
+   fq_nmod_mpoly_factor_struct t = *A;
+   *A = *B;
+   *B = t;
+}
+
+FQ_NMOD_MPOLY_FACTOR_INLINE
+void fq_nmod_mpoly_factor_one(fq_nmod_mpoly_factor_t a,
+                                                 const fq_nmod_mpoly_ctx_t ctx)
+{
+	fq_nmod_one(a->constant, ctx->fqctx);
+	a->num = 0;
+}
+
+FLINT_DLL int fq_nmod_mpoly_factor_expand(fq_nmod_mpoly_t A,
+                const fq_nmod_mpoly_factor_t f, const fq_nmod_mpoly_ctx_t ctx);
+
+
+FQ_NMOD_MPOLY_FACTOR_INLINE
+int fq_nmod_mpoly_factor_matches(const fq_nmod_mpoly_t a,
+                 const fq_nmod_mpoly_factor_t f, const fq_nmod_mpoly_ctx_t ctx)
+{
+    int matches;
+    fq_nmod_mpoly_t t;
+    fq_nmod_mpoly_init(t, ctx);
+    fq_nmod_mpoly_factor_expand(t, f, ctx);
+    matches = fq_nmod_mpoly_equal(t, a, ctx);
+    fq_nmod_mpoly_clear(t, ctx);
+    return matches;
+}
+
+FLINT_DLL void _fq_nmod_mpoly_get_lead0(
+    fq_nmod_mpoly_t c,
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void _fq_nmod_mpoly_set_lead0(
+    fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_t B,
+    const fq_nmod_mpoly_t c,
+    const fq_nmod_mpoly_ctx_t ctx);
+
+/*****************************************************************************/
+
 FLINT_DLL void bad_n_fq_embed_sm_to_lg(
     mp_limb_t * out,            /* element of lgctx */
     const n_poly_t in,  /* poly over smctx */
@@ -258,99 +392,6 @@ FLINT_DLL void fq_nmod_mpoly_set_fq_nmod_poly(
 
 /*****************************************************************************/
 
-void fq_nmod_mpoly_evaluate_one_fq_nmod(
-    fq_nmod_mpoly_t A,
-    const fq_nmod_mpoly_t B,
-    slong var,
-    const fq_nmod_t val,
-    const fq_nmod_mpoly_ctx_t ctx);
-
-typedef struct {
-    fq_nmod_t constant;
-    fq_nmod_mpoly_struct * poly;
-    fmpz * exp;
-    slong num;
-    slong alloc;
-} fq_nmod_mpoly_factor_struct;
-
-typedef fq_nmod_mpoly_factor_struct fq_nmod_mpoly_factor_t[1];
-
-FLINT_DLL void fq_nmod_mpoly_factor_init(fq_nmod_mpoly_factor_t f,
-                                                const fq_nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL void fq_nmod_mpoly_factor_realloc(fq_nmod_mpoly_factor_t f,
-                                   slong alloc, const fq_nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL void fq_nmod_mpoly_factor_fit_length(fq_nmod_mpoly_factor_t f,
-                                     slong len, const fq_nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL void fq_nmod_mpoly_factor_clear(fq_nmod_mpoly_factor_t f,
-                                                const fq_nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL void fq_nmod_mpoly_factor_set(fq_nmod_mpoly_factor_t a,
-                const fq_nmod_mpoly_factor_t b, const fq_nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL void fq_nmod_mpoly_factor_print_pretty(const fq_nmod_mpoly_factor_t f,
-                            const char ** vars, const fq_nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL void fq_nmod_mpoly_factor_append_ui(fq_nmod_mpoly_factor_t f,
-              const fq_nmod_mpoly_t A, ulong e, const fq_nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL void fq_nmod_mpoly_factor_append_fmpz(fq_nmod_mpoly_factor_t f,
-       const fq_nmod_mpoly_t A, const fmpz_t e, const fq_nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL int fq_nmod_mpoly_factor_squarefree(fq_nmod_mpoly_factor_t f,
-                       const fq_nmod_mpoly_t A, const fq_nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL int fq_nmod_mpoly_factor(fq_nmod_mpoly_factor_t f,
-                       const fq_nmod_mpoly_t A, const fq_nmod_mpoly_ctx_t ctx);
-
-FQ_NMOD_MPOLY_FACTOR_INLINE
-void fq_nmod_mpoly_factor_swap(fq_nmod_mpoly_factor_t A,
-                       fq_nmod_mpoly_factor_t B, const fq_nmod_mpoly_ctx_t ctx)
-{
-   fq_nmod_mpoly_factor_struct t = *A;
-   *A = *B;
-   *B = t;
-}
-
-FQ_NMOD_MPOLY_FACTOR_INLINE
-void fq_nmod_mpoly_factor_one(fq_nmod_mpoly_factor_t a,
-                                                 const fq_nmod_mpoly_ctx_t ctx)
-{
-	fq_nmod_one(a->constant, ctx->fqctx);
-	a->num = 0;
-}
-
-FLINT_DLL int fq_nmod_mpoly_factor_expand(fq_nmod_mpoly_t A,
-                const fq_nmod_mpoly_factor_t f, const fq_nmod_mpoly_ctx_t ctx);
-
-
-FQ_NMOD_MPOLY_FACTOR_INLINE
-int fq_nmod_mpoly_factor_matches(const fq_nmod_mpoly_t a, const fq_nmod_mpoly_factor_t f, const fq_nmod_mpoly_ctx_t ctx)
-{
-    int matches;
-    fq_nmod_mpoly_t t;
-    fq_nmod_mpoly_init(t, ctx);
-    fq_nmod_mpoly_factor_expand(t, f, ctx);
-    matches = fq_nmod_mpoly_equal(t, a, ctx);
-    fq_nmod_mpoly_clear(t, ctx);
-    return matches;
-}
-
-FLINT_DLL void _fq_nmod_mpoly_get_lead0(
-    fq_nmod_mpoly_t c,
-    const fq_nmod_mpoly_t A,
-    const fq_nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL void _fq_nmod_mpoly_set_lead0(
-    fq_nmod_mpoly_t A,
-    const fq_nmod_mpoly_t B,
-    const fq_nmod_mpoly_t c,
-    const fq_nmod_mpoly_ctx_t ctx);
-
-/*****************************************************************************/
-
 typedef struct
 {
     fq_nmod_mpoly_struct * coeffs;
@@ -559,6 +600,15 @@ FLINT_DLL void _fq_nmod_mpoly_monomial_evals(
     const fq_nmod_struct * alpha,
     slong vstart,
     const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int fq_nmod_mpoly_factor_wang(fq_nmod_mpoly_factor_t f,
+                       const fq_nmod_mpoly_t A, const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int fq_nmod_mpoly_factor_zassenhaus(fq_nmod_mpoly_factor_t f,
+                       const fq_nmod_mpoly_t A, const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int fq_nmod_mpoly_factor_zippel(fq_nmod_mpoly_factor_t f,
+                       const fq_nmod_mpoly_t A, const fq_nmod_mpoly_ctx_t ctx);
 
 #ifdef __cplusplus
 }

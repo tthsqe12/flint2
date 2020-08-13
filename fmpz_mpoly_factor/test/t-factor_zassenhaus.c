@@ -98,6 +98,38 @@ main(void)
     flint_printf("factor_zassenhaus....");
     fflush(stdout);
 
+    {
+        fmpz_mpoly_ctx_t ctx;
+        fmpz_mpoly_t a;
+        fmpz_mpoly_factor_t f;
+        const char * vars[] = {"x", "y", "z", "w"};
+
+        fmpz_mpoly_ctx_init(ctx, 4, ORD_LEX);
+        fmpz_mpoly_init(a, ctx);
+        fmpz_mpoly_factor_init(f, ctx);
+
+        fmpz_mpoly_set_str_pretty(a,
+            "((x^2+y^2+z^2+2+w)*(x+1)*(y+2)*(z+3+w^3)+x*y*z*w)"
+            "*((x^2+y^2+z^2+3+w)*(x^2+1)*(y^2+2)*(z^2+3+w^3)+x*y*z+ w)"
+            "*((x^2+y^2+z^2+x+y+z+5+w)*(7+x+y^2)*(8+x+z^2+w^3)+x*y*z+ w)"
+            "*((x^2+y^2+z^2+x+y+z+13+w)*(10+y+z^2+w^3)+x*y*z*w)"
+        , vars, ctx);
+
+        check_omega(4, 4, a, ctx);
+
+        fmpz_mpoly_set_str_pretty(a,
+            "(((x+y+z+2)*(x+y^2+1+z^2)+z+w^4)*((x+2*y+z^2)*(x^2+y+2+z^3)+z+w^6)+x*y*z*w)"
+            "*(((x+y+z+7)*(x+y^2+11+z^2)+z+w^4)*((x+2*y+z^2+13)*(x^2+y+2+z^3+17)+z+w^6)+x*y*z*w)"
+            "*(x+y+z+w+19)"
+        , vars, ctx);
+
+        check_omega(3, 3, a, ctx);
+
+        fmpz_mpoly_clear(a, ctx);
+        fmpz_mpoly_factor_clear(f, ctx);
+        fmpz_mpoly_ctx_clear(ctx);
+    }
+
     for (i = 0; i < tmul * flint_test_multiplier(); i++)
     {
         slong lower;

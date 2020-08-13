@@ -12,9 +12,6 @@
 #include "nmod_mpoly_factor.h"
 #include "fq_nmod_mpoly_factor.h"
 
-#define USE_ZAS 1
-#define USE_WANG 2
-#define USE_ZIP 4
 
 void nmod_mpoly_convert_perm(
     nmod_mpoly_t A,
@@ -61,6 +58,10 @@ void nmod_mpoly_convert_perm(
     TMP_END;
     nmod_mpoly_sort_terms(A, lctx);
 }
+
+#define USE_ZAS 1
+#define USE_WANG 2
+#define USE_ZIP 4
 
 /*
     A is primitive w.r.t to any variable appearing in A.

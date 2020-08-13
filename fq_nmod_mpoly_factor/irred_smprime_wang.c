@@ -515,6 +515,7 @@ cleanup:
 
 	for (i = 0; i < n; i++)
     {
+        fq_nmod_clear(alpha + i, ctx->fqctx);
 		fq_nmod_mpoly_clear(Aevals + i, ctx);
         n_poly_clear(alphabetas + i);
     }

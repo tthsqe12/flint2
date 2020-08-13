@@ -26,9 +26,15 @@ void check_omega(slong lower, slong upper, const fq_nmod_mpoly_t p, const fq_nmo
     fq_nmod_mpoly_factor_init(h, ctx);
     fq_nmod_mpoly_init(q, ctx);
 
-    if (!fq_nmod_mpoly_factor(g, p, ctx))
+    if (!fq_nmod_mpoly_factor_wang(g, p, ctx))
     {
-        flint_printf("FAIL:\ncheck factorization could be computed\n");
+        flint_printf("FAIL:\ncheck factorization 1 could be computed\n");
+        flint_abort();        
+    }
+
+    if (!fq_nmod_mpoly_factor(h, p, ctx))
+    {
+        flint_printf("FAIL:\ncheck factorization 2 could be computed\n");
         flint_abort();        
     }
 
@@ -58,6 +64,14 @@ void check_omega(slong lower, slong upper, const fq_nmod_mpoly_t p, const fq_nmo
         flint_abort();        
     }
 
+    fq_nmod_mpoly_factor_sort(g, ctx);
+    fq_nmod_mpoly_factor_sort(h, ctx);
+    if (fq_nmod_mpoly_factor_cmp(g, h, ctx) != 0)
+    {
+        flint_printf("factorizations do not match\n");
+        flint_abort();        
+    }
+
     for (i = 0; i < g->num; i++)
     {
         fq_nmod_mpoly_factor(h, g->poly + i, ctx);
@@ -78,10 +92,10 @@ void check_omega(slong lower, slong upper, const fq_nmod_mpoly_t p, const fq_nmo
 int
 main(void)
 {
-    slong i, j, tmul = 20;
+    slong i, j, tmul = 15;
     FLINT_TEST_INIT(state);
 
-    flint_printf("factor....");
+    flint_printf("factor_wang....");
     fflush(stdout);
 
     for (i = 0; i < tmul * flint_test_multiplier(); i++)
@@ -92,24 +106,24 @@ main(void)
         slong nfacs, len;
         ulong expbound, powbound, pow;
 
-        fq_nmod_mpoly_ctx_init_rand(ctx, state, 7, FLINT_BITS, 5);
+        fq_nmod_mpoly_ctx_init_rand(ctx, state, 5, FLINT_BITS, 5);
         fq_nmod_mpoly_init(a, ctx);
         fq_nmod_mpoly_init(t, ctx);
 
-        nfacs = 1 + (6 + n_randint(state, 6))/ctx->minfo->nvars;
+        nfacs = 1 + n_randint(state, 6);
         powbound = 1 + n_randint(state, 3);
         powbound = 1 + n_randint(state, powbound);
-        expbound = 2 + 40/nfacs/ctx->minfo->nvars;
+        expbound = 2 + 25/nfacs/ctx->minfo->nvars;
 
         lower = 0;
         fq_nmod_mpoly_one(a, ctx);
         for (j = 0; j < nfacs; j++)
         {
-            len = 1 + n_randint(state, 12/powbound);
+            pow = 1 + n_randint(state, powbound);
+            len = 1 + n_randint(state, 35/pow/nfacs);
             fq_nmod_mpoly_randtest_bound(t, state, len, expbound, ctx);
             if (fq_nmod_mpoly_is_zero(t, ctx))
                 fq_nmod_mpoly_one(t, ctx);
-            pow = 1 + n_randint(state, powbound);
             if (!fq_nmod_mpoly_is_fq_nmod(t, ctx))
                 lower += pow;
             fq_nmod_mpoly_pow_ui(t, t, pow, ctx);

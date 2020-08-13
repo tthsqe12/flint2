@@ -56,6 +56,10 @@ void fq_nmod_mpoly_convert_perm(
     fq_nmod_mpoly_sort_terms(A, lctx);
 }
 
+#define USE_ZAS 1
+#define USE_WANG 2
+#define USE_ZIP 4
+
 /*
     A is primitive w.r.t to any variable appearing in A.
     A is squarefree and monic.
@@ -65,7 +69,8 @@ void fq_nmod_mpoly_convert_perm(
 static int _irreducible_factors(
     fq_nmod_mpolyv_t Af,
     fq_nmod_mpoly_t A,
-    const fq_nmod_mpoly_ctx_t ctx)
+    const fq_nmod_mpoly_ctx_t ctx,
+    unsigned int algo)
 {
     int success;
     slong i, t, nzdvar, mvars;
@@ -163,8 +168,8 @@ static int _irreducible_factors(
     {
         fq_nmod_mpolyv_t Gf;
         fq_nmod_mpolyv_init(Gf, ctx);
-        success = _irreducible_factors(Af, Abar, ctx);
-        success = success && _irreducible_factors(Gf, G, ctx);
+        success = _irreducible_factors(Af, Abar, ctx, algo);
+        success = success && _irreducible_factors(Gf, G, ctx, algo);
         if (success)
         {
             fq_nmod_mpolyv_fit_length(Af, Af->length + Gf->length, ctx);
@@ -282,24 +287,42 @@ static int _irreducible_factors(
 		fq_nmod_mpoly_convert_perm(L, Lbits, Lctx, A, ctx, perm);
         fq_nmod_mpoly_make_monic(L, L, ctx);
 
-        _fq_nmod_mpoly_get_lead0(lcL, L, Lctx);
-        success = fq_nmod_mpoly_factor(lcLf, lcL, Lctx);
-        if (success)
+        success = 0;
+
+        if (algo & (USE_WANG | USE_ZIP))
         {
-            success = fq_nmod_mpoly_factor_irred_smprime_zippel(Lf, L, lcLf, lcL, Lctx, state);
-            if (success < 1)
-                success = fq_nmod_mpoly_factor_irred_lgprime_zippel(Lf, L, lcLf, lcL, Lctx, state);
-            if (success < 1)
-                success = fq_nmod_mpoly_factor_irred_smprime_wang(Lf, L, lcLf, lcL, Lctx, state);
-            if (success < 1)
-                success = fq_nmod_mpoly_factor_irred_lgprime_wang(Lf, L, lcLf, lcL, Lctx, state);
+            _fq_nmod_mpoly_get_lead0(lcL, L, Lctx);
+            if (fq_nmod_mpoly_factor(lcLf, lcL, Lctx))
+            {
+                if (algo & USE_ZIP)
+                {
+                    success = fq_nmod_mpoly_factor_irred_smprime_zippel(
+                                                Lf, L, lcLf, lcL, Lctx, state);
+                    if (success == 0)
+                        success = fq_nmod_mpoly_factor_irred_lgprime_zippel(
+                                                Lf, L, lcLf, lcL, Lctx, state);
+                }
+
+                if (algo & USE_WANG)
+                {
+                    if (success == 0)
+                        success = fq_nmod_mpoly_factor_irred_smprime_wang(
+                                                Lf, L, lcLf, lcL, Lctx, state);
+                    if (success == 0)
+                        success = fq_nmod_mpoly_factor_irred_lgprime_wang(
+                                                Lf, L, lcLf, lcL, Lctx, state);
+                }
+            }
         }
 
-        if (success < 1)
+        if (algo & USE_ZAS)
         {
-            success = fq_nmod_mpoly_factor_irred_smprime_zassenhaus(Lf, L, Lctx, state);
-            if (success < 1)
-                success = fq_nmod_mpoly_factor_irred_lgprime_zassenhaus(Lf, L, Lctx, state);
+            if (success == 0)
+    		    success = fq_nmod_mpoly_factor_irred_smprime_zassenhaus(
+                                                           Lf, L, Lctx, state);
+            if (success == 0)
+        		success = fq_nmod_mpoly_factor_irred_lgprime_zassenhaus(
+                                                           Lf, L, Lctx, state);
         }
 
         success = (success > 0);
@@ -351,10 +374,11 @@ cleanup:
 }
 
 
-int fq_nmod_mpoly_factor(
+static int fq_nmod_mpoly_factor_algo(
     fq_nmod_mpoly_factor_t f,
     const fq_nmod_mpoly_t A,
-    const fq_nmod_mpoly_ctx_t ctx)
+    const fq_nmod_mpoly_ctx_t ctx,
+    unsigned int algo)
 {
     int success;
     slong i, j;
@@ -372,7 +396,7 @@ int fq_nmod_mpoly_factor(
     g->num = 0;
     for (j = 0; j < f->num; j++)
     {
-        success = _irreducible_factors(t, f->poly + j, ctx);
+        success = _irreducible_factors(t, f->poly + j, ctx, algo);
         if (!success)
             goto cleanup;
 
@@ -398,3 +422,40 @@ cleanup:
 
     return success;
 }
+
+
+int fq_nmod_mpoly_factor(
+    fq_nmod_mpoly_factor_t f,
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    return fq_nmod_mpoly_factor_algo(f, A, ctx, USE_ZAS | USE_WANG | USE_ZIP);
+}
+
+
+int fq_nmod_mpoly_factor_zassenhaus(
+    fq_nmod_mpoly_factor_t f,
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    return fq_nmod_mpoly_factor_algo(f, A, ctx, USE_ZAS);
+}
+
+
+int fq_nmod_mpoly_factor_wang(
+    fq_nmod_mpoly_factor_t f,
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    return fq_nmod_mpoly_factor_algo(f, A, ctx, USE_WANG);
+}
+
+
+int fq_nmod_mpoly_factor_zippel(
+    fq_nmod_mpoly_factor_t f,
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    return fq_nmod_mpoly_factor_algo(f, A, ctx, USE_ZIP);
+}
+

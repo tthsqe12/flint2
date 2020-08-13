@@ -53,7 +53,7 @@ void check_omega(slong lower, slong upper, const nmod_mpoly_t p, const nmod_mpol
     if (fmpz_cmp_si(omega, lower) < 0 || fmpz_cmp_si(omega, upper) > 0)
     {
         flint_printf("FAIL:\nfactorization has wrong number of factors\n");
-        flint_abort();        
+        flint_abort();
     }
 
     nmod_mpoly_factor_expand(q, g, ctx);

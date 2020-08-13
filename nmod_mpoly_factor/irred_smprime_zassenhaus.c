@@ -133,8 +133,8 @@ int nmod_mpoly_factor_irred_smprime_zassenhaus(
     int success;
     int tries_remaining = 10;
     const slong n = ctx->minfo->nvars - 1;
-    slong i, j, m, r;
-	fmpz_t subset;
+    slong i, j, k, m, len;
+    slong * subset;
     mp_limb_t * alpha;
     nmod_mpoly_struct * Aevals;
     slong * deg, * degeval;
@@ -150,7 +150,7 @@ int nmod_mpoly_factor_irred_smprime_zassenhaus(
     FLINT_ASSERT(A->coeffs[0] == 1);
     FLINT_ASSERT(A->bits <= FLINT_BITS);
 
-	fmpz_init(subset);
+    subset = (slong*) flint_malloc(4*sizeof(slong));
 	alpha = (mp_limb_t *) flint_malloc(n*sizeof(mp_limb_t));
     Aevals    = (nmod_mpoly_struct *) flint_malloc(n*sizeof(nmod_mpoly_struct));
     deg     = (slong *) flint_malloc((n + 1)*sizeof(slong));
@@ -226,6 +226,9 @@ next_alpha:
         nmod_mpoly_make_monic(pfac->coeffs + i, pfac->coeffs + i, ctx);
     }
 
+    /* number of of local factors can only decrease from here on */
+    subset = flint_realloc(subset, pfac->length*sizeof(slong));
+
     for (m = 2; m <= n; m++)
     {
         nmod_mpoly_set(q, m < n ? Aevals + m : A, ctx);
@@ -238,7 +241,7 @@ next_alpha:
         FLINT_ASSERT(nmod_mpoly_equal(t, p, ctx));
     #endif
 
-        /* if p has only one factor, A must be irreducible */
+        /* if one local factor, A must be irreducible */
         if (pfac->length < 2)
         {
             nmod_mpolyv_fit_length(fac, 1, ctx);
@@ -272,44 +275,41 @@ next_alpha:
 
         qfac->length = 0;
 
-try_again:
+        len = pfac->length;
+        for (k = 0; k < len; k++)
+            subset[k] = k;
 
-        for (r = 1; r <= pfac->length/2; r++)
+        for (k = 1; k <= len/2; k++)
         {
-            subset_first(subset, pfac->length, r);
+            zassenhaus_subset_first(subset, len, k);
 
         #if WANT_ASSERT
             nmod_mpoly_one(t, ctx);
-            for (i = 0; i < pfac->length; i++)
-                nmod_mpoly_mul(t, t, pfac->coeffs + i, ctx);
+            for (i = 0; i < len; i++)
+            {
+                int in = subset[i] >= 0;
+                nmod_mpoly_mul(t, t, pfac->coeffs +
+                                       (in ? subset[i] : -1 - subset[i]), ctx);
+            }
             FLINT_ASSERT(nmod_mpoly_equal(t, p, ctx));
         #endif
 
-            do {
+            while (1)
+            {
                 nmod_mpolyv_fit_length(dfac, 2, ctx);
                 dfac->length = 2;
                 nmod_mpoly_one(dfac->coeffs + 0, ctx);
                 nmod_mpoly_one(dfac->coeffs + 1, ctx);
-                for (i = 0; i < pfac->length; i++)
+                for (i = 0; i < len; i++)
                 {
-                    j = fmpz_tstbit(subset, i);
-                    nmod_mpoly_mul(dfac->coeffs + j,
-                                   dfac->coeffs + j, pfac->coeffs + i, ctx);
+                    int in = subset[i] >= 0;
+                    nmod_mpoly_mul(dfac->coeffs + in, dfac->coeffs + in,
+                        pfac->coeffs + (in ? subset[i] : -1 - subset[i]), ctx);
                 }
 
                 success = _try_lift(tfac, q, dfac, p, m, alpha, n, ctx);
                 if (success > 0)
                 {
-                    for (i = pfac->length - 1; i >= 0; i--)
-                    {
-                        if (fmpz_tstbit(subset, i))
-                        {
-                            pfac->length--;
-                            nmod_mpoly_swap(pfac->coeffs + i,
-                                            pfac->coeffs + pfac->length, ctx);
-                        }
-                    }
-
                     nmod_mpolyv_fit_length(qfac, qfac->length + 1, ctx);
                     nmod_mpoly_swap(qfac->coeffs + qfac->length,
                                                         tfac->coeffs + 1, ctx);
@@ -317,21 +317,35 @@ try_again:
 
                     nmod_mpoly_swap(q, tfac->coeffs + 0, ctx);
                     nmod_mpoly_swap(p, dfac->coeffs + 0, ctx);
-                    goto try_again;
+                    len -= k;
+                    if (!zassenhaus_subset_next_disjoint(subset, len + k))
+                        break;
                 }
                 else if (success < 0)
                 {
                     success = 0;
                     goto cleanup;
                 }
+                else
+                {
+                    if (!zassenhaus_subset_next(subset, len))
+                        break;
+                }
             }
-            while (subset_next(subset, subset, pfac->length));
         }
 
-        /* if pfac could not be combined, q must be irreducible */
-        nmod_mpolyv_fit_length(qfac, qfac->length + 1, ctx);
-        nmod_mpoly_swap(qfac->coeffs + qfac->length, q, ctx);
-        qfac->length++;
+        /* remnants are irreducible */
+        if (!nmod_mpoly_is_ui(q, ctx))
+        {
+            nmod_mpolyv_fit_length(qfac, qfac->length + 1, ctx);
+            nmod_mpoly_swap(qfac->coeffs + qfac->length, q, ctx);
+            qfac->length++;
+        }
+        else
+        {
+            FLINT_ASSERT(nmod_mpoly_is_one(q, ctx));
+        }
+
         nmod_mpolyv_swap(qfac, pfac, ctx);
     }
 
@@ -341,7 +355,7 @@ try_again:
 
 cleanup: 
 
-	fmpz_clear(subset);
+	flint_free(subset);
 	flint_free(alpha);
 	for (i = 0; i < n; i++)
 		nmod_mpoly_clear(Aevals + i, ctx);

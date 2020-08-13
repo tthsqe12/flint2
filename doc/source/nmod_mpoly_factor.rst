@@ -1,6 +1,6 @@
 .. _nmod-mpoly-factor:
 
-**nmod_mpoly_factor.h** -- factorisation of multivariate polynomials over the integers
+**nmod_mpoly_factor.h** -- factorisation of multivariate polynomials over integers mod n (word-size n)
 ===============================================================================
 
 Types, macros and constants
@@ -8,10 +8,10 @@ Types, macros and constants
 
 .. type:: nmod_mpoly_factor_struct
 
-    A struct for holding a factored integer polynomial. There is a
+    A struct for holding a factored polynomial. There is a
     single constant and a product of bases to corresponding exponents.
 
-.. type:: nmod_mpoly_ctx_t
+.. type:: nmod_mpoly_factor_t
 
     An array of length 1 of ``nmod_mpoly_factor_struct``.
 
