@@ -284,6 +284,8 @@ static int _irreducible_factors(
 
         Lbits = mpoly_fix_bits(Lbits + 1, Lctx->minfo);
 
+flint_printf("Lbits: %wu\n", Lbits);
+
 		fq_nmod_mpoly_convert_perm(L, Lbits, Lctx, A, ctx, perm);
         fq_nmod_mpoly_make_monic(L, L, ctx);
 

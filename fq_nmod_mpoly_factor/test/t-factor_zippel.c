@@ -91,7 +91,7 @@ void check_omega(slong lower, slong upper, const fq_nmod_mpoly_t p, const fq_nmo
 int
 main(void)
 {
-    slong i, j, tmul = 10;
+    slong i, j, tmul = 0;
     FLINT_TEST_INIT(state);
 
     flint_printf("factor_zippel....");

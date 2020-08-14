@@ -100,13 +100,13 @@ main(void)
 
         nfacs = 1 + n_randint(state, 6);
         powbound = 3;
-        expbound = 2 + 30/nfacs/ctx->minfo->nvars;
+        expbound = 2 + 25/nfacs/ctx->minfo->nvars;
 
         fq_nmod_mpoly_one(a, ctx);
         for (j = 0; j < nfacs; j++)
         {
             pow = 1 + n_randint(state, powbound);
-            len = 2 + n_randint(state, 20/pow/nfacs);
+            len = 1 + n_randint(state, 20/pow/nfacs);
             fq_nmod_mpoly_randtest_bound(t, state, len, expbound, ctx);
             if (fq_nmod_mpoly_is_zero(t, ctx))
                 fq_nmod_mpoly_one(t, ctx);
