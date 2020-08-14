@@ -9,71 +9,8 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "n_poly.h"
 #include "fq_nmod_mpoly_factor.h"
-
-
-ulong n_poly_fq_remove(
-    n_poly_t f,
-    const n_poly_t g,
-    const fq_nmod_ctx_t ctx)
-{
-    n_poly_t q, r;
-    ulong i = 0;
-
-    n_poly_init(q);
-    n_poly_init(r);
-
-    while (1)
-    {
-        if (f->length < g->length)
-            break;
-        n_poly_fq_divrem(q, r, f, g, ctx);
-        if (r->length == 0)
-            n_poly_swap(q, f);
-        else
-            break;
-        i++;
-    }
-
-    n_poly_clear(q);
-    n_poly_clear(r);
-
-    return i;
-}
-
-int fq_nmod_mpoly_evaluate_all_n_poly_fq(
-    n_poly_t A,
-    const fq_nmod_mpoly_t B,
-    const n_poly_struct * C,
-    const fq_nmod_mpoly_ctx_t ctx)
-{
-    slong i, nvars = ctx->minfo->nvars;
-    fq_nmod_poly_t a;
-    fq_nmod_poly_struct * t1, ** t2;
-
-    t1 = FLINT_ARRAY_ALLOC(nvars, fq_nmod_poly_struct);
-    t2 = FLINT_ARRAY_ALLOC(nvars, fq_nmod_poly_struct *);
-
-    for (i = 0; i < nvars; i++)
-    {
-        fq_nmod_poly_init(t1 + i, ctx->fqctx);
-        n_poly_fq_get_fq_nmod_poly(t1 + i, C + i, ctx->fqctx);
-        t2[i] = t1 + i;
-    }
-
-    fq_nmod_poly_init(a, ctx->fqctx);
-    fq_nmod_mpoly_compose_fq_nmod_poly(a, B, t2, ctx);
-    n_poly_fq_set_fq_nmod_poly(A, a, ctx->fqctx);
-    fq_nmod_poly_clear(a, ctx->fqctx);
-
-    for (i = 0; i < nvars; i++)
-        fq_nmod_poly_clear(t1 + i, ctx->fqctx);
-
-    flint_free(t1);
-    flint_free(t2);
-
-    return 1;
-}
 
 
 int fq_nmod_mpoly_factor_lcc_wang(
@@ -89,21 +26,16 @@ int fq_nmod_mpoly_factor_lcc_wang(
     slong i, j, k;
     const slong n = ctx->minfo->nvars - 1;
     n_poly_struct * lcAfaceval;
-    n_poly_struct * salpha;
     n_poly_struct * d;
     n_poly_t Q, R;
     fq_nmod_mpoly_t t;
-
-flint_printf("fq_nmod_mpoly_factor_lcc_wang called\n");
+    slong N, * offsets, * shifts, * starts, * ends, * stops;
+    ulong mask, * es;
+    n_poly_struct * T;
 
     n_poly_init(Q);
     n_poly_init(R);
     fq_nmod_mpoly_init(t, ctx);
-
-    salpha = FLINT_ARRAY_ALLOC((n + 1), n_poly_struct);
-    n_poly_init(salpha + 0);
-    for (i = 0; i < n; i++)
-        salpha[i + 1] = alpha[i];
 
     lcAfaceval = FLINT_ARRAY_ALLOC(lcAfac->num, n_poly_struct);
     for (i = 0; i < lcAfac->num; i++)
@@ -113,15 +45,34 @@ flint_printf("fq_nmod_mpoly_factor_lcc_wang called\n");
     for (i = 0; i < lcAfac->num + 1; i++)
         n_poly_init(d + i);
 
+    starts = FLINT_ARRAY_ALLOC(n + 1, slong);
+    ends   = FLINT_ARRAY_ALLOC(n + 1, slong);
+    stops  = FLINT_ARRAY_ALLOC(n + 1, slong);
+    es     = FLINT_ARRAY_ALLOC(n + 1, ulong);
+    T      = FLINT_ARRAY_ALLOC(n + 2, n_poly_struct);
+    for (i = 0; i < n + 2; i++)
+        n_poly_init(T + i);
+
+    offsets = FLINT_ARRAY_ALLOC(n + 1, slong);
+    shifts  = FLINT_ARRAY_ALLOC(n + 1, slong);
+
     /* init done */
 
-flint_printf("calling fq_nmod_mpoly_evaluate_all_n_poly_fq\n");
-
     for (j = 0; j < lcAfac->num; j++)
-        fq_nmod_mpoly_evaluate_all_n_poly_fq(lcAfaceval + j, lcAfac->poly + j, salpha, ctx);
+    {
+        fq_nmod_mpoly_struct * P = lcAfac->poly + j;
 
-flint_printf("returngined from fq_nmod_mpoly_evaluate_all_n_poly_fq\n");
+        for (i = 0; i < n + 1; i++)
+            mpoly_gen_offset_shift_sp(offsets + i, shifts + i, i, P->bits, ctx->minfo);
 
+        mask = (-UWORD(1)) >> (FLINT_BITS - P->bits);
+        N = mpoly_words_per_exp_sp(P->bits, ctx->minfo);
+        _fq_nmod_mpoly_eval_rest_n_poly_fq(T, starts, ends, stops, es,
+                                      P->coeffs, P->exps, P->length, 1, alpha,
+                                  offsets, shifts, N, mask, n + 1, ctx->fqctx);
+
+        n_poly_fq_set(lcAfaceval + j, T + 0, ctx->fqctx);
+    }
 
     n_poly_fq_set(d + 0, Auc, ctx->fqctx);
     for (i = 0; i < lcAfac->num; i++)
@@ -138,8 +89,8 @@ flint_printf("returngined from fq_nmod_mpoly_evaluate_all_n_poly_fq\n");
             while (n_poly_degree(R) > 0)
             {
                 n_poly_fq_gcd(R, R, Q, ctx->fqctx);
-                n_poly_fq_divrem(Q, salpha + 0, Q, R, ctx->fqctx);
-                FLINT_ASSERT(n_poly_is_zero(salpha + 0));
+                n_poly_fq_divrem(Q, T + 0, Q, R, ctx->fqctx);
+                FLINT_ASSERT(n_poly_is_zero(T + 0));
                 if (n_poly_degree(Q) < 1)
                 {
                     success = 0;
@@ -181,10 +132,16 @@ cleanup:
         n_poly_clear(d + i);
     flint_free(d);
 
-    n_poly_clear(salpha + 0);
-    flint_free(salpha);
+    for (i = 0; i < n + 2; i++)
+        n_poly_clear(T + i);
+    flint_free(T);
+    flint_free(starts);
+    flint_free(ends);
+    flint_free(stops);
+    flint_free(es);
 
-flint_printf("fq_nmod_mpoly_factor_lcc_wang returning %d\n", success);
+    flint_free(offsets);
+    flint_free(shifts);
 
     return success;
 }

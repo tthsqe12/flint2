@@ -60,8 +60,8 @@ void fmpz_mpoly_convert_perm(
         }
         mpoly_set_monomial_ui(A->exps + NA*i, Aexps, Abits, Actx->minfo);
      }  
-    fmpz_mpoly_sort_terms(A, Actx);
     TMP_END;
+    fmpz_mpoly_sort_terms(A, Actx);
 }
 
 

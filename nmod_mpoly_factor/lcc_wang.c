@@ -9,38 +9,9 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
+#include "n_poly.h"
 #include "nmod_mpoly_factor.h"
 
-
-int nmod_mpoly_evaluate_all_n_poly(
-    n_poly_t A,
-    const nmod_mpoly_t B,
-    const n_poly_struct * C,
-    const nmod_mpoly_ctx_t ctx)
-{
-    slong i, nvars = ctx->minfo->nvars;
-    nmod_poly_t a;
-    nmod_poly_struct * t1, ** t2;
-
-    t1 = (nmod_poly_struct *) flint_malloc(nvars*sizeof(nmod_poly_struct));
-    t2 = (nmod_poly_struct **) flint_malloc(nvars*sizeof(nmod_poly_struct *));
-
-    nmod_poly_mock(a, A, ctx->ffinfo->mod);
-    for (i = 0; i < nvars; i++)
-    {
-        nmod_poly_mock(t1 + i, C + i, ctx->ffinfo->mod);
-        t2[i] = t1 + i;
-    }
-
-    nmod_mpoly_compose_nmod_poly(a, B, t2, ctx);
-
-    n_poly_mock(A, a);
-
-    flint_free(t1);
-    flint_free(t2);
-
-    return 1;
-}
 
 int nmod_mpoly_factor_lcc_wang(
     nmod_mpoly_struct * lc_divs,
@@ -55,31 +26,51 @@ int nmod_mpoly_factor_lcc_wang(
     slong i, j, k;
     const slong n = ctx->minfo->nvars - 1;
     n_poly_struct * lcAfaceval;
-    n_poly_struct * salpha;
     n_poly_struct * d;
     n_poly_t Q, R;
     nmod_mpoly_t t;
-
-    salpha = (n_poly_struct *) flint_malloc((n + 1)*sizeof(n_poly_struct));
-    n_poly_init(salpha + 0);
-    for (i = 0; i < n; i++)
-        salpha[i + 1] = alpha[i];
-
-    lcAfaceval = (n_poly_struct *) flint_malloc(lcAfac->num*sizeof(n_poly_struct));
-    for (i = 0; i < lcAfac->num; i++)
-        n_poly_init(lcAfaceval + i);
-
-    d = (n_poly_struct *) flint_malloc((lcAfac->num + 1)*sizeof(n_poly_struct));
-    for (i = 0; i < lcAfac->num + 1; i++)
-        n_poly_init(d + i);
+    slong N, * offsets, * shifts, * starts, * ends, * stops;
+    ulong mask, * es;
+    n_poly_struct * T;
 
     n_poly_init(Q);
     n_poly_init(R);
-
     nmod_mpoly_init(t, ctx);
 
+    lcAfaceval = FLINT_ARRAY_ALLOC(lcAfac->num, n_poly_struct);
+    for (i = 0; i < lcAfac->num; i++)
+        n_poly_init(lcAfaceval + i);
+
+    d = FLINT_ARRAY_ALLOC(lcAfac->num + 1, n_poly_struct);
+    for (i = 0; i < lcAfac->num + 1; i++)
+        n_poly_init(d + i);
+
+    starts = FLINT_ARRAY_ALLOC(n + 1, slong);
+    ends   = FLINT_ARRAY_ALLOC(n + 1, slong);
+    stops  = FLINT_ARRAY_ALLOC(n + 1, slong);
+    es     = FLINT_ARRAY_ALLOC(n + 1, ulong);
+    T      = FLINT_ARRAY_ALLOC(n + 2, n_poly_struct);
+    for (i = 0; i < n + 2; i++)
+        n_poly_init(T + i);
+
+    offsets = FLINT_ARRAY_ALLOC(n + 1, slong);
+    shifts  = FLINT_ARRAY_ALLOC(n + 1, slong);
+
     for (j = 0; j < lcAfac->num; j++)
-        nmod_mpoly_evaluate_all_n_poly(lcAfaceval + j, lcAfac->poly + j, salpha, ctx);
+    {
+        nmod_mpoly_struct * P = lcAfac->poly + j;
+
+        for (i = 0; i < n + 1; i++)
+            mpoly_gen_offset_shift_sp(offsets + i, shifts + i, i, P->bits, ctx->minfo);
+
+        mask = (-UWORD(1)) >> (FLINT_BITS - P->bits);
+        N = mpoly_words_per_exp_sp(P->bits, ctx->minfo);
+        _nmod_mpoly_evaluate_rest_n_poly(T, starts, ends, stops, es,
+                                      P->coeffs, P->exps, P->length, 1, alpha,
+                            offsets, shifts, N, mask, n + 1, ctx->ffinfo->mod);
+
+        n_poly_set(lcAfaceval + j, T + 0);
+    }
 
     n_poly_set(d + 0, Auc);
     for (i = 0; i < lcAfac->num; i++)
@@ -138,8 +129,16 @@ cleanup:
         n_poly_clear(d + i);
     flint_free(d);
 
-    n_poly_clear(salpha + 0);
-    flint_free(salpha);
+    for (i = 0; i < n + 2; i++)
+        n_poly_clear(T + i);
+    flint_free(T);
+    flint_free(starts);
+    flint_free(ends);
+    flint_free(stops);
+    flint_free(es);
+
+    flint_free(offsets);
+    flint_free(shifts);
 
     return success;
 }

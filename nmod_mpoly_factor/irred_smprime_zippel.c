@@ -131,7 +131,7 @@ next_alphabetas:
         _n_poly_normalise(alphabetas + i);
     }
 
-    _eval_to_bpoly(Ab, A, alphabetas, ctx);
+    _nmod_mpoly_eval_rest_to_n_bpoly(Ab, A, alphabetas, ctx);
     success = n_bpoly_mod_factor_smprime(Abfc, Abfp, Ab, 0, ctx->ffinfo->mod);
     if (!success)
     {
@@ -231,11 +231,13 @@ next_alphabetas:
         mp_limb_t q;
         FLINT_ASSERT(nmod_mpoly_is_ui(new_lcs->coeffs + 0*r + i, ctx));
         FLINT_ASSERT(nmod_mpoly_length(new_lcs->coeffs + 0*r + i, ctx) == 1);
-        _nmod_mpoly_set_bpoly_var1_zero(fac->coeffs + i, newA->bits, Abfp->coeffs + i, 0, ctx);
+        _nmod_mpoly_set_n_bpoly_var1_zero(fac->coeffs + i, newA->bits,
+                                                     Abfp->coeffs + i, 0, ctx);
         FLINT_ASSERT(fac->coeffs[i].length > 0);
         q = nmod_inv(fac->coeffs[i].coeffs[0], ctx->ffinfo->mod);
         q = nmod_mul(q, new_lcs->coeffs[0*r + i].coeffs[0], ctx->ffinfo->mod);
-        nmod_mpoly_scalar_mul_nmod_invertible(fac->coeffs + i, fac->coeffs + i, q, ctx);
+        nmod_mpoly_scalar_mul_nmod_invertible(fac->coeffs + i,
+                                                      fac->coeffs + i, q, ctx);
     }
 
     nmod_mpolyv_fit_length(tfac, r, ctx);

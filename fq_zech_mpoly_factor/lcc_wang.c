@@ -64,7 +64,6 @@ int fq_zech_mpoly_factor_lcc_wang(
         for (i = 0; i < n + 1; i++)
             mpoly_gen_offset_shift_sp(offsets + i, shifts + i, i, P->bits, ctx->minfo);
 
-
         mask = (-UWORD(1)) >> (FLINT_BITS - P->bits);
         N = mpoly_words_per_exp_sp(P->bits, ctx->minfo);
         _fq_zech_mpoly_eval_rest_fq_zech_poly(T, starts, ends, stops, es,

@@ -15,13 +15,13 @@
 void fq_nmod_mpoly_convert_perm(
     fq_nmod_mpoly_t A,
     flint_bitcnt_t Abits,
-    const fq_nmod_mpoly_ctx_t lctx,
+    const fq_nmod_mpoly_ctx_t Actx,
     const fq_nmod_mpoly_t B,
-    const fq_nmod_mpoly_ctx_t ctx,
+    const fq_nmod_mpoly_ctx_t Bctx,
     const slong * perm)
 {
-    slong n = ctx->minfo->nvars;
-    slong m = lctx->minfo->nvars;
+    slong n = Bctx->minfo->nvars;
+    slong m = Actx->minfo->nvars;
     slong i, k, l;
     slong NA, NB;
     ulong * Aexps;
@@ -36,24 +36,24 @@ void fq_nmod_mpoly_convert_perm(
     Aexps = (ulong *) TMP_ALLOC(m*sizeof(ulong));
     Bexps = (ulong *) TMP_ALLOC(n*sizeof(ulong));
 
-    NA = mpoly_words_per_exp(Abits, lctx->minfo);
-    NB = mpoly_words_per_exp(B->bits, ctx->minfo);
+    NA = mpoly_words_per_exp(Abits, Actx->minfo);
+    NB = mpoly_words_per_exp(B->bits, Bctx->minfo);
 
-    fq_nmod_mpoly_fit_length_set_bits(A, B->length, Abits, ctx);
+    fq_nmod_mpoly_fit_length_set_bits(A, B->length, Abits, Actx);
     A->length = B->length;
     for (i = 0; i < B->length; i++)
     {        
-	    fq_nmod_set(A->coeffs + i, B->coeffs + i, ctx->fqctx);
-	    mpoly_get_monomial_ui(Bexps, B->exps + NB*i, B->bits, ctx->minfo);
+	    fq_nmod_set(A->coeffs + i, B->coeffs + i, Bctx->fqctx);
+	    mpoly_get_monomial_ui(Bexps, B->exps + NB*i, B->bits, Bctx->minfo);
 	    for (k = 0; k < m; k++)
 	    {
 	        l = perm[k];
 	        Aexps[k] = l < 0 ? 0 : Bexps[l];
 	    }
-	    mpoly_set_monomial_ui(A->exps + NA*i, Aexps, Abits, lctx->minfo);
+	    mpoly_set_monomial_ui(A->exps + NA*i, Aexps, Abits, Actx->minfo);
      }  
     TMP_END;
-    fq_nmod_mpoly_sort_terms(A, lctx);
+    fq_nmod_mpoly_sort_terms(A, Actx);
 }
 
 #define USE_ZAS 1
@@ -284,8 +284,6 @@ static int _irreducible_factors(
 
         Lbits = mpoly_fix_bits(Lbits + 1, Lctx->minfo);
 
-flint_printf("Abits: %wd, Lbits: %wu\n", Abits, Lbits);
-
 		fq_nmod_mpoly_convert_perm(L, Lbits, Lctx, A, ctx, perm);
         fq_nmod_mpoly_make_monic(L, L, ctx);
 
@@ -334,40 +332,9 @@ flint_printf("Abits: %wd, Lbits: %wu\n", Abits, Lbits);
             Af->length = Lf->length;
 		    for (i = 0; i < Lf->length; i++)
 		    {
-
-if (!fq_nmod_mpoly_is_canonical(Lf->coeffs + i, Lctx))
-{
-flint_printf("oops 1 i = %wd\n", i);
-fq_nmod_mpoly_print_pretty(Lf->coeffs + i, NULL, Lctx);
-flint_printf("\n");
-fflush(stdout);
-flint_abort();
-}
-
-
                 fq_nmod_mpoly_convert_perm(Af->coeffs + i, Abits, ctx,
                                                   Lf->coeffs + i, Lctx, iperm);
-
-if (!fq_nmod_mpoly_is_canonical(Af->coeffs + i, ctx))
-{
-flint_printf("oops 2 i = %wd\n", i);
-fq_nmod_mpoly_print_pretty(Af->coeffs + i, NULL, ctx);
-flint_printf("\n");
-fflush(stdout);
-flint_abort();
-}
-
                 fq_nmod_mpoly_make_monic(Af->coeffs + i, Af->coeffs + i, ctx);
-
-if (!fq_nmod_mpoly_is_canonical(Af->coeffs + i, ctx))
-{
-flint_printf("oops 3 i = %wd\n", i);
-fq_nmod_mpoly_print_pretty(Af->coeffs + i, NULL, ctx);
-flint_printf("\n");
-fflush(stdout);
-flint_abort();
-}
-
 		    }
         }
 

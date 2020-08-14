@@ -433,3 +433,32 @@ void n_poly_fq_shift_left_scalar_submul(
     flint_free(u);
 }
 
+
+ulong n_poly_fq_remove(
+    n_poly_t f,
+    const n_poly_t g,
+    const fq_nmod_ctx_t ctx)
+{
+    n_poly_t q, r;
+    ulong i = 0;
+
+    n_poly_init(q);
+    n_poly_init(r);
+
+    while (1)
+    {
+        if (f->length < g->length)
+            break;
+        n_poly_fq_divrem(q, r, f, g, ctx);
+        if (r->length == 0)
+            n_poly_swap(q, f);
+        else
+            break;
+        i++;
+    }
+
+    n_poly_clear(q);
+    n_poly_clear(r);
+
+    return i;
+}

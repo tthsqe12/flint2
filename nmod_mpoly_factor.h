@@ -426,13 +426,6 @@ FLINT_DLL int nmod_mpoly_hlift_zippel(slong m, nmod_mpoly_struct * B, slong r,
             const mp_limb_t * alpha, const nmod_mpoly_t A, const slong * degs,
                                const nmod_mpoly_ctx_t ctx, flint_rand_t state);
 
-FLINT_DLL void _eval_to_bpoly(n_bpoly_t E, const nmod_mpoly_t A,
-                 const n_poly_struct * alphabetas, const nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL void _nmod_mpoly_set_bpoly_var1_zero(nmod_mpoly_t A, 
-                           flint_bitcnt_t Abits, const n_bpoly_t B, slong var,
-                                                   const nmod_mpoly_ctx_t ctx);
-
 FLINT_DLL int nmod_mpoly_factor_zassenhaus(nmod_mpoly_factor_t f,
                              const nmod_mpoly_t A, const nmod_mpoly_ctx_t ctx);
 
@@ -441,6 +434,20 @@ FLINT_DLL int nmod_mpoly_factor_wang(nmod_mpoly_factor_t f,
 
 FLINT_DLL int nmod_mpoly_factor_zippel(nmod_mpoly_factor_t f,
                              const nmod_mpoly_t A, const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int _nmod_mpoly_evaluate_rest_n_poly(n_poly_struct * E,
+    slong * starts, slong * ends, slong * stops, ulong * es,
+    const mp_limb_t * Acoeffs, const ulong * Aexps, slong Alen, slong var,
+    const n_poly_struct * alphas, const slong * offsets, const slong * shifts,
+                                 slong N, ulong mask, slong nvars, nmod_t ctx);
+
+FLINT_DLL void _nmod_mpoly_eval_rest_to_n_bpoly(n_bpoly_t E,
+                      const nmod_mpoly_t A, const n_poly_struct * alphabetas,
+                                                   const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void _nmod_mpoly_set_n_bpoly_var1_zero(nmod_mpoly_t A,
+                         flint_bitcnt_t Abits, const n_bpoly_t B, slong var,
+                                                   const nmod_mpoly_ctx_t ctx);
 
 #ifdef __cplusplus
 }

@@ -91,7 +91,7 @@ void check_omega(slong lower, slong upper, const fq_nmod_mpoly_t p, const fq_nmo
 int
 main(void)
 {
-    slong i, j, tmul = 0;
+    slong i, j, tmul = 15;
     FLINT_TEST_INIT(state);
 
     flint_printf("factor_zassenhaus....");
@@ -109,22 +109,23 @@ main(void)
         fq_nmod_mpoly_init(a, ctx);
         fq_nmod_mpoly_init(t, ctx);
 
-        nfacs = 1 + n_randint(state, 4);
+        nfacs = 2 + (5 + n_randint(state, 5))/ctx->minfo->nvars;
         powbound = 1 + n_randint(state, 3);
         powbound = 1 + n_randint(state, powbound);
-        expbound = 2 + 20/nfacs/ctx->minfo->nvars;
+        expbound = 2 + 30/nfacs/ctx->minfo->nvars;
 
         lower = 0;
         fq_nmod_mpoly_one(a, ctx);
         for (j = 0; j < nfacs; j++)
         {
-            pow = 1 + n_randint(state, powbound);
-            len = 1 + n_randint(state, 25/pow/nfacs);
+            len = 1 + n_randint(state, 1 + 20/powbound/nfacs);
             fq_nmod_mpoly_randtest_bound(t, state, len, expbound, ctx);
             if (fq_nmod_mpoly_is_zero(t, ctx))
                 fq_nmod_mpoly_one(t, ctx);
+            pow = 1 + n_randint(state, powbound);
             if (!fq_nmod_mpoly_is_fq_nmod(t, ctx))
                 lower += pow;
+
             fq_nmod_mpoly_pow_ui(t, t, pow, ctx);
             fq_nmod_mpoly_mul(a, a, t, ctx);
         }

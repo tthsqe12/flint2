@@ -16,13 +16,13 @@
 void nmod_mpoly_convert_perm(
     nmod_mpoly_t A,
     flint_bitcnt_t Abits,
-    const nmod_mpoly_ctx_t lctx,
+    const nmod_mpoly_ctx_t Actx,
     const nmod_mpoly_t B,
-    const nmod_mpoly_ctx_t ctx,
+    const nmod_mpoly_ctx_t Bctx,
     const slong * perm)
 {
-    slong n = ctx->minfo->nvars;
-    slong m = lctx->minfo->nvars;
+    slong n = Bctx->minfo->nvars;
+    slong m = Actx->minfo->nvars;
     slong i, k, l;
     slong NA, NB;
     ulong * Aexps;
@@ -37,26 +37,24 @@ void nmod_mpoly_convert_perm(
     Aexps = (ulong *) TMP_ALLOC(m*sizeof(ulong));
     Bexps = (ulong *) TMP_ALLOC(n*sizeof(ulong));
 
-    NA = mpoly_words_per_exp(Abits, lctx->minfo);
-    NB = mpoly_words_per_exp(B->bits, ctx->minfo);
+    NA = mpoly_words_per_exp(Abits, Actx->minfo);
+    NB = mpoly_words_per_exp(B->bits, Bctx->minfo);
 
-    nmod_mpoly_fit_bits(A, Abits, ctx);
-    A->bits = Abits;
-    nmod_mpoly_fit_length(A, B->length, lctx);
+    nmod_mpoly_fit_length_set_bits(A, B->length, Abits, Actx);
     A->length = B->length;
     for (i = 0; i < B->length; i++)
     {        
 	    A->coeffs[i] = B->coeffs[i];
-	    mpoly_get_monomial_ui(Bexps, B->exps + NB*i, B->bits, ctx->minfo);
+	    mpoly_get_monomial_ui(Bexps, B->exps + NB*i, B->bits, Bctx->minfo);
 	    for (k = 0; k < m; k++)
 	    {
 	        l = perm[k];
 	        Aexps[k] = l < 0 ? 0 : Bexps[l];
 	    }
-	    mpoly_set_monomial_ui(A->exps + NA*(i), Aexps, Abits, lctx->minfo);
+	    mpoly_set_monomial_ui(A->exps + NA*i, Aexps, Abits, Actx->minfo);
      }  
     TMP_END;
-    nmod_mpoly_sort_terms(A, lctx);
+    nmod_mpoly_sort_terms(A, Actx);
 }
 
 #define USE_ZAS 1

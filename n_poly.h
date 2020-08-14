@@ -1029,6 +1029,11 @@ FLINT_DLL void n_poly_fq_pow(
     ulong e,
     const fq_nmod_ctx_t ctx);
 
+FLINT_DLL ulong n_poly_fq_remove(
+    n_poly_t f,
+    const n_poly_t g,
+    const fq_nmod_ctx_t ctx);
+
 FLINT_DLL void n_poly_fq_divrem_divconquer_(
     n_poly_t Q,
     n_poly_t R,

@@ -47,20 +47,7 @@ static slong fq_nmod_mpolyu_find_term(const fq_nmod_mpolyu_t A, ulong e)
 
 
 fq_nmod_mpoly_struct * _fq_nmod_mpolyu_get_coeff(fq_nmod_mpolyu_t A,
-                                     ulong pow, const fq_nmod_mpoly_ctx_t uctx);
-
-void _fq_nmod_eval_to_bpoly(
-    n_bpoly_t E,
-    const fq_nmod_mpoly_t A,
-    const n_poly_struct * alphabetas,
-    const fq_nmod_mpoly_ctx_t ctx);
-
-void _fq_nmod_mpoly_set_n_bpoly_fq_var1_zero(
-    fq_nmod_mpoly_t A,
-    flint_bitcnt_t Abits,
-    const n_bpoly_t B,
-    slong var,
-    const fq_nmod_mpoly_ctx_t ctx);
+                                    ulong pow, const fq_nmod_mpoly_ctx_t uctx);
 
 void fq_nmod_poly_product_roots(
     fq_nmod_poly_t master,
@@ -108,7 +95,6 @@ void n_poly_fq_product_roots_fq_nmod(
     n_poly_fq_set_fq_nmod_poly(master, p, ctx);
     fq_nmod_poly_clear(p, ctx);
 }
-
 
 
 void _fq_nmod_mpoly_monomial_evals(
@@ -1245,8 +1231,7 @@ next_alphabetas:
         _n_poly_fq_normalise(alphabetas + i, d);
     }
 
-    _fq_nmod_eval_to_bpoly(Ab, A, alphabetas, ctx);
-
+    _fq_nmod_mpoly_eval_rest_to_n_bpoly_fq(Ab, A, alphabetas, ctx);
     success = n_bpoly_fq_factor_smprime(Abfc, Abfp, Ab, 0, ctx->fqctx);
     if (!success)
     {
