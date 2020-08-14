@@ -284,7 +284,7 @@ static int _irreducible_factors(
 
         Lbits = mpoly_fix_bits(Lbits + 1, Lctx->minfo);
 
-flint_printf("Lbits: %wu\n", Lbits);
+flint_printf("Abits: %wd, Lbits: %wu\n", Abits, Lbits);
 
 		fq_nmod_mpoly_convert_perm(L, Lbits, Lctx, A, ctx, perm);
         fq_nmod_mpoly_make_monic(L, L, ctx);
@@ -334,9 +334,40 @@ flint_printf("Lbits: %wu\n", Lbits);
             Af->length = Lf->length;
 		    for (i = 0; i < Lf->length; i++)
 		    {
+
+if (!fq_nmod_mpoly_is_canonical(Lf->coeffs + i, Lctx))
+{
+flint_printf("oops 1 i = %wd\n", i);
+fq_nmod_mpoly_print_pretty(Lf->coeffs + i, NULL, Lctx);
+flint_printf("\n");
+fflush(stdout);
+flint_abort();
+}
+
+
                 fq_nmod_mpoly_convert_perm(Af->coeffs + i, Abits, ctx,
                                                   Lf->coeffs + i, Lctx, iperm);
+
+if (!fq_nmod_mpoly_is_canonical(Af->coeffs + i, ctx))
+{
+flint_printf("oops 2 i = %wd\n", i);
+fq_nmod_mpoly_print_pretty(Af->coeffs + i, NULL, ctx);
+flint_printf("\n");
+fflush(stdout);
+flint_abort();
+}
+
                 fq_nmod_mpoly_make_monic(Af->coeffs + i, Af->coeffs + i, ctx);
+
+if (!fq_nmod_mpoly_is_canonical(Af->coeffs + i, ctx))
+{
+flint_printf("oops 3 i = %wd\n", i);
+fq_nmod_mpoly_print_pretty(Af->coeffs + i, NULL, ctx);
+flint_printf("\n");
+fflush(stdout);
+flint_abort();
+}
+
 		    }
         }
 

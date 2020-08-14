@@ -166,7 +166,7 @@ main(void)
 flint_printf("i: %wd, powbound: %wu, expbound: %wu\n", i, powbound, expbound);
 fflush(stdout);
 
-fq_nmod_ctx_print_pretty(ctx);
+fq_nmod_ctx_print(ctx->fqctx);
 fflush(stdout);
 
 
