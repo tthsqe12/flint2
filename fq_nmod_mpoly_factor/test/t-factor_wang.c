@@ -58,6 +58,13 @@ fflush(stdout);
 flint_printf("done factor\n");
 fflush(stdout);
 
+
+flint_printf("h: ");
+fq_nmod_mpoly_factor_print_pretty(h, NULL, ctx);
+flint_printf("\n");
+fflush(stdout);
+
+
     for (i = 0; i < g->num; i++)
     {
         if (g->poly[i].length < 1 || !fq_nmod_is_one(g->poly[i].coeffs + 0, ctx->fqctx))
@@ -93,6 +100,20 @@ fflush(stdout);
 
     fq_nmod_mpoly_factor_sort(g, ctx);
     fq_nmod_mpoly_factor_sort(h, ctx);
+
+flint_printf("after sort\n");
+
+
+flint_printf("g: ");
+fq_nmod_mpoly_factor_print_pretty(g, NULL, ctx);
+flint_printf("\n");
+fflush(stdout);
+
+flint_printf("h: ");
+fq_nmod_mpoly_factor_print_pretty(h, NULL, ctx);
+flint_printf("\n");
+fflush(stdout);
+
     if (fq_nmod_mpoly_factor_cmp(g, h, ctx) != 0)
     {
         flint_printf("factorizations do not match\n");
