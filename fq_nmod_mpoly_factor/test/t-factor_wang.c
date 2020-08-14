@@ -166,6 +166,9 @@ main(void)
 flint_printf("i: %wd, powbound: %wu, expbound: %wu\n", i, powbound, expbound);
 fflush(stdout);
 
+fq_nmod_ctx_print_pretty(ctx);
+fflush(stdout);
+
 
         lower = 0;
         fq_nmod_mpoly_one(a, ctx);
