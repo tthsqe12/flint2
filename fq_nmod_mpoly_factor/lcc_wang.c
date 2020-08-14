@@ -94,6 +94,8 @@ int fq_nmod_mpoly_factor_lcc_wang(
     n_poly_t Q, R;
     fq_nmod_mpoly_t t;
 
+flint_printf("fq_nmod_mpoly_factor_lcc_wang called\n");
+
     n_poly_init(Q);
     n_poly_init(R);
     fq_nmod_mpoly_init(t, ctx);
@@ -113,8 +115,13 @@ int fq_nmod_mpoly_factor_lcc_wang(
 
     /* init done */
 
+flint_printf("calling fq_nmod_mpoly_evaluate_all_n_poly_fq\n");
+
     for (j = 0; j < lcAfac->num; j++)
         fq_nmod_mpoly_evaluate_all_n_poly_fq(lcAfaceval + j, lcAfac->poly + j, salpha, ctx);
+
+flint_printf("returngined from fq_nmod_mpoly_evaluate_all_n_poly_fq\n");
+
 
     n_poly_fq_set(d + 0, Auc, ctx->fqctx);
     for (i = 0; i < lcAfac->num; i++)
@@ -176,6 +183,8 @@ cleanup:
 
     n_poly_clear(salpha + 0);
     flint_free(salpha);
+
+flint_printf("fq_nmod_mpoly_factor_lcc_wang returning %d\n", success);
 
     return success;
 }
