@@ -25,17 +25,21 @@ void check_omega(slong lower, slong upper, const fq_nmod_mpoly_t p, const fq_nmo
     fq_nmod_mpoly_factor_init(h, ctx);
     fq_nmod_mpoly_init(q, ctx);
 
+flint_printf("doing factor_wang\n");
     if (!fq_nmod_mpoly_factor_wang(g, p, ctx))
     {
         flint_printf("FAIL:\ncheck factorization 1 could be computed\n");
         flint_abort();        
     }
 
+flint_printf("doing factor\n");
     if (!fq_nmod_mpoly_factor(h, p, ctx))
     {
         flint_printf("FAIL:\ncheck factorization 2 could be computed\n");
         flint_abort();        
     }
+
+flint_printf("done factor\n");
 
     for (i = 0; i < g->num; i++)
     {
@@ -114,6 +118,10 @@ main(void)
         powbound = 1 + n_randint(state, powbound);
         expbound = 2 + 25/nfacs/ctx->minfo->nvars;
 
+flint_printf("i: %wd, powbound: %wu, expbound: %wu\n", i, powbound, expbound);
+fflush(stdout);
+
+
         lower = 0;
         fq_nmod_mpoly_one(a, ctx);
         for (j = 0; j < nfacs; j++)
@@ -125,6 +133,14 @@ main(void)
                 fq_nmod_mpoly_one(t, ctx);
             if (!fq_nmod_mpoly_is_fq_nmod(t, ctx))
                 lower += pow;
+flint_printf("[ length %wd ]\n", t->length);
+fflush(stdout);
+
+flint_printf("*(");
+fq_nmod_mpoly_print_pretty(t, NULL, ctx);
+flint_printf(")^%wu\n", pow);
+fflush(stdout);
+
             fq_nmod_mpoly_pow_ui(t, t, pow, ctx);
             fq_nmod_mpoly_mul(a, a, t, ctx);
         }

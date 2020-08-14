@@ -81,7 +81,7 @@ void check_it(const fq_nmod_mpoly_t p, const fq_nmod_mpoly_ctx_t ctx)
 int
 main(void)
 {
-    slong i, j, tmul = 30;
+    slong i, j, tmul = 0;
     FLINT_TEST_INIT(state);
 
     flint_printf("factor_squarefree....");
