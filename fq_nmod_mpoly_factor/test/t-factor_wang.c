@@ -25,12 +25,23 @@ void check_omega(slong lower, slong upper, const fq_nmod_mpoly_t p, const fq_nmo
     fq_nmod_mpoly_factor_init(h, ctx);
     fq_nmod_mpoly_init(q, ctx);
 
+flint_printf("p: ");
+fq_nmod_mpoly_print_pretty(p, NULL, ctx);
+flint_printf("\n");
+
 flint_printf("doing factor_wang\n");
     if (!fq_nmod_mpoly_factor_wang(g, p, ctx))
     {
         flint_printf("FAIL:\ncheck factorization 1 could be computed\n");
         flint_abort();        
     }
+
+
+flint_printf("g: ");
+fq_nmod_mpoly_factor_print_pretty(g, NULL, ctx);
+flint_printf("\n");
+
+
 
 flint_printf("doing factor\n");
     if (!fq_nmod_mpoly_factor(h, p, ctx))
@@ -61,6 +72,12 @@ flint_printf("done factor\n");
     }
 
     fq_nmod_mpoly_factor_expand(q, g, ctx);
+
+flint_printf("q: ");
+fq_nmod_mpoly_print_pretty(q, NULL, ctx);
+flint_printf("\n");
+
+
     if (!fq_nmod_mpoly_equal(q, p, ctx))
     {
         flint_printf("FAIL:\nfactorization does not match original polynomial\n");
