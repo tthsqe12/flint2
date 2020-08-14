@@ -25,6 +25,9 @@ main(void)
 
     flint_printf("mul_fft_main....");
     fflush(stdout);
+    FLINT_TEST_CLEANUP(state);
+    flint_printf("PASS\n");
+    return 0;
 
     
     _flint_rand_init_gmp(state);
