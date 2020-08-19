@@ -18,6 +18,7 @@ slong _nmod_poly_gcd_euclidean(mp_ptr G, mp_srcptr A, slong lenA,
 {
     slong steps;
     slong lenR1, lenR2 = 0, lenG = 0;
+TMP_INIT;
 
     mp_ptr F, R1, R2, R3 = G, T;
     
@@ -27,7 +28,9 @@ slong _nmod_poly_gcd_euclidean(mp_ptr G, mp_srcptr A, slong lenA,
         return 1;
     }
 
-    F  = _nmod_vec_init(2*lenB - 3);
+TMP_START;
+
+    F  = TMP_ALLOC((2*lenB - 3)*sizeof(mp_limb_t));
     R1 = F;
     R2 = R1 + lenB - 1;
 
@@ -46,13 +49,13 @@ slong _nmod_poly_gcd_euclidean(mp_ptr G, mp_srcptr A, slong lenA,
         if (lenR1 == 0)
         {
             flint_mpn_copyi(G, B, lenB);
-            _nmod_vec_clear(F);
+            TMP_END;
             return lenB;
         }
         else
         {
             G[0] = R1[0];
-            _nmod_vec_clear(F);
+            TMP_END;
             return 1;
         }
     }
@@ -78,7 +81,7 @@ slong _nmod_poly_gcd_euclidean(mp_ptr G, mp_srcptr A, slong lenA,
             flint_mpn_copyi(G, R1, lenR1);
     }
 
-    _nmod_vec_clear(F);
+    TMP_END;
     return lenG;
 }
 
