@@ -16,5 +16,5 @@
 void
 fmpz_lll(fmpz_mat_t B, fmpz_mat_t U, const fmpz_lll_t fl)
 {
-    fmpz_lll_with_removal_ulll(B, U, WORD(250), NULL, fl);
+    fmpz_lll_with_removal_ulll(B, U, WORD(225), NULL, fl);
 }

@@ -17,7 +17,11 @@ slong
 _fmpz_vec_get_d_vec_2exp(double *appv, const fmpz * vec, slong len)
 {
     slong *exp, i, maxexp = 0L;
-    exp = (slong *) flint_malloc(len * sizeof(slong));
+    TMP_INIT;
+
+    TMP_START;
+
+    exp = (slong *) TMP_ALLOC(len * sizeof(slong));
 
     for (i = 0; i < len; i++)
     {
@@ -29,6 +33,7 @@ _fmpz_vec_get_d_vec_2exp(double *appv, const fmpz * vec, slong len)
     for (i = 0; i < len; i++)
         appv[i] = ldexp(appv[i], exp[i] - maxexp);
 
-    flint_free(exp);
+    TMP_END;
+
     return maxexp;
 }

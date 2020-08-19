@@ -22,6 +22,8 @@ fmpz_lll_wrapper_with_removal_knapsack(fmpz_mat_t B, fmpz_mat_t U,
     if ((res == -1)
         || (!fmpz_lll_is_reduced_with_removal(B, fl, gs_B, res, D_BITS)))
     {
+flint_printf("doing more work\n");
+
         if (fl->rt == Z_BASIS && fl->gt == APPROX)
         {
             res = fmpz_lll_d_heuristic_with_removal(B, U, gs_B, fl);
@@ -29,6 +31,9 @@ fmpz_lll_wrapper_with_removal_knapsack(fmpz_mat_t B, fmpz_mat_t U,
                 ||
                 (!fmpz_lll_is_reduced_with_removal(B, fl, gs_B, res, D_BITS)))
             {
+
+flint_printf("calling fmpz_lll_mpf_with_removal\n");
+
                 res = fmpz_lll_mpf_with_removal(B, U, gs_B, fl);
             }
         }
