@@ -294,7 +294,6 @@ FUNC_HEAD
 
                 if (U != NULL)
                 {
-flint_printf("updating U\n");
                     Btmp = _fmpz_vec_init(U->c);
                     _fmpz_vec_set(Btmp, U->rows[kappa2], U->c);
                     for (i = kappa2; i > kappa; i--)
@@ -359,10 +358,7 @@ flint_printf("updating U\n");
                 kappa++;
             }
         }
-/*
-if (num_failed_fast > 10)
-flint_printf("num_failed_fast: %wd\n", num_failed_fast);
-*/
+
 #if TYPE
         if (gs_B != NULL)
         {

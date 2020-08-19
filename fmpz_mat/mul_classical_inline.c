@@ -18,27 +18,41 @@ fmpz_mat_mul_classical_inline(fmpz_mat_t C, const fmpz_mat_t A,
 {
     slong ar, bc, br;
     slong i, j, k;
-
     fmpz a, b;
-    mpz_t t;
+    mpz_t t1, t2;
+    __mpz_struct * cij;
+    mp_limb_t sign, hi, lo, acc[3];
+    __mpz_struct r;
 
-    mp_limb_t au, bu;
-    mp_limb_t pos[3];
-    mp_limb_t neg[3];
+    r._mp_d = acc;
+    r._mp_alloc = 3;
 
     ar = A->r;
     br = B->r;
     bc = B->c;
 
-    mpz_init(t);
+    mpz_init(t1);
+    mpz_init(t2);
 
     for (i = 0; i < ar; i++)
     {
         for (j = 0; j < bc; j++)
         {
-            flint_mpz_set_ui(t, UWORD(0));
+            fmpz * cij_ref = fmpz_mat_entry(C, i, j);
+            int cij_was_big = COEFF_IS_MPZ(*cij_ref);
 
-            pos[2] = pos[1] = pos[0] = neg[2] = neg[1] = neg[0] = UWORD(0);
+            if (cij_was_big)
+            {
+                cij = COEFF_TO_PTR(*cij_ref);
+            }
+            else
+            {
+                cij = t2;
+            }
+
+            flint_mpz_set_ui(cij, UWORD(0));
+
+            acc[2] = acc[1] = acc[0] = UWORD(0);
 
             for (k = 0; k < br; k++)
             {
@@ -52,66 +66,83 @@ fmpz_mat_mul_classical_inline(fmpz_mat_t C, const fmpz_mat_t A,
                 {
                     if (!COEFF_IS_MPZ(b))  /* both are small */
                     {
-                        au = FLINT_ABS(a);
-                        bu = FLINT_ABS(b);
-
-                        umul_ppmm(au, bu, au, bu);
-
-                        if ((a ^ b) >= WORD(0))
-                            add_sssaaaaaa(pos[2], pos[1], pos[0],
-                                          pos[2], pos[1], pos[0], 0, au, bu);
-                        else
-                            add_sssaaaaaa(neg[2], neg[1], neg[0],
-                                          neg[2], neg[1], neg[0], 0, au, bu);
+                        smul_ppmm(hi, lo, a, b);
+                        sign = FLINT_SIGN_EXT(hi);
+                        add_sssaaaaaa(acc[2], acc[1], acc[0],
+                                      acc[2], acc[1], acc[0], sign, hi, lo);
                     }
                     else
                     {
                         if (a >= 0)
-                            flint_mpz_addmul_ui(t, COEFF_TO_PTR(b), a);
+                            flint_mpz_addmul_ui(cij, COEFF_TO_PTR(b), a);
                         else
-                            flint_mpz_submul_ui(t, COEFF_TO_PTR(b), -a);
+                            flint_mpz_submul_ui(cij, COEFF_TO_PTR(b), -a);
                     }
                 }
                 else if (!COEFF_IS_MPZ(b))  /* b is small */
                 {
                     if (b >= 0)
-                        flint_mpz_addmul_ui(t, COEFF_TO_PTR(a), b);
+                        flint_mpz_addmul_ui(cij, COEFF_TO_PTR(a), b);
                     else
-                        flint_mpz_submul_ui(t, COEFF_TO_PTR(a), -b);
+                        flint_mpz_submul_ui(cij, COEFF_TO_PTR(a), -b);
+                }
+                else if (mpz_sgn(cij) == 0)
+                {
+                    mpz_mul(cij, COEFF_TO_PTR(a), COEFF_TO_PTR(b));
+                }
+                else if (COEFF_TO_PTR(a)->_mp_size == +1 ||
+                         COEFF_TO_PTR(a)->_mp_size == -1 ||
+                         COEFF_TO_PTR(b)->_mp_size == +1 ||
+                         COEFF_TO_PTR(b)->_mp_size == -1)
+                {
+                    mpz_addmul(cij, COEFF_TO_PTR(a), COEFF_TO_PTR(b));
                 }
                 else
                 {
-                    mpz_addmul(t, COEFF_TO_PTR(a), COEFF_TO_PTR(b));
+                    mpz_mul(t1, COEFF_TO_PTR(a), COEFF_TO_PTR(b));
+                    mpz_add(cij, cij, t1);
                 }
             }
 
-            if (mpz_sgn(t) != 0 || pos[2] || neg[2] || pos[1] || neg[1])
+            sign = FLINT_SIGN_EXT(acc[2]);
+
+            acc[0] ^= sign;
+            acc[1] ^= sign;
+            acc[2] ^= sign;
+
+            r._mp_size = acc[2] ? 3 : (acc[1] ? 2 : acc[0] != 0);
+
+            if (sign)
             {
-                __mpz_struct r;
+                r._mp_size = -r._mp_size;
+                sub_dddmmmsss(acc[2], acc[1], acc[0],
+                              acc[2], acc[1], acc[0], sign, sign, sign);
+            }
 
-                r._mp_size = pos[2] ? 3 : (pos[1] ? 2 : pos[0] != 0);
-                r._mp_alloc = r._mp_size;
-                r._mp_d = pos;
-
-                mpz_add(t, t, &r);
-
-                r._mp_size = neg[2] ? 3 : (neg[1] ? 2 : neg[0] != 0);
-                r._mp_alloc = r._mp_size;
-                r._mp_d = neg;
-
-                mpz_sub(t, t, &r);
-
-                fmpz_set_mpz(fmpz_mat_entry(C, i, j), t);
+            if (mpz_sgn(cij) == 0)
+            {
+                if (cij_was_big)
+                {
+                    mpz_set(cij, &r);
+                    _fmpz_demote_val(cij_ref);
+                }
+                else
+                {
+                    fmpz_set_mpz(cij_ref, &r);
+                }
             }
             else
             {
-                if (neg[0] > pos[0])
-                    fmpz_neg_ui(fmpz_mat_entry(C, i, j), neg[0] - pos[0]);
+                mpz_add(cij, cij, &r);            
+
+                if (cij_was_big)
+                    _fmpz_demote_val(cij_ref);
                 else
-                    fmpz_set_ui(fmpz_mat_entry(C, i, j), pos[0] - neg[0]);
+                    fmpz_set_mpz(cij_ref, cij);
             }
         }
     }
 
-    mpz_clear(t);
+    mpz_clear(t1);
+    mpz_clear(t2);
 }
