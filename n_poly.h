@@ -104,6 +104,15 @@ typedef struct
 typedef n_poly_stack_struct n_poly_stack_t[1];
 
 
+typedef struct
+{
+    n_bpoly_struct ** array;
+    slong alloc;
+    slong top;
+} n_bpoly_stack_struct;
+
+typedef n_bpoly_stack_struct n_bpoly_stack_t[1];
+
 /*****************************************************************************/
 
 #define SLONG_SWAP(A, B)    \
@@ -406,6 +415,12 @@ void _n_poly_mod_scalar_mul_nmod(n_poly_t A, const n_poly_t B, mp_limb_t c,
     n_poly_fit_length(A, B->length);
     _nmod_vec_scalar_mul_nmod(A->coeffs, B->coeffs, B->length, c, mod);
     A->length = B->length;
+}
+
+N_POLY_INLINE
+void _n_poly_mod_scalar_mul_nmod_inplace(n_poly_t A, mp_limb_t c, nmod_t mod)
+{
+    _nmod_vec_scalar_mul_nmod(A->coeffs, A->coeffs, A->length, c, mod);
 }
 
 FLINT_DLL void n_poly_mod_scalar_mul_ui(n_poly_t A, const n_poly_t B,
@@ -1402,6 +1417,47 @@ void n_poly_stack_give_back(n_poly_stack_t S, slong k)
 
 N_POLY_INLINE
 slong n_poly_stack_size(const n_poly_stack_t S)
+{
+    return S->top;
+}
+
+/*****************************************************************************/
+
+FLINT_DLL void n_bpoly_stack_init(n_bpoly_stack_t S);
+
+FLINT_DLL void n_bpoly_stack_clear(n_bpoly_stack_t S);
+
+FLINT_DLL n_bpoly_struct ** n_bpoly_stack_fit_request(n_bpoly_stack_t S, slong k);
+
+N_POLY_INLINE
+n_bpoly_struct ** n_bpoly_stack_request(n_bpoly_stack_t S, slong k)
+{
+    n_bpoly_struct ** bpoly_top;
+    bpoly_top = n_bpoly_stack_fit_request(S, k);
+    S->top += k;
+    return bpoly_top;
+}
+
+N_POLY_INLINE
+n_bpoly_struct * n_bpoly_stack_take_top(n_bpoly_stack_t S)
+{
+    /* assume the request for 1 has already been fitted */
+    n_bpoly_struct ** bpoly_top;
+    FLINT_ASSERT(S->top + 1 <= S->alloc);
+    bpoly_top = S->array + S->top;
+    S->top += 1;
+    return bpoly_top[0];
+}
+
+N_POLY_INLINE
+void n_bpoly_stack_give_back(n_bpoly_stack_t S, slong k)
+{
+    FLINT_ASSERT(S->top >= k);
+    S->top -= k;
+}
+
+N_POLY_INLINE
+slong n_bpoly_stack_size(const n_bpoly_stack_t S)
 {
     return S->top;
 }
