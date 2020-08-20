@@ -228,8 +228,8 @@ int main(int argc, char *argv[])
     else
     {
         printf("  usage: p-gcd nthreads sparse m1 n1 m2 n2\n");
-        printf("running: p-gcd 4 sparse 7 5 4 8 \n");
-        max_threads = 4;
+        printf("running: p-gcd 8 sparse 7 5 4 8 \n");
+        max_threads = 8;
         name = "sparse";
         m1 = 7;
         n1 = 5;

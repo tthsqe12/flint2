@@ -13,6 +13,8 @@
 #include "nmod_mpoly.h"
 #include "fmpz_mpoly.h"
 #include "fmpz_mod_mpoly.h"
+#include "n_poly.h"
+#include "nmod_mpoly_factor.h"
 
 #define LOW_HALF_MASK ((-UWORD(1)) >> (FLINT_BITS - FLINT_BITS/2))
 
@@ -2033,6 +2035,74 @@ void nmod_mpolyu_pow_skel(
     }
 }
 
+
+mp_limb_t n_poly_mod_eval_step2(
+    n_poly_t Acur,
+    const n_poly_t Ainc,
+    nmod_t mod)
+{
+    slong i, Alen = Acur->length;
+    mp_limb_t * cur = Acur->coeffs;
+    const mp_limb_t * inc = Ainc->coeffs;
+    ulong t0, t1, t2, p0, p1;
+
+    FLINT_ASSERT(2*Alen == Ainc->length);
+
+    t2 = t1 = t0 = 0;
+    for (i = 0; i < Alen; i++)
+    {
+        umul_ppmm(p1, p0, cur[i], inc[2*i + 0]);
+        add_sssaaaaaa(t2, t1, t0, t2, t1, t0, 0, p1, p0);
+        cur[i] = nmod_mul(cur[i], inc[2*i + 1], mod);
+    }
+    NMOD_RED3(t0, t2, t1, t0, mod);
+    return t0;
+}
+
+void nmod_mpolyuu_eval_step2(
+    nmod_mpolyn_t E,
+    n_bpoly_t Acur,
+    const n_polyun_t Ainc,
+    const nmod_mpoly_ctx_t ctx_sp)
+{
+    slong xexp, yexp;
+    slong i;
+    slong Alen = Acur->length;
+    n_polyun_term_struct * Aterms = Ainc->terms;
+    mp_limb_t eval;
+
+    FLINT_ASSERT(Alen == Ainc->length);
+    FLINT_ASSERT(E->bits == FLINT_BITS/2);
+    FLINT_ASSERT(1 == mpoly_words_per_exp_sp(E->bits, ctx_sp->minfo));
+
+    E->length = 0;
+    for (i = 0; i < Alen; i++)
+    {
+        eval = n_poly_mod_eval_step2(Acur->coeffs + i, Aterms[i].coeff,
+                                                          ctx_sp->ffinfo->mod);
+        if (eval == 0)
+        {
+            continue;
+        }
+
+        xexp = Aterms[i].exp >> (FLINT_BITS/2);
+        yexp = Aterms[i].exp & LOW_HALF_MASK;
+
+        if (E->length > 0 && (E->exps[E->length - 1] >> (FLINT_BITS/2)) == xexp)
+        {
+            nmod_poly_set_coeff_ui(E->coeffs + E->length - 1, yexp, eval);
+        }
+        else
+        {
+            nmod_mpolyn_fit_length(E, E->length + 1, ctx_sp);
+            nmod_poly_zero(E->coeffs + E->length);
+            nmod_poly_set_coeff_ui(E->coeffs + E->length, yexp, eval);
+            E->exps[E->length] = xexp << (FLINT_BITS/2);
+            E->length++;
+        }
+    }
+}
+
 void nmod_mpolyuu_use_skel_mul(
     nmod_mpolyn_t E,
     const fmpz_mpolyu_t A,
@@ -2700,6 +2770,133 @@ random_check_ret_t static _random_check(
 }
 
 
+void _mpoly_monomial_evals_nmod(
+    mp_limb_t * E,
+    const ulong * Aexps,
+    flint_bitcnt_t Abits,
+    slong Alen,
+    const mp_limb_t * alpha,
+    slong vstart,
+    const mpoly_ctx_t mctx,
+    nmod_t fctx)
+{
+    slong i, j;
+    slong offset, shift;
+    slong N = mpoly_words_per_exp_sp(Abits, mctx);
+    slong nvars = mctx->nvars;
+    slong * LUToffset;
+    ulong * LUTmask;
+    mp_limb_t * LUTvalue;
+    slong LUTlen;
+    mp_limb_t xpoweval;
+    ulong * inputexpmask;
+    TMP_INIT;
+
+    TMP_START;
+
+    LUToffset = (slong *) TMP_ALLOC(N*FLINT_BITS*sizeof(slong));
+    LUTmask   = (ulong *) TMP_ALLOC(N*FLINT_BITS*sizeof(ulong));
+    LUTvalue  = (mp_limb_t *) TMP_ALLOC(N*FLINT_BITS*sizeof(mp_limb_t));
+
+    inputexpmask = (ulong *) TMP_ALLOC(N*sizeof(ulong));
+    mpoly_monomial_zero(inputexpmask, N);
+    for (i = 0; i < Alen; i++)
+    {
+        for (j = 0; j < N; j++)
+        {
+            inputexpmask[j] |= (Aexps + N*i)[j];
+        }
+    }
+
+    LUTlen = 0;
+    for (j = nvars - 1; j >= vstart; j--)
+    {
+        mpoly_gen_offset_shift_sp(&offset, &shift, j, Abits, mctx);
+
+        xpoweval = alpha[j]; /* xpoweval = alpha[i]^(2^i) */
+        for (i = 0; i < Abits; i++)
+        {
+            LUToffset[LUTlen] = offset;
+            LUTmask[LUTlen] = (UWORD(1) << (shift + i));
+            LUTvalue[LUTlen] = xpoweval;
+            if ((inputexpmask[offset] & LUTmask[LUTlen]) != 0)
+                LUTlen++;
+            xpoweval = nmod_mul(xpoweval, xpoweval, fctx);
+        }
+    }
+    FLINT_ASSERT(LUTlen < N*FLINT_BITS);
+
+    for (i = 0; i < Alen; i++)
+    {
+        xpoweval = 1;
+        for (j = 0; j < LUTlen; j++)
+        {
+            if (((Aexps + N*i)[LUToffset[j]] & LUTmask[j]) != 0)
+            {
+                xpoweval = nmod_mul(xpoweval, LUTvalue[j], fctx);
+            }
+        }
+        E[i] = xpoweval;
+    }
+
+    TMP_END;
+}
+
+
+static void nmod_mpoly_get_eval_helper(
+    n_poly_t Acur,
+    n_poly_t Ainc,
+    const nmod_mpoly_ctx_t ctx_sp,
+    const fmpz_mpoly_t A,
+    const mp_limb_t * alphas,
+    const fmpz_mpoly_ctx_t ctx)
+{
+    mp_limb_t * p, * q;
+    const fmpz * Acoeffs = A->coeffs;
+    slong j, Alen = A->length;
+
+    n_poly_fit_length(Acur, Alen);
+    Acur->length = Alen;
+
+    n_poly_fit_length(Ainc, 2*Alen);
+    Ainc->length = 2*Alen;
+
+    p = Acur->coeffs;
+    _mpoly_monomial_evals_nmod(p, A->exps, A->bits, Alen, alphas, 0,
+                                              ctx->minfo, ctx_sp->ffinfo->mod);
+    q = Ainc->coeffs;
+    for (j = 0; j < Alen; j++)
+    {
+        q[2*j + 0] = fmpz_fdiv_ui(Acoeffs + j, ctx_sp->ffinfo->mod.n);
+        q[2*j + 1] = p[j];
+    }
+}
+
+static void nmod_mpolyu_get_eval_helper(
+    n_bpoly_t Acur,
+    n_polyun_t Ainc,
+    const nmod_mpoly_ctx_t ctx_sp,
+    const fmpz_mpolyu_t A,
+    const mp_limb_t * alphas,
+    const fmpz_mpoly_ctx_t ctx)
+{
+    slong i;
+
+    n_bpoly_fit_length(Acur, A->length);
+    Acur->length = A->length;
+
+    n_polyun_fit_length(Ainc, A->length);
+    Ainc->length = A->length;
+
+    for (i = 0; i < A->length; i++)
+    {
+        Ainc->terms[i].exp = A->exps[i];
+        nmod_mpoly_get_eval_helper(Acur->coeffs + i, Ainc->terms[i].coeff,
+                                           ctx_sp, A->coeffs + i, alphas, ctx);
+    }
+}
+
+
 int fmpz_mpolyuu_gcd_berlekamp_massey(
     fmpz_mpolyu_t G,
     fmpz_mpolyu_t Abar,
@@ -2727,8 +2924,17 @@ int fmpz_mpolyuu_gcd_berlekamp_massey(
     nmod_poly_stack_t Sp_sp;
     nmod_bma_mpoly_t Lambda_sp;
     nmod_mpolyn_t Aeval_sp, Beval_sp, Geval_sp, Abareval_sp, Bbareval_sp;
+
+#if 0
     nmod_mpolycu_t Ainc_sp, Acur_sp, Binc_sp, Bcur_sp, Ared_sp, Bred_sp;
     nmod_mpolyc_t Gammainc_sp, Gammacur_sp, Gammared_sp;
+#endif
+
+    n_poly_t Gammacur_sp;
+    n_bpoly_t Acur_sp, Bcur_sp;
+    n_poly_t Gammainc_sp;
+    n_polyun_t Ainc_sp, Binc_sp;
+
     mp_limb_t p_sp, sshift_sp, last_unlucky_sshift_plus_1_sp, image_count_sp;
     fmpz_t Gammaeval;
     mp_limb_t Gammaeval_sp;
@@ -2744,6 +2950,7 @@ int fmpz_mpolyuu_gcd_berlekamp_massey(
     nmod_zip_mpolyu_t Z;
     slong zip_evals;
     ulong ABtotal_length;
+
 
     FLINT_ASSERT(bits == A->bits);
     FLINT_ASSERT(bits == B->bits);
@@ -2809,6 +3016,14 @@ int fmpz_mpolyuu_gcd_berlekamp_massey(
     nmod_mpolyn_init(Geval_sp, FLINT_BITS/2, ctx_sp);
     nmod_mpolyn_init(Abareval_sp, FLINT_BITS/2, ctx_sp);
     nmod_mpolyn_init(Bbareval_sp, FLINT_BITS/2, ctx_sp);
+
+    n_poly_init(Gammacur_sp);
+    n_bpoly_init(Acur_sp);
+    n_bpoly_init(Bcur_sp);
+    n_poly_init(Gammainc_sp);
+    n_polyun_init(Ainc_sp);
+    n_polyun_init(Binc_sp);
+#if 0
     nmod_mpolyc_init(Gammainc_sp);
     nmod_mpolyc_init(Gammacur_sp);
     nmod_mpolyc_init(Gammared_sp);
@@ -2818,6 +3033,7 @@ int fmpz_mpolyuu_gcd_berlekamp_massey(
     nmod_mpolycu_init(Binc_sp);
     nmod_mpolycu_init(Bcur_sp);
     nmod_mpolycu_init(Bred_sp);
+#endif
     checkalpha_sp = (mp_limb_t *) flint_malloc(ctx->minfo->nvars*sizeof(mp_limb_t));
 
     /* the zippler */
@@ -2849,7 +3065,7 @@ int fmpz_mpolyuu_gcd_berlekamp_massey(
         fmpz_mpolyuu_eval_nmod(Aeval_sp, ctx_sp, A, checkalpha_sp, ctx);
         fmpz_mpolyuu_eval_nmod(Beval_sp, ctx_sp, B, checkalpha_sp, ctx);
 
-        if (Aeval_sp->length == 0 || Beval_sp->length == 0
+        if (Aeval_sp->length < 1 || Beval_sp->length < 1
             || nmod_mpolyn_bidegree(Aeval_sp) != A->exps[0]
             || nmod_mpolyn_bidegree(Beval_sp) != B->exps[0])
         {
@@ -3026,6 +3242,7 @@ pick_bma_prime:
         nmod_mpoly_bma_interpolate_alpha_powers(checkalpha_sp, sshift_sp,
                                                     Ictx, ctx, ctx_sp->ffinfo);
 
+#if 0
         /* set evaluation of monomials */
         nmod_mpoly_set_skel(Gammainc_sp, ctx_sp, Gamma, checkalpha_sp, ctx);
         nmod_mpolyu_set_skel(Ainc_sp, ctx_sp, A, checkalpha_sp, ctx);
@@ -3040,6 +3257,11 @@ pick_bma_prime:
         nmod_mpoly_copy_skel(Gammacur_sp, Gammainc_sp);
         nmod_mpolyu_copy_skel(Acur_sp, Ainc_sp);
         nmod_mpolyu_copy_skel(Bcur_sp, Binc_sp);
+#endif
+
+        nmod_mpoly_get_eval_helper(Gammacur_sp, Gammainc_sp, ctx_sp, Gamma, checkalpha_sp, ctx);
+        nmod_mpolyu_get_eval_helper(Acur_sp, Ainc_sp, ctx_sp, A, checkalpha_sp, ctx);
+        nmod_mpolyu_get_eval_helper(Bcur_sp, Binc_sp, ctx_sp, B, checkalpha_sp, ctx);
 
         image_count_sp = 0;
 
@@ -3055,13 +3277,41 @@ pick_bma_prime:
             /* out of evaluation points alpha^image_count in Fp* */
             goto pick_bma_prime;
         }
-
+#if 0
         Gammaeval_sp = nmod_mpoly_use_skel_mul(Gammared_sp, Gammacur_sp,
                                                   Gammainc_sp, ctx_sp->ffinfo);
-        nmod_mpolyuu_use_skel_mul(Aeval_sp, A, Ared_sp, Acur_sp, Ainc_sp, ctx_sp);
-        nmod_mpolyuu_use_skel_mul(Beval_sp, B, Bred_sp, Bcur_sp, Binc_sp, ctx_sp);
+        nmod_mpolyuu_use_skel_mul(old_Aeval_sp, A, Ared_sp, Acur_sp, Ainc_sp, ctx_sp);
+        nmod_mpolyuu_use_skel_mul(old_Beval_sp, B, Bred_sp, Bcur_sp, Binc_sp, ctx_sp);
 
-        if (Aeval_sp->length == 0 || Beval_sp->length == 0
+
+if (Gammaeval_sp != n_poly_mod_eval_step(GammaEH_sp, ctx_sp->ffinfo->mod))
+{
+flint_printf("oops G\n");
+flint_abort();
+}
+
+nmod_mpolyuu_eval_step(new_Aeval_sp, AEH_sp, ctx_sp);
+
+if (!nmod_mpolyn_equal(new_Aeval_sp, old_Aeval_sp, ctx_sp))
+{
+flint_printf("oops A\n");
+flint_abort();
+}
+
+nmod_mpolyuu_eval_step(new_Beval_sp, BEH_sp, ctx_sp);
+
+if (!nmod_mpolyn_equal(new_Aeval_sp, old_Aeval_sp, ctx_sp))
+{
+flint_printf("oops B\n");
+flint_abort();
+}
+#endif
+
+        Gammaeval_sp = n_poly_mod_eval_step2(Gammacur_sp, Gammainc_sp, ctx_sp->ffinfo->mod);
+        nmod_mpolyuu_eval_step2(Aeval_sp, Acur_sp, Ainc_sp, ctx_sp);
+        nmod_mpolyuu_eval_step2(Beval_sp, Bcur_sp, Binc_sp, ctx_sp);
+
+        if (Aeval_sp->length < 1 || Beval_sp->length < 1
             || nmod_mpolyn_bidegree(Aeval_sp) != A->exps[0]
             || nmod_mpolyn_bidegree(Beval_sp) != B->exps[0])
         {
@@ -3413,6 +3663,7 @@ pick_zip_prime:
     /* set up the zippler */
     nmod_zip_mpolyu_set_skel(Z, ctx_sp, H, checkalpha_sp, ctx);
 
+#if 0
     /* set evaluation of monomials */
     nmod_mpoly_set_skel(Gammainc_sp, ctx_sp, Gamma, checkalpha_sp, ctx);
     nmod_mpolyu_set_skel(Ainc_sp, ctx_sp, A, checkalpha_sp, ctx);
@@ -3427,13 +3678,46 @@ pick_zip_prime:
     nmod_mpoly_copy_skel(Gammacur_sp, Gammainc_sp);
     nmod_mpolyu_copy_skel(Acur_sp, Ainc_sp);
     nmod_mpolyu_copy_skel(Bcur_sp, Binc_sp);
+#endif
+
+    nmod_mpoly_get_eval_helper(Gammacur_sp, Gammainc_sp, ctx_sp, Gamma, checkalpha_sp, ctx);
+    nmod_mpolyu_get_eval_helper(Acur_sp, Ainc_sp, ctx_sp, A, checkalpha_sp, ctx);
+    nmod_mpolyu_get_eval_helper(Bcur_sp, Binc_sp, ctx_sp, B, checkalpha_sp, ctx);
 
 next_zip_image:
-
+#if 0
     Gammaeval_sp = nmod_mpoly_use_skel_mul(Gammared_sp, Gammacur_sp,
                                                   Gammainc_sp, ctx_sp->ffinfo);
-    nmod_mpolyuu_use_skel_mul(Aeval_sp, A, Ared_sp, Acur_sp, Ainc_sp, ctx_sp);
-    nmod_mpolyuu_use_skel_mul(Beval_sp, B, Bred_sp, Bcur_sp, Binc_sp, ctx_sp);
+    nmod_mpolyuu_use_skel_mul(old_Aeval_sp, A, Ared_sp, Acur_sp, Ainc_sp, ctx_sp);
+    nmod_mpolyuu_use_skel_mul(old_Beval_sp, B, Bred_sp, Bcur_sp, Binc_sp, ctx_sp);
+
+if (Gammaeval_sp != n_poly_mod_eval_step(GammaEH_sp, ctx_sp->ffinfo->mod))
+{
+flint_printf("oops G\n");
+flint_abort();
+}
+
+nmod_mpolyuu_eval_step(new_Aeval_sp, AEH_sp, ctx_sp);
+
+if (!nmod_mpolyn_equal(new_Aeval_sp, old_Aeval_sp, ctx_sp))
+{
+flint_printf("oops A\n");
+flint_abort();
+}
+
+nmod_mpolyuu_eval_step(new_Beval_sp, BEH_sp, ctx_sp);
+
+if (!nmod_mpolyn_equal(new_Aeval_sp, old_Aeval_sp, ctx_sp))
+{
+flint_printf("oops B\n");
+flint_abort();
+}
+#endif
+
+    Gammaeval_sp = n_poly_mod_eval_step2(Gammacur_sp, Gammainc_sp, ctx_sp->ffinfo->mod);
+    nmod_mpolyuu_eval_step2(Aeval_sp, Acur_sp, Ainc_sp, ctx_sp);
+    nmod_mpolyuu_eval_step2(Beval_sp, Bcur_sp, Binc_sp, ctx_sp);
+
 
     if (Aeval_sp->length == 0 || Beval_sp->length == 0
         || nmod_mpolyn_bidegree(Aeval_sp) != A->exps[0]
@@ -3562,11 +3846,23 @@ cleanup:
 
     /* machine precision workspace */
     flint_free(checkalpha_sp);
+
     nmod_mpolyn_clear(Aeval_sp, ctx_sp);
     nmod_mpolyn_clear(Beval_sp, ctx_sp);
     nmod_mpolyn_clear(Geval_sp, ctx_sp);
     nmod_mpolyn_clear(Abareval_sp, ctx_sp);
     nmod_mpolyn_clear(Bbareval_sp, ctx_sp);
+
+    n_poly_clear(Gammacur_sp);
+    n_bpoly_clear(Acur_sp);
+    n_bpoly_clear(Bcur_sp);
+
+    n_poly_clear(Gammainc_sp);
+    n_polyun_clear(Ainc_sp);
+    n_polyun_clear(Binc_sp);
+
+
+#if 0
     nmod_mpolyc_clear(Gammainc_sp);
     nmod_mpolyc_clear(Gammacur_sp);
     nmod_mpolyc_clear(Gammared_sp);
@@ -3576,6 +3872,7 @@ cleanup:
     nmod_mpolycu_clear(Binc_sp);
     nmod_mpolycu_clear(Bcur_sp);
     nmod_mpolycu_clear(Bred_sp);
+#endif
     nmod_bma_mpoly_clear(Lambda_sp);
     nmod_poly_stack_clear(Sp_sp);
     nmod_mpoly_ctx_clear(ctx_sp);
