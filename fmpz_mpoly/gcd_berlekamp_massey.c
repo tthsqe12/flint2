@@ -72,6 +72,9 @@ void n_bpoly_scalar_mul_nmod(
 
     FLINT_ASSERT(c != 0);
 
+    if (c == 1)
+        return;
+
     for (i = 0; i < A->length; i++)
         _n_poly_mod_scalar_mul_nmod_inplace(A->coeffs + i, c, ctx);
 }
@@ -83,7 +86,11 @@ void n_bpoly_mod_content_last(n_poly_t g, const n_bpoly_t A, nmod_t ctx)
 
     n_poly_zero(g);
     for (i = 0; i < A->length; i++)
+    {
         n_poly_mod_gcd(g, g, A->coeffs + i, ctx);
+        if (n_poly_is_one(g))
+            break;
+    }
 }
 
 void n_bpoly_mod_divexact_last(n_bpoly_t A, const n_poly_t b, nmod_t ctx)
@@ -91,8 +98,12 @@ void n_bpoly_mod_divexact_last(n_bpoly_t A, const n_poly_t b, nmod_t ctx)
     slong i;
     n_poly_struct * t;
 
-    if (n_poly_is_one(b))
+    if (b->length == 1)
+    {
+        if (b->coeffs[0] != 1)
+            n_bpoly_scalar_mul_nmod(A, nmod_inv(b->coeffs[0], ctx), ctx);
         return;
+    }
 
     n_bpoly_fit_length(A, A->length + 1);
 
@@ -100,6 +111,9 @@ void n_bpoly_mod_divexact_last(n_bpoly_t A, const n_poly_t b, nmod_t ctx)
 
     for (i = 0; i < A->length; i++)
     {
+        if (A->coeffs[i].length < 1)
+            continue;
+
         n_poly_mod_div(t, A->coeffs + i, b, ctx);
         n_poly_swap(A->coeffs + i, t);
     }
@@ -120,6 +134,9 @@ void n_bpoly_mod_mul_last(n_bpoly_t A, const n_poly_t b, nmod_t ctx)
 
     for (i = 0; i < A->length; i++)
     {
+        if (A->coeffs[i].length < 1)
+            continue;
+
         n_poly_mod_mul(t, A->coeffs + i, b, ctx);
         n_poly_swap(A->coeffs + i, t);
     }
@@ -206,14 +223,14 @@ int n_bpoly_mod_gcd_brown_smprime(
     n_poly_fit_length(alphapow, FLINT_MAX(WORD(3), bound + 1));
     n_poly_one(modulus);
 
+    use_stab = 1;
+    gstab = bstab = astab = 0;
+
     if ((ctx.n & UWORD(1)) == UWORD(0))
     {
         success = 0;
         goto cleanup;
     }
-
-    use_stab = 1;
-    gstab = bstab = astab = 0;
 
     alpha = (ctx.n - UWORD(1))/UWORD(2);
 

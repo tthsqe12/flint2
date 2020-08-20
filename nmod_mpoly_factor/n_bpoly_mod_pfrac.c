@@ -133,10 +133,33 @@ int n_bpoly_mod_interp_crt_2sm_poly(
         FvalueB = nmod_sub(FvalueB, Bvalue, mod);
         u = nmod_sub(FvalueB, FvalueA, mod);
         v = nmod_mul(mod.n - alpha, nmod_add(FvalueB, FvalueA, mod), mod);
-        if ((u | v) != 0)
+        if (u != 0 || v != 0)
         {
+
+            if (u != 0)
+            {
+                _n_poly_mod_scalar_mul_nmod(Tcoeffs + i, modulus, u, mod);
+                n_poly_shift_left(Tcoeffs + i, Tcoeffs + i, 1);
+                if (v != 0)
+                {
+                    _nmod_vec_scalar_addmul_nmod(Tcoeffs[i].coeffs,
+                                    modulus->coeffs, modulus->length, v, mod);
+                }
+            }
+            else
+            {
+                _n_poly_mod_scalar_mul_nmod(Tcoeffs + i, modulus, v, mod);
+            }
+
+            if (Fvalue->length > Tcoeffs[i].length)
+            {
+                flint_printf("oops");
+                flint_abort();
+            }
+
+            _nmod_vec_add(Tcoeffs[i].coeffs, Tcoeffs[i].coeffs, Fvalue->coeffs, Fvalue->length, mod);
+
             changed = 1;
-            n_poly_mod_addmul_linear(Tcoeffs + i, Fvalue, modulus, u, v, mod);
         }
         else
         {

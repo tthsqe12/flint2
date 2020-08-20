@@ -801,25 +801,46 @@ void n_poly_mod_addmul_linear(
     Bcoeffs = B->coeffs;
     Ccoeffs = C->coeffs;
 
-    for (i = 0; i < Alen; i++)
+    if (0 && d1 == 0)
     {
-        ulong p1, p0, t0 = 0, t1 = 0, t2 = 0;
+        for (i = 0; i < Alen; i++)
+        {
+            ulong p1, p0, t0 = 0, t1 = 0, t2 = 0;
 
-        if (i < Blen)
-        {
-            t0 = Bcoeffs[i];
+            if (i < Blen)
+            {
+                t0 = Bcoeffs[i];
+            }
+            if (i < Clen)
+            {
+                umul_ppmm(p1, p0, Ccoeffs[i], d0);
+                add_ssaaaa(t1, t0, t1, t0, p1, p0);
+            }
+            NMOD_RED3(Acoeffs[i], t2, t1, t0, ctx);
         }
-        if (i < Clen)
+    }
+    else
+    {
+        for (i = 0; i < Alen; i++)
         {
-            umul_ppmm(p1, p0, Ccoeffs[i], d0);
-            add_ssaaaa(t1, t0, t1, t0, p1, p0);
+            ulong p1, p0, t0 = 0, t1 = 0, t2 = 0;
+
+            if (i < Blen)
+            {
+                t0 = Bcoeffs[i];
+            }
+            if (i < Clen)
+            {
+                umul_ppmm(p1, p0, Ccoeffs[i], d0);
+                add_ssaaaa(t1, t0, t1, t0, p1, p0);
+            }
+            if (0 < i && i - 1 < Clen)
+            {
+                umul_ppmm(p1, p0, Ccoeffs[i - 1], d1);
+                add_sssaaaaaa(t2, t1, t0, t2, t1, t0, 0, p1, p0);
+            }
+            NMOD_RED3(Acoeffs[i], t2, t1, t0, ctx);
         }
-        if (0 < i && i - 1 < Clen)
-        {
-            umul_ppmm(p1, p0, Ccoeffs[i - 1], d1);
-            add_sssaaaaaa(t2, t1, t0, t2, t1, t0, 0, p1, p0);
-        }
-        NMOD_RED3(Acoeffs[i], t2, t1, t0, ctx);
     }
 
     A->length = Alen;
