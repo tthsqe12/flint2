@@ -34,6 +34,7 @@
 #include "mpoly.h"
 #include "nmod_mpoly.h"
 #include "fmpz_mod.h"
+#include "n_poly.h"
 
 #ifdef __cplusplus
  extern "C" {
@@ -1114,6 +1115,9 @@ FLINT_DLL void fmpz_mpolyu_fit_length(fmpz_mpolyu_t A, slong length,
 
 FLINT_DLL void fmpz_mpolyu_one(fmpz_mpolyu_t A, const fmpz_mpoly_ctx_t uctx);
 
+FLINT_DLL int fmpz_mpolyu_equal(const fmpz_mpolyu_t A, const fmpz_mpolyu_t B,
+                                                  const fmpz_mpoly_ctx_t uctx);
+
 FLINT_DLL void fmpz_mpolyu_set(fmpz_mpolyu_t A, const fmpz_mpolyu_t B,
                                                   const fmpz_mpoly_ctx_t uctx);
 
@@ -1450,8 +1454,9 @@ FLINT_DLL void nmod_zip_mpolyu_set_skel(nmod_zip_mpolyu_t Z,
 
 FLINT_DLL void nmod_zip_mpolyuu_print(const nmod_zip_mpolyu_t A);
 
-FLINT_DLL int nmod_zip_mpolyuu_add_point(nmod_zip_mpolyu_t L,
-                                                        const nmod_mpolyn_t A);
+FLINT_DLL int nmod_zip_mpolyuu_add_point(
+    nmod_zip_mpolyu_t L,
+    const n_bpoly_t A);
 
 typedef enum {
     nmod_zip_find_coeffs_good,
@@ -1473,20 +1478,6 @@ FLINT_DLL int fmpz_mpoly_repack_bits_inplace(fmpz_mpoly_t A, flint_bitcnt_t Abit
 
 FLINT_DLL int fmpz_mpolyu_repack_bits(fmpz_mpolyu_t A, flint_bitcnt_t Abits,
                                                    const fmpz_mpoly_ctx_t ctx);
-
-FLINT_DLL void fmpz_mpoly_set_bits(fmpz_mpoly_t A, flint_bitcnt_t Abits,
-                                                   const fmpz_mpoly_ctx_t ctx);
-
-FLINT_DLL void fmpz_mpolyu_set_bits(fmpz_mpolyu_t A, flint_bitcnt_t Abits,
-                                                   const fmpz_mpoly_ctx_t ctx);
-
-FLINT_DLL int fmpz_mpolyuu_eval_all_but_one_nmod(slong * out_deg,
-                        nmod_poly_t out, const fmpz_mpolyu_t A, slong var,
-                               mp_limb_t * values, const fmpz_mpoly_ctx_t ctx);
-
-FLINT_DLL slong fmpz_mpolyuu_gcd_degree_bound_minor(slong * Adeg, slong * Bdeg,
-                      const fmpz_mpolyu_t A, const fmpz_mpolyu_t B, slong var,
-                               const fmpz_mpoly_ctx_t ctx, flint_rand_t state);
 
 FLINT_DLL void fmpz_mpoly_ksub_content(fmpz_t content, const fmpz_mpoly_t A,
                             const ulong * subdegs, const fmpz_mpoly_ctx_t ctx);
