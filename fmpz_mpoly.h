@@ -1115,9 +1115,6 @@ FLINT_DLL void fmpz_mpolyu_fit_length(fmpz_mpolyu_t A, slong length,
 
 FLINT_DLL void fmpz_mpolyu_one(fmpz_mpolyu_t A, const fmpz_mpoly_ctx_t uctx);
 
-FLINT_DLL int fmpz_mpolyu_equal(const fmpz_mpolyu_t A, const fmpz_mpolyu_t B,
-                                                  const fmpz_mpoly_ctx_t uctx);
-
 FLINT_DLL int fmpz_mpolyu_equal_upto_unit(const fmpz_mpolyu_t A,
                             const fmpz_mpolyu_t B, const fmpz_mpoly_ctx_t ctx);
 
@@ -1445,9 +1442,6 @@ FLINT_DLL int fmpz_mpolyu_addinterp_zip(fmpz_mpolyu_t H, const fmpz_t Hmodulus,
                           const nmod_zip_mpolyu_t Z, const nmodf_ctx_t ffinfo);
 
 FLINT_DLL int fmpz_mpoly_repack_bits_inplace(fmpz_mpoly_t A, flint_bitcnt_t Abits,
-                                                   const fmpz_mpoly_ctx_t ctx);
-
-FLINT_DLL int fmpz_mpolyu_repack_bits(fmpz_mpolyu_t A, flint_bitcnt_t Abits,
                                                    const fmpz_mpoly_ctx_t ctx);
 
 FLINT_DLL void fmpz_mpoly_ksub_content(fmpz_t content, const fmpz_mpoly_t A,

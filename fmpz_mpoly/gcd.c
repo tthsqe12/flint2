@@ -568,7 +568,6 @@ cleanup:
 }
 
 
-
 static int _try_divides(
     fmpz_mpoly_t G,
     const fmpz_mpoly_t A,
@@ -748,7 +747,6 @@ static void _worker_convertuu(void * varg)
         fmpz_mpolyu_divexact_mpoly_inplace(arg->Puu, arg->Pcontent, arg->uctx);
     }
 }
-
 
 static int _try_bma(
     fmpz_mpoly_t G,

@@ -2360,6 +2360,7 @@ next_zip_image:
         goto cleanup;
     }
 
+#if 0
     if (w->which_check == 1)
     {
         fmpz_mpolyu_divexact_mpoly(Abar, w->H, 1, Hcontent, ctx);
@@ -2448,6 +2449,36 @@ next_zip_image:
             }
         }
     }
+#else
+    if (w->which_check == 1)
+    {
+        fmpz_mpolyu_divexact_mpoly(Abar, w->H, 1, Hcontent, ctx);
+        if (!fmpz_mpolyuu_divides(G, A, Abar, 2, ctx) ||
+            !fmpz_mpolyuu_divides(Bbar, B, G, 2, ctx))
+        {
+            goto pick_zip_prime;
+        }
+    }
+    else if (w->which_check == 2)
+    {
+        fmpz_mpolyu_divexact_mpoly(Bbar, w->H, 1, Hcontent, ctx);
+        if (!fmpz_mpolyuu_divides(G, B, Bbar, 2, ctx) ||
+            !fmpz_mpolyuu_divides(Abar, A, G, 2, ctx))
+        {
+            goto pick_zip_prime;
+        }
+    }
+    else
+    {
+        FLINT_ASSERT(w->which_check == 0);
+        fmpz_mpolyu_divexact_mpoly(G, w->H, 1, Hcontent, ctx);
+        if (!fmpz_mpolyuu_divides(Abar, A, G, 2, ctx) ||
+            !fmpz_mpolyuu_divides(Bbar, B, G, 2, ctx))
+        {
+            goto pick_zip_prime;
+        }
+    }
+#endif
 
     success = 1;
 

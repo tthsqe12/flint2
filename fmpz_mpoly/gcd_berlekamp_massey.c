@@ -590,11 +590,10 @@ int nmod_mpoly_bma_get_fmpz_mpoly(
             continue;
         }
 
-        fmpz_set_ui(Acoeff + Alen, V0);
         if (fpctx->mod.n - V0 < V0)
-        {
-            fmpz_sub_ui(Acoeff + Alen, Acoeff + Alen, fpctx->mod.n);
-        }
+            fmpz_neg_ui(Acoeff + Alen, fpctx->mod.n - V0);
+        else
+            fmpz_set_ui(Acoeff + Alen, V0);
 
         mpoly_monomial_zero(Aexp + N*Alen, N);
         new_exp = nmod_discrete_log_pohlig_hellman_run(Ictx->dlogenv_sp, roots[i]);
@@ -1810,27 +1809,6 @@ void fmpz_mpoly_eval_fmpz_mod(
     TMP_END;
 }
 
-/* take coeffs from [0, p) to (-p/2, p/2]
-*/
-void fmpz_mpolyu_symmetrize_coeffs(
-    fmpz_mpolyu_t A,
-    const fmpz_mpoly_ctx_t ctx,
-    const fmpz_mod_ctx_t fpctx)
-{
-    slong i, j;
-    fmpz_mpoly_struct * Ac;
-
-    for (i = 0; i < A->length; i++)
-    {
-        Ac = A->coeffs + i;
-        for (j = 0; j < Ac->length; j++)
-        {
-            fmpz_smod(Ac->coeffs + j, Ac->coeffs + j,
-                                                  fmpz_mod_ctx_modulus(fpctx));
-        }
-    }
-}
-
 
 void fmpz_mpolyuu_eval_nmod(
     n_bpoly_t E,
@@ -2285,7 +2263,6 @@ void n_bpoly_set_mpolyn2(
 }
 
 
-
 nmod_zip_find_coeffs_ret_t nmod_zip_find_coeffs(
     nmod_zip_t Z,
     nmod_poly_t master,
@@ -2407,34 +2384,6 @@ int fmpz_mpolyu_addinterp_zip(
 
     fmpz_clear(t);
     return changed;
-}
-
-
-int fmpz_mpolyu_repack_bits(
-    fmpz_mpolyu_t A,
-    flint_bitcnt_t Abits,
-    const fmpz_mpoly_ctx_t ctx)
-{
-    flint_bitcnt_t org_bits = A->bits;
-    int success;
-    slong i, j;
-
-    for (i = 0; i < A->length; i++)
-    {
-        FLINT_ASSERT((A->coeffs + i)->bits == A->bits);
-        success = fmpz_mpoly_repack_bits_inplace(A->coeffs + i, Abits, ctx);
-        if (!success)
-        {
-            /* repack changed coeffs */
-            for (j = 0; j < i; j++)
-            {
-                success = fmpz_mpoly_repack_bits_inplace(A->coeffs + j, org_bits, ctx);
-                FLINT_ASSERT(success);
-            }
-            return 0;
-        }
-    }
-    return 1;
 }
 
 
@@ -3736,10 +3685,8 @@ int fmpz_mpoly_gcd_berlekamp_massey(
                                            perm, shift, stride, NULL, NULL, 0);
 
     success = fmpz_mpolyu_content_mpoly_threaded_pool(Ac, Auu, uctx, NULL, 0);
-
     success = success &&
               fmpz_mpolyu_content_mpoly_threaded_pool(Bc, Buu, uctx, NULL, 0);
-
     if (!success)
         goto cleanup;
 
@@ -3748,7 +3695,6 @@ int fmpz_mpoly_gcd_berlekamp_massey(
 
     success = _fmpz_mpoly_gcd_threaded_pool(Gamma, wbits, Auu->coeffs + 0,
                                             Buu->coeffs + 0, uctx, NULL, 0);
-
     if (!success)
         goto cleanup;
 
