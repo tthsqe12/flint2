@@ -18,7 +18,6 @@ slong _nmod_poly_gcd_euclidean(mp_ptr G, mp_srcptr A, slong lenA,
 {
     slong steps;
     slong lenR1, lenR2 = 0, lenG = 0;
-TMP_INIT;
 
     mp_ptr F, R1, R2, R3 = G, T;
     
@@ -28,9 +27,7 @@ TMP_INIT;
         return 1;
     }
 
-TMP_START;
-
-    F  = TMP_ALLOC((2*lenB - 3)*sizeof(mp_limb_t));
+    F  = _nmod_vec_init(2*lenB - 3);
     R1 = F;
     R2 = R1 + lenB - 1;
 
@@ -49,13 +46,13 @@ TMP_START;
         if (lenR1 == 0)
         {
             flint_mpn_copyi(G, B, lenB);
-            TMP_END;
+            _nmod_vec_clear(F);
             return lenB;
         }
         else
         {
             G[0] = R1[0];
-            TMP_END;
+            _nmod_vec_clear(F);
             return 1;
         }
     }
@@ -81,7 +78,7 @@ TMP_START;
             flint_mpn_copyi(G, R1, lenR1);
     }
 
-    TMP_END;
+    _nmod_vec_clear(F);
     return lenG;
 }
 

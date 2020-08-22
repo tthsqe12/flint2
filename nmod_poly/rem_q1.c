@@ -16,7 +16,7 @@
 #include "nmod_poly.h"
 #include "ulong_extras.h"
 
-#if 0
+#if 1
 
 void _nmod_poly_rem_q1(mp_ptr R, 
                        mp_srcptr A, slong lenA, mp_srcptr B, slong lenB,
