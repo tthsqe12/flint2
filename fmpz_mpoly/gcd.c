@@ -871,8 +871,8 @@ static int _try_bma(
         goto done;
     }
 
-    _fmpz_mpoly_gcd_threaded_pool(Gamma, wbits, Auu->coeffs + 0, Buu->coeffs + 0,
-                                                   uctx, handles, num_handles);
+    success = _fmpz_mpoly_gcd_threaded_pool(Gamma, wbits, Auu->coeffs + 0,
+                                 Buu->coeffs + 0, uctx, handles, num_handles);
     if (!success)
         goto cleanup;
 
