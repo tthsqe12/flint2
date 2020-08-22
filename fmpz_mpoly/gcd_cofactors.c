@@ -620,7 +620,18 @@ static int _try_bma(
     FLINT_ASSERT(Auu->length > 1);
     FLINT_ASSERT(Buu->length > 1);
 
-    _fmpz_mpoly_gcd_threaded_pool(Gamma, wbits, Auu->coeffs + 0,
+    success = fmpz_mpolyu_equal_upto_unit(Auu, Buu, uctx);
+    if (success != 0)
+    {
+        fmpz_mpolyu_swap(Guu, Auu, uctx);
+        fmpz_mpolyu_one(Abaruu, uctx);
+        fmpz_mpolyu_one(Bbaruu, uctx);
+        if (success < 0)
+            fmpz_mpoly_neg(Bbaruu->coeffs + 0, Bbaruu->coeffs + 0, uctx);
+        goto done;
+    }
+
+    success = _fmpz_mpoly_gcd_threaded_pool(Gamma, wbits, Auu->coeffs + 0,
                                   Buu->coeffs + 0, uctx, handles, num_handles);
     if (!success)
         goto cleanup;
@@ -632,9 +643,10 @@ static int _try_bma(
                                                         Auu, Buu, Gamma, uctx);
     if (!success)
         goto cleanup;
+done:
 
-    success = _fmpz_mpoly_gcd_cofactors_threaded_pool(Gc, wbits, Abarc, wbits, Bbarc, wbits,
-                                           Ac, Bc, uctx, handles, num_handles);
+    success = _fmpz_mpoly_gcd_cofactors_threaded_pool(Gc, wbits, Abarc, wbits,
+                             Bbarc, wbits, Ac, Bc, uctx, handles, num_handles);
     if (!success)
         goto cleanup;
 

@@ -1118,6 +1118,9 @@ FLINT_DLL void fmpz_mpolyu_one(fmpz_mpolyu_t A, const fmpz_mpoly_ctx_t uctx);
 FLINT_DLL int fmpz_mpolyu_equal(const fmpz_mpolyu_t A, const fmpz_mpolyu_t B,
                                                   const fmpz_mpoly_ctx_t uctx);
 
+FLINT_DLL int fmpz_mpolyu_equal_upto_unit(const fmpz_mpolyu_t A,
+                            const fmpz_mpolyu_t B, const fmpz_mpoly_ctx_t ctx);
+
 FLINT_DLL void fmpz_mpolyu_set(fmpz_mpolyu_t A, const fmpz_mpolyu_t B,
                                                   const fmpz_mpoly_ctx_t uctx);
 
@@ -1341,43 +1344,11 @@ FLINT_DLL int fmpz_mpoly_geobucket_divides_inplace(fmpz_mpoly_geobucket_t B1,
                         fmpz_mpoly_geobucket_t B2, const fmpz_mpoly_ctx_t ctx);
 
 
-/* Helpers for gcd_berlekamp_massey ******************************************/
+/* misc helpers *************************************************************/
 
 /*
-    nmod_mpoly "skeletons" - just the coefficients
-*/
-typedef struct
-{
-   mp_limb_t * coeffs;
-   slong alloc;
-   slong length;
-} nmod_mpolyc_struct;
-
-typedef nmod_mpolyc_struct nmod_mpolyc_t[1];
-
-FLINT_DLL void nmod_mpolyc_init(nmod_mpolyc_t A);
-
-FLINT_DLL void nmod_mpolyc_clear(nmod_mpolyc_t A);
-
-FLINT_DLL void nmod_mpolyc_fit_length(nmod_mpolyc_t A, slong length);
-
-typedef struct
-{
-   nmod_mpolyc_struct * coeffs;
-   slong alloc;
-   slong length;
-} nmod_mpolycu_struct;
-
-typedef nmod_mpolycu_struct nmod_mpolycu_t[1];
-
-FLINT_DLL void nmod_mpolycu_init(nmod_mpolycu_t A);
-
-FLINT_DLL void nmod_mpolycu_clear(nmod_mpolycu_t A);
-
-FLINT_DLL void nmod_mpolycu_fit_length(nmod_mpolycu_t A, slong length);
-
-/*
-    fmpz_mpoly "skeletons" - just the coefficients
+    TODO fmpz_mpolyc_t -> fmpz_poly_t
+         fmpz_mpolycu_r -> fmpz_bpoly_t
 */
 
 typedef struct

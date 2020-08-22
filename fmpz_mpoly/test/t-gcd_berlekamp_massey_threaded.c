@@ -24,8 +24,6 @@ void gcd_check(
     int res;
     fmpz_mpoly_t ca, cb, cg;
 
-flint_printf("i = %wd j = %wd %s\n", i, j, name);
-
     fmpz_mpoly_init(ca, ctx);
     fmpz_mpoly_init(cb, ctx);
     fmpz_mpoly_init(cg, ctx);

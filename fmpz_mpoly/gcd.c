@@ -749,87 +749,6 @@ static void _worker_convertuu(void * varg)
     }
 }
 
-int fmpz_equal_upto_unit(
-    const fmpz_t a,
-    const fmpz_t b)
-{
-    if (fmpz_equal(a, b))
-        return 1;
-
-    if (fmpz_cmpabs(a, b) == 0)
-        return -1;
-
-    return 0;
-}
-
-int fmpz_mpoly_equal_upto_unit(
-    const fmpz_mpoly_t A,
-    const fmpz_mpoly_t B,
-    const fmpz_mpoly_ctx_t ctx)
-{
-    int res;
-    slong i, n = A->length;
-
-    if (A->length != B->length)
-        return 0;
-
-    if (A->length < 1)
-        return 1;
-
-    if (mpoly_monomials_cmp(A->exps, A->bits, B->exps, B->bits, n, ctx->minfo) != 0)
-        return 0;
-
-    i = 0;
-
-    res = fmpz_equal_upto_unit(A->coeffs + i, B->coeffs + i);
-    if (res == 0)
-        return 0;
-
-    for (i++; i < n; i++)
-    {
-        int res2 = fmpz_equal_upto_unit(A->coeffs + i, B->coeffs + i);
-        if (res2 == 0 || res != res2)
-            return 0;
-    }
-
-    return res;
-}
-
-
-int fmpz_mpolyu_equal_upto_unit(const fmpz_mpolyu_t A, const fmpz_mpolyu_t B,
-                                                   const fmpz_mpoly_ctx_t ctx)
-{
-    int res;
-    slong i;
-
-    if (A->length != B->length)
-        return 0;
-
-    if (A->length < 1)
-        return 1;
-
-    for (i = 0; i < A->length; i++)
-    {
-        if (A->exps[i] != B->exps[i])
-            return 0;
-    }
-
-    i = 0;
-
-    res = fmpz_mpoly_equal_upto_unit(A->coeffs + i, B->coeffs + i, ctx);
-    if (res == 0)
-        return 0;
-
-    for (i++; i < A->length; i++)
-    {
-        int res2 = fmpz_mpoly_equal_upto_unit(A->coeffs + i, B->coeffs + i, ctx);
-        if (res2 == 0 || res != res2)
-            return 0;
-    }
-
-    return res;
-}
-
 
 static int _try_bma(
     fmpz_mpoly_t G,
@@ -966,7 +885,6 @@ static int _try_bma(
                                                         Auu, Buu, Gamma, uctx);
     if (!success)
         goto cleanup;
-
 done:
 
     success = _fmpz_mpoly_gcd_threaded_pool(Gc, wbits, Ac, Bc, uctx, handles, num_handles);
