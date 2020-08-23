@@ -28,7 +28,9 @@ void gcd_check(
     fmpz_mpoly_init(cb, ctx);
     fmpz_mpoly_init(cg, ctx);
 
-    res = fmpz_mpoly_gcd_berlekamp_massey_threaded(g, a, b, ctx);
+flint_printf("i = %wd, j = %wd, %s\n", i, j, name);
+
+    res = fmpz_mpoly_gcd_berlekamp_massey(g, a, b, ctx);
     fmpz_mpoly_assert_canonical(g, ctx);
 
     if (!res)

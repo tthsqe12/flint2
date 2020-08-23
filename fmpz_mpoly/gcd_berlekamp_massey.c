@@ -3091,6 +3091,8 @@ pick_bma_prime:
 
         if (GLambda_sp->pointcount/2 > ABtotal_length)
         {
+flint_printf("sp bailed\n");
+flint_abort();
             success = 0;
             goto cleanup;
         }
@@ -3301,6 +3303,8 @@ pick_bma_prime:
 
         if (GLambda_mp->pointcount/2 > ABtotal_length)
         {
+flint_printf("mp bailed\n");
+flint_abort();
             success = 0;
             goto cleanup;
         }
