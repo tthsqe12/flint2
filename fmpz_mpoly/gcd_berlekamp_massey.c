@@ -185,26 +185,28 @@ int n_bpoly_mod_gcd_brown_smprime(
 #endif
 
     n_poly_stack_fit_request(Sp->poly_stack, 19);
-    cA          = n_poly_stack_take_top(Sp->poly_stack);
-    cB          = n_poly_stack_take_top(Sp->poly_stack);
-    cG          = n_poly_stack_take_top(Sp->poly_stack);
-    cAbar       = n_poly_stack_take_top(Sp->poly_stack);
-    cBbar       = n_poly_stack_take_top(Sp->poly_stack);
-    gamma       = n_poly_stack_take_top(Sp->poly_stack);
-    Aevalp      = n_poly_stack_take_top(Sp->poly_stack);
-    Bevalp      = n_poly_stack_take_top(Sp->poly_stack);
-    Gevalp      = n_poly_stack_take_top(Sp->poly_stack);
-    Abarevalp   = n_poly_stack_take_top(Sp->poly_stack);
-    Bbarevalp   = n_poly_stack_take_top(Sp->poly_stack);
-    Aevalm      = n_poly_stack_take_top(Sp->poly_stack);
-    Bevalm      = n_poly_stack_take_top(Sp->poly_stack);
-    Gevalm      = n_poly_stack_take_top(Sp->poly_stack);
-    Abarevalm   = n_poly_stack_take_top(Sp->poly_stack);
-    Bbarevalm   = n_poly_stack_take_top(Sp->poly_stack);
-    r           = n_poly_stack_take_top(Sp->poly_stack);
-    alphapow    = n_poly_stack_take_top(Sp->poly_stack);
-    modulus     = n_poly_stack_take_top(Sp->poly_stack);
-
+{
+n_poly_stack_struct * s = Sp->poly_stack;
+    cA          = s->array[s->top++];
+    cB          = s->array[s->top++];
+    cG          = s->array[s->top++];
+    cAbar       = s->array[s->top++];
+    cBbar       = s->array[s->top++];
+    gamma       = s->array[s->top++];
+    Aevalp      = s->array[s->top++];
+    Bevalp      = s->array[s->top++];
+    Gevalp      = s->array[s->top++];
+    Abarevalp   = s->array[s->top++];
+    Bbarevalp   = s->array[s->top++];
+    Aevalm      = s->array[s->top++];
+    Bevalm      = s->array[s->top++];
+    Gevalm      = s->array[s->top++];
+    Abarevalm   = s->array[s->top++];
+    Bbarevalm   = s->array[s->top++];
+    r           = s->array[s->top++];
+    alphapow    = s->array[s->top++];
+    modulus     = s->array[s->top++];
+}
     n_bpoly_stack_fit_request(Sp->bpoly_stack, 1);
     T           = n_bpoly_stack_take_top(Sp->bpoly_stack);
 
