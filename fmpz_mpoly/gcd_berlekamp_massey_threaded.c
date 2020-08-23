@@ -2655,6 +2655,11 @@ int fmpz_mpoly_gcd_berlekamp_massey_threaded(
     ulong max_main_degree, max_minor_degree;
     slong thread_limit = FLINT_MIN(A->length, B->length)/16;
 
+FLINT_ASSERT(0 && "fmpz_mpoly_gcd_berlekamp_massey_threaded called\n");
+
+flint_printf("oops\n");
+flint_abort();
+
     if (fmpz_mpoly_is_zero(A, ctx))
     {
         if (fmpz_mpoly_is_zero(B, ctx))
