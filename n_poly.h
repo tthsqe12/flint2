@@ -323,9 +323,7 @@ FLINT_DLL int n_poly_mod_is_canonical(const n_poly_t A, nmod_t mod);
 N_POLY_INLINE
 void n_poly_mod_make_monic(n_poly_t A, const n_poly_t B, nmod_t mod)
 {
-/*
     FLINT_ASSERT(B->length > 0);
-*/
     n_poly_fit_length(A, B->length);
     A->length = B->length;
     _nmod_poly_make_monic(A->coeffs, B->coeffs, B->length, mod);
@@ -346,9 +344,7 @@ ulong n_poly_get_coeff(const n_poly_t poly, slong j)
 N_POLY_INLINE
 void n_poly_set_coeff_nonzero(n_poly_t A, slong j, ulong c)
 {
-/*
     FLINT_ASSERT(c != 0);
-*/
     if (j >= A->length)
     {
         n_poly_fit_length(A, j + 1);
@@ -1318,9 +1314,7 @@ FLINT_DLL void n_polyu_realloc(n_polyu_t A, slong len);
 N_POLY_INLINE
 void n_polyu_fit_length(n_polyu_t A, slong len)
 {
-/*
     FLINT_ASSERT(A->alloc >= 0);
-*/
     if (len > A->alloc)
         n_polyu_realloc(A, len);
 }
