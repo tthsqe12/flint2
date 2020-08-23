@@ -1361,6 +1361,8 @@ int fmpz_mpoly_gcd(
 
     thread_limit = FLINT_MIN(A->length, B->length)/256;
 
+FLINT_ASSERT(0 && "fmpz_mpoly_gcd called\n");
+
     if (fmpz_mpoly_is_zero(A, ctx))
     {
         if (B->length == 0)
