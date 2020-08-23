@@ -1926,6 +1926,9 @@ int fmpz_mpolyuu_gcd_berlekamp_massey_threaded_pool(
     slong zip_evals;
     ulong ABtotal_length;
 
+    return fmpz_mpolyuu_gcd_berlekamp_massey(G, Abar, Bbar, A, B, Gamma, ctx);
+
+
     w->bits = A->bits;
 
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
@@ -2654,11 +2657,6 @@ int fmpz_mpoly_gcd_berlekamp_massey_threaded(
     ulong * shift, * stride;
     ulong max_main_degree, max_minor_degree;
     slong thread_limit = FLINT_MIN(A->length, B->length)/16;
-
-FLINT_ASSERT(0 && "fmpz_mpoly_gcd_berlekamp_massey_threaded called\n");
-
-flint_printf("oops\n");
-flint_abort();
 
     if (fmpz_mpoly_is_zero(A, ctx))
     {

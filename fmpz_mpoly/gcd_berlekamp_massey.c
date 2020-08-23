@@ -3449,6 +3449,12 @@ next_zip_image:
 
     if (changed)
     {
+if (fmpz_bits(Hmodulus) > 5000)
+{
+flint_printf("Hmodulus bits too high\n");
+flint_abort();
+}
+
         /* TODO if the coefficients of H are getting to large? */
         goto pick_zip_prime;
     }
@@ -3467,6 +3473,9 @@ next_zip_image:
         if (!fmpz_mpolyuu_divides(G, A, Abar, 2, ctx) ||
             !fmpz_mpolyuu_divides(Bbar, B, G, 2, ctx))
         {
+flint_printf("divisibility failed 1\n");
+flint_abort();
+
             goto pick_zip_prime;
         }
     }
@@ -3476,6 +3485,8 @@ next_zip_image:
         if (!fmpz_mpolyuu_divides(G, B, Bbar, 2, ctx) ||
             !fmpz_mpolyuu_divides(Abar, A, G, 2, ctx))
         {
+flint_printf("divisibility failed 2\n");
+flint_abort();
             goto pick_zip_prime;
         }
     }
@@ -3486,6 +3497,8 @@ next_zip_image:
         if (!fmpz_mpolyuu_divides(Abar, A, G, 2, ctx) ||
             !fmpz_mpolyuu_divides(Bbar, B, G, 2, ctx))
         {
+flint_printf("divisibility failed 3\n");
+flint_abort();
             goto pick_zip_prime;
         }
     }
@@ -3578,9 +3591,6 @@ int fmpz_mpoly_gcd_berlekamp_massey(
     slong * Adegs, * Bdegs, * perm;
     ulong * shift, * stride;
     ulong max_main_degree, max_minor_degree;
-
-flint_printf("oops from fmpz_mpoly_gcd_berlekamp_massey\n");
-flint_abort();
 
     if (fmpz_mpoly_is_zero(A, ctx))
     {
