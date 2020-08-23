@@ -269,7 +269,7 @@ void flint_rand_free(flint_rand_s * state)
 typedef __mpfr_struct flint_mpfr;
 
 
-#define FLINT_ASSERT(param) do {if (!(param)) {flint_printf("assertion failed");flint_abort();} } while (0)
+#define FLINT_ASSERT(param) do {if (!(param)) {printf("assertion failed");flint_abort();} } while (0)
 
 
 #if defined(__GNUC__)
@@ -365,13 +365,13 @@ mp_limb_t FLINT_BIT_COUNT(mp_limb_t x)
 #define TMP_START \
    __tmp_root = NULL
 
-#if WANT_ASSERT
+/*
 #define TMP_ALLOC(size) \
    (__tpx = (__tmp_t *) alloca(sizeof(__tmp_t)), \
        __tpx->next = __tmp_root, \
        __tmp_root = __tpx, \
        __tpx->block = flint_malloc(size))
-#else
+*/
 #define TMP_ALLOC(size) \
    (((size) > 8192) ? \
       (__tpx = (__tmp_t *) alloca(sizeof(__tmp_t)), \
@@ -379,7 +379,6 @@ mp_limb_t FLINT_BIT_COUNT(mp_limb_t x)
        __tmp_root = __tpx, \
        __tpx->block = flint_malloc(size)) : \
       alloca(size))
-#endif
 
 
 #define TMP_END \
