@@ -16,6 +16,11 @@
 #include "n_poly.h"
 #include "nmod_mpoly_factor.h"
 
+#undef WANT_ASSERT
+#define WANT_ASSERT 0
+#undef FLINT_ASSERT 
+#define FLINT_ASSERT(param)
+
 
 void n_bpoly_mod_interp_reduce_2sm_poly(
     n_poly_t Ap,

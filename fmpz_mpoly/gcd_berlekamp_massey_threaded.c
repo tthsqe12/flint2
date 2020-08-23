@@ -16,6 +16,11 @@
 #include "thread_pool.h"
 #include "n_poly.h"
 
+#undef WANT_ASSERT
+#define WANT_ASSERT 0
+#undef FLINT_ASSERT 
+#define FLINT_ASSERT(param)
+
 typedef struct {
     n_poly_stack_t poly_stack;
     n_bpoly_stack_t bpoly_stack;

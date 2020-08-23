@@ -11,6 +11,11 @@
 
 #include "fmpz_mpoly.h"
 
+#undef WANT_ASSERT
+#define WANT_ASSERT 0
+#undef FLINT_ASSERT 
+#define FLINT_ASSERT(param)
+
 /*
     For each j, set out[j] to the evaluation of A at x_i = alpha[i] (i != j)
     i.e. if nvars = 3
