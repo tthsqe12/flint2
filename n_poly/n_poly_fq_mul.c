@@ -10,7 +10,10 @@
 */
 
 #include "n_poly.h"
-
+#undef WANT_ASSERT
+#define WANT_ASSERT 0
+#undef FLINT_ASSERT 
+#define FLINT_ASSERT(param)
 
 void _n_poly_fq_mul_(
     mp_limb_t * A,  /* length d*(lenB + lenC - 1) */

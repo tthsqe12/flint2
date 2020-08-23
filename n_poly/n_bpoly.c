@@ -10,7 +10,10 @@
 */
 
 #include "nmod_mpoly_factor.h"
-
+#undef WANT_ASSERT
+#define WANT_ASSERT 0
+#undef FLINT_ASSERT 
+#define FLINT_ASSERT(param)
 
 void n_bpoly_clear(n_bpoly_t A)
 {

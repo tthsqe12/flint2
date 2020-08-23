@@ -10,7 +10,10 @@
 */
 
 #include "n_poly.h"
-
+#undef WANT_ASSERT
+#define WANT_ASSERT 0
+#undef FLINT_ASSERT 
+#define FLINT_ASSERT(param)
 void n_poly_fq_inv_series(
     n_poly_t A,
     const n_poly_t B,

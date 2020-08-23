@@ -11,6 +11,10 @@
 
 #include "n_poly.h"
 #include "nmod_vec.h"
+#undef WANT_ASSERT
+#define WANT_ASSERT 0
+#undef FLINT_ASSERT 
+#define FLINT_ASSERT(param)
 
 #define MAC(h, m, l, a, b)                          \
 {                                                   \

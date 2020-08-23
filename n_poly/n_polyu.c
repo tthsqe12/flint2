@@ -13,7 +13,10 @@
 #include "mpn_extras.h"
 #include "nmod_vec.h"
 
-
+#undef WANT_ASSERT
+#define WANT_ASSERT 0
+#undef FLINT_ASSERT 
+#define FLINT_ASSERT(param)
 void n_polyu_clear(n_polyu_t A)
 {
     if (A->alloc > 0)

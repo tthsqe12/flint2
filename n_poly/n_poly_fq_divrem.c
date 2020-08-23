@@ -10,7 +10,10 @@
 */
 
 #include "n_poly.h"
-
+#undef WANT_ASSERT
+#define WANT_ASSERT 0
+#undef FLINT_ASSERT 
+#define FLINT_ASSERT(param)
 
 #define N_POLY_FQ_DIVREM_BASECASE_ITCH \
     FLINT_MAX(FLINT_MAX(4, N_FQ_MUL_ITCH), 2 + (N_FQ_REDUCE_ITCH))

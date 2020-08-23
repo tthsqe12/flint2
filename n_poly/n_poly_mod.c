@@ -11,7 +11,10 @@
 
 #include "n_poly.h"
 #include "mpn_extras.h"
-
+#undef WANT_ASSERT
+#define WANT_ASSERT 0
+#undef FLINT_ASSERT 
+#define FLINT_ASSERT(param)
 
 int n_poly_mod_is_canonical(const n_poly_t A, nmod_t mod)
 {

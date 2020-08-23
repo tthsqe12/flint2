@@ -10,7 +10,10 @@
 */
 
 #include "n_poly.h"
-
+#undef WANT_ASSERT
+#define WANT_ASSERT 0
+#undef FLINT_ASSERT 
+#define FLINT_ASSERT(param)
 
 void mpoly_rbtree_ui_init(mpoly_rbtree_ui_t T)
 {

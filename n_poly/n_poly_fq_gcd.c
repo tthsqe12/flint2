@@ -10,7 +10,10 @@
 */
 
 #include "n_poly.h"
-
+#undef WANT_ASSERT
+#define WANT_ASSERT 0
+#undef FLINT_ASSERT 
+#define FLINT_ASSERT(param)
 
 slong _n_poly_fq_gcd_euclidean_inplace_(    
     mp_limb_t * A, slong Alen,
