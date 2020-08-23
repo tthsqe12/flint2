@@ -44,9 +44,10 @@
 #include "gc.h"
 #endif
 
-#if WANT_ASSERT
+#undef WANT_ASSERT
+#define WANT_ASSERT 1
+
 #include <assert.h>
-#endif
 
 #ifdef __cplusplus
  extern "C" {
