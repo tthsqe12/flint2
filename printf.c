@@ -188,5 +188,7 @@ int flint_printf(const char * str, ...)
    count = flint_vprintf(str, ap);
    va_end(ap);
 
+    fflush(stdout);
+
    return count;
 }
