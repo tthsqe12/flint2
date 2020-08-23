@@ -31,6 +31,9 @@ void gcd_check(
 flint_printf("i = %wd, j = %wd, %s\n", i, j, name);
 
     res = fmpz_mpoly_gcd_berlekamp_massey(g, a, b, ctx);
+
+flint_printf("gcd returned\n");
+
     fmpz_mpoly_assert_canonical(g, ctx);
 
     if (!res)
@@ -82,7 +85,12 @@ flint_printf("i = %wd, j = %wd, %s\n", i, j, name);
         flint_abort();
     }
 
-    res = fmpz_mpoly_gcd_berlekamp_massey_threaded(cg, ca, cb, ctx);
+flint_printf("starting cofactor gcd\n");
+
+    res = fmpz_mpoly_gcd_berlekamp_massey(cg, ca, cb, ctx);
+
+flint_printf("finished cofactor gcd\n");
+
     fmpz_mpoly_assert_canonical(cg, ctx);
 
     if (!res)
