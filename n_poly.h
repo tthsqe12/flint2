@@ -201,9 +201,7 @@ void n_poly_init2(n_poly_t A, slong alloc)
 N_POLY_INLINE
 void n_poly_clear(n_poly_t A)
 {
-/*
     FLINT_ASSERT(A->alloc != 0 || A->coeffs == NULL);
-*/
     if (A->alloc > 0)
         flint_free(A->coeffs);
 }
@@ -265,9 +263,7 @@ void _n_poly_normalise(n_poly_t A)
 N_POLY_INLINE
 slong n_poly_degree(const n_poly_t A)
 {
-/*
     FLINT_ASSERT(A->length >= 0);
-*/
     return A->length - 1;
 }
 
