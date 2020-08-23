@@ -268,11 +268,9 @@ void flint_rand_free(flint_rand_s * state)
  */
 typedef __mpfr_struct flint_mpfr;
 
-#if WANT_ASSERT
-#define FLINT_ASSERT(param) assert(param)
-#else
-#define FLINT_ASSERT(param)
-#endif
+
+#define FLINT_ASSERT(param) do {if (!(param)) {flint_printf("assertion failed");flint_abort();} } while (0)
+
 
 #if defined(__GNUC__)
 #define FLINT_UNUSED(x) UNUSED_ ## x __attribute__((unused))
