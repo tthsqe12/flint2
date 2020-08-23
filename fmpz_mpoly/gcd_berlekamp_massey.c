@@ -3579,6 +3579,11 @@ int fmpz_mpoly_gcd_berlekamp_massey(
     ulong * shift, * stride;
     ulong max_main_degree, max_minor_degree;
 
+FLINT_ASSERT(0 && "fmpz_mpoly_gcd_berlekamp_massey called");
+
+flint_printf("oops from fmpz_mpoly_gcd_berlekamp_massey\n");
+flint_abort();
+
     if (fmpz_mpoly_is_zero(A, ctx))
     {
         if (fmpz_mpoly_is_zero(B, ctx))
