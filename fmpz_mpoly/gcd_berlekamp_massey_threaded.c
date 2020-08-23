@@ -1925,9 +1925,9 @@ int fmpz_mpolyuu_gcd_berlekamp_massey_threaded_pool(
     mp_limb_t p_sp;
     slong zip_evals;
     ulong ABtotal_length;
-
+/*
     return fmpz_mpolyuu_gcd_berlekamp_massey(G, Abar, Bbar, A, B, Gamma, ctx);
-
+*/
 
     w->bits = A->bits;
 
