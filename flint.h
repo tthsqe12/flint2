@@ -45,7 +45,7 @@
 #endif
 
 #undef WANT_ASSERT
-#define WANT_ASSERT 1
+#define WANT_ASSERT 0
 
 #include <assert.h>
 
