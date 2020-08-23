@@ -1474,9 +1474,7 @@ n_bpoly_struct * n_bpoly_stack_take_top(n_bpoly_stack_t S)
 {
     /* assume the request for 1 has already been fitted */
     n_bpoly_struct ** bpoly_top;
-/*
     FLINT_ASSERT(S->top + 1 <= S->alloc);
-*/
     bpoly_top = S->array + S->top;
     S->top += 1;
     return bpoly_top[0];
@@ -1485,9 +1483,7 @@ n_bpoly_struct * n_bpoly_stack_take_top(n_bpoly_stack_t S)
 N_POLY_INLINE
 void n_bpoly_stack_give_back(n_bpoly_stack_t S, slong k)
 {
-/*
     FLINT_ASSERT(S->top >= k);
-*/
     S->top -= k;
 }
 
