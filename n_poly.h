@@ -1397,7 +1397,9 @@ mp_limb_t * n_poly_stack_vec_init(n_poly_stack_t S, slong len)
 N_POLY_INLINE
 void n_poly_stack_vec_clear(n_poly_stack_t S)
 {
+/*
     FLINT_ASSERT(S->top >= 1);
+*/
     S->top -= 1;
 }
 
