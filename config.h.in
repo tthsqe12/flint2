@@ -285,7 +285,7 @@
 #cmakedefine STDC_HEADERS		1
 
 /* ./configure --enable-assert option, to enable some ASSERT()s */
-#cmakedefine WANT_ASSERT
+#cmakedefine WANT_ASSERT 1
 
 /* Define if you cpu_set_t in sched.h */
 #cmakedefine01 HAVE_CPU_SET_T
