@@ -1417,7 +1417,9 @@ n_poly_struct * n_poly_stack_take_top(n_poly_stack_t S)
 {
     /* assume the request for 1 has already been fitted */
     n_poly_struct ** poly_top;
+/*
     FLINT_ASSERT(S->top + 1 <= S->alloc);
+*/
     poly_top = S->array + S->top;
     S->top += 1;
     return poly_top[0];
