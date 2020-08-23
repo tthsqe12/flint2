@@ -416,9 +416,7 @@ N_POLY_INLINE
 void _n_poly_mod_scalar_mul_nmod(n_poly_t A, const n_poly_t B, mp_limb_t c,
                                                                     nmod_t mod)
 {
-/*
     FLINT_ASSERT(B->length <= B->alloc);
-*/
     n_poly_fit_length(A, B->length);
     _nmod_vec_scalar_mul_nmod(A->coeffs, B->coeffs, B->length, c, mod);
     A->length = B->length;
