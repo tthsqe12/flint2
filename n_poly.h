@@ -1397,9 +1397,7 @@ mp_limb_t * n_poly_stack_vec_init(n_poly_stack_t S, slong len)
 N_POLY_INLINE
 void n_poly_stack_vec_clear(n_poly_stack_t S)
 {
-/*
     FLINT_ASSERT(S->top >= 1);
-*/
     S->top -= 1;
 }
 
@@ -1417,9 +1415,7 @@ n_poly_struct * n_poly_stack_take_top(n_poly_stack_t S)
 {
     /* assume the request for 1 has already been fitted */
     n_poly_struct ** poly_top;
-/*
     FLINT_ASSERT(S->top + 1 <= S->alloc);
-*/
     poly_top = S->array + S->top;
     S->top += 1;
     return poly_top[0];
@@ -1428,9 +1424,7 @@ n_poly_struct * n_poly_stack_take_top(n_poly_stack_t S)
 N_POLY_INLINE
 void n_poly_stack_give_back(n_poly_stack_t S, slong k)
 {
-/*
     FLINT_ASSERT(S->top >= k);
-*/
     S->top -= k;
 }
 
