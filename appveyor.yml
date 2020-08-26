@@ -12,6 +12,10 @@ skip_tags: true
 matrix:
   fast_finish: false
 
+artifacts:
+- path: build
+  name: flint2_artifacts
+
 skip_commits:
 # Add [av skip] to commit messages
   message: /\[av skip\]/
@@ -64,5 +68,5 @@ build_script:
 test_script:
   - ctest -j3 --output-on-failure --timeout 600
 
-#on_finish:
-#  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+on_finish:
+  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
