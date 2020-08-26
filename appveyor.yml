@@ -28,12 +28,12 @@ environment:
   matrix:
     - COMPILER: cl
       ARCH: 64
-    - COMPILER: gcc
-      ARCH: 32
-    - COMPILER: gcc
-      ARCH: 64
-    - COMPILER: cl
-      ARCH: 32
+      #    - COMPILER: gcc
+      #      ARCH: 32
+      #    - COMPILER: gcc
+      #      ARCH: 64
+      #    - COMPILER: cl
+      #      ARCH: 32
 
 install:
   - if [%COMPILER%]==[gcc] set "PATH=C:\msys64\mingw%ARCH%\bin;%PATH%"
@@ -52,7 +52,7 @@ install:
   - if [%COMPILER%]==[cl] conda config --add channels conda-forge --force
   - if [%COMPILER%]==[cl] conda install --yes --quiet mpir=3.0.0 mpfr=4.* pthreads-win32 ninja
   - if [%COMPILER%]==[cl] set "CFLAGS=/wd4146 /wd4018 /wd4267 /wd4244"
-  - echo int flint_test_multiplier(){return 1;} > test_helpers.c
+  - echo int flint_test_multiplier(){return 0;} > test_helpers.c
   - cat test_helpers.c
 
 before_build:
@@ -66,7 +66,7 @@ build_script:
   - cmake --build . -- -j2
 
 test_script:
-  - ctest -j3 --output-on-failure --timeout 600
+  - ctest -j3 --output-on-failure --timeout 1
 
 on_finish:
   - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
