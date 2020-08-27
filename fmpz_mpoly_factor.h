@@ -465,7 +465,7 @@ FLINT_DLL void _fmpz_mpoly_eval_rest_to_poly(fmpz_poly_t E,
 FLINT_DLL int fmpz_mpoly_factor_lcc_kaltofen(
     fmpz_mpoly_struct * divs,   /* length r */
     slong r,
-    const fmpz_mpoly_factor_t Af, /* squarefree factorization of A */
+    fmpz_mpoly_factor_t Af, /* squarefree factorization of A */
     const fmpz_poly_struct * Au,
     slong v,                      /* minor bivar var*/
     const fmpz * alphas,
