@@ -163,11 +163,13 @@ got_alpha:
 
     FLINT_ASSERT(r > 1);
     success = fmpz_mpoly_divides(m, lcA, lc_divs->coeffs + 0, ctx);
-    FLINT_ASSERT(success);
+    if (!success)
+        goto next_alpha;
     for (i = 1; i < r; i++)
     {
         success = fmpz_mpoly_divides(m, m, lc_divs->coeffs + i, ctx);
-        FLINT_ASSERT(success);
+        if (!success)
+            goto next_alpha;
     }
 
     fmpz_mpoly_pow_ui(mpow, m, r - 1, ctx);

@@ -462,7 +462,7 @@ FLINT_DLL int _fmpz_mpoly_evaluate_rest_fmpz(fmpz * E,
 FLINT_DLL void _fmpz_mpoly_eval_rest_to_poly(fmpz_poly_t E,
         const fmpz_mpoly_t A, const fmpz * alphas, const fmpz_mpoly_ctx_t ctx);
 
-FLINT_DLL int fmpz_mpoly_factor_lcc_kaltofen(
+FLINT_DLL int fmpz_mpoly_factor_lcc_kaltofen_step(
     fmpz_mpoly_struct * divs,   /* length r */
     slong r,
     fmpz_mpoly_factor_t Af, /* squarefree factorization of A */
@@ -478,6 +478,13 @@ FLINT_DLL void fmpz_mpoly_convert_perm(
     const fmpz_mpoly_t B,
     const fmpz_mpoly_ctx_t Bctx,
     const slong * perm);
+
+FLINT_DLL int fmpz_mpoly_evaluate_rest_except_one(
+    fmpz_poly_t e,
+    const fmpz_mpoly_t A,
+    const fmpz * alphas,
+    slong v,
+    const fmpz_mpoly_ctx_t ctx);
 
 #ifdef __cplusplus
 }
