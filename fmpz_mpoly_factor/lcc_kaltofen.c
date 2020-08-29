@@ -2,6 +2,42 @@
 #include "n_poly.h"
 
 
+static int fmpz_mpoly_evaluate_except_two(
+    fmpz_bpoly_t e,
+    const fmpz_mpoly_t A,
+    const fmpz * alphas,
+    slong v,
+    const fmpz_mpoly_ctx_t ctx)
+{
+    int success;
+    slong i;
+    fmpz_mpoly_t t;
+
+    fmpz_mpoly_init(t, ctx);
+    fmpz_mpoly_set(t, A, ctx);
+
+    for (i = 1; i < ctx->minfo->nvars; i++)
+    {
+        if (i == v)
+            continue;
+
+        if (!fmpz_mpoly_evaluate_one_fmpz(t, t, i, alphas + i - 1, ctx))
+        {
+            success = 0;
+            goto cleanup;
+        }
+    }
+
+    fmpz_mpoly_get_bpoly(e, t, 0, v, ctx);
+    success = 1;
+
+cleanup:
+
+    fmpz_mpoly_clear(t, ctx);
+
+    return success;
+}
+
 int fmpz_mpoly_evaluate_rest_except_one(
     fmpz_poly_t e,
     const fmpz_mpoly_t A,
@@ -143,9 +179,7 @@ static int _try_lift(
     fmpz_mpoly_struct * Bevals, * Blcevals;
     fmpz_mpoly_univar_t u;
     fmpz_t q;
-/*
-flint_printf("try_lift called\n");
-*/
+
     FLINT_ASSERT(0 < v && v < nvars);
 
     if (r < 2)
@@ -233,43 +267,17 @@ flint_printf("try_lift called\n");
 
     fmpz_mpoly_convert_perm(Bevals + mvars - 1, Bbits, Bctx, newA, Actx, perm);
     fmpz_mpoly_convert_perm(Blcevals + mvars - 1, Bbits, Bctx, lcA, Actx, perm);
-/*
-flint_printf("Bevals[%wd]: ", mvars - 1);
-fmpz_mpoly_print_pretty(Bevals + mvars - 1, NULL, Bctx);
-flint_printf("\n");
-
-flint_printf("Blcevals[%wd]: ", mvars - 1);
-fmpz_mpoly_print_pretty(Blcevals + mvars - 1, NULL, Bctx);
-flint_printf("\n");
-*/
 
     for (i = mvars - 2; i >= 0; i--)
     {
-/*
-flint_printf("Bevals[%d]: ", i); fmpz_print(Balphas + i); flint_printf("\n");
-*/
         fmpz_mpoly_evaluate_one_fmpz(Bevals + i, Bevals + i + 1, i + 1, Balphas + i, Bctx);
         fmpz_mpoly_evaluate_one_fmpz(Blcevals + i, Blcevals + i + 1, i + 1, Balphas + i, Bctx);
-/*
-flint_printf("Bevals[%wd]: ", i);
-fmpz_mpoly_print_pretty(Bevals + i, NULL, Bctx);
-flint_printf("\n");
-
-flint_printf("Blcevals[%wd]: ", i);
-fmpz_mpoly_print_pretty(Blcevals + i, NULL, Bctx);
-flint_printf("\n");
-*/
     }
 
     fmpz_mpolyv_fit_length(fac, r, Bctx);
     fac->length = r;
     for (i = 0; i < r; i++)
     {
-/*
-flint_printf("Auf[%wd]: ", i);
-fmpz_poly_print_pretty(Auf + i, "t");
-flint_printf("\n");
-*/
         FLINT_ASSERT(fmpz_mpoly_is_fmpz(Blcevals + 0, Bctx));
         FLINT_ASSERT(fmpz_mpoly_length(Blcevals + 0, Bctx) == 1);
         FLINT_ASSERT(fmpz_divisible(Blcevals[0].coeffs + 0, Auf[i].coeffs + Auf[i].length - 1));
@@ -302,11 +310,6 @@ flint_printf("\n");
         FLINT_ASSERT(success);
         fmpz_mpoly_convert_perm(lifts + i, A->bits, Actx, Bt, Bctx, iperm);
         fmpz_mpoly_unit_normalize(lifts + i, Actx);
-/*
-flint_printf("lifts[%wd]: ", i);
-fmpz_mpoly_print_pretty(lifts + i, NULL, Actx);
-flint_printf("\n");
-*/
     }
 
     success = 1;
@@ -447,12 +450,9 @@ int fmpz_mpoly_factor_lcc_kaltofen_step(
             fmpz_mpoly_mul(Afp, Afp, Af->poly + i, ctx);
     }
 
-    if (!fmpz_mpoly_evaluate_rest_except_one(t, Afp, alphas, v, ctx))
-    {
-        success = 0;
-        goto cleanup;
-    }
-    if (fmpz_poly_degree(t) < 1 || fmpz_poly_degree(t) != Af_deg_v)
+    if (!fmpz_mpoly_evaluate_rest_except_one(t, Afp, alphas, v, ctx) ||
+        fmpz_poly_degree(t) < 1 ||
+        fmpz_poly_degree(t) != Af_deg_v)
     {
         success = 0;
         goto cleanup;
@@ -518,4 +518,160 @@ cleanup:
     return success;
 }
 
+
+/*
+    return 1: lcc is probably correct and complete
+           0: lcc is incomplete
+          -1: alphas are definitely bad
+*/
+int fmpz_mpoly_factor_lcc_kaltofen(
+    fmpz_mpoly_struct * divs,
+    const fmpz_mpoly_factor_t lcAf_,
+    const fmpz_mpoly_t A,
+    slong r,
+    const fmpz * alphas,
+    slong * degs,
+    const fmpz_poly_factor_t uf,
+    const fmpz_mpoly_ctx_t ctx)
+{
+    int success;
+    slong i, v, nvars = ctx->minfo->nvars;
+    fmpz_mpoly_factor_t lcAf;
+    fmpz_poly_struct * ulcs;
+    fmpz_tpoly_struct * bfacs;
+    fmpz_bpoly_t beval;
+    fmpz_poly_t bcont, ut2;
+    fmpz_t g1, g2, g3;
+    fmpz * content_divs;
+
+    FLINT_ASSERT(r > 1);
+
+    fmpz_mpoly_factor_init(lcAf, ctx);
+    fmpz_mpoly_factor_set(lcAf, lcAf_, ctx);
+
+    fmpz_init(g1);
+    fmpz_init(g2);
+    fmpz_init(g3);
+
+    content_divs = _fmpz_vec_init(r);
+
+    fmpz_poly_init(ut2);
+    fmpz_poly_init(bcont);
+    fmpz_bpoly_init(beval);
+    bfacs = FLINT_ARRAY_ALLOC(nvars, fmpz_tpoly_struct);
+    for (i = 0; i < nvars; i++)
+        fmpz_tpoly_init(bfacs + i);
+
+    ulcs = FLINT_ARRAY_ALLOC(r, fmpz_poly_struct);
+    for (i = 0; i < r; i++)
+    {
+        fmpz_poly_init(ulcs + i);
+        fmpz_mpoly_one(divs + i, ctx);
+    }
+
+    for (v = 1; v < nvars; v++)
+    {
+        fmpz_mpoly_evaluate_except_two(beval, A, alphas, v, ctx);
+        FLINT_ASSERT(fmpz_bpoly_degree0(beval) == degs[0]);
+        if (fmpz_bpoly_degree1(beval) != degs[v])
+        {
+            bfacs[v].length = 0;
+            goto continue_outer;
+        }
+
+        success = fmpz_bpoly_factor_ordered(bcont, bfacs + v, beval,
+                                                           alphas + v - 1, uf);
+        if (success < 1)
+        {
+            if (success == 0)
+            {
+                success = -1;
+                goto cleanup;
+            }
+
+            bfacs[v].length = 0;
+            goto continue_outer;
+        }
+
+        for (i = 0; i < r; i++)
+        {
+            fmpz_mpoly_evaluate_rest_except_one(ut2, divs + i, alphas, v, ctx);
+            if (fmpz_poly_is_zero(ut2))
+            {
+                bfacs[v].length = 0;
+                goto continue_outer;
+            }
+
+            fmpz_poly_primitive_part(ut2, ut2);
+            if (!fmpz_poly_divides(ulcs + i, fmpz_bpoly_lead(bfacs[v].coeffs + i), ut2))
+            {
+                bfacs[v].length = 0;
+                goto continue_outer;
+            }
+        }
+
+        fmpz_mpoly_factor_lcc_kaltofen_step(divs, r, lcAf, ulcs, v, alphas, ctx);
+continue_outer:;
+    }
+
+    if (lcAf->num == 0)
+    {
+        for (i = 0; i < r; i++)
+            fmpz_one(content_divs + i);
+
+        for (v = 1; v < nvars; v++)
+        {
+            if (bfacs[v].length != r)
+                continue;
+
+            for (i = 0; i < r; i++)
+            {
+                fmpz_poly_struct * ut1 = fmpz_bpoly_lead(bfacs[v].coeffs + i);
+                fmpz_mpoly_evaluate_rest_except_one(ut2, divs + i, alphas, v, ctx);
+                _fmpz_vec_content(g1, ut1->coeffs, ut1->length);
+                _fmpz_vec_content(g2, ut2->coeffs, ut2->length);
+                fmpz_gcd(g3, g1, g2);
+                fmpz_divexact(g1, g1, g3);
+                fmpz_lcm(content_divs + i, content_divs + i, g1);
+            }
+        }
+
+        for (i = 0; i < r; i++)
+        {
+            if (!fmpz_divisible(lcAf->constant, content_divs + i))
+                continue;
+            fmpz_divexact(lcAf->constant, lcAf->constant, content_divs + i);
+            fmpz_mpoly_scalar_mul_fmpz(divs + i, divs + i, content_divs + i, ctx);
+        }
+
+        success = 1;
+    }
+    else
+    {
+        success = 0;
+    }
+
+cleanup:
+
+    fmpz_mpoly_factor_clear(lcAf, ctx);
+
+    fmpz_clear(g1);
+    fmpz_clear(g2);
+    fmpz_clear(g3);
+
+    _fmpz_vec_clear(content_divs, r);
+
+    fmpz_poly_clear(ut2);
+    fmpz_poly_clear(bcont);
+    fmpz_bpoly_clear(beval);
+    for (i = 0; i < nvars; i++)
+        fmpz_tpoly_clear(bfacs + i);
+    flint_free(bfacs);
+
+    for (i = 0; i < r; i++)
+        fmpz_poly_clear(ulcs + i);
+    flint_free(ulcs);
+
+    return success;
+}
 

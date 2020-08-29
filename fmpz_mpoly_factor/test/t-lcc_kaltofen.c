@@ -138,8 +138,6 @@ main(void)
         fmpz * alphas, * content_divs;
         fmpz_t g1, g2, g3;
 
-flint_printf("------------ i = %wd -------------\n", i);
-
         nvars = 3 + n_randint(state, 4);
 
         fmpz_mpoly_ctx_init(ctx, nvars, ORD_LEX);

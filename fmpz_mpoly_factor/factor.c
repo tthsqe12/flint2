@@ -340,42 +340,48 @@ done_alpha:
         {
             _fmpz_mpoly_get_lead0(lcL, L, Lctx);
 
-            if (fmpz_mpoly_factor(lcLf, lcL, Lctx))
+            if (fmpz_mpoly_factor_squarefree(lcLf, lcL, Lctx))
             {
+                int irr_fac = 1;
+                for (i = 0; i < lcLf->num; i++)
+                    irr_fac = irr_fac && lcLf->poly[i].length < 4;
+
+                irr_fac = irr_fac && fmpz_mpoly_factor_irred(lcLf, Lctx, algo);
+
                 if (!(algo & USE_ZIP))
                 {
                     success = fmpz_mpoly_factor_irred_wang(Lf, L,
-                                                 lcLf, lcL, Lctx, state, Z, 1);
+                                        lcLf, irr_fac, lcL, Lctx, state, Z, 1);
                 }
                 else if (!(algo & USE_WANG))
                 {
                     success = fmpz_mpoly_factor_irred_zippel(Lf, L,
-                                                    lcLf, lcL, Lctx, state, Z);
+                                           lcLf, irr_fac, lcL, Lctx, state, Z);
                 }
                 else
                 {
                     if (density > 0.002 && zero_ok && max_uni_deg < 40)
                     {
                         success = fmpz_mpoly_factor_irred_wang(Lf, L,
-                                                 lcLf, lcL, Lctx, state, Z, 0);
+                                        lcLf, irr_fac, lcL, Lctx, state, Z, 0);
                     }
 
                     if (success == 0 && density > 0.04 && max_uni_deg < 20)
                     {
                         success = fmpz_mpoly_factor_irred_wang(Lf, L,
-                                                 lcLf, lcL, Lctx, state, Z, 1);
+                                        lcLf, irr_fac, lcL, Lctx, state, Z, 1);
                     }
 
                     if (success == 0)
                     {
                         success = fmpz_mpoly_factor_irred_zippel(Lf, L,
-                                                    lcLf, lcL, Lctx, state, Z);
+                                           lcLf, irr_fac, lcL, Lctx, state, Z);
                     }
 
                     if (success == 0)
                     {
                         success = fmpz_mpoly_factor_irred_wang(Lf, L,
-                                                 lcLf, lcL, Lctx, state, Z, 1);
+                                        lcLf, irr_fac, lcL, Lctx, state, Z, 1);
                     }
                 }
             }
@@ -445,9 +451,9 @@ cleanup:
 }
 
 
-static int fmpz_mpoly_factor_algo(
+/* assume f is a square free factorization, replace it by an irreducible one */
+int fmpz_mpoly_factor_irred(
     fmpz_mpoly_factor_t f,
-    const fmpz_mpoly_t A,
     const fmpz_mpoly_ctx_t ctx,
     unsigned int algo)
 {
@@ -458,12 +464,6 @@ static int fmpz_mpoly_factor_algo(
 
     fmpz_mpolyv_init(t, ctx);
     fmpz_mpoly_factor_init(g, ctx);
-
-    success = fmpz_mpoly_factor_squarefree(f, A, ctx);
-    if (!success)
-        goto cleanup;
-
-    FLINT_ASSERT(fmpz_mpoly_factor_matches(A, f, ctx));
 
     fmpz_swap(g->constant, f->constant);
     g->num = 0;
@@ -490,8 +490,6 @@ cleanup:
     fmpz_mpolyv_clear(t, ctx);
     fmpz_mpoly_factor_clear(g, ctx);
 
-    FLINT_ASSERT(!success || fmpz_mpoly_factor_matches(A, f, ctx));
-
     return success;
 }
 
@@ -501,7 +499,11 @@ int fmpz_mpoly_factor(
     const fmpz_mpoly_t A,
     const fmpz_mpoly_ctx_t ctx)
 {
-    return fmpz_mpoly_factor_algo(f, A, ctx, USE_ZAS | USE_WANG | USE_ZIP);
+    int success;
+    success = fmpz_mpoly_factor_squarefree(f, A, ctx) &&
+              fmpz_mpoly_factor_irred(f, ctx, USE_ZAS | USE_WANG | USE_ZIP);
+    FLINT_ASSERT(!success || fmpz_mpoly_factor_matches(A, f, ctx));
+    return success;
 }
 
 
@@ -510,7 +512,11 @@ int fmpz_mpoly_factor_zassenhaus(
     const fmpz_mpoly_t A,
     const fmpz_mpoly_ctx_t ctx)
 {
-    return fmpz_mpoly_factor_algo(f, A, ctx, USE_ZAS);
+    int success;
+    success = fmpz_mpoly_factor_squarefree(f, A, ctx) &&
+              fmpz_mpoly_factor_irred(f, ctx, USE_ZAS);
+    FLINT_ASSERT(!success || fmpz_mpoly_factor_matches(A, f, ctx));
+    return success;
 }
 
 
@@ -519,7 +525,11 @@ int fmpz_mpoly_factor_wang(
     const fmpz_mpoly_t A,
     const fmpz_mpoly_ctx_t ctx)
 {
-    return fmpz_mpoly_factor_algo(f, A, ctx, USE_WANG);
+    int success;
+    success = fmpz_mpoly_factor_squarefree(f, A, ctx) &&
+              fmpz_mpoly_factor_irred(f, ctx, USE_WANG);
+    FLINT_ASSERT(!success || fmpz_mpoly_factor_matches(A, f, ctx));
+    return success;
 }
 
 
@@ -528,6 +538,10 @@ int fmpz_mpoly_factor_zippel(
     const fmpz_mpoly_t A,
     const fmpz_mpoly_ctx_t ctx)
 {
-    return fmpz_mpoly_factor_algo(f, A, ctx, USE_ZIP);
+    int success;
+    success = fmpz_mpoly_factor_squarefree(f, A, ctx) &&
+              fmpz_mpoly_factor_irred(f, ctx, USE_ZIP);
+    FLINT_ASSERT(!success || fmpz_mpoly_factor_matches(A, f, ctx));
+    return success;
 }
 

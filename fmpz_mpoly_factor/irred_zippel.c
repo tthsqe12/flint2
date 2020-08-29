@@ -796,12 +796,13 @@ int fmpz_mpoly_factor_irred_zippel(
     fmpz_mpolyv_t fac,
     const fmpz_mpoly_t A,
     const fmpz_mpoly_factor_t lcAfac,
+    int lcAfac_irred,
     const fmpz_mpoly_t lcA,
     const fmpz_mpoly_ctx_t ctx,
     flint_rand_t state,
     zassenhaus_prune_t zas)
 {
-    int success;
+    int success, kfails = 0;
     const slong n = ctx->minfo->nvars - 1;
     slong i, j, k;
     fmpz * alpha;
@@ -894,6 +895,12 @@ next_alpha:
             fmpz_set_ui(alpha + i, 1 + (l & (mask - 1)));
     }
 
+#if WANT_ASSERT
+    fmpz_mpoly_degrees_si(tdegs, A, ctx);
+    for (i = 0; i < n + 1; i++)
+        FLINT_ASSERT(degs[i] == tdegs[i]);
+#endif
+
     for (i = n - 1; i >= 0; i--)
     {
         fmpz_mpoly_evaluate_one_fmpz(Aevals + i,
@@ -937,10 +944,17 @@ next_alpha:
     lc_divs->length = r;
     if (lcAfac->num > 0)
     {
-        success = fmpz_mpoly_factor_lcc_wang(lc_divs->coeffs, lcAfac,
-                                  &Aufac->c, Aufac->p, Aufac->num, alpha, ctx);
+        success = 0;
+        if (lcAfac_irred)
+            success = fmpz_mpoly_factor_lcc_wang(lc_divs->coeffs, lcAfac,
+                                           &Aufac->c, Aufac->p, r, alpha, ctx);
         if (!success)
-            goto next_alpha;
+        {
+            success = fmpz_mpoly_factor_lcc_kaltofen(lc_divs->coeffs, lcAfac,
+                                                A, r, alpha, degs, Aufac, ctx);
+            if (success < 0 || (success == 0 && ++kfails < 4))
+                goto next_alpha;
+        }
     }
     else
     {
@@ -979,11 +993,11 @@ next_alpha:
         goto cleanup;
     }
 
-    fmpz_mpoly_degrees_si(degs, newA, ctx);
+    fmpz_mpoly_degrees_si(tdegs, newA, ctx);
 
     for (i = 0; i < n + 1; i++)
     {
-        if (FLINT_BIT_COUNT(degs[i]) >= FLINT_BITS/3)
+        if (FLINT_BIT_COUNT(tdegs[i]) >= FLINT_BITS/3)
         {
             success = -1;
             goto cleanup;
@@ -991,7 +1005,7 @@ next_alpha:
     }
 
     _fmpz_vec_height(facBound, newA->coeffs, newA->length);
-    if (!fmpz_mpoly_factor_bound_si(facBound, facBound, degs, n + 1))
+    if (!fmpz_mpoly_factor_bound_si(facBound, facBound, tdegs, n + 1))
     {
         success = -1;
         goto cleanup;
@@ -1103,12 +1117,12 @@ next_zip_prime:
         if (k > 2)
         {
             success = nmod_mpoly_hlift_zippel(k, tfacp->coeffs, r, alphap,
-                                        Aevalp->coeffs + k, degs, ctxp, state);
+                                       Aevalp->coeffs + k, tdegs, ctxp, state);
         }
         else
         {
             success = nmod_mpoly_hlift(k, tfacp->coeffs, r, alphap,
-                                               Aevalp->coeffs + k, degs, ctxp);
+                                              Aevalp->coeffs + k, tdegs, ctxp);
         }
 
         if (!success)
@@ -1132,7 +1146,7 @@ next_zip_prime:
     if (0)
     {
         success = fmpz_mfactor_lift_prime_power(r, fac->coeffs,
-                               facp->coeffs, newA, degs, alphap, ctx, ctxp, L);
+                              facp->coeffs, newA, tdegs, alphap, ctx, ctxp, L);
     }
     else
     {
@@ -1194,7 +1208,7 @@ cleanup:
 
     _fmpz_vec_clear(alpha, n);
     flint_free(alphap);
-    flint_free(degs);
+    flint_free(degs); /* and tdegs */
 
     for (i = 0; i < n; i++)
         fmpz_mpoly_clear(Aevals + i, ctx);

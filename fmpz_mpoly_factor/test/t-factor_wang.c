@@ -98,7 +98,7 @@ main(void)
     flint_printf("factor_wang....");
     fflush(stdout);
 
-    for (i = 0; i < tmul * flint_test_multiplier(); i++)
+    for (i = 0; i < 109 + 0*tmul * flint_test_multiplier(); i++)
     {
         slong lower;
         fmpz_mpoly_ctx_t ctx;
@@ -128,9 +128,16 @@ main(void)
             pow = 1 + n_randint(state, powbound);
             if (!fmpz_mpoly_is_fmpz(t, ctx))
                 lower += pow;
+/*
+flint_printf("multiplying by ");
+fmpz_mpoly_print_pretty(t, NULL, ctx);
+flint_printf("\n");
+*/
+
             fmpz_mpoly_pow_ui(t, t, pow, ctx);
             fmpz_mpoly_mul(a, a, t, ctx);
         }
+
 
         check_omega(lower, WORD_MAX, a, ctx);
 
