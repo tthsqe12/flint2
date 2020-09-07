@@ -292,6 +292,7 @@ typedef struct {
     fmpz_mpoly_struct * deltas;
     fmpz_mpoly_struct * xalpha;
     fmpz_mpoly_struct * q;
+    fmpz_mpoly_geobucket_struct * G;
     fmpz_mpoly_struct * qt;
     fmpz_mpoly_struct * newt;
     fmpz_mpolyv_struct * delta_coeffs;
