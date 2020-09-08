@@ -47,16 +47,7 @@ static void fmpz_mpoly_perm_clear(
 }
 
 
-/*
-    figure out an affine transformation
-    if new nvars = old nvars and transformation is id
-        swap(A, B)
-        return
-    end
-    map 
-    see if content needs to removed wrt new var0
-*/
-void fmpz_mpoly_perm_init(
+static void fmpz_mpoly_perm_init(
     fmpz_mpoly_perm_t P,
     fmpz_mpoly_t L,
     fmpz_mpoly_t A,
@@ -125,7 +116,7 @@ void fmpz_mpoly_perm_init(
 }
 
 
-void slong_array_fit_length(slong ** array, slong * alloc, slong len)
+static void _slong_array_fit_length(slong ** array, slong * alloc, slong len)
 {
     if (len <= *alloc)
         return;
@@ -135,7 +126,7 @@ void slong_array_fit_length(slong ** array, slong * alloc, slong len)
 }
 
 
-void fmpz_mpoly_perm_expand_fmpz_mpoly(
+static void fmpz_mpoly_perm_expand_fmpz_mpoly(
     fmpz_mpoly_t A,
     flint_bitcnt_t Abits,
     const fmpz_mpoly_ctx_t Actx,
@@ -165,7 +156,7 @@ void fmpz_mpoly_perm_expand_fmpz_mpoly(
     for (k = 0; k < nvars; k++)
         mins[k] = WORD_MAX;
 
-    slong_array_fit_length(&P->exps, &P->exps_alloc, B->length*nvars);
+    _slong_array_fit_length(&P->exps, &P->exps_alloc, B->length*nvars);
     fmpz_mpoly_fit_length_set_bits(A, B->length, Abits, Actx);
     _fmpz_mpoly_set_length(A, B->length, Actx);
     for (i = 0; i < B->length; i++)
@@ -195,7 +186,7 @@ void fmpz_mpoly_perm_expand_fmpz_mpoly(
     fmpz_mpoly_unit_normalize(A, Actx);
 }
 
-
+/* A has degree 2 wrt gen(0) */
 static void _apply_quadratic(
     fmpz_mpolyv_t Af,
     fmpz_mpoly_t A,
