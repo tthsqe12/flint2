@@ -29,7 +29,6 @@ flint_printf("p: ");
 fmpz_mpoly_print_pretty(p, NULL, ctx);
 flint_printf("\n");
 */
-
     timeit_start(timer);
     fmpz_mpoly_factor(g, p, ctx);
     timeit_stop(timer);
@@ -38,7 +37,6 @@ flint_printf("g: ");
 fmpz_mpoly_factor_print_pretty(g, NULL, ctx);
 flint_printf("\n");
 */
-
     fmpz_zero(omega);
     for (i = 0; i < g->num; i++)
         fmpz_add(omega, omega, g->exp + i);
@@ -128,7 +126,13 @@ flint_printf("time: %wd\n", timer->wall);
         fmpz_mpoly_init(a, ctx);
         fmpz_mpoly_init(b, ctx);
 
-        for (i = 1; i <= 24; i++)
+        if (0){
+            fmpz_mpoly_set_str_pretty(a, "x^99-y^99*z^33", vars, ctx);
+            time = check_omega(4, a, ctx);
+            flint_printf("x^99-y^99*z^33: %wd\n", time);
+        }
+
+        for (i = 1; i <= 26; i++)
         {
             fmpz_mpoly_set_str_pretty(b, "1+x+y+z+t", vars, ctx);
 /*
@@ -138,7 +142,7 @@ flint_printf("\n");
 */
             fmpz_mpoly_pow_ui(b, b, i, ctx);
             fmpz_mpoly_add_ui(a, b, 2, ctx);
-            fmpz_mpoly_add_ui(b, b, 3, ctx);
+            fmpz_mpoly_add_ui(b, b, 1, ctx);
 
             timeit_start(timer);
             fmpz_mpoly_mul(a, a, b, ctx);
@@ -149,7 +153,7 @@ flint_printf("\n");
                 if ((j%2) != 0 && (i%j) == 0)
                     k++;
 
-            time = check_omega(2, a, ctx);
+            time = check_omega(k, a, ctx);
             flint_printf("%wd: %wd %wd\n", i, time, timer->wall);
             total_time += time;
         }

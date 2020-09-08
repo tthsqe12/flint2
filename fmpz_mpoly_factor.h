@@ -292,6 +292,7 @@ typedef struct {
     fmpz_mpoly_struct * deltas;
     fmpz_mpoly_struct * xalpha;
     fmpz_mpoly_struct * q;
+    fmpz_mpoly_univar_struct * U;
     fmpz_mpoly_geobucket_struct * G;
     fmpz_mpoly_struct * qt;
     fmpz_mpoly_struct * newt;
@@ -505,14 +506,6 @@ FLINT_DLL int fmpz_mpoly_factor_lcc_kaltofen(
     slong * degs,
     const fmpz_poly_factor_t uf,
     const fmpz_mpoly_ctx_t ctx);
-
-FLINT_DLL void fmpz_mpoly_convert_perm(
-    fmpz_mpoly_t A,
-    flint_bitcnt_t Abits,
-    const fmpz_mpoly_ctx_t Actx,
-    const fmpz_mpoly_t B,
-    const fmpz_mpoly_ctx_t Bctx,
-    const slong * perm);
 
 FLINT_DLL int fmpz_mpoly_evaluate_rest_except_one(
     fmpz_poly_t e,

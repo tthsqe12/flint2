@@ -2,6 +2,51 @@
 #include "n_poly.h"
 
 
+static void fmpz_mpoly_convert_perm(
+    fmpz_mpoly_t A,
+    flint_bitcnt_t Abits,
+    const fmpz_mpoly_ctx_t Actx,
+    const fmpz_mpoly_t B,
+    const fmpz_mpoly_ctx_t Bctx,
+    const slong * perm)
+{
+    slong n = Bctx->minfo->nvars;
+    slong m = Actx->minfo->nvars;
+    slong i, k, l;
+    slong NA, NB;
+    ulong * Aexps;
+    ulong * Bexps;
+    TMP_INIT;
+
+    FLINT_ASSERT(A->bits <= FLINT_BITS);
+    FLINT_ASSERT(B->bits <= FLINT_BITS);
+    FLINT_ASSERT(B->length > 0);
+    TMP_START;
+
+    Aexps = (ulong *) TMP_ALLOC(m*sizeof(ulong));
+    Bexps = (ulong *) TMP_ALLOC(n*sizeof(ulong));
+
+    NA = mpoly_words_per_exp(Abits, Actx->minfo);
+    NB = mpoly_words_per_exp(B->bits, Bctx->minfo);
+
+    fmpz_mpoly_fit_length_set_bits(A, B->length, Abits, Actx);
+    A->length = B->length;
+    for (i = 0; i < B->length; i++)
+    {        
+        fmpz_set(A->coeffs + i, B->coeffs + i);
+        mpoly_get_monomial_ui(Bexps, B->exps + NB*i, B->bits, Bctx->minfo);
+        for (k = 0; k < m; k++)
+        {
+            l = perm[k];
+            Aexps[k] = l < 0 ? 0 : Bexps[l];
+        }
+        mpoly_set_monomial_ui(A->exps + NA*i, Aexps, Abits, Actx->minfo);
+     }  
+    TMP_END;
+    fmpz_mpoly_sort_terms(A, Actx);
+}
+
+
 static int fmpz_mpoly_evaluate_except_two(
     fmpz_bpoly_t e,
     const fmpz_mpoly_t A,

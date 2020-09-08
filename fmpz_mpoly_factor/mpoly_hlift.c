@@ -68,23 +68,31 @@ static int _hlift_quartic2(
     if (use_Au)
     {
         fmpz_mpoly_to_univar(Au, A, m, ctx);
-        use_Au = 1;
         Aui = Au->length - 1;
-        if (Aui >= 0 && fmpz_equal_si(Au->exps + Aui, 0))
-            Aui--;
+
+#if WANT_ASSERT
+        fmpz_mpoly_one(t2, ctx);
+        for (i = 0; i < r; i++)
+            fmpz_mpoly_mul(t2, t2, betas + i, ctx);
+        FLINT_ASSERT(fmpz_mpoly_equal(Au->coeffs + Aui, t2, ctx));
+#endif
+
+        FLINT_ASSERT(fmpz_equal_si(Au->exps + Aui, 0));
+        Aui--;
     }
     else
     {
         fmpz_mpoly_divrem(t2, t, A, xalpha, ctx);
         fmpz_mpoly_swap(Aq, t2, ctx);
-        Aui = -1;
 
-    #if WANT_ASSERT
+#if WANT_ASSERT
         fmpz_mpoly_one(t2, ctx);
         for (i = 0; i < r; i++)
             fmpz_mpoly_mul(t2, t2, betas + i, ctx);
         FLINT_ASSERT(fmpz_mpoly_equal(t, t2, ctx));
-    #endif
+#endif
+
+        Aui = -1; /* silence warning */
     }
 
     for (j = 1; j <= degs[m]; j++)
@@ -118,7 +126,7 @@ static int _hlift_quartic2(
         if (fmpz_mpoly_is_zero(t, ctx))
             continue;
         success = fmpz_mpoly_pfrac(m - 1, t, degs, I, ctx);
-        if (success <= 0)
+        if (success < 1)
         {
             success = 0;
             goto cleanup;
@@ -237,16 +245,22 @@ static int _hlift_quartic(
     if (use_Au)
     {
         fmpz_mpoly_to_univar(Au, A, m, ctx);
-        use_Au = 1;
         Aui = Au->length - 1;
-        if (Aui >= 0 && fmpz_equal_si(Au->exps + Aui, 0))
-            Aui--;
+
+#if WANT_ASSERT
+        fmpz_mpoly_one(t2, ctx);
+        for (i = 0; i < r; i++)
+            fmpz_mpoly_mul(t2, t2, betas + i, ctx);
+        FLINT_ASSERT(fmpz_mpoly_equal(Au->coeffs + Aui, t2, ctx));
+#endif
+
+        FLINT_ASSERT(fmpz_equal_si(Au->exps + Aui, 0));
+        Aui--;
     }
     else
     {
         fmpz_mpoly_divrem(t2, t, A, xalpha, ctx);
         fmpz_mpoly_swap(Aq, t2, ctx);
-        Aui = -1;
 
 #if WANT_ASSERT
         fmpz_mpoly_one(t2, ctx);
@@ -254,6 +268,7 @@ static int _hlift_quartic(
             fmpz_mpoly_mul(t2, t2, betas + i, ctx);
         FLINT_ASSERT(fmpz_mpoly_equal(t, t2, ctx));
 #endif
+        Aui = -1; /* silence warning */
     }
 
     for (j = 1; j <= degs[m]; j++)
@@ -308,7 +323,7 @@ static int _hlift_quartic(
         if (fmpz_mpoly_is_zero(t, ctx))
             continue;
         success = fmpz_mpoly_pfrac(m - 1, t, degs, I, ctx);
-        if (success <= 0)
+        if (success < 1)
         {
             success = 0;
             goto cleanup;
