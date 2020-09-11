@@ -213,7 +213,7 @@ static void _apply_quadratic(
 
     i = 0;
     a_mock->exps = A->exps + N*i;
-    a_mock->coeffs = A->coeffs + N*i;
+    a_mock->coeffs = A->coeffs + i;
     a_mock->bits = bits;
     while (i < A->length && (mask & (A->exps[N*i + off] >> shift)) == 2)
         i++;
@@ -221,7 +221,7 @@ static void _apply_quadratic(
     a_mock->alloc = a_mock->length;
 
     b_mock->exps = A->exps + N*i;
-    b_mock->coeffs = A->coeffs + N*i;
+    b_mock->coeffs = A->coeffs + i;
     b_mock->bits = bits;
     while (i < A->length && (mask & (A->exps[N*i + off] >> shift)) == 1)
         i++;
@@ -229,7 +229,7 @@ static void _apply_quadratic(
     b_mock->alloc = b_mock->length;
 
     c_mock->exps = A->exps + N*i;
-    c_mock->coeffs = A->coeffs + N*i;
+    c_mock->coeffs = A->coeffs + i;
     c_mock->bits = bits;
     c_mock->length = A->length - i;
     c_mock->alloc = c_mock->length;
@@ -289,6 +289,7 @@ static int _apply_algo(
     FLINT_ASSERT(A->length > 1 || fmpz_sgn(A->coeffs + 0) > 0);
     FLINT_ASSERT(fmpz_mpoly_degrees_fit_si(A, ctx));
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
+    FLINT_ASSERT(fmpz_mpoly_is_canonical(A, ctx));
 
     if (A->bits > FLINT_BITS && !fmpz_mpoly_repack_bits_inplace(A, FLINT_BITS, ctx))
         return 0;
