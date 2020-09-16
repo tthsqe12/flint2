@@ -11,6 +11,18 @@
 
 #include "fq_nmod_mpoly_factor.h"
 
+void n_bpoly_fq_get_coeff_n_fq(
+    mp_limb_t * c,
+    const n_bpoly_t A,
+    slong e0,
+    slong e1,
+    const fq_nmod_ctx_t ctx)
+{
+    if (e0 >= A->length)
+        _n_fq_zero(c, fq_nmod_ctx_degree(ctx));
+    else
+        n_poly_fq_get_coeff_n_fq(c, A->coeffs + e0, e1, ctx);
+}
 
 void n_bpoly_fq_get_coeff_fq_nmod(
     fq_nmod_t c,
@@ -651,6 +663,7 @@ void fq_nmod_mpoly_get_n_bpoly_fq(
     slong vary,
     const fq_nmod_mpoly_ctx_t ctx)
 {
+    slong d = fq_nmod_ctx_degree(ctx->fqctx);
     slong j;
     slong NB;
     ulong Bexpx, Bexpy;
@@ -669,7 +682,7 @@ void fq_nmod_mpoly_get_n_bpoly_fq(
     {
         Bexpx = ((B->exps + NB*j)[Boffx] >> Bshiftx) & mask;
         Bexpy = ((B->exps + NB*j)[Boffy] >> Bshifty) & mask;
-        n_bpoly_fq_set_coeff_fq_nmod(A, Bexpx, Bexpy, B->coeffs + j, ctx->fqctx);
+        n_bpoly_fq_set_coeff_n_fq(A, Bexpx, Bexpy, B->coeffs + d*j, ctx->fqctx);
     }
 }
 
@@ -686,10 +699,6 @@ void fq_nmod_mpoly_set_n_bpoly_fq(
     slong n = ctx->minfo->nvars;
     slong i, j;
     slong NA;
-    slong Alen;
-    fq_nmod_struct * Acoeff;
-    ulong * Aexp;
-    slong Aalloc;
     ulong * Aexps;
     TMP_INIT;
 
@@ -701,35 +710,28 @@ void fq_nmod_mpoly_set_n_bpoly_fq(
     for (i = 0; i < n; i++)
         Aexps[i] = 0;
 
+    fq_nmod_mpoly_fit_length_reset_bits(A, 4, Abits, ctx);
     NA = mpoly_words_per_exp(Abits, ctx->minfo);
-    fq_nmod_mpoly_fit_bits(A, Abits, ctx);
-    A->bits = Abits;
 
-    Acoeff = A->coeffs;
-    Aexp = A->exps;
-    Aalloc = A->alloc;
-    Alen = 0;
+    A->length = 0;
     for (i = 0; i < B->length; i++)
     {
         n_poly_struct * Bc = B->coeffs + i;
-        _fq_nmod_mpoly_fit_length(&Acoeff, &Aexp, &Aalloc, Alen + Bc->length, NA, ctx->fqctx);
-
         for (j = 0; j < Bc->length; j++)
         {
+            Aexps[varx] = i;
+            Aexps[vary] = j;
+
             if (_n_fq_is_zero(Bc->coeffs + d*j, d))
                 continue;
 
-            Aexps[varx] = i;
-            Aexps[vary] = j;
-            n_fq_get_fq_nmod(Acoeff + Alen, Bc->coeffs + d*j, ctx->fqctx);
-            mpoly_set_monomial_ui(Aexp + NA*Alen, Aexps, Abits, ctx->minfo);
-            Alen++;
+            fq_nmod_mpoly_fit_length(A, A->length + 1, ctx);
+
+            _n_fq_set(A->coeffs + d*A->length, Bc->coeffs + d*j, d);
+            mpoly_set_monomial_ui(A->exps + NA*A->length, Aexps, Abits, ctx->minfo);
+            A->length++;
         }
     }
-    A->coeffs = Acoeff;
-    A->exps = Aexp;
-    A->alloc = Aalloc;
-    A->length = Alen;
 
     TMP_END;
 

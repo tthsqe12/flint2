@@ -79,6 +79,8 @@ void flint_throw(flint_err_t exc, const char * msg, ...)
 
      flint_vprintf(msg, ap);
      va_end(ap);
+     printf("\n");
 
+     fflush(stdout);
      flint_abort();
 }

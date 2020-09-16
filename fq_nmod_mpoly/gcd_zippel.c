@@ -28,7 +28,7 @@ int fq_nmod_mpolyu_gcdm_zippel_bivar(
     slong lastdeg;
     int success = 0, changed, have_enough;
     fq_nmod_mpolyun_t An, Bn, H, Ht;
-    fq_nmod_poly_t modulus, gamma, hc;
+    fq_nmod_poly_t modulus, gamma, hc, tmp1, tmp2;
     bad_fq_nmod_mpoly_embed_chooser_t embc;
     bad_fq_nmod_embed_struct * cur_emb;
     fq_nmod_mpoly_ctx_t ectx;
@@ -52,9 +52,13 @@ int fq_nmod_mpolyu_gcdm_zippel_bivar(
     FLINT_ASSERT(An->exps[A->length - 1] == 0);
     FLINT_ASSERT(Bn->exps[B->length - 1] == 0);
 
+    fq_nmod_poly_init(tmp1, ctx->fqctx);
+    fq_nmod_poly_init(tmp2, ctx->fqctx);
+
     fq_nmod_poly_init(gamma, ctx->fqctx);
-    fq_nmod_poly_gcd(gamma, fq_nmod_mpolyun_leadcoeff_poly(An, ctx),
-                            fq_nmod_mpolyun_leadcoeff_poly(Bn, ctx), ctx->fqctx);
+    n_poly_fq_get_fq_nmod_poly(tmp1, fq_nmod_mpolyun_leadcoeff_poly(An, ctx), ctx->fqctx);
+    n_poly_fq_get_fq_nmod_poly(tmp2, fq_nmod_mpolyun_leadcoeff_poly(Bn, ctx), ctx->fqctx);
+    fq_nmod_poly_gcd(gamma, tmp1, tmp2, ctx->fqctx);
 
     /* bound on the number of images */
     Alastdeg = fq_nmod_mpolyun_lastdeg(An, ctx);
@@ -136,7 +140,8 @@ have_prime:
         }
     }
 
-    fq_nmod_inv(t, fq_nmod_mpolyu_leadcoeff(Geval, ectx), ectx->fqctx);
+    n_fq_get_fq_nmod(t, fq_nmod_mpolyu_leadcoeff(Geval, ectx), ectx->fqctx);
+    fq_nmod_inv(t, t, ectx->fqctx);
     fq_nmod_mul(t, t, geval, ectx->fqctx);
     fq_nmod_mpolyu_scalar_mul_fq_nmod(Geval, t, ectx);
 
@@ -158,7 +163,7 @@ have_prime:
             fq_nmod_mpolyun_content_poly(hc, H, ctx);
             fq_nmod_mpolyun_divexact_poly(Ht, H, hc, ctx);
             fq_nmod_mpolyu_cvtfrom_mpolyun(G, Ht, var, ctx);
-            if (    fq_nmod_mpolyuu_divides(Abar, A, G, 1, ctx)
+            if ( fq_nmod_mpolyuu_divides(Abar, A, G, 1, ctx)
                  && fq_nmod_mpolyuu_divides(Bbar, B, G, 1, ctx))
             {
                 success = 1;
@@ -181,6 +186,9 @@ have_prime:
     goto choose_prime_outer;
 
 finished:
+
+    fq_nmod_poly_clear(tmp1, ctx->fqctx);
+    fq_nmod_poly_clear(tmp2, ctx->fqctx);
 
     fq_nmod_poly_clear(gamma, ctx->fqctx);
     fq_nmod_poly_clear(hc, ctx->fqctx);
@@ -218,7 +226,7 @@ int fq_nmod_mpolyu_gcdm_zippel(
     slong lastdeg;
     int success, changed, have_enough;
     fq_nmod_mpolyun_t An, Bn, Hn, Ht;
-    fq_nmod_poly_t modulus, gamma, hc;
+    fq_nmod_poly_t modulus, gamma, hc, tmp1, tmp2;
     bad_fq_nmod_mpoly_embed_chooser_t embc;
     bad_fq_nmod_embed_struct * cur_emb;
     fq_nmod_mpoly_ctx_t ectx;
@@ -259,9 +267,13 @@ int fq_nmod_mpolyu_gcdm_zippel(
     FLINT_ASSERT(An->exps[A->length - 1] == 0);
     FLINT_ASSERT(Bn->exps[B->length - 1] == 0);
 
+    fq_nmod_poly_init(tmp1, ctx->fqctx);
+    fq_nmod_poly_init(tmp2, ctx->fqctx);
+
     fq_nmod_poly_init(gamma, ctx->fqctx);
-    fq_nmod_poly_gcd(gamma, fq_nmod_mpolyun_leadcoeff_poly(An, ctx),
-                            fq_nmod_mpolyun_leadcoeff_poly(Bn, ctx), ctx->fqctx);
+    n_poly_fq_get_fq_nmod_poly(tmp1, fq_nmod_mpolyun_leadcoeff_poly(An, ctx), ctx->fqctx);
+    n_poly_fq_get_fq_nmod_poly(tmp2, fq_nmod_mpolyun_leadcoeff_poly(Bn, ctx), ctx->fqctx);
+    fq_nmod_poly_gcd(gamma, tmp1, tmp2, ctx->fqctx);
 
     /* bound on the number of images */
     Alastdeg = fq_nmod_mpolyun_lastdeg(An, ctx);
@@ -345,11 +357,18 @@ have_prime:
         goto finished;
     }
 
-    fq_nmod_inv(t, fq_nmod_mpolyu_leadcoeff(Geval, ectx), ectx->fqctx);
+    n_fq_get_fq_nmod(t, fq_nmod_mpolyu_leadcoeff(Geval, ectx), ectx->fqctx);
+
+    fq_nmod_inv(t, t, ectx->fqctx);
     fq_nmod_mul(t, t, gammaeval, ectx->fqctx);
     fq_nmod_mpolyu_scalar_mul_fq_nmod(Geval, t, ectx);
 
+FLINT_ASSERT(fq_nmod_mpolyu_is_canonical(Geval, ectx));
+
     fq_nmod_mpolyu_setform(Gform, Geval, ectx);
+
+FLINT_ASSERT(fq_nmod_mpolyu_is_canonical(Gform, ectx));
+
     fq_nmod_mpolyun_interp_lift_lg_mpolyu(Hn, ctx, Geval, ectx, cur_emb);
 
     fq_nmod_poly_set(modulus, cur_emb->h, ctx->fqctx);
@@ -374,6 +393,17 @@ choose_prime_inner:
     if (Aeval->length == 0 || Beval->length == 0)
         goto choose_prime_inner;
 
+{
+slong i;
+slong d = fq_nmod_ctx_degree(ectx->fqctx);
+    for (i = 0; i < Gform->length; i++)
+    {
+        fq_nmod_mpoly_fit_length(Gform->coeffs + i, Gform->coeffs[i].length, ectx);
+_nmod_vec_zero(Gform->coeffs[i].coeffs, d*Gform->coeffs[i].length);
+    }
+}
+FLINT_ASSERT(fq_nmod_mpolyu_is_canonical(Gform, ectx));
+
     switch (fq_nmod_mpolyu_gcds_zippel(Geval, Aeval, Beval, Gform,
                            ctx->minfo->nvars - 1, ectx, randstate, &degbound))
     {
@@ -391,10 +421,14 @@ choose_prime_inner:
             break;
     }
 
-    if (fq_nmod_is_zero(fq_nmod_mpolyu_leadcoeff(Geval, ectx), ectx->fqctx))
-        goto choose_prime_inner;
+    n_fq_get_fq_nmod(t, fq_nmod_mpolyu_leadcoeff(Geval, ectx), ectx->fqctx);
 
-    fq_nmod_inv(t, fq_nmod_mpolyu_leadcoeff(Geval, ectx), ectx->fqctx);
+    if (fq_nmod_is_zero(t, ectx->fqctx))
+    {
+        goto choose_prime_inner;
+    }
+
+    fq_nmod_inv(t, t, ectx->fqctx);
     fq_nmod_mul(t, t, gammaeval, ectx->fqctx);
     fq_nmod_mpolyu_scalar_mul_fq_nmod(Geval, t, ectx);
 
@@ -430,6 +464,9 @@ choose_prime_inner:
     goto choose_prime_inner;
 
 finished:
+
+    fq_nmod_poly_clear(tmp1, ctx->fqctx);
+    fq_nmod_poly_clear(tmp2, ctx->fqctx);
 
     fq_nmod_poly_clear(gamma, ctx->fqctx);
 

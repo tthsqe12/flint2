@@ -55,6 +55,7 @@ static void fq_nmod_polyu_combine_like_terms(
     const fq_nmod_ctx_t ctx)
 {
     slong d = fq_nmod_ctx_degree(ctx);
+    nmod_t mod = fq_nmod_ctx_mod(ctx);
     slong in, out;
 
     out = -1;
@@ -65,7 +66,7 @@ static void fq_nmod_polyu_combine_like_terms(
 
         if (out >= 0 && A->exps[out] == A->exps[in])
         {
-            _n_fq_add(A->coeffs + d*out, A->coeffs + d*out, A->coeffs + d*in, ctx);
+            _n_fq_add(A->coeffs + d*out, A->coeffs + d*out, A->coeffs + d*in, d, mod);
         }
         else
         {
@@ -257,6 +258,7 @@ int fq_nmod_polyu3n_interp_crt_sm_bpoly(
     const fq_nmod_ctx_t ctx)
 {
     slong d = fq_nmod_ctx_degree(ctx);
+    nmod_t mod = fq_nmod_ctx_mod(ctx);
     int changed = 0;
     slong lastlength = 0;
     n_polyun_term_struct * Tterms;
@@ -298,7 +300,7 @@ int fq_nmod_polyu3n_interp_crt_sm_bpoly(
         {
             /* F term ok, A term ok */
             n_poly_fq_evaluate_n_fq(v, Fterms[Fi].coeff, alpha, ctx);
-            _n_fq_sub(v, Acoeffs[Ai].coeffs + d*ai, v, ctx);
+            _n_fq_sub(v, Acoeffs[Ai].coeffs + d*ai, v, d, mod);
             if (!_n_fq_is_zero(v, d))
             {
                 changed = 1;

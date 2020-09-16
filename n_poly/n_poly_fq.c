@@ -101,6 +101,20 @@ int n_poly_fq_is_one(n_poly_t A, const fq_nmod_ctx_t ctx)
 }
 
 
+void n_poly_fq_get_coeff_n_fq(
+    mp_limb_t * c,
+    const n_poly_t A,
+    slong e,
+    const fq_nmod_ctx_t ctx)
+{
+    slong d = fq_nmod_ctx_degree(ctx);
+
+    if (e >= A->length)
+        _n_fq_zero(c, d);
+    else
+        _n_fq_set(c, A->coeffs + d*e, d);
+}
+
 void n_poly_fq_get_coeff_fq_nmod(
     fq_nmod_t c,
     const n_poly_t A,
@@ -298,6 +312,21 @@ void n_poly_fq_truncate(n_poly_t A, slong len, const fq_nmod_ctx_t ctx)
     }
 }
 
+
+void n_poly_fq_evaluate_fq_nmod(
+    fq_nmod_t e,
+    const n_poly_t A,
+    const fq_nmod_t c,
+    const fq_nmod_ctx_t ctx)
+{
+    fq_nmod_poly_t AA;
+    fq_nmod_poly_init(AA, ctx);
+    n_poly_fq_get_fq_nmod_poly(AA, A, ctx);
+    fq_nmod_poly_evaluate_fq_nmod(e, AA, c, ctx);
+    fq_nmod_poly_clear(AA, ctx);
+}
+
+
 void n_poly_fq_evaluate_n_fq(
     mp_limb_t * e,
     const n_poly_t A,
@@ -425,7 +454,7 @@ void n_poly_fq_shift_left_scalar_submul(
     for (i = 0; i < A->length; i++)
     {
         n_fq_mul(u, c, Acoeffs + d*(i + k), ctx);
-        _n_fq_sub(Acoeffs + d*i, Acoeffs + d*i, u, ctx);
+        _n_fq_sub(Acoeffs + d*i, Acoeffs + d*i, u, d, fq_nmod_ctx_mod(ctx));
     }
 
     A->length = Alen + k;

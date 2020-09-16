@@ -61,7 +61,7 @@ void gcd_check(
         goto cleanup;
     }
 
-    if (!fq_nmod_is_one(g->coeffs + 0, ctx->fqctx))
+    if (!fq_nmod_mpoly_is_monic(g, ctx))
     {
         printf("FAIL\n");
         flint_printf("Check gcd leading coefficient is one\n"

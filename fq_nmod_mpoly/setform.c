@@ -15,13 +15,8 @@
 void fq_nmod_mpoly_setform(fq_nmod_mpoly_t A, fq_nmod_mpoly_t B,
                                                  const fq_nmod_mpoly_ctx_t ctx)
 {
-    slong i;
-
     fq_nmod_mpoly_set(A, B, ctx);
-    for (i = 0; i < A->length; i++)
-    {
-        fq_nmod_zero(A->coeffs + i, ctx->fqctx);
-    }
+    _nmod_vec_zero(A->coeffs, fq_nmod_ctx_degree(ctx->fqctx)*A->length);
 }
 
 void fq_nmod_mpolyu_setform(fq_nmod_mpolyu_t A, fq_nmod_mpolyu_t B,

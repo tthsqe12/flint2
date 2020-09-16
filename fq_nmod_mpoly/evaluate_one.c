@@ -19,6 +19,7 @@ static void _fq_nmod_mpoly_evaluate_one_fq_nmod_sp(
     const fq_nmod_t val,
     const fq_nmod_mpoly_ctx_t ctx)
 {
+#if 0
     int newer;
     fq_nmod_t pp;
     slong i, j, N;
@@ -217,6 +218,7 @@ done:
     fq_nmod_clear(pp, ctx->fqctx);
 
     TMP_END;
+#endif
 }
 
 
@@ -228,6 +230,7 @@ static void _fq_nmod_mpoly_evaluate_one_fq_nmod_mp(
     const fq_nmod_t val,
     const fq_nmod_mpoly_ctx_t ctx)
 {
+#if 0
     int newer;
     fq_nmod_t pp;
     slong i, j, N, bits;
@@ -425,6 +428,7 @@ done:
     fq_nmod_clear(pp, ctx->fqctx);
 
     TMP_END;
+#endif
 }
 
 void fq_nmod_mpoly_evaluate_one_fq_nmod(

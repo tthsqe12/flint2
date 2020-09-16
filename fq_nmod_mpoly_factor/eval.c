@@ -21,7 +21,7 @@ int _fq_nmod_mpoly_eval_rest_n_poly_fq(
     slong * ends,
     slong * stops,
     ulong * es,
-    const fq_nmod_struct * Acoeffs,
+    const mp_limb_t * Acoeffs,
     const ulong * Aexps,
     slong Alen,
     slong var,
@@ -84,7 +84,8 @@ calculate_return:
     }
     else
     {
-        n_poly_fq_set_fq_nmod(E + v + 1, Acoeffs + starts[v], ctx);
+        slong d = fq_nmod_ctx_degree(ctx);
+        n_poly_fq_set_n_fq(E + v + 1, Acoeffs + d*starts[v], ctx);
         n_poly_fq_add(E + v, E + v, E + v + 1, ctx);
     }
 
@@ -120,6 +121,7 @@ void _fq_nmod_mpoly_eval_rest_to_n_bpoly_fq(
     const n_poly_struct * alphabetas,
     const fq_nmod_mpoly_ctx_t ctx)
 {
+    slong d = fq_nmod_ctx_degree(ctx->fqctx);
     slong n = ctx->minfo->nvars;
     slong i, N = mpoly_words_per_exp_sp(A->bits, ctx->minfo);
     slong * offsets, * shifts;
@@ -170,7 +172,7 @@ next:
     }
 
     _fq_nmod_mpoly_eval_rest_n_poly_fq(realE, starts, ends, stops, es,
-                    A->coeffs + start, A->exps + N*start, stop - start, 1,
+                    A->coeffs + d*start, A->exps + N*start, stop - start, 1,
                                         alphabetas, offsets, shifts, N, mask,
                                                 ctx->minfo->nvars, ctx->fqctx);
     n_poly_fq_set(E->coeffs + e, realE + 0, ctx->fqctx);
@@ -206,6 +208,7 @@ void _fq_nmod_mpoly_set_n_bpoly_fq_var1_zero(
     slong var,
     const fq_nmod_mpoly_ctx_t ctx)
 {
+    slong d = fq_nmod_ctx_degree(ctx->fqctx);
     slong N = mpoly_words_per_exp(Abits, ctx->minfo);
     slong i, Alen;
     slong Blen = B->length;
@@ -224,14 +227,13 @@ void _fq_nmod_mpoly_set_n_bpoly_fq_var1_zero(
     for (i = 0; i < Blen; i++)
         Alen += (B->coeffs[i].length > 0);
 
-    fq_nmod_mpoly_fit_length_set_bits(A, Alen, Abits, ctx);
+    fq_nmod_mpoly_fit_length_reset_bits(A, Alen, Abits, ctx);
 
     Alen = 0;
     for (i = Blen - 1; i >= 0; i--)
     {
-        FLINT_ASSERT(Alen < A->alloc);
-        n_bpoly_fq_get_coeff_fq_nmod(A->coeffs + Alen, B, i, 0, ctx->fqctx);
-        if (fq_nmod_is_zero(A->coeffs + Alen, ctx->fqctx))
+        n_bpoly_fq_get_coeff_n_fq(A->coeffs + d*Alen, B, i, 0, ctx->fqctx);
+        if (_n_fq_is_zero(A->coeffs + d*Alen, d))
             continue;
 
         if (Abits <= FLINT_BITS)

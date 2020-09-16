@@ -22,6 +22,9 @@ int nmod_mpolyu_gcdm_zippel_bivar(
     mpoly_zipinfo_t zinfo,
     flint_rand_t randstate)
 {
+    FLINT_ASSERT(0);
+    return 0;
+#if 0
     slong var = 0;
     slong Alastdeg, Blastdeg;
     slong bound;
@@ -209,6 +212,7 @@ finished:
     fq_nmod_mpoly_ctx_clear(ffctx);
 
     return success;
+#endif
 }
 
 
@@ -222,6 +226,9 @@ int nmod_mpolyu_gcdm_zippel(
     mpoly_zipinfo_t zinfo,
     flint_rand_t randstate)
 {
+    FLINT_ASSERT(0);
+    return 0;
+#if 0
     slong degbound;
     slong bound;
     slong Alastdeg, Blastdeg;
@@ -489,12 +496,16 @@ finished:
     fq_nmod_mpoly_ctx_clear(ffctx);
 
     return success;
+#endif
 }
 
 
 int nmod_mpoly_gcd_zippel(nmod_mpoly_t G, const nmod_mpoly_t A,
                               const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx)
 {
+    FLINT_ASSERT(0);
+    return 0;
+#if 0
     slong i;
     flint_bitcnt_t wbits;
     flint_rand_t randstate;
@@ -644,4 +655,5 @@ cleanup1:
     flint_free(stride);
 
     return success;
+#endif
 }

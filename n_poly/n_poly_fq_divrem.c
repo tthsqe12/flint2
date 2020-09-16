@@ -26,6 +26,7 @@ void _n_poly_fq_rem_basecase_(
 {
     slong i;
     slong d = fq_nmod_ctx_degree(ctx);
+    nmod_t mod = fq_nmod_ctx_mod(ctx);
     mp_limb_t * tmp = n_poly_stack_vec_init(St, d*(3 + N_POLY_FQ_DIVREM_BASECASE_ITCH));
     mp_limb_t * u = tmp + d*N_POLY_FQ_DIVREM_BASECASE_ITCH;
     mp_limb_t * q0 = u + d;
@@ -38,19 +39,19 @@ void _n_poly_fq_rem_basecase_(
     {
         _n_fq_mul(q1, A + d*(Alen - 1), invB, ctx, tmp);
         _n_fq_mul(q0, q1, B + d*(Blen - 2), ctx, tmp);
-        _n_fq_sub(q0, q0, A + d*(Alen - 2), ctx);
+        _n_fq_sub(q0, q0, A + d*(Alen - 2), d, mod);
         _n_fq_mul(q0, q0, invB, ctx, tmp);
         _nmod_vec_neg(q1, q1, d, ctx->mod);
 
         i = -1;
         _n_fq_mul(u, q0, B + d*(i + 1), ctx, tmp);
-        _n_fq_add(A + d*(i + Alen - Blen), A + d*(i + Alen - Blen), u, ctx);
+        _n_fq_add(A + d*(i + Alen - Blen), A + d*(i + Alen - Blen), u, d, mod);
         for (i = 0; i + 2 < Blen; i++)
         {
             _n_fq_mul2(tmp, q1, B + d*i, ctx);
             _n_fq_madd2(tmp, q0, B + d*(i + 1), ctx, tmp + 2*d);
             _n_fq_reduce2(u, tmp, ctx, tmp + 2*d);
-            _n_fq_add(A + d*(i + Alen - Blen), A + d*(i + Alen - Blen), u, ctx);
+            _n_fq_add(A + d*(i + Alen - Blen), A + d*(i + Alen - Blen), u, d, mod);
         }
 
         Alen -= 2;
@@ -64,7 +65,7 @@ void _n_poly_fq_rem_basecase_(
         for (i = 0; i + 1 < Blen; i++)
         {
             _n_fq_mul(u, q0, B + d*i, ctx, tmp);
-            _n_fq_sub(A + d*(i + Alen - Blen), A + d*(i + Alen - Blen), u, ctx);
+            _n_fq_sub(A + d*(i + Alen - Blen), A + d*(i + Alen - Blen), u, d, mod);
         }
 
         Alen -= 1;
@@ -86,6 +87,7 @@ void _n_poly_fq_divrem_basecase_(
 {
     slong i;
     slong d = fq_nmod_ctx_degree(ctx);
+    nmod_t mod = fq_nmod_ctx_mod(ctx);
     mp_limb_t * tmp = n_poly_stack_vec_init(St, d*(1 + N_POLY_FQ_DIVREM_BASECASE_ITCH));
     mp_limb_t * u = tmp + d*N_POLY_FQ_DIVREM_BASECASE_ITCH;
 
@@ -99,22 +101,22 @@ void _n_poly_fq_divrem_basecase_(
 
         _n_fq_mul(q1, A + d*(Alen - 1), invB, ctx, tmp);
         _n_fq_mul(q0, q1, B + d*(Blen - 2), ctx, tmp);
-        _n_fq_sub(q0, q0, A + d*(Alen - 2), ctx);
+        _n_fq_sub(q0, q0, A + d*(Alen - 2), d, mod);
         _n_fq_mul(q0, q0, invB, ctx, tmp);
         _nmod_vec_neg(q1, q1, d, ctx->mod);
 
         i = -1;
         _n_fq_mul(u, q0, B + d*(i + 1), ctx, tmp);
-        _n_fq_add(A + d*(i + Alen - Blen), A + d*(i + Alen - Blen), u, ctx);
+        _n_fq_add(A + d*(i + Alen - Blen), A + d*(i + Alen - Blen), u, d, mod);
         for (i = 0; i + 2 < Blen; i++)
         {
             _n_fq_mul2(tmp, q1, B + d*i, ctx);
             _n_fq_madd2(tmp, q0, B + d*(i + 1), ctx, tmp + 2*d);
             _n_fq_reduce2(u, tmp, ctx, tmp + 2*d);
-            _n_fq_add(A + d*(i + Alen - Blen), A + d*(i + Alen - Blen), u, ctx);
+            _n_fq_add(A + d*(i + Alen - Blen), A + d*(i + Alen - Blen), u, d, mod);
         }
 
-        _nmod_vec_neg(q0, q0, 2*d, ctx->mod); /* q0 and q1 */
+        _nmod_vec_neg(q0, q0, 2*d, mod); /* q0 and q1 */
 
         Alen -= 2;
         _nmod_vec_zero(A + d*Alen, 2*d);
@@ -129,7 +131,7 @@ void _n_poly_fq_divrem_basecase_(
         for (i = 0; i + 1 < Blen; i++)
         {
             _n_fq_mul(u, q0, B + d*i, ctx, tmp);
-            _n_fq_sub(A + d*(i + Alen - Blen), A + d*(i + Alen - Blen), u, ctx);
+            _n_fq_sub(A + d*(i + Alen - Blen), A + d*(i + Alen - Blen), u, d, mod);
         }
 
         Alen -= 1;

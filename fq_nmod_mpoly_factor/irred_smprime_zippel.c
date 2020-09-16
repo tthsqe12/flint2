@@ -17,6 +17,7 @@ static void fq_nmod_mpoly_delete_duplicate_terms(
     fq_nmod_mpoly_t A,
     const fq_nmod_mpoly_ctx_t ctx)
 {
+    slong d = fq_nmod_ctx_degree(ctx->fqctx);
     slong i, j;
     slong N = mpoly_words_per_exp(A->bits, ctx->minfo);
     j = -1;
@@ -24,11 +25,11 @@ static void fq_nmod_mpoly_delete_duplicate_terms(
     {
         if (j >= 0 && mpoly_monomial_equal(A->exps + N*j, A->exps + N*i, N))
         {
-            FLINT_ASSERT(fq_nmod_equal(A->coeffs + j, A->coeffs + i, ctx->fqctx));
+            FLINT_ASSERT(_n_fq_equal(A->coeffs + d*j, A->coeffs + d*i, d));
             continue;
         }
         j++;
-        fq_nmod_set(A->coeffs + j, A->coeffs + i, ctx->fqctx);
+        _n_fq_set(A->coeffs + d*j, A->coeffs + d*i, d);
         mpoly_monomial_set(A->exps + N*j, A->exps + N*i, N);
     }
     j++;
@@ -255,8 +256,8 @@ static void _fq_nmod_mpoly_monomial_evals_indirect(
 }
 
 int fq_nmod_zip_find_coeffs_new_fq_nmod(
-    fq_nmod_struct * coeffs,             /* length mlength */
-    const fq_nmod_struct * monomials,    /* length mlength */
+    mp_limb_t * coeffs,             /* length mlength */
+    const mp_limb_t * monomials,    /* length mlength */
     slong mlength,
     const mp_limb_t * evals,        /* length d*elength */
     slong elength,
@@ -265,6 +266,7 @@ int fq_nmod_zip_find_coeffs_new_fq_nmod(
     const fq_nmod_ctx_t ctx)
 {
     slong d = fq_nmod_ctx_degree(ctx);
+    nmod_t mod = fq_nmod_ctx_mod(ctx);
     int success;
     slong i, j;
     mp_limb_t * tmp = FLINT_ARRAY_ALLOC(12*d, mp_limb_t);
@@ -284,22 +286,22 @@ int fq_nmod_zip_find_coeffs_new_fq_nmod(
         _n_fq_zero(V0, d);
         _n_fq_zero(T, d);
         _n_fq_zero(S, d);
-        n_fq_set_fq_nmod(r, monomials + i, ctx);
+        _n_fq_set(r, monomials + d*i, d);
         for (j = mlength; j > 0; j--)
         {
             _n_fq_mul(T, r, T, ctx, tmp);
-            _n_fq_add(T, T, master + d*j, ctx);
+            _n_fq_add(T, T, master + d*j, d, mod);
 
             _n_fq_mul(S, r, S, ctx, tmp);
-            _n_fq_add(S, S, T, ctx);
+            _n_fq_add(S, S, T, d, mod);
 
             _n_fq_mul(p0, evals + d*(j - 1), T, ctx, tmp);
-            _n_fq_add(V0, V0, p0, ctx);
+            _n_fq_add(V0, V0, p0, d, mod);
         }
         /* roots[i] should be a root of master */
 #if WANT_ASSERT
         _n_fq_mul(p0, r, T, ctx, tmp);
-        _n_fq_add(p0, p0, master + d*0, ctx);
+        _n_fq_add(p0, p0, master + d*0, d, mod);
         FLINT_ASSERT(_n_fq_is_zero(p0, d));
 #endif
         _n_fq_set(V, V0, d);
@@ -312,13 +314,13 @@ int fq_nmod_zip_find_coeffs_new_fq_nmod(
 
         _n_fq_inv(p0, S, ctx, tmp);
         _n_fq_mul(p0, V, p0, ctx, tmp);
-        n_fq_get_fq_nmod(coeffs + i, p0, ctx);
+        _n_fq_set(coeffs + d*i, p0, d);
     }
 
     /* check that the remaining points match */
     for (j = 0; j < mlength; j++)
     {
-        n_fq_set_fq_nmod(p0, monomials + j, ctx);
+        _n_fq_set(p0, monomials + d*j, d);
         _n_fq_pow_ui(temp + d*j, p0, mlength, ctx);
     }
 
@@ -328,11 +330,11 @@ int fq_nmod_zip_find_coeffs_new_fq_nmod(
         _n_fq_zero(S, d);
         for (j = 0; j < mlength; j++)
         {
-            n_fq_set_fq_nmod(p0, monomials + j, ctx);
+            _n_fq_set(p0, monomials + d*j, d);
             _n_fq_mul(temp + d*j, temp + d*j, p0, ctx, tmp);
-            n_fq_set_fq_nmod(p0, coeffs + j, ctx);
+            _n_fq_set(p0, coeffs + d*j, d);
             _n_fq_mul(p0, p0, temp + d*j, ctx, tmp);
-            _n_fq_add(V0, V0, p0, ctx);
+            _n_fq_add(V0, V0, p0, d, mod);
         }
         _n_fq_set(V, V0, d);
         if (!_n_fq_equal(V, evals + d*i, d))
@@ -394,7 +396,7 @@ static void fq_nmod_mpoly_set_eval_helper3(
     flint_bitcnt_t bits = A->bits;
     slong Alen = A->length;
     const ulong * Aexps = A->exps;
-    const fq_nmod_struct * Acoeffs = A->coeffs;
+    const mp_limb_t * Acoeffs = A->coeffs;
     slong N = mpoly_words_per_exp(bits, ctx->minfo);
     ulong mask = (-UWORD(1)) >> (FLINT_BITS - bits);
     ulong * ind;
@@ -458,7 +460,7 @@ static void fq_nmod_mpoly_set_eval_helper3(
         {
             _n_fq_set(p + d*(3*j + 2), p + d*j, d);
             _n_fq_set(p + d*(3*j + 0), p + d*(3*j + 2), d);
-            n_fq_set_fq_nmod(p + d*(3*j + 1), Acoeffs + ind[j], ctx->fqctx);
+            _n_fq_set(p + d*(3*j + 1), Acoeffs + d*ind[j], d);
         }
     }
 
@@ -492,7 +494,7 @@ static slong fq_nmod_mpoly_set_eval_helper_and_zip_form3(
     flint_bitcnt_t bits = B->bits;
     slong Blen = B->length;
     const ulong * Bexps = B->exps;
-    const fq_nmod_struct * Bcoeffs = B->coeffs;
+    const mp_limb_t * Bcoeffs = B->coeffs;
     slong N = mpoly_words_per_exp(bits, ctx->minfo);
     ulong mask = (-UWORD(1)) >> (FLINT_BITS - bits);
     ulong * ind;
@@ -579,9 +581,8 @@ static slong fq_nmod_mpoly_set_eval_helper_and_zip_form3(
             old_len = Hc->length;
             for (j = 0; j < n; j++)
             {
-                n_fq_get_fq_nmod(Hc->coeffs + old_len + j, p + d*j, ctx->fqctx);
-                mpoly_monomial_set(Hc->exps + N*(old_len + j),
-                                   Bexps + N*ind[j], N);
+                _n_fq_set(Hc->coeffs + d*(old_len + j), p + d*j, d);
+                mpoly_monomial_set(Hc->exps + N*(old_len + j), Bexps + N*ind[j], N);
             }
             Hc->length += n;
             zip_length = FLINT_MAX(zip_length, Hc->length);
@@ -597,7 +598,7 @@ static slong fq_nmod_mpoly_set_eval_helper_and_zip_form3(
         {
             _n_fq_set(p + d*(3*j + 2), p + d*j, d);
             _n_fq_set(p + d*(3*j + 0), p + d*(3*j + 2), d);
-            n_fq_set_fq_nmod(p + d*(3*j + 1), Bcoeffs + ind[j], ctx->fqctx);
+            _n_fq_set(p + d*(3*j + 1), Bcoeffs + d*ind[j], d);
         }
     }
 
@@ -823,7 +824,7 @@ static int fq_nmod_mpoly_from_zip(
     slong zvar = 1;
     ulong x, y, z;
     flint_bitcnt_t bits = B->bits;
-    fq_nmod_struct * Bcoeffs;
+    mp_limb_t * Bcoeffs;
     ulong * Bexps;
     slong N = mpoly_words_per_exp_sp(bits, ctx->minfo);
     ulong mask = (-UWORD(1)) >> (FLINT_BITS - bits);
@@ -874,13 +875,13 @@ static int fq_nmod_mpoly_from_zip(
 
         if (M->terms[Hi].coeff->length < 1)
         {
-            n_poly_fq_product_roots_fq_nmod(M->terms[Hi].coeff,
+            n_poly_fq_product_roots_n_fq(M->terms[Hi].coeff,
                                            Hc->coeffs, Hc->length, ctx->fqctx);
         }
 
         n_poly_fit_length(M->terms[Hlen].coeff, d*Hc->length);
 
-        success = fq_nmod_zip_find_coeffs_new_fq_nmod(Bcoeffs + Bi, Hc->coeffs,
+        success = fq_nmod_zip_find_coeffs_new_fq_nmod(Bcoeffs + d*Bi, Hc->coeffs,
                     Hc->length, Zt[Zi].coeff->coeffs, Zt[Zi].coeff->length,
                     M->terms[Hi].coeff->coeffs, M->terms[Hlen].coeff->coeffs,
                                                              ctx->fqctx);
@@ -890,10 +891,11 @@ static int fq_nmod_mpoly_from_zip(
         Bexps = B->exps;
         for (j = Bi, i = 0; i < Hc->length; j++, i++)
         {
-            if (fq_nmod_is_zero(Bcoeffs + j, ctx->fqctx))
+            if (_n_fq_is_zero(Bcoeffs + d*j, d))
                 continue;
-            fq_nmod_set(Bcoeffs + Bi, Bcoeffs + j, ctx->fqctx);
-            FLINT_ASSERT(Bi < B->alloc);
+            FLINT_ASSERT(N*Bi < B->exps_alloc);
+            FLINT_ASSERT(d*Bi < B->coeffs_alloc);
+            _n_fq_set(Bcoeffs + d*Bi, Bcoeffs + d*j, d);
             mpoly_monomial_set(Bexps + N*Bi, Hc->exps + N*i, N);
             (Bexps + N*Bi)[yoff] += y << yshift;
             Bi++;
@@ -1138,7 +1140,7 @@ int fq_nmod_mpoly_factor_irred_smprime_zippel(
 
     FLINT_ASSERT(n > 1);
     FLINT_ASSERT(A->length > 1);
-    FLINT_ASSERT(fq_nmod_is_one(A->coeffs + 0, ctx->fqctx));
+    FLINT_ASSERT(_n_fq_is_one(A->coeffs + d*0, d));
     FLINT_ASSERT(A->bits <= FLINT_BITS);
 
     if (ctx->fqctx->modulus->length < n_clog(A->length, ctx->fqctx->modulus->mod.n))
@@ -1328,16 +1330,20 @@ next_alphabetas:
     fac->length = r;
     for (i = 0; i < r; i++)
     {
-        fq_nmod_t q;
+        fq_nmod_t q, qt;
         fq_nmod_init(q, ctx->fqctx);
+        fq_nmod_init(qt, ctx->fqctx);
         FLINT_ASSERT(fq_nmod_mpoly_is_fq_nmod(new_lcs->coeffs + 0*r + i, ctx));
         FLINT_ASSERT(fq_nmod_mpoly_length(new_lcs->coeffs + 0*r + i, ctx) == 1);
         _fq_nmod_mpoly_set_n_bpoly_fq_var1_zero(fac->coeffs + i, newA->bits, Abfp->coeffs + i, 0, ctx);
         FLINT_ASSERT(fac->coeffs[i].length > 0);
-        fq_nmod_inv(q, fac->coeffs[i].coeffs + 0, ctx->fqctx);
-        fq_nmod_mul(q, q, new_lcs->coeffs[0*r + i].coeffs + 0, ctx->fqctx);
+        n_fq_get_fq_nmod(qt, fac->coeffs[i].coeffs + d*0, ctx->fqctx);
+        fq_nmod_inv(q, qt, ctx->fqctx);
+        n_fq_get_fq_nmod(qt, new_lcs->coeffs[0*r + i].coeffs + 0, ctx->fqctx);
+        fq_nmod_mul(q, q, qt, ctx->fqctx);
         fq_nmod_mpoly_scalar_mul_fq_nmod(fac->coeffs + i, fac->coeffs + i, q, ctx);
         fq_nmod_clear(q, ctx->fqctx);
+        fq_nmod_clear(qt, ctx->fqctx);
     }
 
     fq_nmod_mpolyv_fit_length(tfac, r, ctx);

@@ -24,6 +24,9 @@ slong _fq_nmod_mpoly_divrem_ideal_monagan_pearce(fq_nmod_mpoly_struct ** polyq,
                                             slong len, slong N, slong bits, 
                         const fq_nmod_mpoly_ctx_t ctx, const ulong * cmpmask)
 {
+FLINT_ASSERT(0);
+return 0;
+#if 0
     slong i, j, p, r_len, w;
     slong next_loc;
     slong * store, * store_base;
@@ -284,7 +287,7 @@ exp_overflow:
 
     r_len = -WORD(1);
     goto cleanup2;
-
+#endif
 }
 
 /* Assumes divisor polys don't alias any output polys */
@@ -292,6 +295,8 @@ void fq_nmod_mpoly_divrem_ideal_monagan_pearce(fq_nmod_mpoly_struct ** q,
      fq_nmod_mpoly_t r, const fq_nmod_mpoly_t poly2, fq_nmod_mpoly_struct * const * poly3,
                                       slong len, const fq_nmod_mpoly_ctx_t ctx)
 {
+FLINT_ASSERT(0);
+#if 0
     slong i, exp_bits, N, lenr = 0;
     slong len3 = 0;
     ulong * cmpmask;
@@ -469,4 +474,5 @@ cleanup3:
     flint_free(cmpmask);
 
     TMP_END;
+#endif
 }

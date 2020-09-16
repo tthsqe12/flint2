@@ -18,6 +18,9 @@ slong _fq_nmod_mpoly_divrem_monagan_pearce(slong * lenr,
             const fq_nmod_struct * coeff3, const ulong * exp3, slong len3,
          slong bits, slong N, const ulong * cmpmask, const fq_nmod_ctx_t fqctx)
 {
+FLINT_ASSERT(0);
+return 0;
+#if 0
     slong i, j, q_len, r_len, s;
     slong next_loc;
     slong heap_len = 2; /* heap zero index unused */
@@ -248,12 +251,15 @@ exp_overflow2:
     q_len = 0;
     r_len = 0;
     goto cleanup2;
+#endif
 }
 
 void fq_nmod_mpoly_divrem_monagan_pearce(fq_nmod_mpoly_t q, fq_nmod_mpoly_t r,
                       const fq_nmod_mpoly_t poly2, const fq_nmod_mpoly_t poly3,
                                                  const fq_nmod_mpoly_ctx_t ctx)
 {
+FLINT_ASSERT(0);
+#if 0
     slong exp_bits, N, lenq = 0, lenr = 0;
     ulong * exp2 = poly2->exps, * exp3 = poly3->exps;
     ulong * cmpmask;
@@ -400,4 +406,5 @@ cleanup3:
         flint_free(exp3);
 
     flint_free(cmpmask);
+#endif
 }

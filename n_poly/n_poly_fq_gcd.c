@@ -19,6 +19,7 @@ slong _n_poly_fq_gcd_euclidean_inplace_(
     mp_limb_t * tmp)
 {
     slong d = fq_nmod_ctx_degree(ctx);
+    nmod_t mod = fq_nmod_ctx_mod(ctx);
     slong i;
     mp_limb_t * u = tmp;
     mp_limb_t * q0 = u + d;
@@ -68,14 +69,14 @@ again:
         _n_fq_inv(u, B + d*(Blen - 1), ctx, t);
         _n_fq_mul(q1, A + d*(Alen - 1), u, ctx, t);
         _n_fq_mul(q0, q1, B + d*(Blen - 2), ctx, t);
-        _n_fq_sub(q0, q0, A + d*(Alen - 2), ctx);
+        _n_fq_sub(q0, q0, A + d*(Alen - 2), d, mod);
         _n_fq_mul(q0, q0, u, ctx, t);
 
-        _nmod_vec_neg(q1, q1, d, ctx->mod);
+        _nmod_vec_neg(q1, q1, d, mod);
 
         _n_fq_mul(u, q0, B + d*0, ctx, t);
         _n_fq_add(A + d*(-1 + Alen - Blen),
-                  A + d*(-1 + Alen - Blen), u, ctx);
+                  A + d*(-1 + Alen - Blen), u, d, mod);
 
         for (i = 0; i < Blen - 1; i++)
         {
@@ -83,7 +84,7 @@ again:
             _n_fq_madd2(t, q0, B + d*(i + 1), ctx, t + 2*d);
             _n_fq_reduce2(u, t, ctx, t + 2*d);
             _n_fq_add(A + d*(i + Alen - Blen),
-                      A + d*(i + Alen - Blen), u, ctx);
+                      A + d*(i + Alen - Blen), u, d, mod);
         }
 
         Alen -= 2;
@@ -97,21 +98,21 @@ again:
         _n_fq_inv(u, A + d*(Alen - 1), ctx, t);
         _n_fq_mul(q1, B + d*(Blen - 1), u, ctx, t);
         _n_fq_mul(q0, q1, A + d*(Alen - 2), ctx, t);
-        _n_fq_sub(q0, q0, B + d*(Blen - 2), ctx);
+        _n_fq_sub(q0, q0, B + d*(Blen - 2), d, mod);
         _n_fq_mul(q0, q0, u, ctx, t);
 
-        _nmod_vec_neg(q1, q1, d, ctx->mod);
+        _nmod_vec_neg(q1, q1, d, mod);
 
         i = -1;
         _n_fq_mul(u, q0, A + d*(i + 1), ctx, t);
-        _n_fq_add(B + d*(i + Blen - Alen), B + d*(i + Blen - Alen), u, ctx);
+        _n_fq_add(B + d*(i + Blen - Alen), B + d*(i + Blen - Alen), u, d, mod);
 
         for (i = 0; i < Alen - 2; i++)
         {
             _n_fq_mul2(t, q1, A + d*i, ctx);
             _n_fq_madd2(t, q0, A + d*(i + 1), ctx, t + 2*d);
             _n_fq_reduce2(u, t, ctx, t + 2*d);
-            _n_fq_add(B + d*(i + Blen - Alen), B + d*(i + Blen - Alen), u, ctx);
+            _n_fq_add(B + d*(i + Blen - Alen), B + d*(i + Blen - Alen), u, d, mod);
         }
 
         Blen -= 2;
@@ -128,7 +129,7 @@ again:
         for (i = 0; i < Blen - 1; i++)
         {
             _n_fq_mul(u, q0, B + d*i, ctx, t);
-            _n_fq_sub(A + d*i, A + d*i, u, ctx);
+            _n_fq_sub(A + d*i, A + d*i, u, d, mod);
         }
 
         Alen -= 1;

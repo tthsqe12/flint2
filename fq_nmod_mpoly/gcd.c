@@ -31,6 +31,7 @@ void fq_nmod_mpoly_evals(
     fq_nmod_struct * alpha,
     const fq_nmod_mpoly_ctx_t ctx)
 {
+    slong d = fq_nmod_ctx_degree(ctx->fqctx);
     slong i, j;
     slong nvars = ctx->minfo->nvars;
     slong total_limit, total_length;
@@ -40,7 +41,7 @@ void fq_nmod_mpoly_evals(
     slong * offsets, * shifts;
     slong N = mpoly_words_per_exp_sp(A->bits, ctx->minfo);
     ulong * Aexp = A->exps;
-    fq_nmod_struct * Acoeff = A->coeffs;
+    mp_limb_t * Acoeff = A->coeffs;
     fq_nmod_t meval, t, t2;
 
     FLINT_ASSERT(A->bits <= FLINT_BITS);
@@ -115,7 +116,7 @@ void fq_nmod_mpoly_evals(
 
         for (i = 0; i < A->length; i++)
         {
-            fq_nmod_set(meval, Acoeff + i, ctx->fqctx);
+            n_fq_get_fq_nmod(meval, Acoeff + d*i, ctx->fqctx);
 
             for (j = 0; j < nvars; j++)
             {
@@ -206,7 +207,7 @@ void fq_nmod_mpoly_evals(
 
         for (i = 0; i < A->length; i++)
         {
-            fq_nmod_set(meval, Acoeff + i, ctx->fqctx);
+            n_fq_get_fq_nmod(meval, Acoeff + d*i, ctx->fqctx);
 
             for (j = 0; j < LUTlen; j++)
             {
@@ -426,11 +427,9 @@ static int _try_monomial_gcd(
     /* compute the degree of each variable in G */
     _fmpz_vec_min_inplace(minBdegs, minAdegs, ctx->minfo->nvars);
 
-    fq_nmod_mpoly_fit_length(G, 1, ctx);
-    fq_nmod_mpoly_fit_bits(G, Gbits, ctx);
-    G->bits = Gbits;
+    fq_nmod_mpoly_fit_length_reset_bits(G, 1, Gbits, ctx);
     mpoly_set_monomial_ffmpz(G->exps, minBdegs, Gbits, ctx->minfo);
-    fq_nmod_one(G->coeffs + 0, ctx->fqctx);
+    _n_fq_one(G->coeffs + 0, fq_nmod_ctx_degree(ctx->fqctx));
     G->length = 1;
 
     for (i = 0; i < ctx->minfo->nfields; i++)
@@ -456,12 +455,13 @@ static int _try_monomial_cofactors(
     const fq_nmod_mpoly_t B,
     const fq_nmod_mpoly_ctx_t ctx)
 {
+    slong d = fq_nmod_ctx_degree(ctx->fqctx);
     int success;
     slong i, j;
     slong NA, NG;
     slong nvars = ctx->minfo->nvars;
     fmpz * Abarexps, * Bbarexps, * Texps;
-    fq_nmod_t t1, t2;
+    mp_limb_t * t1, * t2;
     fq_nmod_mpoly_t T;
     TMP_INIT;
 
@@ -471,19 +471,19 @@ static int _try_monomial_cofactors(
     if (A->length != B->length)
         return 0;
 
-    fq_nmod_init(t1, ctx->fqctx);
-    fq_nmod_init(t2, ctx->fqctx);
+    TMP_START;
+
+    t1 = (mp_limb_t *) TMP_ALLOC(d*sizeof(mp_limb_t));
+    t2 = (mp_limb_t *) TMP_ALLOC(d*sizeof(mp_limb_t));
 
     for (i = A->length - 1; i > 0; i--)
     {
-        fq_nmod_mul(t1, A->coeffs + 0, B->coeffs + i, ctx->fqctx);
-        fq_nmod_mul(t2, B->coeffs + 0, A->coeffs + i, ctx->fqctx);
-        success = fq_nmod_equal(t1, t2, ctx->fqctx);
+        n_fq_mul(t1, A->coeffs + d*0, B->coeffs + d*i, ctx->fqctx);
+        n_fq_mul(t2, B->coeffs + d*0, A->coeffs + d*i, ctx->fqctx);
+        success = _n_fq_equal(t1, t2, d);
         if (!success)
-            goto cleanup;
+            goto cleanup_less;
     }
-
-    TMP_START;
 
     Abarexps = (fmpz *) TMP_ALLOC(3*nvars*sizeof(fmpz));
     Bbarexps = Abarexps + 1*nvars;
@@ -498,26 +498,26 @@ static int _try_monomial_cofactors(
     success = mpoly_monomial_cofactors(Abarexps, Bbarexps, A->exps, A->bits,
                                       B->exps, B->bits, A->length, ctx->minfo);
     if (!success)
-        goto cleanup_tmp;
+        goto cleanup_more;
 
     fq_nmod_mpoly_init3(T, A->length, Gbits, ctx);
     NG = mpoly_words_per_exp(Gbits, ctx->minfo);
     NA = mpoly_words_per_exp(A->bits, ctx->minfo);
-    fq_nmod_inv(t1, A->coeffs + 0, ctx->fqctx);
+    n_fq_inv(t1, A->coeffs + d*0, ctx->fqctx);
     T->length = A->length;
     for (i = 0; i < A->length; i++)
     {
         mpoly_get_monomial_ffmpz(Texps, A->exps + NA*i, A->bits, ctx->minfo);
         _fmpz_vec_sub(Texps, Texps, Abarexps, nvars);
         mpoly_set_monomial_ffmpz(T->exps + NG*i, Texps, Gbits, ctx->minfo);
-        fq_nmod_mul(T->coeffs + i, A->coeffs + i, t1, ctx->fqctx);
+        n_fq_mul(T->coeffs + d*i, A->coeffs + d*i, t1, ctx->fqctx);
     }
     fq_nmod_mpoly_swap(G, T, ctx);
     fq_nmod_mpoly_clear(T, ctx);
 
     success = 1;
 
-cleanup_tmp:
+cleanup_more:
 
     for (j = 0; j < nvars; j++)
     {
@@ -526,12 +526,9 @@ cleanup_tmp:
         fmpz_clear(Texps + j);
     }
 
+cleanup_less:
+
     TMP_END;
-
-cleanup:
-
-    fq_nmod_clear(t1, ctx->fqctx);
-    fq_nmod_clear(t2, ctx->fqctx);
 
     return success;
 }
@@ -911,11 +908,9 @@ skip_monomial_cofactors:
 
 calculate_trivial_gcd:
 
-        fq_nmod_mpoly_fit_length(G, 1, ctx);
-        fq_nmod_mpoly_fit_bits(G, Gbits, ctx);
-        G->bits = Gbits;
+        fq_nmod_mpoly_fit_length_reset_bits(G, 1, Gbits, ctx);
         mpoly_set_monomial_ui(G->exps, I->Gmin_exp, Gbits, ctx->minfo);
-        fq_nmod_one(G->coeffs + 0, ctx->fqctx);
+        _n_fq_one(G->coeffs + 0, fq_nmod_ctx_degree(ctx->fqctx));
         _fq_nmod_mpoly_set_length(G, 1, ctx);
 
         goto successful;
@@ -1081,8 +1076,12 @@ cleanup:
     return success;
 }
 
-int fq_nmod_mpoly_gcd(fq_nmod_mpoly_t G, const fq_nmod_mpoly_t A,
-                       const fq_nmod_mpoly_t B, const fq_nmod_mpoly_ctx_t ctx)
+
+int fq_nmod_mpoly_gcd(
+    fq_nmod_mpoly_t G,
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_t B,
+    const fq_nmod_mpoly_ctx_t ctx)
 {
     flint_bitcnt_t Gbits;
 

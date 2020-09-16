@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2019 Daniel Schultz
+    Copyright (C) 2018 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -11,24 +11,17 @@
 
 #include "fq_nmod_mpoly.h"
 
-void fq_nmod_mpoly_get_term_monomial(
-    fq_nmod_mpoly_t M,
-    const fq_nmod_mpoly_t A,
-    slong i,
+
+void fq_nmod_mpoly_fit_length_reset_bits(
+    fq_nmod_mpoly_t A,
+    slong len,
+    flint_bitcnt_t bits,
     const fq_nmod_mpoly_ctx_t ctx)
 {
     slong d = fq_nmod_ctx_degree(ctx->fqctx);
-    flint_bitcnt_t bits = A->bits;
     slong N = mpoly_words_per_exp(bits, ctx->minfo);
 
-    if (i >= (ulong) A->length)
-    {
-        flint_throw(FLINT_ERROR, "fq_nmod_mpoly_get_term_monomial: index out of range");
-    }
-
-    fq_nmod_mpoly_fit_length_reset_bits(M, 1, bits, ctx);
-
-    mpoly_monomial_set(M->exps + N*0, A->exps + N*i, N);
-    _n_fq_one(M->coeffs + d*0, d);
-    _fq_nmod_mpoly_set_length(M, 1, ctx);
+    _fq_nmod_mpoly_fit_length(&A->coeffs, &A->coeffs_alloc, d,
+                              &A->exps, &A->exps_alloc, N, len);
+    A->bits = bits;
 }
