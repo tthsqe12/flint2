@@ -142,7 +142,8 @@ int _fq_nmod_mpoly_divides_monagan_pearce(fq_nmod_mpoly_t Q,
                     exp_next += _mpoly_heap_insert(heap, exp_list[exp_next], x,
                                              &next_loc, &heap_len, N, cmpmask);
                 }
-            } else
+            }
+            else
             {
                 /* should we go up */
                 if (  (i + 1 < len3)
@@ -192,12 +193,12 @@ int _fq_nmod_mpoly_divides_monagan_pearce(fq_nmod_mpoly_t Q,
             }
         }
 
-        n_fq_mul(Qcoeffs + d*Qlen, Qcoeffs + d*Qlen, lc_minus_inv, fqctx);
-
         if (_n_fq_is_zero(Qcoeffs + d*Qlen, d))
         {
             continue;
         }
+
+        n_fq_mul(Qcoeffs + d*Qlen, Qcoeffs + d*Qlen, lc_minus_inv, fqctx);
 
         if (!lt_divides ||
             mpoly_monomial_gt(exp2 + N*(len2 - 1), exp, N, cmpmask))

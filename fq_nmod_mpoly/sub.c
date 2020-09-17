@@ -34,7 +34,7 @@ slong _fq_nmod_mpoly_sub(
         else if (cmp == 0)
         {
             mpoly_monomial_set(Aexps + N*k, Bexps + N*i, N);
-            _n_fq_add(Acoeffs + d*k, Bcoeffs + d*i, Ccoeffs + d*j, d, mod);
+            _n_fq_sub(Acoeffs + d*k, Bcoeffs + d*i, Ccoeffs + d*j, d, mod);
             k -= _n_fq_is_zero(Acoeffs + d*k, d);
             i++;
             j++;

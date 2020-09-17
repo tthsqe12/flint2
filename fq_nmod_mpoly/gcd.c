@@ -819,6 +819,9 @@ int _fq_nmod_mpoly_gcd(
     slong j;
     slong nvars = ctx->minfo->nvars;
     mpoly_gcd_info_t I;
+#if WANT_ASSERT
+    fq_nmod_mpoly_t T, Asave, Bsave;
+#endif
 
     if (A->length == 1)
     {
@@ -828,6 +831,14 @@ int _fq_nmod_mpoly_gcd(
     {
         return _try_monomial_gcd(G, Gbits, A, B, ctx);
     }
+
+#if WANT_ASSERT
+    fq_nmod_mpoly_init(T, ctx);
+    fq_nmod_mpoly_init(Asave, ctx);
+    fq_nmod_mpoly_init(Bsave, ctx);
+    fq_nmod_mpoly_set(Asave, A, ctx);
+    fq_nmod_mpoly_set(Bsave, B, ctx);
+#endif
 
     mpoly_gcd_info_init(I, nvars);
 
@@ -1039,7 +1050,7 @@ calculate_trivial_gcd:
     mpoly_gcd_info_measure_brown(I, A->length, B->length, ctx->minfo);
     mpoly_gcd_info_measure_zippel(I, A->length, B->length, ctx->minfo);
 
-    if (I->zippel_time_est < I->brown_time_est)
+    if (0.3*I->zippel_time_est < I->brown_time_est)
     {
         if (_try_zippel(G, A, B, I, ctx))
             goto successful;
@@ -1071,7 +1082,15 @@ cleanup:
     {
         fq_nmod_mpoly_repack_bits_inplace(G, Gbits, ctx);
         fq_nmod_mpoly_make_monic(G, G, ctx);
+        FLINT_ASSERT(fq_nmod_mpoly_divides(T, Asave, G, ctx));
+        FLINT_ASSERT(fq_nmod_mpoly_divides(T, Bsave, G, ctx));
     }
+
+#if WANT_ASSERT
+    fq_nmod_mpoly_clear(T, ctx);
+    fq_nmod_mpoly_clear(Asave, ctx);
+    fq_nmod_mpoly_clear(Bsave, ctx);
+#endif
 
     return success;
 }

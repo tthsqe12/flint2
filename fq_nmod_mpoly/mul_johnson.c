@@ -13,12 +13,8 @@
 
 void _fq_nmod_mpoly_mul_johnson1(
     fq_nmod_mpoly_t A,
-    const mp_limb_t * Bcoeffs,
-    const ulong * Bexps,
-    slong Blen,
-    const mp_limb_t * Ccoeffs,
-    const ulong * Cexps,
-    slong Clen,
+    const mp_limb_t * Bcoeffs, const ulong * Bexps, slong Blen,
+    const mp_limb_t * Ccoeffs, const ulong * Cexps, slong Clen,
     ulong maskhi,
     const fq_nmod_ctx_t ctx)
 {
@@ -182,12 +178,8 @@ void _fq_nmod_mpoly_mul_johnson1(
 
 void _fq_nmod_mpoly_mul_johnson(
     fq_nmod_mpoly_t A,
-    const mp_limb_t * Bcoeffs,
-    const ulong * Bexps,
-    slong Blen,
-    const mp_limb_t * Ccoeffs,
-    const ulong * Cexps,
-    slong Clen,
+    const mp_limb_t * Bcoeffs, const ulong * Bexps, slong Blen,
+    const mp_limb_t * Ccoeffs, const ulong * Cexps, slong Clen,
     flint_bitcnt_t bits,
     slong N,
     const ulong * cmpmask,

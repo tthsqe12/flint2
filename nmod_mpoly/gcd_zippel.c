@@ -22,9 +22,6 @@ int nmod_mpolyu_gcdm_zippel_bivar(
     mpoly_zipinfo_t zinfo,
     flint_rand_t randstate)
 {
-    FLINT_ASSERT(0);
-    return 0;
-#if 0
     slong var = 0;
     slong Alastdeg, Blastdeg;
     slong bound;
@@ -148,7 +145,8 @@ int nmod_mpolyu_gcdm_zippel_bivar(
             }
         }
 
-        fq_nmod_inv(t, fq_nmod_mpolyu_leadcoeff(Geval, ffctx), ffctx->fqctx);
+        n_fq_get_fq_nmod(t, fq_nmod_mpolyu_leadcoeff(Geval, ffctx), ffctx->fqctx);
+        fq_nmod_inv(t, t, ffctx->fqctx);
         fq_nmod_mul(t, t, geval, ffctx->fqctx);
         fq_nmod_mpolyu_scalar_mul_fq_nmod(Geval, t, ffctx);
 
@@ -212,7 +210,6 @@ finished:
     fq_nmod_mpoly_ctx_clear(ffctx);
 
     return success;
-#endif
 }
 
 
@@ -226,9 +223,6 @@ int nmod_mpolyu_gcdm_zippel(
     mpoly_zipinfo_t zinfo,
     flint_rand_t randstate)
 {
-    FLINT_ASSERT(0);
-    return 0;
-#if 0
     slong degbound;
     slong bound;
     slong Alastdeg, Blastdeg;
@@ -368,7 +362,8 @@ choose_prime_outer:
         goto finished;
     }
 
-    fq_nmod_inv(t, fq_nmod_mpolyu_leadcoeff(Gff, ffctx), ffctx->fqctx);
+    n_fq_get_fq_nmod(t, fq_nmod_mpolyu_leadcoeff(Gff, ffctx), ffctx->fqctx);
+    fq_nmod_inv(t, t, ffctx->fqctx);
     fq_nmod_mul(t, t, gammaff, ffctx->fqctx);
     fq_nmod_mpolyu_scalar_mul_fq_nmod(Gff, t, ffctx);
 
@@ -416,6 +411,17 @@ choose_prime_inner:
     if (Aff->length == 0 || Bff->length == 0)
         goto choose_prime_inner;
 
+{
+slong i;
+slong d = fq_nmod_ctx_degree(ffctx->fqctx);
+    for (i = 0; i < Gform->length; i++)
+    {
+        fq_nmod_mpoly_fit_length(Gform->coeffs + i, Gform->coeffs[i].length, ffctx);
+_nmod_vec_zero(Gform->coeffs[i].coeffs, d*Gform->coeffs[i].length);
+    }
+}
+FLINT_ASSERT(fq_nmod_mpolyu_is_canonical(Gform, ffctx));
+
     switch (fq_nmod_mpolyu_gcds_zippel(Gff, Aff, Bff, Gform,
                            ctx->minfo->nvars - 1, ffctx, randstate, &degbound))
     {
@@ -433,10 +439,12 @@ choose_prime_inner:
             break;
     }
 
-    if (fq_nmod_is_zero(fq_nmod_mpolyu_leadcoeff(Gff, ffctx), ffctx->fqctx))
+    n_fq_get_fq_nmod(t, fq_nmod_mpolyu_leadcoeff(Gff, ffctx), ffctx->fqctx);
+
+    if (fq_nmod_is_zero(t, ffctx->fqctx))
         goto choose_prime_inner;
 
-    fq_nmod_inv(t, fq_nmod_mpolyu_leadcoeff(Gff, ffctx), ffctx->fqctx);
+    fq_nmod_inv(t, t, ffctx->fqctx);
     fq_nmod_mul(t, t, gammaff, ffctx->fqctx);
     fq_nmod_mpolyu_scalar_mul_fq_nmod(Gff, t, ffctx);
 
@@ -496,16 +504,12 @@ finished:
     fq_nmod_mpoly_ctx_clear(ffctx);
 
     return success;
-#endif
 }
 
 
 int nmod_mpoly_gcd_zippel(nmod_mpoly_t G, const nmod_mpoly_t A,
                               const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx)
 {
-    FLINT_ASSERT(0);
-    return 0;
-#if 0
     slong i;
     flint_bitcnt_t wbits;
     flint_rand_t randstate;
@@ -655,5 +659,4 @@ cleanup1:
     flint_free(stride);
 
     return success;
-#endif
 }

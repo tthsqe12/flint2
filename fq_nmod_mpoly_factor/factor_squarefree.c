@@ -317,10 +317,7 @@ static int _squarefree_factors(
 			goto cleanup;
 
         /* p^k power of factors */
-/*
-	    fq_nmod_pow(Cf->constant, Cf->constant, pk, ctx->fqctx);
 	    _fmpz_vec_scalar_mul_fmpz(Cf->exp, Cf->exp, Cf->num, pk);
-*/
         FLINT_ASSERT(fq_nmod_is_one(Cf->constant, ctx->fqctx));
 
         /* f = f * Cf */

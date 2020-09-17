@@ -21,6 +21,8 @@ void fq_nmod_mpoly_sub_fq_nmod(
     slong N = mpoly_words_per_exp(B->bits, ctx->minfo);
     slong Blen = B->length;
 
+fq_nmod_mpoly_assert_canonical(B, ctx);
+
     if (fq_nmod_is_zero(c, ctx->fqctx))
     {
         fq_nmod_mpoly_set(A, B, ctx);
@@ -38,10 +40,10 @@ void fq_nmod_mpoly_sub_fq_nmod(
     {
         if (A != B)
         {
-            fq_nmod_mpoly_fit_length_reset_bits(A, B->length, B->bits, ctx);
+            fq_nmod_mpoly_fit_length_reset_bits(A, Blen, B->bits, ctx);
             _nmod_vec_set(A->coeffs, B->coeffs, d*(Blen - 1));
             mpoly_copy_monomials(A->exps, B->exps, Blen, N);
-            _fq_nmod_mpoly_set_length(A, B->length, ctx);
+            _fq_nmod_mpoly_set_length(A, Blen, ctx);
         }
 
         n_fq_sub_fq_nmod(A->coeffs + d*(Blen - 1), B->coeffs + d*(Blen - 1), c, ctx->fqctx);

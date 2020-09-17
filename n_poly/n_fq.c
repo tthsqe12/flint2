@@ -187,7 +187,7 @@ int n_fq_equal_fq_nmod(
     FLINT_ASSERT(b->length <= d);
     for (i = 0; i < d; i++)
     {
-        mp_limb_t c = (i > b->length) ? 0 : b->coeffs[i];
+        mp_limb_t c = (i >= b->length) ? 0 : b->coeffs[i];
         if (a[i] != c)
             return 0;
     }
@@ -200,8 +200,18 @@ void n_fq_add_fq_nmod(
     const fq_nmod_t c,
     const fq_nmod_ctx_t ctx)
 {
-    FLINT_ASSERT(c->length < fq_nmod_ctx_degree(ctx));
-    _nmod_vec_add(a, b, c->coeffs, c->length, ctx->modulus->mod);
+    slong d = fq_nmod_ctx_degree(ctx);
+    slong i;
+
+    FLINT_ASSERT(c->length <= d);
+
+    for (i = 0; i < d; i++)
+    {
+        if (i < c->length)
+            a[i] = nmod_add(b[i], c->coeffs[i], ctx->mod);
+        else
+            a[i] = b[i];
+    }
 }
 
 
@@ -211,9 +221,20 @@ void n_fq_sub_fq_nmod(
     const fq_nmod_t c,
     const fq_nmod_ctx_t ctx)
 {
-    FLINT_ASSERT(c->length < fq_nmod_ctx_degree(ctx));
-    _nmod_vec_sub(a, b, c->coeffs, c->length, ctx->modulus->mod);
+    slong d = fq_nmod_ctx_degree(ctx);
+    slong i;
+
+    FLINT_ASSERT(c->length <= d);
+
+    for (i = 0; i < d; i++)
+    {
+        if (i < c->length)
+            a[i] = nmod_sub(b[i], c->coeffs[i], ctx->mod);
+        else
+            a[i] = b[i];
+    }
 }
+
 
 void _n_fq_reduce(
     mp_limb_t * a,
