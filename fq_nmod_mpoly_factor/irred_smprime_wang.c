@@ -123,7 +123,7 @@ next_alphabetas:
         for (j = d; j < d*alphabetas_length; j++)
             alphabetas[i].coeffs[j] = n_urandint(state, ctx->fqctx->mod.n);
         alphabetas[i].length = alphabetas_length;
-        _n_poly_fq_normalise(alphabetas + i, d);
+        _n_fq_poly_normalise(alphabetas + i, d);
     }
 
     _fq_nmod_mpoly_eval_rest_to_n_bpoly_fq(Ab, A, alphabetas, ctx);

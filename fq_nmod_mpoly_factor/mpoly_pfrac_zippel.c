@@ -88,7 +88,7 @@ slong fq_nmod_mpoly_set_eval_helper_and_zip_form2(
             zip_length = FLINT_MAX(zip_length, n);
             Hterms[Hi].coeff->length = n;
             flint_mpn_copyi(Hterms[Hi].coeff->coeffs, p, d*n);
-            n_poly_fq_product_roots_n_fq(Mterms[Hi].coeff, p, n, ctx->fqctx);
+            n_fq_poly_product_roots_n_fq(Mterms[Hi].coeff, p, n, ctx->fqctx);
             Hi++;
         }
 

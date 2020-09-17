@@ -986,7 +986,7 @@ FLINT_DLL void n_fq_pow_ui(
 
 /*****************************************************************************/
 
-#define N_POLY_FQ_DIVREM_DIVCONQUER_CUTOFF 20
+#define N_FQ_POLY_DIVREM_DIVCONQUER_CUTOFF 20
 
 #define n_fq_poly_init n_poly_init
 
@@ -1000,22 +1000,22 @@ FLINT_DLL void n_fq_pow_ui(
 
 #define n_fq_poly_swap n_poly_swap
 
-FLINT_DLL void _n_poly_fq_one(n_poly_t A, slong d);
+FLINT_DLL void _n_fq_poly_one(n_poly_t A, slong d);
 
 N_POLY_INLINE
-void n_poly_fq_one(n_poly_t A, const fq_nmod_ctx_t ctx)
+void n_fq_poly_one(n_poly_t A, const fq_nmod_ctx_t ctx)
 {
-    _n_poly_fq_one(A, fq_nmod_ctx_degree(ctx));
+    _n_fq_poly_one(A, fq_nmod_ctx_degree(ctx));
 }
 
-FLINT_DLL int n_poly_fq_is_one(n_poly_t A, const fq_nmod_ctx_t ctx);
+FLINT_DLL int n_fq_poly_is_one(n_poly_t A, const fq_nmod_ctx_t ctx);
 
-FLINT_DLL int n_poly_fq_is_canonical(
+FLINT_DLL int n_fq_poly_is_canonical(
     const n_poly_t a,
     const fq_nmod_ctx_t ctx);
 
 N_POLY_INLINE
-void _n_poly_fq_normalise(
+void _n_fq_poly_normalise(
     n_poly_t A,
     slong d)
 {
@@ -1023,188 +1023,188 @@ void _n_poly_fq_normalise(
         A->length--;
 }
 
-FLINT_DLL void n_poly_fq_print_pretty(
+FLINT_DLL void n_fq_poly_print_pretty(
     const n_poly_t A,
     const char * x,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL int n_poly_fq_equal(
+FLINT_DLL int n_fq_poly_equal(
     const n_poly_t A,
     const n_poly_t B,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_set(
+FLINT_DLL void n_fq_poly_set(
     n_poly_t A,
     const n_poly_t B,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_set_n_fq(
+FLINT_DLL void n_fq_poly_set_n_fq(
     n_poly_t A,
     const mp_limb_t * c,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_randtest(
+FLINT_DLL void n_fq_poly_randtest(
     n_poly_t A,
     flint_rand_t state,
     slong len,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_make_monic(
+FLINT_DLL void n_fq_poly_make_monic(
     n_poly_t A,
     const n_poly_t B,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL ulong n_poly_fq_remove(
+FLINT_DLL ulong n_fq_poly_remove(
     n_poly_t f,
     const n_poly_t g,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_get_coeff_n_fq(
+FLINT_DLL void n_fq_poly_get_coeff_n_fq(
     mp_limb_t * c,
     const n_poly_t A,
     slong e,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_get_coeff_fq_nmod(
+FLINT_DLL void n_fq_poly_get_coeff_fq_nmod(
     fq_nmod_t c,
     const n_poly_t A,
     slong e,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_set_coeff_n_fq(
+FLINT_DLL void n_fq_poly_set_coeff_n_fq(
     n_poly_t A,
     slong j,
     const mp_limb_t * c,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_set_coeff_fq_nmod(
+FLINT_DLL void n_fq_poly_set_coeff_fq_nmod(
     n_poly_t A,
     slong j,
     const fq_nmod_t c,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_scalar_mul_n_fq(
+FLINT_DLL void n_fq_poly_scalar_mul_n_fq(
     n_poly_t A,
     const n_poly_t B,
     const mp_limb_t * c,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_scalar_mul_ui(
+FLINT_DLL void n_fq_poly_scalar_mul_ui(
     n_poly_t A,
     const n_poly_t B,
     ulong c,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_shift_left_scalar_submul(
+FLINT_DLL void n_fq_poly_shift_left_scalar_submul(
     n_poly_t A,
     slong k,
     const mp_limb_t * c,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_evaluate_fq_nmod(
+FLINT_DLL void n_fq_poly_evaluate_fq_nmod(
     fq_nmod_t e,
     const n_poly_t A,
     const fq_nmod_t c,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_evaluate_n_fq(
+FLINT_DLL void n_fq_poly_evaluate_n_fq(
     mp_limb_t * e,
     const n_poly_t A,
     const mp_limb_t * c,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_get_fq_nmod_poly(
+FLINT_DLL void n_fq_poly_get_fq_nmod_poly(
     fq_nmod_poly_t A,
     const n_poly_t B,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_set_fq_nmod_poly(
+FLINT_DLL void n_fq_poly_set_fq_nmod_poly(
     n_poly_t A,
     const fq_nmod_poly_t B,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_set_n_fq(
+FLINT_DLL void n_fq_poly_set_n_fq(
     n_poly_t A,
     const mp_limb_t * c,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_set_fq_nmod(
+FLINT_DLL void n_fq_poly_set_fq_nmod(
     n_poly_t A,
     const fq_nmod_t c,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_shift_right(
+FLINT_DLL void n_fq_poly_shift_right(
     n_poly_t A,
     const n_poly_t B,
     slong n,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_shift_left(
+FLINT_DLL void n_fq_poly_shift_left(
     n_poly_t A,
     const n_poly_t B,
     slong n,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_truncate(
+FLINT_DLL void n_fq_poly_truncate(
     n_poly_t A,
     slong len,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_add(
+FLINT_DLL void n_fq_poly_add(
     n_poly_t A,
     const n_poly_t B,
     const n_poly_t C,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_sub(
+FLINT_DLL void n_fq_poly_sub(
     n_poly_t A,
     const n_poly_t B,
     const n_poly_t C,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_neg(
+FLINT_DLL void n_fq_poly_neg(
     n_poly_t A,
     const n_poly_t B,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_add_si(
+FLINT_DLL void n_fq_poly_add_si(
     n_poly_t A,
     const n_poly_t B,
     slong c,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void _n_poly_fq_mul_(
+FLINT_DLL void _n_fq_poly_mul_(
     mp_limb_t * A,
     const mp_limb_t * B, slong Blen,
     const mp_limb_t * C, slong Clen,
     const fq_nmod_ctx_t ctx,
     n_poly_stack_t St);
 
-FLINT_DLL void n_poly_fq_mul_(
+FLINT_DLL void n_fq_poly_mul_(
     n_poly_t A,
     const n_poly_t B,
     const n_poly_t C,
     const fq_nmod_ctx_t ctx,
     n_poly_stack_t St);
 
-FLINT_DLL void n_poly_fq_mul(
+FLINT_DLL void n_fq_poly_mul(
     n_poly_t A,
     const n_poly_t B,
     const n_poly_t C,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_pow(
+FLINT_DLL void n_fq_poly_pow(
     n_poly_t A,
     const n_poly_t B,
     ulong e,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL ulong n_poly_fq_remove(
+FLINT_DLL ulong n_fq_poly_remove(
     n_poly_t f,
     const n_poly_t g,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_divrem_divconquer_(
+FLINT_DLL void n_fq_poly_divrem_divconquer_(
     n_poly_t Q,
     n_poly_t R,
     const n_poly_t A,
@@ -1212,20 +1212,20 @@ FLINT_DLL void n_poly_fq_divrem_divconquer_(
     const fq_nmod_ctx_t ctx,
     n_poly_stack_t St);
 
-FLINT_DLL void n_poly_fq_divrem(
+FLINT_DLL void n_fq_poly_divrem(
     n_poly_t Q,
     n_poly_t R,
     const n_poly_t A,
     const n_poly_t B,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_gcd(
+FLINT_DLL void n_fq_poly_gcd(
     n_poly_t G,
     const n_poly_t A,
     const n_poly_t B,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_xgcd(
+FLINT_DLL void n_fq_poly_xgcd(
     n_poly_t G,
     n_poly_t S,
     n_poly_t T,
@@ -1233,27 +1233,27 @@ FLINT_DLL void n_poly_fq_xgcd(
     const n_poly_t C,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_mulmod(
+FLINT_DLL void n_fq_poly_mulmod(
     n_poly_t A,
     const n_poly_t B,
     const n_poly_t C,
     const n_poly_t M,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_rem(
+FLINT_DLL void n_fq_poly_rem(
     n_poly_t R,
     const n_poly_t A,
     const n_poly_t B,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_mullow(
+FLINT_DLL void n_fq_poly_mullow(
     n_poly_t A,
     const n_poly_t B,
     const n_poly_t C,
     slong order,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_inv_series(
+FLINT_DLL void n_fq_poly_inv_series(
     n_poly_t A,
     const n_poly_t B,
     slong order,
@@ -1437,7 +1437,7 @@ FLINT_DLL void n_bpoly_fq_set_fq_nmod_poly_var0(
     const fq_nmod_poly_t B,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_bpoly_fq_set_n_poly_fq_var0(
+FLINT_DLL void n_bpoly_fq_set_n_fq_poly_var0(
     n_bpoly_t A,
     const n_poly_t B,
     const fq_nmod_ctx_t ctx);
@@ -1447,7 +1447,7 @@ FLINT_DLL void n_bpoly_fq_set_fq_nmod_poly_var1(
     const fq_nmod_poly_t B,
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_bpoly_fq_set_n_poly_fq_var1(
+FLINT_DLL void n_bpoly_fq_set_n_fq_poly_var1(
     n_bpoly_t A,
     const n_poly_t B,
     const fq_nmod_ctx_t ctx);

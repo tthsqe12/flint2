@@ -24,7 +24,7 @@ void fq_nmod_mpolyn_one(fq_nmod_mpolyn_t A, const fq_nmod_mpoly_ctx_t ctx)
 
     N = mpoly_words_per_exp_sp(A->bits, ctx->minfo);
 
-    n_poly_fq_one(Acoeff + 0, ctx->fqctx);
+    n_fq_poly_one(Acoeff + 0, ctx->fqctx);
     mpoly_monomial_zero(Aexp + N*0, N);
 
     A->length = 1;
@@ -50,7 +50,7 @@ int fq_nmod_mpolyn_is_canonical(
 
     for (i = 0; i < A->length; i++)
     {
-        if (!n_poly_fq_is_canonical(A->coeffs + i, ctx->fqctx))
+        if (!n_fq_poly_is_canonical(A->coeffs + i, ctx->fqctx))
             return 0;
 
         if (n_poly_is_zero(A->coeffs + i))
@@ -138,7 +138,7 @@ void fq_nmod_mpolyn_print_pretty(const fq_nmod_mpolyn_t A,
         }
 
         flint_printf("(");
-        n_poly_fq_print_pretty(A->coeffs + i, "v", ctx->fqctx);
+        n_fq_poly_print_pretty(A->coeffs + i, "v", ctx->fqctx);
         flint_printf(")");
 
         mpoly_get_monomial_ffmpz(exponents, exp + N*i, bits, ctx->minfo);
@@ -234,7 +234,7 @@ void fq_nmod_mpolyn_set(fq_nmod_mpolyn_t A, const fq_nmod_mpolyn_t B, const fq_n
 
     for (i = 0; i < Blen; i++)
     {
-        n_poly_fq_set(Acoeff + i, Bcoeff + i, ctx->fqctx);
+        n_fq_poly_set(Acoeff + i, Bcoeff + i, ctx->fqctx);
         mpoly_monomial_set(Aexp + N*i, Bexp + N*i, N);
     }
 

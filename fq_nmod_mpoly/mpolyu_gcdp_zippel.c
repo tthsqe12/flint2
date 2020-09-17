@@ -934,8 +934,8 @@ int fq_nmod_mpolyu_gcdp_zippel_bivar(
     fq_nmod_mpolyun_divexact_poly(Bn, Bn, b, ctx);
     fq_nmod_poly_gcd(c, a, b, ctx->fqctx);
 
-    n_poly_fq_get_fq_nmod_poly(tmp1, fq_nmod_mpolyun_leadcoeff_poly(An, ctx), ctx->fqctx);
-    n_poly_fq_get_fq_nmod_poly(tmp2, fq_nmod_mpolyun_leadcoeff_poly(Bn, ctx), ctx->fqctx);
+    n_fq_poly_get_fq_nmod_poly(tmp1, fq_nmod_mpolyun_leadcoeff_poly(An, ctx), ctx->fqctx);
+    n_fq_poly_get_fq_nmod_poly(tmp2, fq_nmod_mpolyun_leadcoeff_poly(Bn, ctx), ctx->fqctx);
     fq_nmod_poly_gcd(g, tmp1, tmp2, ctx->fqctx);
 
     Alastdeg = fq_nmod_mpolyun_lastdeg(An, ctx);
@@ -1187,8 +1187,8 @@ int fq_nmod_mpolyu_gcdp_zippel(
     fq_nmod_mpolyun_divexact_poly(Bn, Bn, b, ctx);
     fq_nmod_poly_gcd(c, a, b, ctx->fqctx);
 
-    n_poly_fq_get_fq_nmod_poly(tmp1, fq_nmod_mpolyun_leadcoeff_poly(An, ctx), ctx->fqctx);
-    n_poly_fq_get_fq_nmod_poly(tmp2, fq_nmod_mpolyun_leadcoeff_poly(Bn, ctx), ctx->fqctx);
+    n_fq_poly_get_fq_nmod_poly(tmp1, fq_nmod_mpolyun_leadcoeff_poly(An, ctx), ctx->fqctx);
+    n_fq_poly_get_fq_nmod_poly(tmp2, fq_nmod_mpolyun_leadcoeff_poly(Bn, ctx), ctx->fqctx);
     fq_nmod_poly_gcd(g, tmp1, tmp2, ctx->fqctx);
 
     Alastdeg = fq_nmod_mpolyun_lastdeg(An, ctx);

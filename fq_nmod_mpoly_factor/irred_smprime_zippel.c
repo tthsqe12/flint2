@@ -56,7 +56,7 @@ void fq_nmod_poly_product_roots(
     slong mlength,
     const fq_nmod_ctx_t ctx);
 
-void n_poly_fq_product_roots_n_fq(
+void n_fq_poly_product_roots_n_fq(
     n_poly_t master,
     const mp_limb_t * monomials,
     slong mlength,
@@ -76,7 +76,7 @@ void n_poly_fq_product_roots_n_fq(
 
     fq_nmod_poly_product_roots(p, m, mlength, ctx);
 
-    n_poly_fq_set_fq_nmod_poly(master, p, ctx);
+    n_fq_poly_set_fq_nmod_poly(master, p, ctx);
 
     fq_nmod_poly_clear(p, ctx);
     for (i = 0; i < mlength; i++)
@@ -84,7 +84,7 @@ void n_poly_fq_product_roots_n_fq(
     flint_free(m);
 }
 
-void n_poly_fq_product_roots_fq_nmod(
+void n_fq_poly_product_roots_fq_nmod(
     n_poly_t master,
     fq_nmod_struct * monomials,
     slong mlength,
@@ -93,7 +93,7 @@ void n_poly_fq_product_roots_fq_nmod(
     fq_nmod_poly_t p;
     fq_nmod_poly_init(p, ctx);
     fq_nmod_poly_product_roots(p, monomials, mlength, ctx);
-    n_poly_fq_set_fq_nmod_poly(master, p, ctx);
+    n_fq_poly_set_fq_nmod_poly(master, p, ctx);
     fq_nmod_poly_clear(p, ctx);
 }
 
@@ -875,7 +875,7 @@ static int fq_nmod_mpoly_from_zip(
 
         if (M->terms[Hi].coeff->length < 1)
         {
-            n_poly_fq_product_roots_n_fq(M->terms[Hi].coeff,
+            n_fq_poly_product_roots_n_fq(M->terms[Hi].coeff,
                                            Hc->coeffs, Hc->length, ctx->fqctx);
         }
 
@@ -1230,7 +1230,7 @@ next_alphabetas:
         for (j = d; j < d*alphabetas_length; j++)
             alphabetas[i].coeffs[j] = n_urandint(state, ctx->fqctx->mod.n);
         alphabetas[i].length = alphabetas_length;
-        _n_poly_fq_normalise(alphabetas + i, d);
+        _n_fq_poly_normalise(alphabetas + i, d);
     }
 
     _fq_nmod_mpoly_eval_rest_to_n_bpoly_fq(Ab, A, alphabetas, ctx);

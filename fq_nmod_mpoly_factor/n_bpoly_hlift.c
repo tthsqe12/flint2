@@ -56,8 +56,8 @@ int n_bpoly_fq_hlift2(
     {
         n_poly_t T;
         n_poly_init(T);
-        n_poly_fq_mul(T, B0->coeffs + 0, B1->coeffs + 0, ctx);
-        FLINT_ASSERT(n_poly_fq_equal(A->coeffs + 0, T, ctx));
+        n_fq_poly_mul(T, B0->coeffs + 0, B1->coeffs + 0, ctx);
+        FLINT_ASSERT(n_fq_poly_equal(A->coeffs + 0, T, ctx));
         n_poly_clear(T);
     }
 #endif
@@ -71,8 +71,8 @@ int n_bpoly_fq_hlift2(
     /* the required degree in x is supposed to be deg_x(A) */
     FLINT_ASSERT(n_bpoly_degree1(A) == n_poly_degree(A->coeffs + 0));
 
-    n_poly_fq_xgcd(g, s, t, B1->coeffs + 0, B0->coeffs + 0, ctx);
-    if (!n_poly_fq_is_one(g, ctx))
+    n_fq_poly_xgcd(g, s, t, B1->coeffs + 0, B0->coeffs + 0, ctx);
+    if (!n_fq_poly_is_one(g, ctx))
     {
         success = -1;
         goto cleanup;
@@ -82,34 +82,34 @@ int n_bpoly_fq_hlift2(
     n_bpoly_fit_length(B1, A->length);
     for (j = 1; j < A->length; j++)
     {
-        n_poly_fq_set(c, A->coeffs + j, ctx);
+        n_fq_poly_set(c, A->coeffs + j, ctx);
         for (i = 0; i <= j; i++)
         {
             if (i < B0->length && j - i < B1->length)
             {
-                n_poly_fq_mul(t, B0->coeffs + i, B1->coeffs + j - i, ctx);
-                n_poly_fq_sub(c, c, t, ctx);
+                n_fq_poly_mul(t, B0->coeffs + i, B1->coeffs + j - i, ctx);
+                n_fq_poly_sub(c, c, t, ctx);
             }
         }
 
         if (n_poly_is_zero(c))
             continue;
 
-        n_poly_fq_mul(t, s, c, ctx);
-        n_poly_fq_divrem(g, u, t, B0->coeffs + 0, ctx);
-        n_poly_fq_mul(t, u, B1->coeffs + 0, ctx);
-        n_poly_fq_sub(c, c, t, ctx);
-        n_poly_fq_divrem(v, g, c, B0->coeffs + 0, ctx);
+        n_fq_poly_mul(t, s, c, ctx);
+        n_fq_poly_divrem(g, u, t, B0->coeffs + 0, ctx);
+        n_fq_poly_mul(t, u, B1->coeffs + 0, ctx);
+        n_fq_poly_sub(c, c, t, ctx);
+        n_fq_poly_divrem(v, g, c, B0->coeffs + 0, ctx);
 
         if (j < B0->length)
-            n_poly_fq_add(B0->coeffs + j, B0->coeffs + j, u, ctx);
+            n_fq_poly_add(B0->coeffs + j, B0->coeffs + j, u, ctx);
         else
-            n_poly_fq_set(B0->coeffs + j, u, ctx);
+            n_fq_poly_set(B0->coeffs + j, u, ctx);
 
         if (j < B1->length)
-            n_poly_fq_add(B1->coeffs + j, B1->coeffs + j, v, ctx);
+            n_fq_poly_add(B1->coeffs + j, B1->coeffs + j, v, ctx);
         else
-            n_poly_fq_set(B1->coeffs + j, v, ctx);
+            n_fq_poly_set(B1->coeffs + j, v, ctx);
 
         if (!n_poly_is_zero(B0->coeffs + j))
             B0->length = FLINT_MAX(B0->length, j + 1);
@@ -222,10 +222,10 @@ int n_bpoly_fq_hlift(
     {
         n_poly_t T;
         n_poly_init(T);
-        n_poly_fq_mul(T, B[0].coeffs + 0, B[1].coeffs + 0, ctx);
+        n_fq_poly_mul(T, B[0].coeffs + 0, B[1].coeffs + 0, ctx);
         for (i = 2; i < r; i++)
-            n_poly_fq_mul(T, T, B[i].coeffs + 0, ctx);
-        FLINT_ASSERT(n_poly_fq_equal(A->coeffs + 0, T, ctx));
+            n_fq_poly_mul(T, T, B[i].coeffs + 0, ctx);
+        FLINT_ASSERT(n_fq_poly_equal(A->coeffs + 0, T, ctx));
         n_poly_clear(T);
     }
 #endif
@@ -241,15 +241,15 @@ int n_bpoly_fq_hlift(
 
     for (i = 0; i < r; i++)
     {
-        n_poly_fq_one(t, ctx);
+        n_fq_poly_one(t, ctx);
         for (j = 0; j < r; j++)
         {
             if (j != i)
-                n_poly_fq_mul(t, t, B[j].coeffs + 0, ctx);
+                n_fq_poly_mul(t, t, B[j].coeffs + 0, ctx);
         }
 
-        n_poly_fq_xgcd(g1, s + i, g2, t, B[i].coeffs + 0, ctx);
-        if (!n_poly_fq_is_one(g1, ctx))
+        n_fq_poly_xgcd(g1, s + i, g2, t, B[i].coeffs + 0, ctx);
+        if (!n_fq_poly_is_one(g1, ctx))
         {
             success = -1;
             goto cleanup;
@@ -257,9 +257,9 @@ int n_bpoly_fq_hlift(
     }
 
     k = r - 2;
-    n_poly_fq_mul(U[k].coeffs + 0, B[k].coeffs + 0, B[k + 1].coeffs + 0, ctx);
+    n_fq_poly_mul(U[k].coeffs + 0, B[k].coeffs + 0, B[k + 1].coeffs + 0, ctx);
     for (k--; k > 0; k--)
-        n_poly_fq_mul(U[k].coeffs + 0, B[k].coeffs + 0, U[k + 1].coeffs + 0, ctx);
+        n_fq_poly_mul(U[k].coeffs + 0, B[k].coeffs + 0, U[k + 1].coeffs + 0, ctx);
 
     for (j = 1; j < A->length; j++)
     {
@@ -272,8 +272,8 @@ int n_bpoly_fq_hlift(
         {
             if (i < B[k].length && j - i < B[k + 1].length)
             {
-                n_poly_fq_mul(t, B[k].coeffs + i, B[k + 1].coeffs + j - i, ctx);
-                n_poly_fq_add(U[k].coeffs + j, U[k].coeffs + j, t, ctx);
+                n_fq_poly_mul(t, B[k].coeffs + i, B[k + 1].coeffs + j - i, ctx);
+                n_fq_poly_add(U[k].coeffs + j, U[k].coeffs + j, t, ctx);
             }
         }
         for (k--; k > 0; k--)
@@ -283,20 +283,20 @@ int n_bpoly_fq_hlift(
             {
                 if (i < B[k].length)
                 {
-                    n_poly_fq_mul(t, B[k].coeffs + i, U[k + 1].coeffs + j - i, ctx);
-                    n_poly_fq_add(U[k].coeffs + j, U[k].coeffs + j, t, ctx);
+                    n_fq_poly_mul(t, B[k].coeffs + i, U[k + 1].coeffs + j - i, ctx);
+                    n_fq_poly_add(U[k].coeffs + j, U[k].coeffs + j, t, ctx);
                 }
             }
         }
 
-        n_poly_fq_set(c, A->coeffs + j, ctx);
+        n_fq_poly_set(c, A->coeffs + j, ctx);
 
         for (i = 0; i <= j; i++)
         {
             if (i < B[0].length)
             {
-                n_poly_fq_mul(t, B[0].coeffs + i, U[1].coeffs + j - i, ctx);
-                n_poly_fq_sub(c, c, t, ctx);
+                n_fq_poly_mul(t, B[0].coeffs + i, U[1].coeffs + j - i, ctx);
+                n_fq_poly_sub(c, c, t, ctx);
             }
         }
 
@@ -306,14 +306,14 @@ int n_bpoly_fq_hlift(
         tdeg = 0;
         for (i = 0; i < r; i++)
         {
-            n_poly_fq_mul(t, s + i, c, ctx);
-            n_poly_fq_divrem(g1, v + i, t, B[i].coeffs + 0, ctx);
+            n_fq_poly_mul(t, s + i, c, ctx);
+            n_fq_poly_divrem(g1, v + i, t, B[i].coeffs + 0, ctx);
             while (j >= B[i].length)
             {
                 n_poly_zero(B[i].coeffs + B[i].length);
                 B[i].length++;
             }
-            n_poly_fq_add(B[i].coeffs + j, B[i].coeffs + j, v + i, ctx);
+            n_fq_poly_add(B[i].coeffs + j, B[i].coeffs + j, v + i, ctx);
             n_bpoly_normalise(B + i);
             tdeg += B[i].length - 1;
         }
@@ -325,16 +325,16 @@ int n_bpoly_fq_hlift(
         }
 
         k = r - 2;
-        n_poly_fq_mul(t, B[k].coeffs + 0, v + k + 1, ctx);
-        n_poly_fq_mul(u, B[k + 1].coeffs + 0, v + k, ctx);
-        n_poly_fq_add(t, t, u, ctx);
-        n_poly_fq_add(U[k].coeffs + j, U[k].coeffs + j, t, ctx);
+        n_fq_poly_mul(t, B[k].coeffs + 0, v + k + 1, ctx);
+        n_fq_poly_mul(u, B[k + 1].coeffs + 0, v + k, ctx);
+        n_fq_poly_add(t, t, u, ctx);
+        n_fq_poly_add(U[k].coeffs + j, U[k].coeffs + j, t, ctx);
         for (k--; k > 0; k--)
         {
-            n_poly_fq_mul(u, B[k].coeffs + 0, t, ctx);
-            n_poly_fq_mul(t, U[k + 1].coeffs + 0, v + k, ctx);
-            n_poly_fq_add(t, t, u, ctx);
-            n_poly_fq_add(U[k].coeffs + j, U[k].coeffs + j, t, ctx);
+            n_fq_poly_mul(u, B[k].coeffs + 0, t, ctx);
+            n_fq_poly_mul(t, U[k + 1].coeffs + 0, v + k, ctx);
+            n_fq_poly_add(t, t, u, ctx);
+            n_fq_poly_add(U[k].coeffs + j, U[k].coeffs + j, t, ctx);
         }
     }
 

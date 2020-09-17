@@ -12,10 +12,10 @@
 #include "n_poly.h"
 
 
-void n_poly_fq_sub(
-    n_poly_t A,
-    const n_poly_t B,
-    const n_poly_t C,
+void n_fq_poly_add(
+    n_fq_poly_t A,
+    const n_fq_poly_t B,
+    const n_fq_poly_t C,
     const fq_nmod_ctx_t ctx)
 {
     slong d = fq_nmod_ctx_degree(ctx);
@@ -26,7 +26,7 @@ void n_poly_fq_sub(
     if (Blen > Clen)
     {
         n_poly_fit_length(A, d*Blen);
-        _nmod_vec_sub(A->coeffs, B->coeffs, C->coeffs, d*Clen, ctx->mod);
+        _nmod_vec_add(A->coeffs, B->coeffs, C->coeffs, d*Clen, ctx->mod);
         if (A != B)
             for (i = d*Clen; i < d*Blen; i++)
                 A->coeffs[i] = B->coeffs[i];
@@ -35,16 +35,17 @@ void n_poly_fq_sub(
     else if (Blen < Clen)
     {
         n_poly_fit_length(A, d*Clen);
-        _nmod_vec_sub(A->coeffs, B->coeffs, C->coeffs, d*Blen, ctx->mod);
-        for (i = d*Blen; i < d*Clen; i++)
-            A->coeffs[i] = nmod_neg(C->coeffs[i], ctx->mod);
+        _nmod_vec_add(A->coeffs, B->coeffs, C->coeffs, d*Blen, ctx->mod);
+        if (A != C)
+            for (i = d*Blen; i < d*Clen; i++)
+                A->coeffs[i] = C->coeffs[i];
         A->length = Clen;
     }
     else
     {
         n_poly_fit_length(A, d*Blen);
-        _nmod_vec_sub(A->coeffs, B->coeffs, C->coeffs, d*Clen, ctx->mod);
+        _nmod_vec_add(A->coeffs, B->coeffs, C->coeffs, d*Clen, ctx->mod);
         A->length = Clen;
-        _n_poly_fq_normalise(A, d);
+        _n_fq_poly_normalise(A, d);
     }
 }

@@ -23,7 +23,7 @@ void bad_n_fq_embed_sm_to_lg(
     fq_nmod_init(out, emb->lgctx);
     fq_nmod_poly_init(in, emb->smctx);
 
-    n_poly_fq_get_fq_nmod_poly(in, in_, emb->smctx);
+    n_fq_poly_get_fq_nmod_poly(in, in_, emb->smctx);
     bad_fq_nmod_embed_sm_to_lg(out, in , emb);
     n_fq_set_fq_nmod(out_, out, emb->lgctx);
 
@@ -40,7 +40,7 @@ void bad_fq_nmod_embed_n_fq_sm_to_fq_nmod_lg(
 
     fq_nmod_poly_init(in, emb->smctx);
 
-    n_poly_fq_get_fq_nmod_poly(in, in_, emb->smctx);
+    n_fq_poly_get_fq_nmod_poly(in, in_, emb->smctx);
     bad_fq_nmod_embed_sm_to_lg(out, in , emb);
 
     fq_nmod_poly_clear(in, emb->smctx);
@@ -59,7 +59,7 @@ void bad_n_fq_embed_lg_to_sm(
 
     n_fq_get_fq_nmod(in, in_, emb->lgctx);
     bad_fq_nmod_embed_lg_to_sm(out, in, emb);
-    n_poly_fq_set_fq_nmod_poly(out_, out, emb->smctx);
+    n_fq_poly_set_fq_nmod_poly(out_, out, emb->smctx);
 
     fq_nmod_clear(in, emb->lgctx);
     fq_nmod_poly_clear(out, emb->smctx);
@@ -75,7 +75,7 @@ void bad_fq_nmod_embed_fq_nmod_lg_to_n_fq_sm(
     fq_nmod_poly_init(out, emb->smctx);
 
     bad_fq_nmod_embed_lg_to_sm(out, in, emb);
-    n_poly_fq_set_fq_nmod_poly(out_, out, emb->smctx);
+    n_fq_poly_set_fq_nmod_poly(out_, out, emb->smctx);
 
     fq_nmod_poly_clear(out, emb->smctx);
 }
@@ -104,7 +104,7 @@ static void _map_sm_to_lg(
     mpoly_copy_monomials(eA->exps, A->exps, N, A->length);
     for (i = 0; i < A->length; i++)
     {
-        n_poly_fq_set_n_fq(t, A->coeffs + smd*i, emb->smctx);
+        n_fq_poly_set_n_fq(t, A->coeffs + smd*i, emb->smctx);
         bad_n_fq_embed_sm_to_lg(eA->coeffs + lgd*i, t, emb);
     }
     eA->length = A->length;

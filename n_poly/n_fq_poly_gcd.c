@@ -12,7 +12,7 @@
 #include "n_poly.h"
 
 
-slong _n_poly_fq_gcd_euclidean_inplace_(    
+slong _n_fq_poly_gcd_euclidean_inplace_(    
     mp_limb_t * A, slong Alen,
     mp_limb_t * B, slong Blen,
     const fq_nmod_ctx_t ctx,
@@ -141,7 +141,7 @@ again:
 }
 
 
-void n_poly_fq_gcd_(
+void n_fq_poly_gcd_(
     n_poly_t G,
     const n_poly_t A,
     const n_poly_t B,
@@ -161,7 +161,7 @@ void n_poly_fq_gcd_(
     _nmod_vec_set(a, A->coeffs, d*A->length);
     _nmod_vec_set(b, B->coeffs, d*B->length);
 
-    n = _n_poly_fq_gcd_euclidean_inplace_(a, A->length, b, B->length, ctx, t);
+    n = _n_fq_poly_gcd_euclidean_inplace_(a, A->length, b, B->length, ctx, t);
 
     if (n < 0)
     {
@@ -182,27 +182,27 @@ void n_poly_fq_gcd_(
     n_poly_stack_vec_clear(St);
 }
 
-void n_poly_fq_gcd(
-    n_poly_t G,
-    const n_poly_t A,
-    const n_poly_t B,
+void n_fq_poly_gcd(
+    n_fq_poly_t G,
+    const n_fq_poly_t A,
+    const n_fq_poly_t B,
     const fq_nmod_ctx_t ctx)
 {
 #if 0
     n_poly_stack_t St;
     n_poly_stack_init(St);
-    n_poly_fq_gcd_(G, A, B, ctx, St);
+    n_fq_poly_gcd_(G, A, B, ctx, St);
     n_poly_stack_clear(St);
 #else
     fq_nmod_poly_t g, a, b;
     fq_nmod_poly_init(g, ctx);
     fq_nmod_poly_init(a, ctx);
     fq_nmod_poly_init(b, ctx);
-    n_poly_fq_get_fq_nmod_poly(g, G, ctx);
-    n_poly_fq_get_fq_nmod_poly(a, A, ctx);
-    n_poly_fq_get_fq_nmod_poly(b, B, ctx);
+    n_fq_poly_get_fq_nmod_poly(g, G, ctx);
+    n_fq_poly_get_fq_nmod_poly(a, A, ctx);
+    n_fq_poly_get_fq_nmod_poly(b, B, ctx);
     fq_nmod_poly_gcd(g, a, b, ctx);
-    n_poly_fq_set_fq_nmod_poly(G, g, ctx);
+    n_fq_poly_set_fq_nmod_poly(G, g, ctx);
     fq_nmod_poly_clear(g, ctx);
     fq_nmod_poly_clear(a, ctx);
     fq_nmod_poly_clear(b, ctx);

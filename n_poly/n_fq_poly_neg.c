@@ -12,7 +12,7 @@
 #include "n_poly.h"
 
 
-void n_poly_fq_neg(
+void n_fq_poly_neg(
     n_poly_t A,
     const n_poly_t B,
     const fq_nmod_ctx_t ctx)
@@ -23,5 +23,5 @@ void n_poly_fq_neg(
     n_poly_fit_length(A, d*Blen);
     _nmod_vec_neg(A->coeffs, B->coeffs, d*Blen, ctx->mod);
     A->length = Blen;
-    _n_poly_fq_normalise(A, d);
+    _n_fq_poly_normalise(A, d);
 }

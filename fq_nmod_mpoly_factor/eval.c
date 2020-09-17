@@ -15,7 +15,7 @@
     only E and alphas are shifted by "var"
     so output is in E[0]
 */
-int _fq_nmod_mpoly_eval_rest_n_poly_fq(
+int _fq_nmod_mpoly_eval_rest_n_fq_poly(
     n_poly_struct * E,
     slong * starts,
     slong * ends,
@@ -80,29 +80,29 @@ next:
         v++;
         goto calculate;
 calculate_return:
-        n_poly_fq_add(E + v, E + v, E + v + 1, ctx);
+        n_fq_poly_add(E + v, E + v, E + v + 1, ctx);
     }
     else
     {
         slong d = fq_nmod_ctx_degree(ctx);
-        n_poly_fq_set_n_fq(E + v + 1, Acoeffs + d*starts[v], ctx);
-        n_poly_fq_add(E + v, E + v, E + v + 1, ctx);
+        n_fq_poly_set_n_fq(E + v + 1, Acoeffs + d*starts[v], ctx);
+        n_fq_poly_add(E + v, E + v, E + v + 1, ctx);
     }
 
     if (stops[v] < ends[v])
     {
         next_e = mask & (Aexps[N*stops[v] + offsets[v]] >> shifts[v]);
         FLINT_ASSERT(next_e < es[v]);
-        n_poly_fq_pow(E + v + 1, alphas + v, es[v] - next_e, ctx);
-        n_poly_fq_mul(E + v, E + v, E + v + 1, ctx);
+        n_fq_poly_pow(E + v + 1, alphas + v, es[v] - next_e, ctx);
+        n_fq_poly_mul(E + v, E + v, E + v + 1, ctx);
         es[v] = next_e;
         starts[v] = stops[v];
         goto next;
     }
     else
     {
-        n_poly_fq_pow(E + v + 1, alphas + v, es[v], ctx);
-        n_poly_fq_mul(E + v, E + v, E + v + 1, ctx);
+        n_fq_poly_pow(E + v + 1, alphas + v, es[v], ctx);
+        n_fq_poly_mul(E + v, E + v, E + v + 1, ctx);
     }
 
     if (v > var)
@@ -171,11 +171,11 @@ next:
         E->length++;
     }
 
-    _fq_nmod_mpoly_eval_rest_n_poly_fq(realE, starts, ends, stops, es,
+    _fq_nmod_mpoly_eval_rest_n_fq_poly(realE, starts, ends, stops, es,
                     A->coeffs + d*start, A->exps + N*start, stop - start, 1,
                                         alphabetas, offsets, shifts, N, mask,
                                                 ctx->minfo->nvars, ctx->fqctx);
-    n_poly_fq_set(E->coeffs + e, realE + 0, ctx->fqctx);
+    n_fq_poly_set(E->coeffs + e, realE + 0, ctx->fqctx);
 
     if (stop < A->length)
     {

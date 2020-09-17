@@ -56,8 +56,8 @@ int fq_nmod_mpolyu_gcdm_zippel_bivar(
     fq_nmod_poly_init(tmp2, ctx->fqctx);
 
     fq_nmod_poly_init(gamma, ctx->fqctx);
-    n_poly_fq_get_fq_nmod_poly(tmp1, fq_nmod_mpolyun_leadcoeff_poly(An, ctx), ctx->fqctx);
-    n_poly_fq_get_fq_nmod_poly(tmp2, fq_nmod_mpolyun_leadcoeff_poly(Bn, ctx), ctx->fqctx);
+    n_fq_poly_get_fq_nmod_poly(tmp1, fq_nmod_mpolyun_leadcoeff_poly(An, ctx), ctx->fqctx);
+    n_fq_poly_get_fq_nmod_poly(tmp2, fq_nmod_mpolyun_leadcoeff_poly(Bn, ctx), ctx->fqctx);
     fq_nmod_poly_gcd(gamma, tmp1, tmp2, ctx->fqctx);
 
     /* bound on the number of images */
@@ -271,8 +271,8 @@ int fq_nmod_mpolyu_gcdm_zippel(
     fq_nmod_poly_init(tmp2, ctx->fqctx);
 
     fq_nmod_poly_init(gamma, ctx->fqctx);
-    n_poly_fq_get_fq_nmod_poly(tmp1, fq_nmod_mpolyun_leadcoeff_poly(An, ctx), ctx->fqctx);
-    n_poly_fq_get_fq_nmod_poly(tmp2, fq_nmod_mpolyun_leadcoeff_poly(Bn, ctx), ctx->fqctx);
+    n_fq_poly_get_fq_nmod_poly(tmp1, fq_nmod_mpolyun_leadcoeff_poly(An, ctx), ctx->fqctx);
+    n_fq_poly_get_fq_nmod_poly(tmp2, fq_nmod_mpolyun_leadcoeff_poly(Bn, ctx), ctx->fqctx);
     fq_nmod_poly_gcd(gamma, tmp1, tmp2, ctx->fqctx);
 
     /* bound on the number of images */

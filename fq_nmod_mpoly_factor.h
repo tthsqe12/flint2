@@ -561,7 +561,7 @@ FLINT_DLL int n_polyu3_fq_hlift(
     slong degree_inner, /* required degree in x */
     const fq_nmod_ctx_t ctx);
 
-FLINT_DLL void n_poly_fq_product_roots_n_fq(
+FLINT_DLL void n_fq_poly_product_roots_n_fq(
     n_poly_t master,
     const mp_limb_t * monomials,
     slong mlength,
@@ -585,10 +585,10 @@ FLINT_DLL int fq_nmod_mpoly_factor_zassenhaus(fq_nmod_mpoly_factor_t f,
 FLINT_DLL int fq_nmod_mpoly_factor_zippel(fq_nmod_mpoly_factor_t f,
                        const fq_nmod_mpoly_t A, const fq_nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL int _fq_nmod_mpoly_eval_rest_n_poly_fq(n_poly_struct * E,
+FLINT_DLL int _fq_nmod_mpoly_eval_rest_n_fq_poly(n_poly_struct * E,
     slong * starts, slong * ends, slong * stops, ulong * es,
     const mp_limb_t * Acoeffs, const ulong * Aexps, slong Alen, slong var,
-    const n_poly_struct * alphas, const slong * offsets, const slong * shifts, 
+    const n_fq_poly_struct * alphas, const slong * offsets, const slong * shifts, 
                     slong N, ulong mask, slong nvars, const fq_nmod_ctx_t ctx);
 
 FLINT_DLL void _fq_nmod_mpoly_eval_rest_to_n_bpoly_fq(n_bpoly_t E,

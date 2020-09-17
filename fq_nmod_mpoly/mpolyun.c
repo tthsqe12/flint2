@@ -185,7 +185,7 @@ void fq_nmod_mpolyn_scalar_mul_fq_nmod(
 
     for (i = 0; i < A->length; i++)
     {
-        n_poly_fq_scalar_mul_n_fq(A->coeffs + i,
+        n_fq_poly_scalar_mul_n_fq(A->coeffs + i,
                                         A->coeffs + i, cc, ctx->fqctx);
     }
 
@@ -213,7 +213,7 @@ void fq_nmod_mpolyun_scalar_mul_fq_nmod(
         fq_nmod_mpolyn_struct * Ai = A->coeffs + i;
         for (j = 0; j < Ai->length; j++)
         {
-            n_poly_fq_scalar_mul_n_fq(Ai->coeffs + j,
+            n_fq_poly_scalar_mul_n_fq(Ai->coeffs + j,
                                             Ai->coeffs + j, cc, ctx->fqctx);
         }
     }
@@ -269,14 +269,14 @@ void fq_nmod_mpolyn_mul_poly(
     n_fq_poly_init(cc);
     n_fq_poly_init(tt);
 
-    n_poly_fq_set_fq_nmod_poly(cc, c, ctx->fqctx);
+    n_fq_poly_set_fq_nmod_poly(cc, c, ctx->fqctx);
 
     if (A == B)
     {
         Acoeff = A->coeffs;
         for (i = 0; i < Blen; i++)
         {
-            n_poly_fq_mul(tt, Acoeff + i, cc, ctx->fqctx);
+            n_fq_poly_mul(tt, Acoeff + i, cc, ctx->fqctx);
             n_fq_poly_swap(tt, Acoeff + i);
         }
     }
@@ -292,7 +292,7 @@ void fq_nmod_mpolyn_mul_poly(
 
         for (i = 0; i < Blen; i++)
         {
-            n_poly_fq_mul(Acoeff + i, Bcoeff + i, cc, ctx->fqctx);
+            n_fq_poly_mul(Acoeff + i, Bcoeff + i, cc, ctx->fqctx);
             mpoly_monomial_set(Aexp + N*i, Bexp + N*i, N);
         }
         A->length = Blen;
@@ -359,14 +359,14 @@ void fq_nmod_mpolyn_divexact_poly(
     n_fq_poly_init(qq);
     n_fq_poly_init(rr);
 
-    n_poly_fq_set_fq_nmod_poly(cc, c, ctx->fqctx);
+    n_fq_poly_set_fq_nmod_poly(cc, c, ctx->fqctx);
 
     if (A == B)
     {
         Acoeff = A->coeffs;
         for (i = 0; i < Blen; i++)
         {
-            n_poly_fq_divrem(qq, rr, Acoeff + i, cc, ctx->fqctx);
+            n_fq_poly_divrem(qq, rr, Acoeff + i, cc, ctx->fqctx);
             FLINT_ASSERT(n_fq_poly_is_zero(rr));
             n_fq_poly_swap(qq, Acoeff + i);
         }
@@ -383,7 +383,7 @@ void fq_nmod_mpolyn_divexact_poly(
 
         for (i = 0; i < Blen; i++)
         {
-            n_poly_fq_divrem(Acoeff + i, rr, Bcoeff + i, cc, ctx->fqctx);
+            n_fq_poly_divrem(Acoeff + i, rr, Bcoeff + i, cc, ctx->fqctx);
             FLINT_ASSERT(n_fq_poly_is_zero(rr));
             mpoly_monomial_set(Aexp + N*i, Bexp + N*i, N);
         }
@@ -444,13 +444,13 @@ void fq_nmod_mpolyn_content_poly(
 
     for (i = 0; i < B->length; i++)
     {
-        n_poly_fq_gcd(tt, gg, B->coeffs + i, ctx->fqctx);
+        n_fq_poly_gcd(tt, gg, B->coeffs + i, ctx->fqctx);
         n_fq_poly_swap(tt, gg);
         if (n_fq_poly_degree(gg) == 0)
             break;
     }
 
-    n_poly_fq_get_fq_nmod_poly(g, gg, ctx->fqctx);
+    n_fq_poly_get_fq_nmod_poly(g, gg, ctx->fqctx);
 
     n_fq_poly_clear(gg);
     n_fq_poly_clear(tt);
@@ -471,14 +471,14 @@ void fq_nmod_mpolyun_content_poly(
     {
         for (j = 0; j < B->coeffs[i].length; j++)
         {
-            n_poly_fq_gcd(tt, gg, B->coeffs[i].coeffs + j, ctx->fqctx);
+            n_fq_poly_gcd(tt, gg, B->coeffs[i].coeffs + j, ctx->fqctx);
             n_fq_poly_swap(tt, gg);
             if (n_fq_poly_degree(gg) == 0)
                 break;
         }
     }
 
-    n_poly_fq_get_fq_nmod_poly(g, gg, ctx->fqctx);
+    n_fq_poly_get_fq_nmod_poly(g, gg, ctx->fqctx);
 
     n_fq_poly_clear(gg);
     n_fq_poly_clear(tt);
@@ -721,12 +721,12 @@ void fq_nmod_mpoly_cvtto_mpolyn(
 
         if (k > 0 && mpoly_monomial_equal(A->exps + N*k, A->exps + N*(k - 1), N))
         {
-            n_poly_fq_set_coeff_n_fq(A->coeffs + k - 1, c, B->coeffs + d*i, ctx->fqctx);
+            n_fq_poly_set_coeff_n_fq(A->coeffs + k - 1, c, B->coeffs + d*i, ctx->fqctx);
         }
         else
         {
             n_fq_poly_zero(A->coeffs + k);
-            n_poly_fq_set_coeff_n_fq(A->coeffs + k, c, B->coeffs + d*i, ctx->fqctx);
+            n_fq_poly_set_coeff_n_fq(A->coeffs + k, c, B->coeffs + d*i, ctx->fqctx);
             k++;
         }
     }
