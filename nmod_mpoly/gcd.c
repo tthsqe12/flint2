@@ -692,6 +692,120 @@ cleanup:
 }
 
 
+static int _try_zippel2(
+    nmod_mpoly_t G,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_t B,
+    const mpoly_gcd_info_t I,
+    const nmod_mpoly_ctx_t ctx)
+{
+    slong i, k;
+    slong m = I->mvars;
+    int success;
+    flint_bitcnt_t wbits;
+    nmod_mpoly_ctx_t uctx;
+    nmod_mpolyu_t Auu, Buu, Guu, Abaruu, Bbaruu;
+    nmod_mpoly_t Ac, Bc, Gc, Gamma;
+    slong max_minor_degree;
+
+    FLINT_ASSERT(A->bits <= FLINT_BITS);
+    FLINT_ASSERT(B->bits <= FLINT_BITS);
+    FLINT_ASSERT(A->length > 0);
+    FLINT_ASSERT(B->length > 0);
+
+flint_printf("_try_zippel2 here 1\n");
+
+    if (!I->can_use_bma)
+        return 0;
+
+flint_printf("_try_zippel2 here 2\n");
+
+    FLINT_ASSERT(m >= WORD(3));
+
+    /* uctx is context for Z[y_2,...,y_{m - 1}]*/
+    nmod_mpoly_ctx_init(uctx, m - 2, ORD_LEX, ctx->ffinfo->mod.n);
+
+    max_minor_degree = 0;
+    for (i = 2; i < m; i++)
+    {
+        k = I->bma_perm[i];
+        max_minor_degree = FLINT_MAX(max_minor_degree, I->Adeflate_deg[k]);
+        max_minor_degree = FLINT_MAX(max_minor_degree, I->Bdeflate_deg[k]);
+    }
+
+    wbits = 1 + FLINT_BIT_COUNT(max_minor_degree);
+    wbits = FLINT_MAX(MPOLY_MIN_BITS, wbits);
+    wbits = mpoly_fix_bits(wbits, uctx->minfo);
+    FLINT_ASSERT(wbits <= FLINT_BITS);
+
+    nmod_mpolyu_init(Auu, wbits, uctx);
+    nmod_mpolyu_init(Buu, wbits, uctx);
+    nmod_mpolyu_init(Guu, wbits, uctx);
+    nmod_mpolyu_init(Abaruu, wbits, uctx);
+    nmod_mpolyu_init(Bbaruu, wbits, uctx);
+    nmod_mpoly_init3(Ac, 0, wbits, uctx);
+    nmod_mpoly_init3(Bc, 0, wbits, uctx);
+    nmod_mpoly_init3(Gc, 0, wbits, uctx);
+    nmod_mpoly_init3(Gamma, 0, wbits, uctx);
+
+    nmod_mpoly_to_mpolyuu_perm_deflate_threaded_pool(Auu, uctx, A, ctx,
+                   I->bma_perm, I->Amin_exp, I->Gstride, I->Amax_exp, NULL, 0);
+    nmod_mpoly_to_mpolyuu_perm_deflate_threaded_pool(Buu, uctx, B, ctx,
+                   I->bma_perm, I->Bmin_exp, I->Gstride, I->Bmax_exp, NULL, 0);
+
+    success = nmod_mpolyu_content_mpoly_threaded_pool(Ac, Auu, uctx, NULL, 0);
+    success = success &&
+              nmod_mpolyu_content_mpoly_threaded_pool(Bc, Buu, uctx, NULL, 0);
+    if (!success)
+        goto cleanup;
+
+    nmod_mpolyu_divexact_mpoly_inplace(Auu, Ac, uctx);
+    nmod_mpolyu_divexact_mpoly_inplace(Buu, Bc, uctx);
+
+    FLINT_ASSERT(Auu->bits == wbits);
+    FLINT_ASSERT(Buu->bits == wbits);
+    FLINT_ASSERT(Auu->length > 1);
+    FLINT_ASSERT(Buu->length > 1);
+    FLINT_ASSERT(Ac->bits == wbits);
+    FLINT_ASSERT(Bc->bits == wbits);
+
+    success = _nmod_mpoly_gcd_threaded_pool(Gamma, wbits, Auu->coeffs + 0,
+                                               Buu->coeffs + 0, uctx, NULL, 0);
+    if (!success)
+        goto cleanup;
+
+    success = nmod_mpolyuu_gcd_zippel(Guu, Abaruu, Bbaruu, Auu, Buu, Gamma, uctx);
+    if (!success)
+        goto cleanup;
+
+    success = _nmod_mpoly_gcd_threaded_pool(Gc, wbits, Ac, Bc, uctx, NULL, 0);
+    if (!success)
+        goto cleanup;
+
+    nmod_mpolyu_mul_mpoly_inplace(Guu, Gc, uctx);
+
+    nmod_mpoly_from_mpolyuu_perm_inflate(G, I->Gbits, ctx, Guu, uctx,
+                                         I->bma_perm, I->Gmin_exp, I->Gstride);
+    success = 1;
+
+cleanup:
+
+    nmod_mpolyu_clear(Auu, uctx);
+    nmod_mpolyu_clear(Buu, uctx);
+    nmod_mpolyu_clear(Guu, uctx);
+    nmod_mpolyu_clear(Abaruu, uctx);
+    nmod_mpolyu_clear(Bbaruu, uctx);
+    nmod_mpoly_clear(Ac, uctx);
+    nmod_mpoly_clear(Bc, uctx);
+    nmod_mpoly_clear(Gc, uctx);
+    nmod_mpoly_clear(Gamma, uctx);
+
+    nmod_mpoly_ctx_clear(uctx);
+
+    return success;
+}
+
+
 /*********************** Hit A and B with brown ******************************/
 typedef struct
 {
@@ -1071,23 +1185,40 @@ calculate_trivial_gcd:
     }
 
     mpoly_gcd_info_measure_brown(I, A->length, B->length, ctx->minfo);
-    mpoly_gcd_info_measure_zippel(I, A->length, B->length, ctx->minfo);
 
-    if (I->zippel_time_est < I->brown_time_est)
+    if (I->mvars == 2)
     {
-        if (_try_zippel(G, A, B, I, ctx))
-            goto successful;
-
         if (_try_brown(G, A, B, I, ctx, handles, num_handles))
             goto successful;
     }
     else
     {
-        if (_try_brown(G, A, B, I, ctx, handles, num_handles))
-            goto successful;
+        mpoly_gcd_info_measure_zippel(I, A->length, B->length, ctx->minfo);
 
-        if (_try_zippel(G, A, B, I, ctx))
-            goto successful;
+        {
+            nmod_mpoly_t GG;
+            nmod_mpoly_init(GG, ctx);
+            mpoly_gcd_info_measure_bma(I, A->length, B->length, ctx->minfo);
+            _try_zippel2(GG, A, B, I, ctx);
+            nmod_mpoly_clear(GG, ctx);
+        }
+
+        if (I->zippel_time_est < I->brown_time_est)
+        {
+            if (_try_zippel(G, A, B, I, ctx))
+                goto successful;
+
+            if (_try_brown(G, A, B, I, ctx, handles, num_handles))
+                goto successful;
+        }
+        else
+        {
+            if (_try_brown(G, A, B, I, ctx, handles, num_handles))
+                goto successful;
+
+            if (_try_zippel(G, A, B, I, ctx))
+                goto successful;
+        }
     }
 
     success = 0;

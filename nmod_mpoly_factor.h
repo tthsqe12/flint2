@@ -416,9 +416,15 @@ FLINT_DLL int nmod_zip_find_coeffs_new(mp_limb_t * coeffs,
      const mp_limb_t * monomials, slong mlength, const mp_limb_t * evals,
      slong elength, const mp_limb_t * master, mp_limb_t * scratch, nmod_t ctx);
 
-FLINT_DLL void _nmod_mpoly_monomial_evals(mp_limb_t * E, const ulong * Aexps,
-    flint_bitcnt_t Abits, slong Alen, const mp_limb_t * alpha, slong vstart,
-                                                   const nmod_mpoly_ctx_t ctx);
+FLINT_DLL void _nmod_mpoly_monomial_evals(
+    mp_limb_t * E,
+    const ulong * Aexps,
+    flint_bitcnt_t Abits,
+    slong Alen,
+    const mp_limb_t * alpha,
+    slong vstart,
+    slong vstop, /* default ctx->minfo->nvars */
+    const nmod_mpoly_ctx_t ctx);
 
 FLINT_DLL mp_limb_t n_poly_mod_eval_step(n_poly_t A, nmod_t ctx);
 

@@ -65,7 +65,8 @@ static void nmod_mpoly_get_eval_helper2(
         p = EHterms[EHi].coeff->coeffs;
         EHi++;
 
-        _nmod_mpoly_monomial_evals(p, Aexps + N*start, bits, n, betas, 2, ctx);
+        _nmod_mpoly_monomial_evals(p, Aexps + N*start, bits, n, betas,
+                                                    2, ctx->minfo->nvars, ctx);
 
         for (j = n - 1; j >= 0; j--)
         {
@@ -141,7 +142,8 @@ static slong nmod_mpoly_set_eval_helper_and_zip_form2(
         p = EHterms[EHi].coeff->coeffs;
         EHi++;
 
-        _nmod_mpoly_monomial_evals(p, Bexps + N*start, Bbits, n, betas, 2, ctx);
+        _nmod_mpoly_monomial_evals(p, Bexps + N*start, Bbits, n, betas,
+                                                    2, ctx->minfo->nvars, ctx);
 
         if (e0 < deg0)
         {
