@@ -20,6 +20,7 @@ void fq_nmod_mpoly_convert_perm(
     const fq_nmod_mpoly_ctx_t Bctx,
     const slong * perm)
 {
+    slong d = fq_nmod_ctx_degree(Actx->fqctx);
     slong n = Bctx->minfo->nvars;
     slong m = Actx->minfo->nvars;
     slong i, k, l;
@@ -39,11 +40,11 @@ void fq_nmod_mpoly_convert_perm(
     NA = mpoly_words_per_exp(Abits, Actx->minfo);
     NB = mpoly_words_per_exp(B->bits, Bctx->minfo);
 
-    fq_nmod_mpoly_fit_length_set_bits(A, B->length, Abits, Actx);
+    fq_nmod_mpoly_fit_length_reset_bits(A, B->length, Abits, Actx);
     A->length = B->length;
     for (i = 0; i < B->length; i++)
     {        
-	    fq_nmod_set(A->coeffs + i, B->coeffs + i, Bctx->fqctx);
+	    _n_fq_set(A->coeffs + d*i, B->coeffs + d*i, d);
 	    mpoly_get_monomial_ui(Bexps, B->exps + NB*i, B->bits, Bctx->minfo);
 	    for (k = 0; k < m; k++)
 	    {

@@ -29,7 +29,7 @@ void n_bpoly_fq_eval_var1(
     fq_nmod_poly_zero(E, ctx);
     for (i = A->length - 1; i >= 0; i--)
     {
-        n_poly_fq_get_fq_nmod_poly(s, A->coeffs + i, ctx);
+        n_fq_poly_get_fq_nmod_poly(s, A->coeffs + i, ctx);
         fq_nmod_poly_evaluate_fq_nmod(t, s, alpha, ctx);
         fq_nmod_poly_set_coeff(E, i, t, ctx);
     }
@@ -52,11 +52,11 @@ void n_bpoly_fq_make_monic_series(
     FLINT_ASSERT(n_bpoly_fq_is_canonical(B, ctx));
 
     n_poly_init(lcinv);
-    n_poly_fq_inv_series(lcinv, B->coeffs + B->length - 1, order, ctx);
+    n_fq_poly_inv_series(lcinv, B->coeffs + B->length - 1, order, ctx);
 
     n_bpoly_fit_length(A, B->length);
     for (i = 0; i < B->length; i++)
-        n_poly_fq_mullow(A->coeffs + i, B->coeffs + i, lcinv, order, ctx);
+        n_fq_poly_mullow(A->coeffs + i, B->coeffs + i, lcinv, order, ctx);
 
     A->length = B->length;
     n_bpoly_normalise(A);
@@ -219,7 +219,7 @@ static int _zassenhaus(
         while (1)
         {
             FLINT_ASSERT(f->length > 0);
-            n_bpoly_fq_set_n_poly_fq_var1(t1, f->coeffs + f->length - 1, ctx);
+            n_bpoly_fq_set_n_fq_poly_var1(t1, f->coeffs + f->length - 1, ctx);
             for (i = 0; i < len; i++)
             {
                 if (subset[i] >= 0)
@@ -259,7 +259,7 @@ static int _zassenhaus(
     else
     {
         FLINT_ASSERT(f->length == 1);
-        FLINT_ASSERT(n_poly_fq_is_one(f->coeffs + 0, ctx));
+        FLINT_ASSERT(n_fq_poly_is_one(f->coeffs + 0, ctx));
     }
 
     success = 1;
@@ -306,7 +306,7 @@ static void _hensel_build_tree(
 
     for (i = 0; i < r; i++)
     {
-        n_poly_fq_set_fq_nmod_poly(V + i, local_facs + i, ctx);
+        n_fq_poly_set_fq_nmod_poly(V + i, local_facs + i, ctx);
         link[i] = -i - 1;
     }
 
@@ -340,20 +340,20 @@ static void _hensel_build_tree(
         n_poly_swap(V + j + 1, V + minp);
         SLONG_SWAP(link[j + 1], link[minp]);
 
-        n_poly_fq_mul(V + i, V + j, V + j + 1, ctx);
+        n_fq_poly_mul(V + i, V + j, V + j + 1, ctx);
         link[i] = j;
     }
 
     for (j = 0; j < 2*r - 2; j += 2)
     {
-        n_poly_fq_xgcd(d, W + j, W + j + 1, V + j, V + j + 1, ctx);
-        FLINT_ASSERT(n_poly_fq_is_one(d, ctx));
+        n_fq_poly_xgcd(d, W + j, W + j + 1, V + j, V + j + 1, ctx);
+        FLINT_ASSERT(n_fq_poly_is_one(d, ctx));
     }
 
     for (j = 0; j < 2*r - 2; j++)
     {
-        n_bpoly_fq_set_n_poly_fq_var0(v + j, V + j, ctx);
-        n_bpoly_fq_set_n_poly_fq_var0(w + j, W + j, ctx);
+        n_bpoly_fq_set_n_fq_poly_var0(v + j, V + j, ctx);
+        n_bpoly_fq_set_n_fq_poly_var0(w + j, W + j, ctx);
     }
 
     n_poly_clear(d);
@@ -402,24 +402,24 @@ static void _hensel_lift_fac(
             }
         }
     #endif
-        n_poly_fq_shift_right(c->coeffs + i, c->coeffs + i, p0, ctx);
-        n_poly_fq_truncate(c->coeffs + i, p1, ctx);
+        n_fq_poly_shift_right(c->coeffs + i, c->coeffs + i, p0, ctx);
+        n_fq_poly_truncate(c->coeffs + i, p1, ctx);
     }
 
     n_bpoly_fq_mul_series(t1, c, b, p1, ctx);
     n_bpoly_fq_divrem_series(q, r, t1, g, p1, ctx);
     for (i = 0; i < r->length; i++)
-        n_poly_fq_shift_left(r->coeffs + i, r->coeffs + i, p0, ctx);
+        n_fq_poly_shift_left(r->coeffs + i, r->coeffs + i, p0, ctx);
     for (i = 0; i < g->length; i++)
-        n_poly_fq_truncate(g->coeffs + i, p0, ctx);
+        n_fq_poly_truncate(g->coeffs + i, p0, ctx);
     n_bpoly_fq_add(t1, r, g, ctx);
 
     n_bpoly_fq_mul_series(t2, c, a, p1, ctx);
     n_bpoly_fq_divrem_series(q, r, t2, h, p1, ctx);
     for (i = 0; i < r->length; i++)
-        n_poly_fq_shift_left(r->coeffs + i, r->coeffs + i, p0, ctx);
+        n_fq_poly_shift_left(r->coeffs + i, r->coeffs + i, p0, ctx);
     for (i = 0; i < h->length; i++)
-        n_poly_fq_truncate(h->coeffs + i, p0, ctx);
+        n_fq_poly_truncate(h->coeffs + i, p0, ctx);
     n_bpoly_fq_add(t2, r, h, ctx);
 
     n_bpoly_swap(G, t1);
@@ -468,9 +468,9 @@ static void _hensel_lift_inv(
     n_bpoly_init(r);
 
     for (i = 0; i < b->length; i++)
-        n_poly_fq_truncate(b->coeffs + i, p0, ctx);
+        n_fq_poly_truncate(b->coeffs + i, p0, ctx);
     for (i = 0; i < a->length; i++)
-        n_poly_fq_truncate(a->coeffs + i, p0, ctx);
+        n_fq_poly_truncate(a->coeffs + i, p0, ctx);
 
     n_bpoly_fq_mul(t1, G, a, ctx);
     n_bpoly_fq_mul(t2, H, b, ctx);
@@ -478,8 +478,8 @@ static void _hensel_lift_inv(
 
     FLINT_ASSERT(c->length > 0);
     for (i = 0; i < c->length; i++)
-        n_poly_fq_neg(c->coeffs + i, c->coeffs + i, ctx);
-    n_poly_fq_add_si(c->coeffs + 0, c->coeffs + 0, 1, ctx);
+        n_fq_poly_neg(c->coeffs + i, c->coeffs + i, ctx);
+    n_fq_poly_add_si(c->coeffs + 0, c->coeffs + 0, 1, ctx);
     n_bpoly_normalise(c);
 
     for (i = 0; i < c->length; i++)
@@ -494,15 +494,15 @@ static void _hensel_lift_inv(
             }
         }
     #endif
-        n_poly_fq_shift_right(c->coeffs + i, c->coeffs + i, p0, ctx);
-        n_poly_fq_truncate(c->coeffs + i, p1, ctx);
+        n_fq_poly_shift_right(c->coeffs + i, c->coeffs + i, p0, ctx);
+        n_fq_poly_truncate(c->coeffs + i, p1, ctx);
     }
 
     n_bpoly_fq_mul_series(t1, c, b, p1, ctx);
     n_bpoly_fq_divrem_series(q, r, t1, G, p1, ctx);
 
     for (i = 0; i < r->length; i++)
-        n_poly_fq_shift_left(r->coeffs + i, r->coeffs + i, p0, ctx);
+        n_fq_poly_shift_left(r->coeffs + i, r->coeffs + i, p0, ctx);
 
     n_bpoly_fq_add(t1, r, b, ctx);
 
@@ -510,7 +510,7 @@ static void _hensel_lift_inv(
     n_bpoly_fq_divrem_series(q, r, t2, H, p1, ctx);
 
     for (i = 0; i < r->length; i++)
-        n_poly_fq_shift_left(r->coeffs + i, r->coeffs + i, p0, ctx);
+        n_fq_poly_shift_left(r->coeffs + i, r->coeffs + i, p0, ctx);
 
     n_bpoly_fq_add(t2, r, a, ctx);
 
@@ -524,8 +524,8 @@ static void _hensel_lift_inv(
 
     FLINT_ASSERT(c->length > 0);
     for (i = 0; i < c->length; i++)
-        n_poly_fq_neg(c->coeffs + i, c->coeffs + i, ctx);
-    n_poly_fq_add_si(c->coeffs + 0, c->coeffs + 0, 1, ctx);
+        n_fq_poly_neg(c->coeffs + i, c->coeffs + i, ctx);
+    n_fq_poly_add_si(c->coeffs + 0, c->coeffs + 0, 1, ctx);
     n_bpoly_normalise(c);
 
     {

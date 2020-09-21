@@ -12,13 +12,14 @@
 #include "n_poly.h"
 
 
-slong _n_poly_fq_gcd_euclidean_inplace_(    
+slong _n_fq_poly_gcd_euclidean_inplace_(    
     mp_limb_t * A, slong Alen,
     mp_limb_t * B, slong Blen,
     const fq_nmod_ctx_t ctx,
     mp_limb_t * tmp)
 {
     slong d = fq_nmod_ctx_degree(ctx);
+    nmod_t mod = fq_nmod_ctx_mod(ctx);
     slong i;
     mp_limb_t * u = tmp;
     mp_limb_t * q0 = u + d;
@@ -68,14 +69,14 @@ again:
         _n_fq_inv(u, B + d*(Blen - 1), ctx, t);
         _n_fq_mul(q1, A + d*(Alen - 1), u, ctx, t);
         _n_fq_mul(q0, q1, B + d*(Blen - 2), ctx, t);
-        _n_fq_sub(q0, q0, A + d*(Alen - 2), ctx);
+        _n_fq_sub(q0, q0, A + d*(Alen - 2), d, mod);
         _n_fq_mul(q0, q0, u, ctx, t);
 
-        _nmod_vec_neg(q1, q1, d, ctx->mod);
+        _nmod_vec_neg(q1, q1, d, mod);
 
         _n_fq_mul(u, q0, B + d*0, ctx, t);
         _n_fq_add(A + d*(-1 + Alen - Blen),
-                  A + d*(-1 + Alen - Blen), u, ctx);
+                  A + d*(-1 + Alen - Blen), u, d, mod);
 
         for (i = 0; i < Blen - 1; i++)
         {
@@ -83,7 +84,7 @@ again:
             _n_fq_madd2(t, q0, B + d*(i + 1), ctx, t + 2*d);
             _n_fq_reduce2(u, t, ctx, t + 2*d);
             _n_fq_add(A + d*(i + Alen - Blen),
-                      A + d*(i + Alen - Blen), u, ctx);
+                      A + d*(i + Alen - Blen), u, d, mod);
         }
 
         Alen -= 2;
@@ -97,21 +98,21 @@ again:
         _n_fq_inv(u, A + d*(Alen - 1), ctx, t);
         _n_fq_mul(q1, B + d*(Blen - 1), u, ctx, t);
         _n_fq_mul(q0, q1, A + d*(Alen - 2), ctx, t);
-        _n_fq_sub(q0, q0, B + d*(Blen - 2), ctx);
+        _n_fq_sub(q0, q0, B + d*(Blen - 2), d, mod);
         _n_fq_mul(q0, q0, u, ctx, t);
 
-        _nmod_vec_neg(q1, q1, d, ctx->mod);
+        _nmod_vec_neg(q1, q1, d, mod);
 
         i = -1;
         _n_fq_mul(u, q0, A + d*(i + 1), ctx, t);
-        _n_fq_add(B + d*(i + Blen - Alen), B + d*(i + Blen - Alen), u, ctx);
+        _n_fq_add(B + d*(i + Blen - Alen), B + d*(i + Blen - Alen), u, d, mod);
 
         for (i = 0; i < Alen - 2; i++)
         {
             _n_fq_mul2(t, q1, A + d*i, ctx);
             _n_fq_madd2(t, q0, A + d*(i + 1), ctx, t + 2*d);
             _n_fq_reduce2(u, t, ctx, t + 2*d);
-            _n_fq_add(B + d*(i + Blen - Alen), B + d*(i + Blen - Alen), u, ctx);
+            _n_fq_add(B + d*(i + Blen - Alen), B + d*(i + Blen - Alen), u, d, mod);
         }
 
         Blen -= 2;
@@ -128,7 +129,7 @@ again:
         for (i = 0; i < Blen - 1; i++)
         {
             _n_fq_mul(u, q0, B + d*i, ctx, t);
-            _n_fq_sub(A + d*i, A + d*i, u, ctx);
+            _n_fq_sub(A + d*i, A + d*i, u, d, mod);
         }
 
         Alen -= 1;
@@ -140,7 +141,7 @@ again:
 }
 
 
-void n_poly_fq_gcd_(
+void n_fq_poly_gcd_(
     n_poly_t G,
     const n_poly_t A,
     const n_poly_t B,
@@ -160,7 +161,7 @@ void n_poly_fq_gcd_(
     _nmod_vec_set(a, A->coeffs, d*A->length);
     _nmod_vec_set(b, B->coeffs, d*B->length);
 
-    n = _n_poly_fq_gcd_euclidean_inplace_(a, A->length, b, B->length, ctx, t);
+    n = _n_fq_poly_gcd_euclidean_inplace_(a, A->length, b, B->length, ctx, t);
 
     if (n < 0)
     {
@@ -181,27 +182,27 @@ void n_poly_fq_gcd_(
     n_poly_stack_vec_clear(St);
 }
 
-void n_poly_fq_gcd(
-    n_poly_t G,
-    const n_poly_t A,
-    const n_poly_t B,
+void n_fq_poly_gcd(
+    n_fq_poly_t G,
+    const n_fq_poly_t A,
+    const n_fq_poly_t B,
     const fq_nmod_ctx_t ctx)
 {
 #if 0
     n_poly_stack_t St;
     n_poly_stack_init(St);
-    n_poly_fq_gcd_(G, A, B, ctx, St);
+    n_fq_poly_gcd_(G, A, B, ctx, St);
     n_poly_stack_clear(St);
 #else
     fq_nmod_poly_t g, a, b;
     fq_nmod_poly_init(g, ctx);
     fq_nmod_poly_init(a, ctx);
     fq_nmod_poly_init(b, ctx);
-    n_poly_fq_get_fq_nmod_poly(g, G, ctx);
-    n_poly_fq_get_fq_nmod_poly(a, A, ctx);
-    n_poly_fq_get_fq_nmod_poly(b, B, ctx);
+    n_fq_poly_get_fq_nmod_poly(g, G, ctx);
+    n_fq_poly_get_fq_nmod_poly(a, A, ctx);
+    n_fq_poly_get_fq_nmod_poly(b, B, ctx);
     fq_nmod_poly_gcd(g, a, b, ctx);
-    n_poly_fq_set_fq_nmod_poly(G, g, ctx);
+    n_fq_poly_set_fq_nmod_poly(G, g, ctx);
     fq_nmod_poly_clear(g, ctx);
     fq_nmod_poly_clear(a, ctx);
     fq_nmod_poly_clear(b, ctx);

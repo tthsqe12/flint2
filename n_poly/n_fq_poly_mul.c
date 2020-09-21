@@ -12,7 +12,7 @@
 #include "n_poly.h"
 
 
-void _n_poly_fq_mul_(
+void _n_fq_poly_mul_(
     mp_limb_t * A,  /* length d*(lenB + lenC - 1) */
     const mp_limb_t * B, slong Blen,
     const mp_limb_t * C, slong Clen,
@@ -116,7 +116,7 @@ void _n_poly_fq_mul_(
 }
 
 
-void n_poly_fq_mul_(
+void n_fq_poly_mul_(
     n_poly_t A,
     const n_poly_t B,
     const n_poly_t C,
@@ -135,42 +135,42 @@ void n_poly_fq_mul_(
 
     if (A == B || A == C)
     {
-        n_poly_t T;
-        n_poly_init(T);
-        n_poly_fq_mul_(T, B, C, ctx, St);
-        n_poly_swap(A, T);
-        n_poly_clear(T);
+        n_fq_poly_t T;
+        n_fq_poly_init(T);
+        n_fq_poly_mul_(T, B, C, ctx, St);
+        n_fq_poly_swap(A, T);
+        n_fq_poly_clear(T);
         return;
     }
 
     n_poly_fit_length(A, d*(Blen + Clen - 1));
-    _n_poly_fq_mul_(A->coeffs, B->coeffs, Blen, C->coeffs, Clen, ctx, St);
+    _n_fq_poly_mul_(A->coeffs, B->coeffs, Blen, C->coeffs, Clen, ctx, St);
     A->length = Blen + Clen - 1;
-    _n_poly_fq_normalise(A, d);
+    _n_fq_poly_normalise(A, d);
 }
 
 
-void n_poly_fq_mul(
-    n_poly_t A,
-    const n_poly_t B,
-    const n_poly_t C,
+void n_fq_poly_mul(
+    n_fq_poly_t A,
+    const n_fq_poly_t B,
+    const n_fq_poly_t C,
     const fq_nmod_ctx_t ctx)
 {
 #if 0
     n_poly_stack_t St;
     n_poly_stack_init(St);
-    n_poly_fq_mul_(A, B, C, ctx, St);
+    n_fq_poly_mul_(A, B, C, ctx, St);
     n_poly_stack_clear(St);
 #else
     fq_nmod_poly_t a, b, c;
     fq_nmod_poly_init(a, ctx);
     fq_nmod_poly_init(b, ctx);
     fq_nmod_poly_init(c, ctx);
-    n_poly_fq_get_fq_nmod_poly(a, A, ctx);
-    n_poly_fq_get_fq_nmod_poly(b, B, ctx);
-    n_poly_fq_get_fq_nmod_poly(c, C, ctx);
+    n_fq_poly_get_fq_nmod_poly(a, A, ctx);
+    n_fq_poly_get_fq_nmod_poly(b, B, ctx);
+    n_fq_poly_get_fq_nmod_poly(c, C, ctx);
     fq_nmod_poly_mul(a, b, c, ctx);
-    n_poly_fq_set_fq_nmod_poly(A, a, ctx);
+    n_fq_poly_set_fq_nmod_poly(A, a, ctx);
     fq_nmod_poly_clear(a, ctx);
     fq_nmod_poly_clear(b, ctx);
     fq_nmod_poly_clear(c, ctx);

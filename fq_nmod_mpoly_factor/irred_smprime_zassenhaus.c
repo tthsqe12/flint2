@@ -135,6 +135,7 @@ int fq_nmod_mpoly_factor_irred_smprime_zassenhaus(
     const fq_nmod_mpoly_ctx_t ctx,
     flint_rand_t state)
 {
+    slong d = fq_nmod_ctx_degree(ctx->fqctx);
     int tries_left = 10;
     int success;
     const slong n = ctx->minfo->nvars - 1;
@@ -152,7 +153,7 @@ int fq_nmod_mpoly_factor_irred_smprime_zassenhaus(
 
     FLINT_ASSERT(n > 1);
     FLINT_ASSERT(A->length > 1);
-    FLINT_ASSERT(fq_nmod_is_one(A->coeffs + 0, ctx->fqctx));
+    FLINT_ASSERT(_n_fq_is_one(A->coeffs + d*0, d));
     FLINT_ASSERT(A->bits <= FLINT_BITS);
 
     subset = (slong*) flint_malloc(4*sizeof(slong));

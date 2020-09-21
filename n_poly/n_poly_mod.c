@@ -826,6 +826,81 @@ void n_poly_mod_addmul_linear(
     _n_poly_normalise(A);
 }
 
+/* A = B + C*d0 */
+void n_poly_mod_scalar_addmul_nmod(
+    n_poly_t A,
+    const n_poly_t B,
+    const n_poly_t C,
+    mp_limb_t d0,
+    nmod_t ctx)
+{
+    slong i;
+    mp_limb_t t0, t1;
+    mp_limb_t * Acoeffs, * Bcoeffs, * Ccoeffs;
+    slong Blen = B->length;
+    slong Clen = C->length;
+    slong Alen = FLINT_MAX(B->length, C->length);
+
+    FLINT_ASSERT(A != B);
+    FLINT_ASSERT(A != C);
+
+    n_poly_fit_length(A, Alen);
+    Acoeffs = A->coeffs;
+    Bcoeffs = B->coeffs;
+    Ccoeffs = C->coeffs;
+
+    if (ctx.norm >= (FLINT_BITS + 1)/2)
+    {
+        for (i = 0; i + 2 <= FLINT_MIN(Blen, Clen); i += 2)
+        {
+            NMOD_RED2(t0, 0, Bcoeffs[i + 0] + d0*Ccoeffs[i + 0], ctx);
+            NMOD_RED2(t1, 0, Bcoeffs[i + 1] + d0*Ccoeffs[i + 1], ctx);
+            Acoeffs[i + 0] = t0;
+            Acoeffs[i + 1] = t1;
+        }
+        for ( ; i < FLINT_MIN(Blen, Clen); i++)
+        {
+            NMOD_RED2(Acoeffs[i], 0, Bcoeffs[i] + d0*Ccoeffs[i], ctx);
+        }
+
+        for ( ; i + 2 <= Clen; i += 2)
+        {
+            NMOD_RED2(t0, 0, d0*Ccoeffs[i + 0], ctx);
+            NMOD_RED2(t1, 0, d0*Ccoeffs[i + 1], ctx);
+            Acoeffs[i + 0] = t0;
+            Acoeffs[i + 1] = t1;
+        }
+        for ( ; i < Clen; i++)
+        {
+            NMOD_RED2(Acoeffs[i], 0, d0*Ccoeffs[i], ctx);
+        }
+    }
+    else
+    {
+        for (i = 0; i < FLINT_MIN(Blen, Clen); i++)
+        {
+            t0 = Bcoeffs[i];
+            NMOD_ADDMUL(t0, d0, Ccoeffs[i], ctx);
+            Acoeffs[i] = t0;
+        }
+
+        while (i < Clen)
+        {
+            Acoeffs[i] = nmod_mul(d0, Ccoeffs[i], ctx);
+            i++;
+        }
+    }
+
+    while (i < Blen)
+    {
+        Acoeffs[i] = Bcoeffs[i];
+        i++;
+    }
+
+    A->length = Alen;
+    _n_poly_normalise(A);
+}
+
 
 ulong n_poly_mod_remove(n_poly_t f, const n_poly_t p, nmod_t ctx)
 {

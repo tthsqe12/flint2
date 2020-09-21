@@ -82,12 +82,12 @@ void _nmod_mpoly_monomial_evals(
     slong Alen,
     const mp_limb_t * alpha,
     slong vstart,
+    slong vstop, /* default ctx->minfo->nvars */
     const nmod_mpoly_ctx_t ctx)
 {
     slong i, j;
     slong offset, shift;
     slong N = mpoly_words_per_exp_sp(Abits, ctx->minfo);
-    slong nvars = ctx->minfo->nvars;
     slong * LUToffset;
     ulong * LUTmask;
     mp_limb_t * LUTvalue;
@@ -95,6 +95,8 @@ void _nmod_mpoly_monomial_evals(
     mp_limb_t xpoweval;
     ulong * inputexpmask;
     TMP_INIT;
+
+    FLINT_ASSERT(vstop <= ctx->minfo->nvars);
 
     TMP_START;
 
@@ -113,7 +115,7 @@ void _nmod_mpoly_monomial_evals(
     }
 
     LUTlen = 0;
-    for (j = nvars - 1; j >= vstart; j--)
+    for (j = vstop - 1; j >= vstart; j--)
     {
         mpoly_gen_offset_shift_sp(&offset, &shift, j, Abits, ctx->minfo);
 

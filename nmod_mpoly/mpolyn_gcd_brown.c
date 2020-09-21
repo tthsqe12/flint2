@@ -1068,7 +1068,7 @@ have_prime:
 
         FLINT_ASSERT(G->length > 0);
 
-        k = fq_nmod_poly_degree(Geval->coeffs + 0, ectx->fqctx);
+        k = n_poly_degree(Geval->coeffs + 0);
         cmp = mpoly_monomial_cmp_nomask_extra(G->exps + N*0,
                                      Geval->exps + N*0, N, offset, k << shift);
         if (cmp < 0)
@@ -1081,7 +1081,8 @@ have_prime:
         }
     }
 
-    fq_nmod_inv(temp, fq_nmod_mpolyn_leadcoeff(Geval, ectx), ectx->fqctx);
+    n_fq_get_fq_nmod(temp, fq_nmod_mpolyn_leadcoeff(Geval, ectx), ectx->fqctx);
+    fq_nmod_inv(temp, temp, ectx->fqctx);
     fq_nmod_mul(temp, temp, gammaeval, ectx->fqctx);
     fq_nmod_mpolyn_scalar_mul_fq_nmod(Geval, temp, ectx);
 

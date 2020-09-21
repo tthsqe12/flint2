@@ -18,9 +18,6 @@ main(void)
 {
     slong i, j, v;
     int tmul = 5;
-#ifdef _WIN32
-    tmul = 1;
-#endif
     FLINT_TEST_INIT(state);
 
     flint_printf("evaluate....");

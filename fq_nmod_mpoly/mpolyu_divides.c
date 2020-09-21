@@ -11,15 +11,16 @@
 
 #include "fq_nmod_mpoly.h"
 
+
 /* A = D - B*C, coefficients of D are clobbered */
-static slong _fq_nmod_mpoly_mulsub(
-                fq_nmod_struct ** A_coeff, ulong ** A_exp, slong * A_alloc,
-                   fq_nmod_struct * Dcoeff, const ulong * Dexp, slong Dlen,
-             const fq_nmod_struct * Bcoeff, const ulong * Bexp, slong Blen,
-             const fq_nmod_struct * Ccoeff, const ulong * Cexp, slong Clen,
+static void _fq_nmod_mpoly_mulsub(fq_nmod_mpoly_t A,
+                   mp_limb_t * Dcoeff, const ulong * Dexp, slong Dlen,
+             const mp_limb_t * Bcoeff, const ulong * Bexp, slong Blen,
+             const mp_limb_t * Ccoeff, const ulong * Cexp, slong Clen,
                          flint_bitcnt_t bits, slong N, const ulong * cmpmask,
                                                      const fq_nmod_ctx_t fqctx)
 {
+    slong d = fq_nmod_ctx_degree(fqctx);
     slong i, j;
     slong next_loc;
     slong heap_len = 2; /* heap zero index unused */
@@ -29,14 +30,13 @@ static slong _fq_nmod_mpoly_mulsub(
     mpoly_heap_t * x;
     slong Di;
     slong Alen;
-    slong Aalloc = *A_alloc;
-    fq_nmod_struct * Acoeff = *A_coeff;
-    ulong * Aexp = *A_exp;
+    mp_limb_t * Acoeffs = A->coeffs;
+    ulong * Aexps = A->exps;
     ulong * exp, * exps;
     ulong ** exp_list;
     slong exp_next;
     slong * hind;
-    fq_nmod_t pp;
+    mp_limb_t * pp;
     TMP_INIT;
 
     FLINT_ASSERT(Blen > 0);
@@ -44,7 +44,7 @@ static slong _fq_nmod_mpoly_mulsub(
 
     TMP_START;
 
-    fq_nmod_init(pp, fqctx);
+    pp = (mp_limb_t *) TMP_ALLOC(d*sizeof(mp_limb_t));
 
     next_loc = Blen + 4; /* something bigger than heap can ever be */
     heap = (mpoly_heap_s *) TMP_ALLOC((Blen + 1)*sizeof(mpoly_heap_s));
@@ -87,46 +87,40 @@ static slong _fq_nmod_mpoly_mulsub(
 
         while (Di < Dlen && mpoly_monomial_gt(Dexp + N*Di, exp, N, cmpmask))
         {
-            _fq_nmod_mpoly_fit_length(&Acoeff, &Aexp, &Aalloc, Alen + 1, N, fqctx);
-            mpoly_monomial_set(Aexp + N*Alen, Dexp + N*Di, N);
-            fq_nmod_swap(Acoeff + Alen, Dcoeff + Di, fqctx);
+            _fq_nmod_mpoly_fit_length(&Acoeffs, &A->coeffs_alloc, d,
+                                      &Aexps, &A->exps_alloc, N, Alen + 1);
+
+            mpoly_monomial_set(Aexps + N*Alen, Dexp + N*Di, N);
+            _n_fq_set(Acoeffs + d*Alen, Dcoeff + d*Di, d);
             Alen++;
             Di++;
         }
 
-        _fq_nmod_mpoly_fit_length(&Acoeff, &Aexp, &Aalloc, Alen + 1, N, fqctx);
+        _fq_nmod_mpoly_fit_length(&Acoeffs, &A->coeffs_alloc, d,
+                                  &Aexps, &A->exps_alloc, N, Alen + 1);
 
-        mpoly_monomial_set(Aexp + N*Alen, exp, N);
+        mpoly_monomial_set(Aexps + N*Alen, exp, N);
 
-        fq_nmod_zero(Acoeff + Alen, fqctx);
-        do
-        {
+        _n_fq_zero(Acoeffs + d*Alen, d);
+        do {
             exp_list[--exp_next] = heap[1].exp;
             x = _mpoly_heap_pop(heap, &heap_len, N, cmpmask);
-
-            hind[x->i] |= WORD(1);
-            *store++ = x->i;
-            *store++ = x->j;
-            fq_nmod_mul(pp, Bcoeff + x->i, Ccoeff + x->j, fqctx);
-            fq_nmod_sub(Acoeff + Alen, Acoeff + Alen, pp, fqctx);
-
-            while ((x = x->next) != NULL)
-            {
+            do {
                 hind[x->i] |= WORD(1);
                 *store++ = x->i;
                 *store++ = x->j;
-                fq_nmod_mul(pp, Bcoeff + x->i, Ccoeff + x->j, fqctx);
-                fq_nmod_sub(Acoeff + Alen, Acoeff + Alen, pp, fqctx);
-            }
+                n_fq_mul(pp, Bcoeff + d*x->i, Ccoeff + d*x->j, fqctx);
+                n_fq_sub(Acoeffs + d*Alen, Acoeffs + d*Alen, pp, fqctx);
+            } while ((x = x->next) != NULL);
         } while (heap_len > 1 && mpoly_monomial_equal(heap[1].exp, exp, N));
 
         if (Di < Dlen && mpoly_monomial_equal(Dexp + N*Di, exp, N))
         {
-            fq_nmod_add(Acoeff + Alen, Acoeff + Alen, Dcoeff + Di, fqctx);
+            n_fq_add(Acoeffs + d*Alen, Acoeffs + d*Alen, Dcoeff + d*Di, fqctx);
             Di++;
         }
 
-        Alen += !fq_nmod_is_zero(Acoeff + Alen, fqctx);
+        Alen += !_n_fq_is_zero(Acoeffs + d*Alen, d);
 
         /* process nodes taken from the heap */
         while (store > store_base)
@@ -183,22 +177,21 @@ static slong _fq_nmod_mpoly_mulsub(
         }
     }
 
-    FLINT_ASSERT(Di <= Dlen);
-    _fq_nmod_mpoly_fit_length(&Acoeff, &Aexp, &Aalloc, Alen + Dlen - Di, N, fqctx);
-    for (i = 0; i < Dlen - Di; i++)
-        fq_nmod_swap(Acoeff + Alen + i, Dcoeff + Di + i, fqctx);
-    mpoly_copy_monomials(Aexp + N*Alen, Dexp + N*Di, Dlen - Di, N);
-    Alen += Dlen - Di;
+    if (Di < Dlen)
+    {
+        _fq_nmod_mpoly_fit_length(&Acoeffs, &A->coeffs_alloc, d,
+                                  &Aexps, &A->exps_alloc, N, Alen + Dlen - Di);
 
-    *A_coeff = Acoeff;
-    *A_exp = Aexp;
-    *A_alloc = Aalloc;
+        _nmod_vec_set(Acoeffs + d*Alen, Dcoeff + d*Di, d*(Dlen - Di));
+        mpoly_copy_monomials(Aexps + N*Alen, Dexp + N*Di, Dlen - Di, N);
+        Alen += Dlen - Di;
+    }
 
-    fq_nmod_clear(pp, fqctx);
+    A->coeffs = Acoeffs;
+    A->exps = Aexps;
+    A->length = Alen;
 
     TMP_END;
-
-    return Alen;
 }
 
 
@@ -319,8 +312,7 @@ int fq_nmod_mpolyuu_divides(
                 {
                     b = Bcoeff + x->i;
                     q = Q->coeffs + x->j;
-                    S->length = _fq_nmod_mpoly_mulsub(
-                                    &S->coeffs, &S->exps, &S->alloc,
+                    _fq_nmod_mpoly_mulsub(S,
                                     T->coeffs, T->exps, T->length,
                                     b->coeffs, b->exps, b->length,
                                     q->coeffs, q->exps, q->length,
@@ -397,12 +389,10 @@ int fq_nmod_mpolyuu_divides(
         q = Q->coeffs + Q->length;
         FLINT_ASSERT(q->bits == bits);
         b = Bcoeff + 0;
-        q->length = _fq_nmod_mpoly_divides_monagan_pearce(
-                            &q->coeffs, &q->exps, &q->alloc,
+        if (!_fq_nmod_mpoly_divides_monagan_pearce(q,
                             T->coeffs, T->exps, T->length,
                             b->coeffs, b->exps, b->length,
-                                              bits, N, cmpmask, ctx->fqctx);
-        if (q->length == 0)
+                                              bits, N, cmpmask, ctx->fqctx))
         {
             goto not_exact_division;
         }
@@ -445,4 +435,3 @@ not_exact_division:
     Q->length = 0;
     goto cleanup;
 }
-

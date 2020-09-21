@@ -19,14 +19,15 @@ static void _fq_nmod_mpoly_evaluate_one_fq_nmod_sp(
     const fq_nmod_t val,
     const fq_nmod_mpoly_ctx_t ctx)
 {
+    slong d = fq_nmod_ctx_degree(ctx->fqctx);
     int newer;
-    fq_nmod_t pp;
+    mp_limb_t * pp;
     slong i, j, N;
     flint_bitcnt_t bits;
     slong main_exp, main_shift, main_off;
     ulong * cmpmask, * one;
-    slong Aalloc, Alen, Blen;
-    fq_nmod_struct * Acoeff, * Bcoeff;
+    slong Alen, Blen;
+    mp_limb_t * Acoeff, * Bcoeff;
     ulong * Aexp, * Bexp;
     ulong * main_exps;
     fq_nmod_struct * powers;
@@ -56,7 +57,7 @@ static void _fq_nmod_mpoly_evaluate_one_fq_nmod_sp(
 
     TMP_START;
 
-    fq_nmod_init(pp, ctx->fqctx);
+    pp = (mp_limb_t *) TMP_ALLOC(d*sizeof(mp_limb_t));
 
     N = mpoly_words_per_exp(bits, ctx->minfo);
     one = (ulong*) TMP_ALLOC(N*sizeof(ulong));
@@ -161,32 +162,32 @@ done:
     FLINT_ASSERT(i == tree->size);
 
     /* take from heap and put into A */
-    fq_nmod_mpoly_fit_bits(A, bits, ctx);
-    A->bits = bits;
+    fq_nmod_mpoly_fit_length_reset_bits(A, 0, bits, ctx);
     Acoeff = A->coeffs;
     Aexp = A->exps;
-    Aalloc = A->alloc;
     Alen = 0;
     while (heap_len > 1)
     {
         exp = heap[1].exp;
 
-        _fq_nmod_mpoly_fit_length(&Acoeff, &Aexp, &Aalloc, Alen + 1, N, ctx->fqctx);
+        _fq_nmod_mpoly_fit_length(&Acoeff, &A->coeffs_alloc, d,
+                                  &Aexp, &A->exps_alloc, N, Alen + 1);
 
-        mpoly_monomial_set(Aexp + Alen*N, exp, N);
+        mpoly_monomial_set(Aexp + N*Alen, exp, N);
 
-        fq_nmod_zero(Acoeff + Alen, ctx->fqctx);
+        _n_fq_zero(Acoeff + d*Alen, d);
         do {
             x = (mpoly_heap_t *) _mpoly_heap_pop(heap, &heap_len, N, cmpmask);
             do {
                 *store++ = x->i;
                 *store++ = x->j;
-                fq_nmod_mul(pp, powers + x->i, Bcoeff + x->j, ctx->fqctx);
-                fq_nmod_add(Acoeff + Alen, Acoeff + Alen, pp, ctx->fqctx);
+                n_fq_set_fq_nmod(pp, powers + x->i, ctx->fqctx);
+                n_fq_mul(pp, pp, Bcoeff + d*x->j, ctx->fqctx);
+                n_fq_add(Acoeff + d*Alen, Acoeff + d*Alen, pp, ctx->fqctx);
             } while ((x = x->next) != NULL);
         } while (heap_len > 1 && mpoly_monomial_equal(heap[1].exp, exp, N));
 
-        Alen += !fq_nmod_is_zero(Acoeff + Alen, ctx->fqctx);
+        Alen += !_n_fq_is_zero(Acoeff + d*Alen, d);
 
         while (store > store_base)
         {
@@ -208,13 +209,10 @@ done:
 
     A->coeffs = Acoeff;
     A->exps = Aexp;
-    A->alloc = Aalloc;
     A->length = Alen;
 
     for (j = 0; j < tree->size; j++)
         fq_nmod_clear(powers + j, ctx->fqctx);
-
-    fq_nmod_clear(pp, ctx->fqctx);
 
     TMP_END;
 }
@@ -228,14 +226,15 @@ static void _fq_nmod_mpoly_evaluate_one_fq_nmod_mp(
     const fq_nmod_t val,
     const fq_nmod_mpoly_ctx_t ctx)
 {
+    slong d = fq_nmod_ctx_degree(ctx->fqctx);
     int newer;
-    fq_nmod_t pp;
+    mp_limb_t * pp;
     slong i, j, N, bits;
     slong main_off;
     fmpz_t main_exp;
     ulong * cmpmask, * main_one;
-    slong Aalloc, Alen, Blen;
-    fq_nmod_struct * Acoeff, * Bcoeff;
+    slong Alen, Blen;
+    mp_limb_t * Acoeff, * Bcoeff;
     ulong * Aexp, * Bexp;
     ulong * main_exps;
     fq_nmod_struct * powers;
@@ -254,8 +253,6 @@ static void _fq_nmod_mpoly_evaluate_one_fq_nmod_mp(
     mpoly_rbnode_struct * root;
     TMP_INIT;
 
-    fq_nmod_init(pp, ctx->fqctx);
-
     Blen = B->length;
     Bcoeff = B->coeffs;
     Bexp = B->exps;
@@ -266,6 +263,8 @@ static void _fq_nmod_mpoly_evaluate_one_fq_nmod_mp(
     FLINT_ASSERT(Blen > 0);
 
     TMP_START;
+
+    pp = (mp_limb_t *) TMP_ALLOC(d*sizeof(mp_limb_t));
 
     N = mpoly_words_per_exp(bits, ctx->minfo);
     main_one = (ulong*) TMP_ALLOC(N*sizeof(ulong));
@@ -369,32 +368,32 @@ done:
     FLINT_ASSERT(i == tree->size);
 
     /* take from heap and put into A */
-    fq_nmod_mpoly_fit_bits(A, bits, ctx);
-    A->bits = bits;
+    fq_nmod_mpoly_fit_length_reset_bits(A, 0, bits, ctx);
     Acoeff = A->coeffs;
     Aexp = A->exps;
-    Aalloc = A->alloc;
     Alen = 0;
     while (heap_len > 1)
     {
         exp = heap[1].exp;
 
-        _fq_nmod_mpoly_fit_length(&Acoeff, &Aexp, &Aalloc, Alen + 1, N, ctx->fqctx);
+        _fq_nmod_mpoly_fit_length(&Acoeff, &A->coeffs_alloc, d,
+                                  &Aexp, &A->exps_alloc, N, Alen + 1);
 
         mpoly_monomial_set(Aexp + Alen*N, exp, N);
 
-        fq_nmod_zero(Acoeff + Alen, ctx->fqctx);
+        _n_fq_zero(Acoeff + d*Alen, d);
         do {
             x = (mpoly_heap_t *) _mpoly_heap_pop(heap, &heap_len, N, cmpmask);
             do {
                 *store++ = x->i;
                 *store++ = x->j;
-                fq_nmod_mul(pp, powers + x->i, Bcoeff + x->j, ctx->fqctx);
-                fq_nmod_add(Acoeff + Alen, Acoeff + Alen, pp, ctx->fqctx);
+                n_fq_set_fq_nmod(pp, powers + x->i, ctx->fqctx);
+                n_fq_mul(pp, pp, Bcoeff + d*x->j, ctx->fqctx);
+                n_fq_add(Acoeff + d*Alen, Acoeff + d*Alen, pp, ctx->fqctx);
             } while ((x = x->next) != NULL);
         } while (heap_len > 1 && mpoly_monomial_equal(heap[1].exp, exp, N));
 
-        Alen += !fq_nmod_is_zero(Acoeff + Alen, ctx->fqctx);
+        Alen += !_n_fq_is_zero(Acoeff + d*Alen, d);
 
         while (store > store_base)
         {
@@ -416,13 +415,10 @@ done:
 
     A->coeffs = Acoeff;
     A->exps = Aexp;
-    A->alloc = Aalloc;
     A->length = Alen;
 
     for (j = 0; j < tree->size; j++)
         fq_nmod_clear(powers + j, ctx->fqctx);
-
-    fq_nmod_clear(pp, ctx->fqctx);
 
     TMP_END;
 }

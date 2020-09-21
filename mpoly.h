@@ -1322,6 +1322,9 @@ FLINT_DLL void mpoly_gcd_info_measure_bma(mpoly_gcd_info_t I,
 FLINT_DLL void mpoly_gcd_info_measure_zippel(mpoly_gcd_info_t I,
                          slong Alength, slong Blength, const mpoly_ctx_t mctx);
 
+FLINT_DLL void mpoly_gcd_info_measure_zippel2(mpoly_gcd_info_t I,
+                         slong Alength, slong Blength, const mpoly_ctx_t mctx);
+
 typedef struct
 {
     slong nvars;

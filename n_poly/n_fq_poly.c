@@ -13,7 +13,7 @@
 #include "nmod_vec.h"
 
 
-void n_poly_fq_print_pretty(
+void n_fq_poly_print_pretty(
     const n_poly_t A,
     const char * x,
     const fq_nmod_ctx_t ctx)
@@ -42,7 +42,7 @@ void n_poly_fq_print_pretty(
         flint_printf("0");
 }
 
-int n_poly_fq_is_canonical(
+int n_fq_poly_is_canonical(
     const n_poly_t A,
     const fq_nmod_ctx_t ctx)
 {
@@ -62,7 +62,7 @@ int n_poly_fq_is_canonical(
     return 1;
 }
 
-void n_poly_fq_randtest(
+void n_fq_poly_randtest(
     n_poly_t A,
     flint_rand_t state,
     slong len,
@@ -83,11 +83,11 @@ void n_poly_fq_randtest(
         A->coeffs[i] = n_randint(state, ctx->mod.n);
 
     A->length = len;
-    _n_poly_fq_normalise(A, d);
+    _n_fq_poly_normalise(A, d);
 }
 
 
-void _n_poly_fq_one(n_poly_t A, slong d)
+void _n_fq_poly_one(n_poly_t A, slong d)
 {
     n_poly_fit_length(A, d);
     A->length = 1;
@@ -95,13 +95,27 @@ void _n_poly_fq_one(n_poly_t A, slong d)
 }
 
 
-int n_poly_fq_is_one(n_poly_t A, const fq_nmod_ctx_t ctx)
+int n_fq_poly_is_one(n_poly_t A, const fq_nmod_ctx_t ctx)
 {
     return A->length == 1 && _n_fq_is_one(A->coeffs, fq_nmod_ctx_degree(ctx));
 }
 
 
-void n_poly_fq_get_coeff_fq_nmod(
+void n_fq_poly_get_coeff_n_fq(
+    mp_limb_t * c,
+    const n_poly_t A,
+    slong e,
+    const fq_nmod_ctx_t ctx)
+{
+    slong d = fq_nmod_ctx_degree(ctx);
+
+    if (e >= A->length)
+        _n_fq_zero(c, d);
+    else
+        _n_fq_set(c, A->coeffs + d*e, d);
+}
+
+void n_fq_poly_get_coeff_fq_nmod(
     fq_nmod_t c,
     const n_poly_t A,
     slong e,
@@ -115,7 +129,7 @@ void n_poly_fq_get_coeff_fq_nmod(
         n_fq_get_fq_nmod(c, A->coeffs + d*e, ctx);
 }
 
-void n_poly_fq_set_coeff_n_fq(
+void n_fq_poly_set_coeff_n_fq(
     n_poly_t A,
     slong j,
     const mp_limb_t * c,
@@ -129,7 +143,7 @@ void n_poly_fq_set_coeff_n_fq(
     {
         _n_fq_set(A->coeffs + d*j, c, d);
         if (j + 1 == A->length)
-            _n_poly_fq_normalise(A, d);
+            _n_fq_poly_normalise(A, d);
     }
     else if (!_n_fq_is_zero(c, d)) /* extend polynomial */
     {
@@ -139,7 +153,7 @@ void n_poly_fq_set_coeff_n_fq(
     }
 }
 
-void n_poly_fq_set_coeff_fq_nmod(
+void n_fq_poly_set_coeff_fq_nmod(
     n_poly_t A,
     slong j,
     const fq_nmod_t c,
@@ -153,7 +167,7 @@ void n_poly_fq_set_coeff_fq_nmod(
     {
         n_fq_set_fq_nmod(A->coeffs + d*j, c, ctx);
         if (j + 1 == A->length)
-            _n_poly_fq_normalise(A, d);
+            _n_fq_poly_normalise(A, d);
     }
     else if (!fq_nmod_is_zero(c, ctx))
     {
@@ -164,7 +178,7 @@ void n_poly_fq_set_coeff_fq_nmod(
 }
 
 
-void n_poly_fq_scalar_mul_ui(
+void n_fq_poly_scalar_mul_ui(
     n_poly_t A,
     const n_poly_t B,
     ulong c,
@@ -186,11 +200,11 @@ void n_poly_fq_scalar_mul_ui(
     n_poly_fit_length(A, d*B->length);
     _nmod_vec_scalar_mul_nmod(A->coeffs, B->coeffs, d*B->length, c, ctx->mod);
     A->length = B->length;
-    _n_poly_fq_normalise(A, d);
+    _n_fq_poly_normalise(A, d);
 }
 
 
-int n_poly_fq_equal(
+int n_fq_poly_equal(
     const n_poly_t A,
     const n_poly_t B,
     const fq_nmod_ctx_t ctx)
@@ -208,7 +222,7 @@ int n_poly_fq_equal(
     return 1;
 }
 
-void n_poly_fq_set(
+void n_fq_poly_set(
     n_poly_t A,
     const n_poly_t B,
     const fq_nmod_ctx_t ctx)
@@ -223,7 +237,7 @@ void n_poly_fq_set(
     A->length = B->length;
 }
 
-void n_poly_fq_set_n_fq(
+void n_fq_poly_set_n_fq(
     n_poly_t A,
     const mp_limb_t * c,
     const fq_nmod_ctx_t ctx)
@@ -233,10 +247,10 @@ void n_poly_fq_set_n_fq(
     n_poly_fit_length(A, d);
     _nmod_vec_set(A->coeffs, c, d);
     A->length = 1;
-    _n_poly_fq_normalise(A, d);
+    _n_fq_poly_normalise(A, d);
 }
 
-void n_poly_fq_set_fq_nmod(
+void n_fq_poly_set_fq_nmod(
     n_poly_t A,
     const fq_nmod_t c,
     const fq_nmod_ctx_t ctx)
@@ -246,10 +260,10 @@ void n_poly_fq_set_fq_nmod(
     n_poly_fit_length(A, d);
     n_fq_set_fq_nmod(A->coeffs, c, ctx);
     A->length = 1;
-    _n_poly_fq_normalise(A, d);
+    _n_fq_poly_normalise(A, d);
 }
 
-void n_poly_fq_shift_right(
+void n_fq_poly_shift_right(
     n_poly_t A,
     const n_poly_t B,
     slong n,
@@ -259,7 +273,7 @@ void n_poly_fq_shift_right(
 
     if (n < 1)
     {
-        n_poly_fq_set(A, B, ctx);
+        n_fq_poly_set(A, B, ctx);
         return;
     }
     else if (B->length <= n)
@@ -275,7 +289,7 @@ void n_poly_fq_shift_right(
     }
 }
 
-void n_poly_fq_shift_left(
+void n_fq_poly_shift_left(
     n_poly_t A,
     const n_poly_t B,
     slong n,
@@ -288,17 +302,32 @@ void n_poly_fq_shift_left(
     A->length = B->length + n;
 }
 
-void n_poly_fq_truncate(n_poly_t A, slong len, const fq_nmod_ctx_t ctx)
+void n_fq_poly_truncate(n_poly_t A, slong len, const fq_nmod_ctx_t ctx)
 {
     slong d = fq_nmod_ctx_degree(ctx);
     if (A->length > len)
     {
         A->length = len;
-        _n_poly_fq_normalise(A, d);
+        _n_fq_poly_normalise(A, d);
     }
 }
 
-void n_poly_fq_evaluate_n_fq(
+
+void n_fq_poly_evaluate_fq_nmod(
+    fq_nmod_t e,
+    const n_poly_t A,
+    const fq_nmod_t c,
+    const fq_nmod_ctx_t ctx)
+{
+    fq_nmod_poly_t AA;
+    fq_nmod_poly_init(AA, ctx);
+    n_fq_poly_get_fq_nmod_poly(AA, A, ctx);
+    fq_nmod_poly_evaluate_fq_nmod(e, AA, c, ctx);
+    fq_nmod_poly_clear(AA, ctx);
+}
+
+
+void n_fq_poly_evaluate_n_fq(
     mp_limb_t * e,
     const n_poly_t A,
     const mp_limb_t * c,
@@ -320,7 +349,7 @@ void n_poly_fq_evaluate_n_fq(
 }
 
 
-void n_poly_fq_set_fq_nmod_poly(
+void n_fq_poly_set_fq_nmod_poly(
     n_poly_t A,
     const fq_nmod_poly_t B,
     const fq_nmod_ctx_t ctx)
@@ -336,7 +365,7 @@ void n_poly_fq_set_fq_nmod_poly(
     A->length = B->length;
 }
 
-void n_poly_fq_get_fq_nmod_poly(
+void n_fq_poly_get_fq_nmod_poly(
     fq_nmod_poly_t A,
     const n_poly_t B,
     const fq_nmod_ctx_t ctx)
@@ -355,7 +384,7 @@ void n_poly_fq_get_fq_nmod_poly(
 }
 
 
-void n_poly_fq_scalar_mul_n_fq(
+void n_fq_poly_scalar_mul_n_fq(
     n_poly_t A,
     const n_poly_t B,
     const mp_limb_t * c,
@@ -366,10 +395,10 @@ void n_poly_fq_scalar_mul_n_fq(
     for (i = 0; i < B->length; i++)
         n_fq_mul(A->coeffs + d*i, B->coeffs + d*i, c, ctx);
     A->length = B->length;
-    _n_poly_fq_normalise(A, d);
+    _n_fq_poly_normalise(A, d);
 }
 
-void n_poly_fq_make_monic(
+void n_fq_poly_make_monic(
     n_poly_t A,
     const n_poly_t B,
     const fq_nmod_ctx_t ctx)
@@ -403,7 +432,7 @@ void n_poly_fq_make_monic(
 
 
 /* multiply A by (x^k - c) */
-void n_poly_fq_shift_left_scalar_submul(
+void n_fq_poly_shift_left_scalar_submul(
     n_poly_t A,
     slong k,
     const mp_limb_t * c,
@@ -425,7 +454,7 @@ void n_poly_fq_shift_left_scalar_submul(
     for (i = 0; i < A->length; i++)
     {
         n_fq_mul(u, c, Acoeffs + d*(i + k), ctx);
-        _n_fq_sub(Acoeffs + d*i, Acoeffs + d*i, u, ctx);
+        _n_fq_sub(Acoeffs + d*i, Acoeffs + d*i, u, d, fq_nmod_ctx_mod(ctx));
     }
 
     A->length = Alen + k;
@@ -434,7 +463,7 @@ void n_poly_fq_shift_left_scalar_submul(
 }
 
 
-ulong n_poly_fq_remove(
+ulong n_fq_poly_remove(
     n_poly_t f,
     const n_poly_t g,
     const fq_nmod_ctx_t ctx)
@@ -449,7 +478,7 @@ ulong n_poly_fq_remove(
     {
         if (f->length < g->length)
             break;
-        n_poly_fq_divrem(q, r, f, g, ctx);
+        n_fq_poly_divrem(q, r, f, g, ctx);
         if (r->length == 0)
             n_poly_swap(q, f);
         else

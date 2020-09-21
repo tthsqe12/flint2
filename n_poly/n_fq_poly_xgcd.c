@@ -11,12 +11,12 @@
 
 #include "n_poly.h"
 
-void n_poly_fq_xgcd(
-    n_poly_t G,
-    n_poly_t S,
-    n_poly_t T,
-    const n_poly_t A,
-    const n_poly_t B,
+void n_fq_poly_xgcd(
+    n_fq_poly_t G,
+    n_fq_poly_t S,
+    n_fq_poly_t T,
+    const n_fq_poly_t A,
+    const n_fq_poly_t B,
     const fq_nmod_ctx_t ctx)
 {
     fq_nmod_poly_t GG, SS, TT, AA, BB;
@@ -25,12 +25,12 @@ void n_poly_fq_xgcd(
     fq_nmod_poly_init(TT, ctx);
     fq_nmod_poly_init(AA, ctx);
     fq_nmod_poly_init(BB, ctx);
-    n_poly_fq_get_fq_nmod_poly(AA, A, ctx);
-    n_poly_fq_get_fq_nmod_poly(BB, B, ctx);
+    n_fq_poly_get_fq_nmod_poly(AA, A, ctx);
+    n_fq_poly_get_fq_nmod_poly(BB, B, ctx);
     fq_nmod_poly_xgcd(GG, SS, TT, AA, BB, ctx);
-    n_poly_fq_set_fq_nmod_poly(G, GG, ctx);
-    n_poly_fq_set_fq_nmod_poly(S, SS, ctx);
-    n_poly_fq_set_fq_nmod_poly(T, TT, ctx);
+    n_fq_poly_set_fq_nmod_poly(G, GG, ctx);
+    n_fq_poly_set_fq_nmod_poly(S, SS, ctx);
+    n_fq_poly_set_fq_nmod_poly(T, TT, ctx);
     fq_nmod_poly_clear(GG, ctx);
     fq_nmod_poly_clear(SS, ctx);
     fq_nmod_poly_clear(TT, ctx);

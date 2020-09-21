@@ -11,23 +11,19 @@
 
 #include "n_poly.h"
 
-void n_poly_fq_mullow(
-    n_poly_t A,
-    const n_poly_t B,
-    const n_poly_t C,
+void n_fq_poly_inv_series(
+    n_fq_poly_t A,
+    const n_fq_poly_t B,
     slong order,
     const fq_nmod_ctx_t ctx)
 {
-    fq_nmod_poly_t a, b, c;
+    fq_nmod_poly_t a, b;
     fq_nmod_poly_init(a, ctx);
     fq_nmod_poly_init(b, ctx);
-    fq_nmod_poly_init(c, ctx);
-    n_poly_fq_get_fq_nmod_poly(a, A, ctx);
-    n_poly_fq_get_fq_nmod_poly(b, B, ctx);
-    n_poly_fq_get_fq_nmod_poly(c, C, ctx);
-    fq_nmod_poly_mullow(a, b, c, order, ctx);
-    n_poly_fq_set_fq_nmod_poly(A, a, ctx);
+    n_fq_poly_get_fq_nmod_poly(a, A, ctx);
+    n_fq_poly_get_fq_nmod_poly(b, B, ctx);
+    fq_nmod_poly_inv_series(a, b,  order, ctx);
+    n_fq_poly_set_fq_nmod_poly(A, a, ctx);
     fq_nmod_poly_clear(a, ctx);
     fq_nmod_poly_clear(b, ctx);
-    fq_nmod_poly_clear(c, ctx);
 }

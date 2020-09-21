@@ -65,7 +65,8 @@ static void nmod_mpoly_get_eval_helper2(
         p = EHterms[EHi].coeff->coeffs;
         EHi++;
 
-        _nmod_mpoly_monomial_evals(p, Aexps + N*start, bits, n, betas, 2, ctx);
+        _nmod_mpoly_monomial_evals(p, Aexps + N*start, bits, n, betas,
+                                                    2, ctx->minfo->nvars, ctx);
 
         for (j = n - 1; j >= 0; j--)
         {
@@ -141,7 +142,8 @@ static slong nmod_mpoly_set_eval_helper_and_zip_form2(
         p = EHterms[EHi].coeff->coeffs;
         EHi++;
 
-        _nmod_mpoly_monomial_evals(p, Bexps + N*start, Bbits, n, betas, 2, ctx);
+        _nmod_mpoly_monomial_evals(p, Bexps + N*start, Bbits, n, betas,
+                                                    2, ctx->minfo->nvars, ctx);
 
         if (e0 < deg0)
         {
@@ -178,7 +180,7 @@ static slong nmod_mpoly_set_eval_helper_and_zip_form2(
 }
 
 
-static int n_polyu2_add_zip_must_match(
+int n_polyu2_add_zip_must_match(
     n_polyun_t Z,
     const n_bpoly_t A,
     slong cur_length)
@@ -282,7 +284,7 @@ static int _fmpz_mpoly_modpk_update_zip(
                         Z->terms[i].coeff->coeffs, Z->terms[i].coeff->length,
                         M->terms[i].coeff->coeffs, t->coeffs,
                                                             ctxp->ffinfo->mod);
-        if (success <= 0)
+        if (success < 1)
         {
             n_poly_clear(t);
             n_poly_clear(c);
@@ -535,7 +537,7 @@ static void n_polyun_eval_reset(n_polyun_t A)
         n_poly_eval_reset(A->terms[Ai].coeff);
 }
 
-static void n_bpoly_mod_eval_step(n_bpoly_t E, n_polyun_t A, nmod_t ctx)
+void n_bpoly_mod_eval_step(n_bpoly_t E, n_polyun_t A, nmod_t ctx)
 {
     slong Ai;
     mp_limb_t c;

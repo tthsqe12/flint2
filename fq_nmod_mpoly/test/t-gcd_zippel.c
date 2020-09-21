@@ -33,8 +33,16 @@ main(void)
 
         pbits = 1 + n_randint(state, FLINT_BITS);
         pbits = 1 + n_randint(state, pbits);
-        deg = 1 + n_randint(state, 4);
-        fq_nmod_mpoly_ctx_init_rand(ctx, state, 10, pbits, deg);
+        deg = 2 + n_randint(state, 4);
+        fq_nmod_mpoly_ctx_init_rand(ctx, state, 5, pbits, deg);
+
+        while (fq_nmod_ctx_mod(ctx->fqctx).n < 1000000000)
+        {
+            fq_nmod_mpoly_ctx_clear(ctx);
+            pbits = 1 + n_randint(state, FLINT_BITS);
+            pbits = 1 + n_randint(state, pbits);
+            fq_nmod_mpoly_ctx_init_rand(ctx, state, 5, pbits, deg);
+        }
 
         fq_nmod_mpoly_init(g, ctx);
         fq_nmod_mpoly_init(a, ctx);
@@ -94,7 +102,7 @@ main(void)
                 continue;
             }
 
-            if (!fq_nmod_is_one(g->coeffs + 0, ctx->fqctx))
+            if (!fq_nmod_mpoly_is_monic(g, ctx))
             {
                 printf("FAIL\n");
                 flint_printf("Check gcd is monic\ni = %wd, j = %wd\n", i ,j);

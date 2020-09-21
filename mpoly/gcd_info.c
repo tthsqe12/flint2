@@ -590,3 +590,48 @@ void mpoly_gcd_info_measure_zippel(
                        + 0.00002*(Alength + Blength)*Glength*gsum_deg;
 }
 
+void mpoly_gcd_info_measure_zippel2(
+    mpoly_gcd_info_t I,
+    slong Alength,
+    slong Blength,
+    const mpoly_ctx_t mctx)
+{
+    slong i, j, k;
+    slong m = I->mvars;
+    slong * perm = I->bma_perm;
+    slong max_main_degree;
+    double Glength, Glead_count_X, Gtail_count_X, Glead_count_Y, Gtail_count_Y;
+    double evals, bivar, reconstruct;
+
+    /* need at least 3 variables */
+    if (m < 3)
+        return;
+
+    /* figure out the two main variables y_0, y_1 */
+    for (i = 1; i < m; i++)
+        for (j = i; j > 0 && FLINT_MIN(I->Adeflate_deg[perm[j]], I->Bdeflate_deg[perm[j]]) <
+                             FLINT_MIN(I->Adeflate_deg[perm[j-1]], I->Bdeflate_deg[perm[j-1]]); j--)
+            SLONG_SWAP(perm[j], perm[j - 1]);
+
+
+    for (i = 3; i < m; i++)
+        for (j = i; j > 2 && FLINT_MIN(I->Adeflate_deg[perm[j]], I->Bdeflate_deg[perm[j]]) >
+                             FLINT_MIN(I->Adeflate_deg[perm[j-1]], I->Bdeflate_deg[perm[j-1]]); j--)
+            SLONG_SWAP(perm[j], perm[j - 1]);
+
+
+    max_main_degree = 0;
+    for (i = 0; i < 2; i++)
+    {
+        k = perm[i];
+        max_main_degree = FLINT_MAX(max_main_degree, I->Adeflate_deg[k]);
+        max_main_degree = FLINT_MAX(max_main_degree, I->Bdeflate_deg[k]);
+    }
+
+    /* two main variables must be packed into bits = FLINT_BITS/2 */
+    if (FLINT_BIT_COUNT(max_main_degree) >= FLINT_BITS/2)
+        return;
+
+    I->can_use_bma = 1;
+    I->bma_time_est = 0.243;
+}

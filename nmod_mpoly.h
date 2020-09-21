@@ -975,6 +975,11 @@ FLINT_DLL void nmod_mpoly_divrem_monagan_pearce(nmod_mpoly_t q, nmod_mpoly_t r,
                   const nmod_mpoly_t poly2, const nmod_mpoly_t poly3,
                                                    const nmod_mpoly_ctx_t ctx);
 
+FLINT_DLL void
+nmod_mpoly_divrem_ideal_monagan_pearce(nmod_mpoly_struct ** Q, nmod_mpoly_t R,
+    const nmod_mpoly_t A, nmod_mpoly_struct * const * B, slong len,
+                                                   const nmod_mpoly_ctx_t ctx);
+
 FLINT_DLL slong
 _nmod_mpoly_divrem_ideal_monagan_pearce(nmod_mpoly_struct ** polyq, 
        ulong ** polyr, ulong ** expr, slong * allocr, const ulong * poly2,
@@ -1282,6 +1287,9 @@ FLINT_DLL void nmod_mpolyd_mul_scalar(nmod_mpolyd_t A, mp_limb_t b,
 
 /* GCD ***********************************************************************/
 
+FLINT_DLL void nmod_mpoly_term_content(nmod_mpoly_t poly1,
+                         const nmod_mpoly_t poly2, const nmod_mpoly_ctx_t ctx);
+
 FLINT_DLL void nmod_mpoly_gcd_prs(nmod_mpoly_t poly1, nmod_mpoly_t poly2,
                                nmod_mpoly_t poly3, const nmod_mpoly_ctx_t ctx);
 
@@ -1370,6 +1378,29 @@ FLINT_DLL void nmod_mpoly_from_mpolyu_perm_inflate(
                         const nmod_mpolyu_t B, const nmod_mpoly_ctx_t uctx,
                 const slong * perm, const ulong * shift, const ulong * stride);
 
+FLINT_DLL void nmod_mpoly_to_mpolyuu_perm_deflate_threaded_pool(
+    nmod_mpolyu_t A,
+    const nmod_mpoly_ctx_t uctx,
+    const nmod_mpoly_t B,
+    const nmod_mpoly_ctx_t ctx,
+    const slong * perm,
+    const ulong * shift,
+    const ulong * stride,
+    const ulong * maxexps, /* nullptr is ok */
+    const thread_pool_handle * handles,
+    slong num_handles);
+
+FLINT_DLL void nmod_mpoly_from_mpolyuu_perm_inflate(
+    nmod_mpoly_t A,
+    flint_bitcnt_t Abits,
+    const nmod_mpoly_ctx_t ctx,
+    const nmod_mpolyu_t B,
+    const nmod_mpoly_ctx_t uctx,
+    const slong * perm,
+    const ulong * shift,
+    const ulong * stride);
+
+
 FLINT_DLL int nmod_mpolyuu_divides(nmod_mpolyu_t Q, const nmod_mpolyu_t A,
            const nmod_mpolyu_t B, slong nmainvars, const nmod_mpoly_ctx_t ctx);
 
@@ -1398,6 +1429,15 @@ NMOD_MPOLY_INLINE mp_limb_t nmod_mpolyu_leadcoeff(
     FLINT_ASSERT(A->length > 0);
     return nmod_mpoly_leadcoeff(A->coeffs + 0, ctx);
 }
+
+FLINT_DLL int nmod_mpolyuu_gcd_zippel(
+    nmod_mpolyu_t G,
+    nmod_mpolyu_t Abar,
+    nmod_mpolyu_t Bbar,
+    const nmod_mpolyu_t A,
+    const nmod_mpolyu_t B,
+    const nmod_mpoly_t Gamma,
+    const nmod_mpoly_ctx_t ctx);
 
 /* mpolyn ********************************************************************/
 

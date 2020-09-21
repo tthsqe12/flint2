@@ -10,8 +10,136 @@
 */
 
 #include "nmod_mpoly.h"
+#include "n_poly.h"
 
 /* exponents of B are not multiprecision */
+#if 1
+
+mp_limb_t nmod_pow_ui_with_binlut(n_poly_t powers, ulong n, nmod_t ctx)
+{
+    slong i = 0;
+    mp_limb_t res = 1;
+    slong len = powers->length;
+    mp_limb_t * coeffs = powers->coeffs;
+
+    FLINT_ASSERT(powers->length >= 3);
+
+    while (n != 0 && res != 0)
+    {
+        if (i + 3 > len)
+        {
+            mp_limb_t t = coeffs[i - 3 + 0];
+            t = nmod_mul(t, t, ctx);
+            t = nmod_mul(t, t, ctx);
+            n_poly_fit_length(powers, len + 3);
+            coeffs = powers->coeffs;
+            powers->length = len = len + 3;
+            coeffs[i + 0] = t;
+            coeffs[i + 1] = nmod_mul(t, t, ctx);
+            coeffs[i + 2] = nmod_mul(coeffs[i + 1], t, ctx);
+        }
+
+        if ((n%4) == 1)
+            res = nmod_mul(res, coeffs[i + 0], ctx);
+        else if ((n%4) == 2)
+            res = nmod_mul(res, coeffs[i + 1], ctx);
+        else if ((n%4) == 3)
+            res = nmod_mul(res, coeffs[i + 2], ctx);
+
+        i += 3;
+        n = n/4;
+    }
+
+    return res;
+}
+
+
+void _nmod_mpoly_evaluate_one_ui_sp(
+    nmod_mpoly_t A,
+    const nmod_mpoly_t B,
+    slong var,
+    ulong val,
+    const nmod_mpoly_ctx_t ctx)
+{
+    slong i, N, off, shift;
+    ulong * cmpmask, * one;
+    slong Blen = B->length;
+    const mp_limb_t * Bcoeffs = B->coeffs;
+    const ulong * Bexps = B->exps;
+    flint_bitcnt_t bits = B->bits;
+    slong Alen;
+    mp_limb_t * Acoeffs;
+    ulong * Aexps;
+    n_poly_t valpowers;
+    ulong mask, k;
+    mp_limb_t t;
+    int need_sort = 0, cmp;
+    TMP_INIT;
+
+    TMP_START;
+
+    n_poly_init2(valpowers, 6);
+    valpowers->length = 3;
+    valpowers->coeffs[3*0 + 0] = val;
+    valpowers->coeffs[3*0 + 1] = nmod_mul(val, val, ctx->ffinfo->mod);
+    valpowers->coeffs[3*0 + 2] = nmod_mul(valpowers->coeffs[3*0 + 1],
+                                                        val, ctx->ffinfo->mod);
+    nmod_mpoly_fit_length(A, Blen, ctx);
+    nmod_mpoly_fit_bits(A, bits, ctx);
+    A->bits = bits;
+    Acoeffs = A->coeffs;
+    Aexps = A->exps;
+
+    mask = (-UWORD(1)) >> (FLINT_BITS - bits);
+    N = mpoly_words_per_exp(bits, ctx->minfo);
+    one = (ulong*) TMP_ALLOC(N*sizeof(ulong));
+    cmpmask = (ulong*) TMP_ALLOC(N*sizeof(ulong));
+    mpoly_gen_monomial_offset_shift_sp(one, &off, &shift, var, bits, ctx->minfo);
+    mpoly_get_cmpmask(cmpmask, N, bits, ctx->minfo);
+
+    Alen = 0;
+    for (i = 0; i < Blen; i++)
+    {
+        k = (Bexps[N*i + off] >> shift) & mask;
+        t = nmod_pow_ui_with_binlut(valpowers, k, ctx->ffinfo->mod);
+        Acoeffs[Alen] = nmod_mul(Bcoeffs[i], t, ctx->ffinfo->mod);
+        if (Acoeffs[Alen] == 0)
+            continue;
+        mpoly_monomial_msub(Aexps + N*Alen, Bexps + N*i, k, one, N);
+        if (Alen < 1)
+        {
+            Alen = 1;
+            continue;
+        }
+        cmp = mpoly_monomial_cmp(Aexps + N*(Alen - 1), Aexps + N*Alen, N, cmpmask);
+        if (cmp != 0)
+        {
+            need_sort |= (cmp < 0);
+            Alen++;
+            continue;
+        }
+        Acoeffs[Alen - 1] = nmod_add(Acoeffs[Alen - 1], Acoeffs[Alen], ctx->ffinfo->mod);
+        if (Acoeffs[Alen - 1] == 0)
+        {
+            Alen--;
+        }
+    }
+    A->length = Alen;
+
+    TMP_END;
+
+    if (need_sort)
+    {
+        nmod_mpoly_sort_terms(A, ctx);
+        nmod_mpoly_combine_like_terms(A, ctx);
+    }
+
+    n_poly_clear(valpowers);
+
+    FLINT_ASSERT(nmod_mpoly_is_canonical(A, ctx));
+}
+
+#else
 void _nmod_mpoly_evaluate_one_ui_sp(nmod_mpoly_t A, const nmod_mpoly_t B,
                               slong var, ulong val, const nmod_mpoly_ctx_t ctx)
 {
@@ -202,7 +330,7 @@ done:
 
     TMP_END;
 }
-
+#endif
 
 /* exponents of B are multiprecision */
 void _nmod_mpoly_evaluate_one_ui_mp(nmod_mpoly_t A, const nmod_mpoly_t B,
@@ -415,12 +543,14 @@ void nmod_mpoly_evaluate_one_ui(nmod_mpoly_t A, const nmod_mpoly_t B,
         return;
     }
 
-    NMOD_RED(val, val, ctx->ffinfo->mod);
+    if (var >= ctx->ffinfo->mod.n)
+        NMOD_RED(val, val, ctx->ffinfo->mod);
 
     if (B->bits <= FLINT_BITS)
     {
         _nmod_mpoly_evaluate_one_ui_sp(A, B, var, val, ctx);
-    } else
+    }
+    else
     {
         _nmod_mpoly_evaluate_one_ui_mp(A, B, var, val, ctx);
     }
