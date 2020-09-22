@@ -78,11 +78,9 @@ static void _try_monomial_gcd(
     /* compute the degree of each variable in G */
     _fmpz_vec_min_inplace(minBdegs, minAdegs, ctx->minfo->nvars);
 
-    nmod_mpoly_fit_length(_G, 1, ctx);
-    nmod_mpoly_fit_bits(_G, Gbits, ctx);
-    _G->bits = Gbits;
+    nmod_mpoly_fit_length_reset_bits(_G, 1, Gbits, ctx);
     mpoly_set_monomial_ffmpz(_G->exps, minBdegs, Gbits, ctx->minfo);
-    _G->coeffs[0] = UWORD(1);
+    _G->coeffs[0] = 1;
     _G->length = 1;
 
     for (i = 0; i < ctx->minfo->nfields; i++)
@@ -97,8 +95,8 @@ static void _try_monomial_gcd(
 
     TMP_END;
 
-    _nmod_mpoly_divides_threaded_pool(_Abar, A, _G, ctx, NULL, 0);
-    _nmod_mpoly_divides_threaded_pool(_Bbar, B, _G, ctx, NULL, 0);
+    nmod_mpoly_divides(_Abar, A, _G, ctx);
+    nmod_mpoly_divides(_Bbar, B, _G, ctx);
 
     nmod_mpoly_swap(G, _G, ctx);
     nmod_mpoly_swap(Abar, _Abar, ctx);
@@ -177,16 +175,12 @@ static int _try_monomial_cofactors(
     nmod_mpoly_swap(G, T, ctx);
     nmod_mpoly_clear(T, ctx);
 
-    nmod_mpoly_fit_length(Abar, 1, ctx);
-    nmod_mpoly_fit_bits(Abar, Abarbits, ctx);
-    Abar->bits = Abarbits;
+    nmod_mpoly_fit_length_reset_bits(Abar, 1, Abarbits, ctx);
     mpoly_set_monomial_ffmpz(Abar->exps, Abarexps, Abarbits, ctx->minfo);
     Abar->coeffs[0] = a0;
     _nmod_mpoly_set_length(Abar, 1, ctx);
 
-    nmod_mpoly_fit_length(Bbar, 1, ctx);
-    nmod_mpoly_fit_bits(Bbar, Bbarbits, ctx);
-    Bbar->bits = Bbarbits;
+    nmod_mpoly_fit_length_reset_bits(Bbar, 1, Bbarbits, ctx);
     mpoly_set_monomial_ffmpz(Bbar->exps, Bbarexps, Bbarbits, ctx->minfo);
     Bbar->coeffs[0] = b0;
     _nmod_mpoly_set_length(Bbar, 1, ctx);
@@ -751,9 +745,7 @@ calculate_trivial_gcd:
             nmod_mpoly_set(Bbar, B, ctx);
         }
 
-        nmod_mpoly_fit_length(G, 1, ctx);
-        nmod_mpoly_fit_bits(G, I->Gbits, ctx);
-        G->bits = I->Gbits;
+        nmod_mpoly_fit_length_reset_bits(G, 1, I->Gbits, ctx);
         mpoly_set_monomial_ui(G->exps, I->Gmin_exp, I->Gbits, ctx->minfo);
         G->coeffs[0] = UWORD(1);
         G->length = 1;

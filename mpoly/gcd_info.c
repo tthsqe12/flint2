@@ -600,8 +600,6 @@ void mpoly_gcd_info_measure_zippel2(
     slong m = I->mvars;
     slong * perm = I->bma_perm;
     slong max_main_degree;
-    double Glength, Glead_count_X, Gtail_count_X, Glead_count_Y, Gtail_count_Y;
-    double evals, bivar, reconstruct;
 
     /* need at least 3 variables */
     if (m < 3)

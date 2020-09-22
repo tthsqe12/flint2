@@ -38,9 +38,12 @@ void fq_nmod_mpoly_init3(
     A->bits = bits;
 }
 
-void fq_nmod_mpoly_init2(fq_nmod_mpoly_t A, slong alloc,
-                                                 const fq_nmod_mpoly_ctx_t ctx)
+void fq_nmod_mpoly_init2(
+    fq_nmod_mpoly_t A,
+    slong alloc,
+    const fq_nmod_mpoly_ctx_t ctx)
 {
     flint_bitcnt_t bits = mpoly_fix_bits(MPOLY_MIN_BITS, ctx->minfo);
     fq_nmod_mpoly_init3(A, alloc, bits, ctx);
 }
+

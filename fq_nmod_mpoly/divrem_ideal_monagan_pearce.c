@@ -23,7 +23,7 @@ int _fq_nmod_mpoly_divrem_ideal_monagan_pearce(
     const mp_limb_t * poly2, const ulong * exp2, slong len2,
     fq_nmod_mpoly_struct * const * poly3, ulong * const * exp3, slong len,
     slong N,
-    slong bits,
+    flint_bitcnt_t bits,
     const fq_nmod_mpoly_ctx_t ctx,
     const ulong * cmpmask)
 {

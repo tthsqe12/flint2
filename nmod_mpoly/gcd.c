@@ -391,11 +391,9 @@ static int _try_monomial_gcd(
     /* compute the degree of each variable in G */
     _fmpz_vec_min_inplace(minBdegs, minAdegs, ctx->minfo->nvars);
 
-    nmod_mpoly_fit_length(G, 1, ctx);
-    nmod_mpoly_fit_bits(G, Gbits, ctx);
-    G->bits = Gbits;
+    nmod_mpoly_fit_length_reset_bits(G, 1, Gbits, ctx);
     mpoly_set_monomial_ffmpz(G->exps, minBdegs, Gbits, ctx->minfo);
-    G->coeffs[0] = UWORD(1);
+    G->coeffs[0] = 1;
     G->length = 1;
 
     for (i = 0; i < ctx->minfo->nfields; i++)
@@ -1048,11 +1046,9 @@ skip_monomial_cofactors:
 
 calculate_trivial_gcd:
 
-        nmod_mpoly_fit_length(G, 1, ctx);
-        nmod_mpoly_fit_bits(G, Gbits, ctx);
-        G->bits = Gbits;
+        nmod_mpoly_fit_length_reset_bits(G, 1, Gbits, ctx);
         mpoly_set_monomial_ui(G->exps, I->Gmin_exp, Gbits, ctx->minfo);
-        G->coeffs[0] = UWORD(1);
+        G->coeffs[0] = 1;
         _nmod_mpoly_set_length(G, 1, ctx);
 
         goto successful;

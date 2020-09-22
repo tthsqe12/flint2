@@ -811,7 +811,6 @@ void nmod_mpoly_from_mpolyun_perm_inflate(
     slong Alen;
     mp_limb_t * Acoeff;
     ulong * Aexp;
-    slong Aalloc;
     ulong * uexps;
     ulong * Aexps, * tAexp, * tAgexp;
     TMP_INIT;
@@ -836,12 +835,10 @@ void nmod_mpoly_from_mpolyun_perm_inflate(
         tAgexp[i] *= stride[perm[m]];
     }
 
-    nmod_mpoly_fit_bits(A, Abits, ctx);
-    A->bits = Abits;
+    nmod_mpoly_fit_length_reset_bits(A, 0, Abits, ctx);
 
     Acoeff = A->coeffs;
     Aexp = A->exps;
-    Aalloc = A->alloc;
     Alen = 0;
     for (i = 0; i < B->length; i++)
     {
@@ -867,14 +864,13 @@ void nmod_mpoly_from_mpolyun_perm_inflate(
 
             l = perm[m];
             h = (Bc->coeffs + j)->length;
-            _nmod_mpoly_fit_length(&Acoeff, &Aexp, &Aalloc, Alen + h, NA);
+            _nmod_mpoly_fit_length(&Acoeff, &A->coeffs_alloc,
+                                   &Aexp, &A->exps_alloc, NA, Alen + h);
             for (h--; h >= 0; h--)
             {
                 mp_limb_t c = (Bc->coeffs + j)->coeffs[h];
                 if (c == 0)
-                {
                     continue;
-                }
                 mpoly_monomial_madd(Aexp + NA*Alen, tAexp, h, tAgexp, NA);
                 Acoeff[Alen] = c;
                 Alen++;
@@ -883,7 +879,6 @@ void nmod_mpoly_from_mpolyun_perm_inflate(
     }
     A->coeffs = Acoeff;
     A->exps = Aexp;
-    A->alloc = Aalloc;
     _nmod_mpoly_set_length(A, Alen, ctx);
 
     nmod_mpoly_sort_terms(A, ctx);
@@ -907,7 +902,6 @@ void nmod_mpoly_from_mpolyn_perm_inflate(
     slong Alen;
     mp_limb_t * Acoeff;
     ulong * Aexp;
-    slong Aalloc;
     ulong * Bexps;
     ulong * Aexps, * tAexp, * tAgexp;
     TMP_INIT;
@@ -930,12 +924,10 @@ void nmod_mpoly_from_mpolyn_perm_inflate(
     for (i = 0; i < NA; i++)
         tAgexp[i] *= stride[perm[m - 1]];
 
-    nmod_mpoly_fit_bits(A, Abits, ctx);
-    A->bits = Abits;
+    nmod_mpoly_fit_length_reset_bits(A, 0, Abits, ctx);
 
     Acoeff = A->coeffs;
     Aexp = A->exps;
-    Aalloc = A->alloc;
     Alen = 0;
     for (i = 0; i < B->length; i++)
     {
@@ -954,7 +946,8 @@ void nmod_mpoly_from_mpolyn_perm_inflate(
         mpoly_set_monomial_ui(tAexp, Aexps, Abits, ctx->minfo);
 
         h = (B->coeffs + i)->length;
-        _nmod_mpoly_fit_length(&Acoeff, &Aexp, &Aalloc, Alen + h, NA);
+        _nmod_mpoly_fit_length(&Acoeff, &A->coeffs_alloc,
+                               &Aexp, &A->exps_alloc, NA, Alen + h);
         for (h--; h >= 0; h--)
         {
             mp_limb_t c = (B->coeffs + i)->coeffs[h];
@@ -967,8 +960,7 @@ void nmod_mpoly_from_mpolyn_perm_inflate(
     }
     A->coeffs = Acoeff;
     A->exps = Aexp;
-    A->alloc = Aalloc;
-    A->length = Alen;
+    _nmod_mpoly_set_length(A, Alen, ctx);
 
     nmod_mpoly_sort_terms(A, ctx);
     TMP_END;

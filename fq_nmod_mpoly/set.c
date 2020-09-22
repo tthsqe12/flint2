@@ -24,9 +24,6 @@ void fq_nmod_mpoly_set(
 
     fq_nmod_mpoly_fit_length_reset_bits(A, B->length, B->bits, ctx);
 
-    FLINT_ASSERT(A->coeffs_alloc >= d*B->length);
-    FLINT_ASSERT(A->exps_alloc >= N*B->length);
-
     _nmod_vec_set(A->coeffs, B->coeffs, d*B->length);
     mpoly_copy_monomials(A->exps, B->exps, B->length, N);
     _fq_nmod_mpoly_set_length(A, B->length, ctx);

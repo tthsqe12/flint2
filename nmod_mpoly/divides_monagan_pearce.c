@@ -11,11 +11,13 @@
 
 #include "nmod_mpoly.h"
 
-slong _nmod_mpoly_divides_monagan_pearce1(
-                     mp_limb_t ** coeff1,      ulong ** exp1, slong * alloc,
-                const mp_limb_t * coeff2, const ulong * exp2, slong len2,
-                const mp_limb_t * coeff3, const ulong * exp3, slong len3,
-                              slong bits, ulong maskhi, const nmodf_ctx_t fctx)
+static int _nmod_mpoly_divides_monagan_pearce1(
+    nmod_mpoly_t Q,
+    const mp_limb_t * coeff2, const ulong * exp2, slong len2,
+    const mp_limb_t * coeff3, const ulong * exp3, slong len3,
+    slong bits,
+    ulong maskhi,
+    const nmodf_ctx_t fctx)
 {
     int lt_divides;
     slong i, j, q_len, s;
@@ -24,8 +26,8 @@ slong _nmod_mpoly_divides_monagan_pearce1(
     mpoly_heap_t * chain;
     slong * store, * store_base;
     mpoly_heap_t * x;
-    mp_limb_t * q_coeff = * coeff1;
-    ulong * q_exp = * exp1;
+    mp_limb_t * q_coeff = Q->coeffs;
+    ulong * q_exp = Q->exps;
     slong * hind;
     ulong mask, exp, maxexp = exp2[len2 - 1];
     mp_limb_t lc_minus_inv, acc0, acc1, acc2, pp1, pp0;
@@ -72,7 +74,9 @@ slong _nmod_mpoly_divides_monagan_pearce1(
         if (mpoly_monomial_overflows1(exp, mask))
             goto not_exact_division;
 
-        _nmod_mpoly_fit_length(&q_coeff, &q_exp, alloc, q_len + 1, 1);
+        _nmod_mpoly_fit_length(&q_coeff, &Q->coeffs_alloc,
+                               &q_exp, &Q->exps_alloc, 1, q_len + 1);
+
         lt_divides = mpoly_monomial_divides1(q_exp + q_len, exp, exp3[0], mask);
 
         acc0 = acc1 = acc2 = 0;
@@ -179,27 +183,34 @@ slong _nmod_mpoly_divides_monagan_pearce1(
         q_len++;
     }
 
-
-cleanup:
-
-    *coeff1 = q_coeff;
-    *exp1 = q_exp;
+    Q->coeffs = q_coeff;
+    Q->exps = q_exp;
+    Q->length = q_len;
 
     TMP_END;
 
-    return q_len;
+    return 1;
 
 not_exact_division:
-    q_len = 0;
-    goto cleanup;
+
+    Q->coeffs = q_coeff;
+    Q->exps = q_exp;
+    Q->length = 0;
+
+    TMP_END;
+
+    return 0;
 }
 
 
-slong _nmod_mpoly_divides_monagan_pearce(
-                     mp_limb_t ** coeff1,      ulong ** exp1, slong * alloc,
-                const mp_limb_t * coeff2, const ulong * exp2, slong len2,
-                const mp_limb_t * coeff3, const ulong * exp3, slong len3,
-     flint_bitcnt_t bits, slong N, const ulong * cmpmask, const nmodf_ctx_t fctx)
+int _nmod_mpoly_divides_monagan_pearce(
+    nmod_mpoly_t Q,
+    const mp_limb_t * coeff2, const ulong * exp2, slong len2,
+    const mp_limb_t * coeff3, const ulong * exp3, slong len3,
+    flint_bitcnt_t bits,
+    slong N,
+    const ulong * cmpmask,
+    const nmodf_ctx_t fctx)
 {
     int lt_divides;
     slong i, j, q_len, s;
@@ -208,8 +219,8 @@ slong _nmod_mpoly_divides_monagan_pearce(
     mpoly_heap_t * chain;
     slong * store, * store_base;
     mpoly_heap_t * x;
-    mp_limb_t * q_coeff = * coeff1;
-    ulong * q_exp = * exp1;
+    mp_limb_t * q_coeff = Q->coeffs;
+    ulong * q_exp = Q->exps;
     ulong * exp, * exps;
     ulong ** exp_list;
     slong exp_next;
@@ -219,8 +230,8 @@ slong _nmod_mpoly_divides_monagan_pearce(
     TMP_INIT;
 
     if (N == 1)
-        return _nmod_mpoly_divides_monagan_pearce1(coeff1, exp1, alloc,
-               coeff2, exp2, len2, coeff3, exp3, len3, bits, cmpmask[0], fctx);
+        return _nmod_mpoly_divides_monagan_pearce1(Q, coeff2, exp2, len2,
+                                   coeff3, exp3, len3, bits, cmpmask[0], fctx);
 
     TMP_START;
 
@@ -281,7 +292,8 @@ slong _nmod_mpoly_divides_monagan_pearce(
                 goto not_exact_division;
         }
 
-        _nmod_mpoly_fit_length(&q_coeff, &q_exp, alloc, q_len + 1, N);
+        _nmod_mpoly_fit_length(&q_coeff, &Q->coeffs_alloc,
+                               &q_exp, &Q->exps_alloc, N, q_len + 1);
 
         if (bits <= FLINT_BITS)
             lt_divides = mpoly_monomial_divides(q_exp + q_len*N, exp, exp3, N, mask);
@@ -419,32 +431,38 @@ slong _nmod_mpoly_divides_monagan_pearce(
         q_len++;
     }
 
-
-cleanup:
-
-    *coeff1 = q_coeff;
-    *exp1 = q_exp;
+    Q->coeffs = q_coeff;
+    Q->exps = q_exp;
+    Q->length = q_len;
 
     TMP_END;
 
-    return q_len;
+    return 1;
 
 not_exact_division:
-    q_len = 0;
-    goto cleanup;
+
+    Q->coeffs = q_coeff;
+    Q->exps = q_exp;
+    Q->length = 0;
+
+    TMP_END;
+
+    return 0;
 }
 
 /* return 1 if quotient is exact */
-int nmod_mpoly_divides_monagan_pearce(nmod_mpoly_t poly1,
-                  const nmod_mpoly_t poly2, const nmod_mpoly_t poly3,
-                                                    const nmod_mpoly_ctx_t ctx)
+int nmod_mpoly_divides_monagan_pearce(
+    nmod_mpoly_t poly1,
+    const nmod_mpoly_t poly2,
+    const nmod_mpoly_t poly3,
+    const nmod_mpoly_ctx_t ctx)
 {
-    slong i, N, len = 0;
-    flint_bitcnt_t exp_bits;
+    slong i, N;
+    flint_bitcnt_t Qbits;
     fmpz * max_fields2, * max_fields3;
     ulong * cmpmask;
     ulong * exp2 = poly2->exps, * exp3 = poly3->exps, * expq;
-    int easy_exit, free2 = 0, free3 = 0;
+    int success, easy_exit, free2 = 0, free3 = 0;
     ulong mask = 0;
     TMP_INIT;
 
@@ -454,8 +472,11 @@ int nmod_mpoly_divides_monagan_pearce(nmod_mpoly_t poly1,
         {
             nmod_mpoly_set(poly1, poly2, ctx);
             return 1;
-        } else
-            flint_throw(FLINT_DIVZERO, "Divide by zero in nmod_mpoly_divides_monagan_pearce");
+        }
+        else
+        {
+            flint_throw(FLINT_DIVZERO, "nmod_mpoly_divides_monagan_pearce: divide by zero");
+        }
     }
 
     if (poly2->length == 0)
@@ -489,11 +510,10 @@ int nmod_mpoly_divides_monagan_pearce(nmod_mpoly_t poly1,
             easy_exit = 1;
     }
 
-    exp_bits = _fmpz_vec_max_bits(max_fields2, ctx->minfo->nfields);
-    exp_bits = FLINT_MAX(MPOLY_MIN_BITS, exp_bits + 1);
-    exp_bits = FLINT_MAX(exp_bits, poly2->bits);
-    exp_bits = FLINT_MAX(exp_bits, poly3->bits);
-    exp_bits = mpoly_fix_bits(exp_bits, ctx->minfo);
+    Qbits = 1 + _fmpz_vec_max_bits(max_fields2, ctx->minfo->nfields);
+    Qbits = FLINT_MAX(Qbits, poly2->bits);
+    Qbits = FLINT_MAX(Qbits, poly3->bits);
+    Qbits = mpoly_fix_bits(Qbits, ctx->minfo);
 
     for (i = 0; i < ctx->minfo->nfields; i++)
     {
@@ -503,58 +523,59 @@ int nmod_mpoly_divides_monagan_pearce(nmod_mpoly_t poly1,
 
     if (easy_exit)
     {
-        len = 0;
+        success = 0;
         goto cleanup;
     }
 
-    N = mpoly_words_per_exp(exp_bits, ctx->minfo);
+    N = mpoly_words_per_exp(Qbits, ctx->minfo);
     cmpmask = (ulong*) TMP_ALLOC(N*sizeof(ulong));
-    mpoly_get_cmpmask(cmpmask, N, exp_bits, ctx->minfo);
+    mpoly_get_cmpmask(cmpmask, N, Qbits, ctx->minfo);
 
     /* temporary space to check leading monomials divide */
     expq = (ulong *) TMP_ALLOC(N*sizeof(ulong));
 
     /* quick check for easy case of inexact division of leading monomials */
-    if (poly2->bits == poly3->bits && N == 1 && 
-       poly2->exps[0] < poly3->exps[0])
+    if (Qbits == poly2->bits && Qbits == poly3->bits && poly2->exps[N - 1] < poly3->exps[N - 1])
     {
+        success = 0;
         goto cleanup;
     }
 
     /* ensure input exponents packed to same size as output exponents */
-    if (exp_bits > poly2->bits)
+    if (Qbits > poly2->bits)
     {
         free2 = 1;
         exp2 = (ulong *) flint_malloc(N*poly2->length*sizeof(ulong));
-        mpoly_repack_monomials(exp2, exp_bits, poly2->exps, poly2->bits,
+        mpoly_repack_monomials(exp2, Qbits, poly2->exps, poly2->bits,
                                                     poly2->length, ctx->minfo);
     }
 
-    if (exp_bits > poly3->bits)
+    if (Qbits > poly3->bits)
     {
         free3 = 1;
         exp3 = (ulong *) flint_malloc(N*poly3->length*sizeof(ulong));
-        mpoly_repack_monomials(exp3, exp_bits, poly3->exps, poly3->bits,
+        mpoly_repack_monomials(exp3, Qbits, poly3->exps, poly3->bits,
                                                     poly3->length, ctx->minfo);
     }
 
     /* check leading monomial divides exactly */
-    if (exp_bits <= FLINT_BITS)
+    if (Qbits <= FLINT_BITS)
     {
         /* mask with high bit of each exponent vector field set */
-        for (i = 0; i < FLINT_BITS/exp_bits; i++)
-            mask = (mask << exp_bits) + (UWORD(1) << (exp_bits - 1));
+        for (i = 0; i < FLINT_BITS/Qbits; i++)
+            mask = (mask << Qbits) + (UWORD(1) << (Qbits - 1));
 
         if (!mpoly_monomial_divides(expq, exp2, exp3, N, mask))
         {
-            len = 0;
+            success = 0;
             goto cleanup;
         }
-    } else
+    }
+    else
     {
-        if (!mpoly_monomial_divides_mp(expq, exp2, exp3, N, exp_bits))
+        if (!mpoly_monomial_divides_mp(expq, exp2, exp3, N, Qbits))
         {
-            len = 0;
+            success = 0;
             goto cleanup;
         }
     }
@@ -562,44 +583,34 @@ int nmod_mpoly_divides_monagan_pearce(nmod_mpoly_t poly1,
     /* deal with aliasing and divide polynomials */
     if (poly1 == poly2 || poly1 == poly3)
     {
-      nmod_mpoly_t temp;
+        nmod_mpoly_t temp;
+        nmod_mpoly_init3(temp, poly2->length/poly3->length + 1, Qbits, ctx);
+        success = _nmod_mpoly_divides_monagan_pearce(temp,
+                                      poly2->coeffs, exp2, poly2->length,
+                                      poly3->coeffs, exp3, poly3->length,
+                                            Qbits, N, cmpmask, ctx->ffinfo);
+        nmod_mpoly_swap(temp, poly1, ctx);
+        nmod_mpoly_clear(temp, ctx);
+    }
+    else
+    {
+        nmod_mpoly_fit_length_reset_bits(poly1, poly2->length/poly3->length + 1, Qbits, ctx);
 
-      nmod_mpoly_init2(temp, poly2->length/poly3->length + 1, ctx);
-      nmod_mpoly_fit_bits(temp, exp_bits, ctx);
-      temp->bits = exp_bits;
-
-      len = _nmod_mpoly_divides_monagan_pearce(&temp->coeffs, &temp->exps,
-                            &temp->alloc, poly2->coeffs, exp2, poly2->length,
-                              poly3->coeffs, exp3, poly3->length, exp_bits, N,
-                                                  cmpmask, ctx->ffinfo);
-
-      nmod_mpoly_swap(temp, poly1, ctx);
-
-      nmod_mpoly_clear(temp, ctx);
-   } else
-   {
-      nmod_mpoly_fit_length(poly1, poly2->length/poly3->length + 1, ctx);
-      nmod_mpoly_fit_bits(poly1, exp_bits, ctx);
-      poly1->bits = exp_bits;
-
-      len = _nmod_mpoly_divides_monagan_pearce(&poly1->coeffs, &poly1->exps,
-                            &poly1->alloc, poly2->coeffs, exp2, poly2->length,
-                              poly3->coeffs, exp3, poly3->length, exp_bits, N,
-                                                  cmpmask, ctx->ffinfo);
-   }
+        success = _nmod_mpoly_divides_monagan_pearce(poly1,
+                                    poly2->coeffs, exp2, poly2->length,
+                                    poly3->coeffs, exp3, poly3->length,
+                                            Qbits, N, cmpmask, ctx->ffinfo);
+    }
 
 cleanup:
 
-   _nmod_mpoly_set_length(poly1, len, ctx);
+    if (free2)
+        flint_free(exp2);
 
-   if (free2)
-      flint_free(exp2);
+    if (free3)
+        flint_free(exp3);
 
-   if (free3)
-      flint_free(exp3);
+    TMP_END;
 
-   TMP_END;
-
-   /* division is exact if len is nonzero */
-   return (len != 0);
+    return success;
 }

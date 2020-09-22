@@ -290,14 +290,14 @@ void fq_nmod_mpoly_divrem_monagan_pearce(
     mpoly_get_cmpmask(cmpmask, N, QRbits, ctx->minfo);
 
     /* ensure input exponents packed to same size as output exponents */
-    if (QRbits > A->bits)
+    if (QRbits != A->bits)
     {
         freeAexps = 1;
         Aexps = (ulong *) flint_malloc(N*A->length*sizeof(ulong));
         mpoly_repack_monomials(Aexps, QRbits, A->exps, A->bits, A->length, ctx->minfo);
     }
 
-    if (QRbits > B->bits)
+    if (QRbits != B->bits)
     {
         freeBexps = 1;
         Bexps = (ulong *) flint_malloc(N*B->length*sizeof(ulong));

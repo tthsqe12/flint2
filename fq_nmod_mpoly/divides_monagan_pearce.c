@@ -11,10 +11,14 @@
 
 #include "fq_nmod_mpoly.h"
 
-int _fq_nmod_mpoly_divides_monagan_pearce(fq_nmod_mpoly_t Q,
-                const mp_limb_t * coeff2, const ulong * exp2, slong len2,
-                const mp_limb_t * coeff3, const ulong * exp3, slong len3,
-     flint_bitcnt_t bits, slong N, const ulong * cmpmask, const fq_nmod_ctx_t fqctx)
+int _fq_nmod_mpoly_divides_monagan_pearce(
+    fq_nmod_mpoly_t Q,
+    const mp_limb_t * coeff2, const ulong * exp2, slong len2,
+    const mp_limb_t * coeff3, const ulong * exp3, slong len3,
+    flint_bitcnt_t bits,
+    slong N,
+    const ulong * cmpmask,
+    const fq_nmod_ctx_t fqctx)
 {
     slong d = fq_nmod_ctx_degree(fqctx);
     int lt_divides;

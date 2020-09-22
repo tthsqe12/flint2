@@ -1022,10 +1022,6 @@ FLINT_DLL int fq_nmod_mpolyuu_divides(fq_nmod_mpolyu_t Q,
           const fq_nmod_mpolyu_t A, const fq_nmod_mpolyu_t B, slong nmainvars,
                                                 const fq_nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL void fq_nmod_mpolyu_divexact_mpoly(fq_nmod_mpolyu_t A,
-                                      fq_nmod_mpolyu_t B, fq_nmod_mpoly_t c,
-                                                const fq_nmod_mpoly_ctx_t ctx);
-
 FLINT_DLL void fq_nmod_mpolyu_divexact_mpoly_inplace(fq_nmod_mpolyu_t A,
                              fq_nmod_mpoly_t c, const fq_nmod_mpoly_ctx_t ctx);
 

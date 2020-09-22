@@ -564,54 +564,6 @@ done:
 }
 
 
-/*
-    A = B / c and preserve the bit packing
-*/
-void fq_nmod_mpolyu_divexact_mpoly(fq_nmod_mpolyu_t A, fq_nmod_mpolyu_t B,
-                              fq_nmod_mpoly_t c, const fq_nmod_mpoly_ctx_t ctx)
-{
-    slong i;
-    slong len;
-    slong N;
-    flint_bitcnt_t exp_bits;
-    fq_nmod_mpoly_struct * poly1, * poly2, * poly3;
-    ulong * cmpmask;
-    TMP_INIT;
-
-    TMP_START;
-
-    exp_bits = B->bits;
-    FLINT_ASSERT(A->bits == B->bits);
-    FLINT_ASSERT(A->bits == c->bits);
-
-    fq_nmod_mpolyu_fit_length(A, B->length, ctx);
-
-    N = mpoly_words_per_exp(exp_bits, ctx->minfo);
-    cmpmask = (ulong*) TMP_ALLOC(N*sizeof(ulong));
-    mpoly_get_cmpmask(cmpmask, N, exp_bits, ctx->minfo);
-
-    for (i = 0; i < B->length; i++)
-    {
-        poly1 = A->coeffs + i;
-        poly2 = B->coeffs + i;
-        poly3 = c;
-
-        fq_nmod_mpoly_fit_length_reset_bits(poly1, poly2->length/poly3->length + 1, exp_bits, ctx);
-
-        len = _fq_nmod_mpoly_divides_monagan_pearce(poly1,
-                              poly2->coeffs, poly2->exps, poly2->length,
-                              poly3->coeffs, poly3->exps, poly3->length,
-                                            exp_bits, N, cmpmask, ctx->fqctx);
-        FLINT_ASSERT(len > 0);
-
-        _fq_nmod_mpoly_set_length(poly1, len, ctx);
-
-        A->exps[i] = B->exps[i];
-    }
-    A->length = B->length;
-    TMP_END;
-}
-
 void fq_nmod_mpolyu_divexact_mpoly_inplace(
     fq_nmod_mpolyu_t A,
     fq_nmod_mpoly_t c,
@@ -657,7 +609,7 @@ void fq_nmod_mpolyu_divexact_mpoly_inplace(
 
     TMP_START;
 
-    cmpmask = (ulong*) TMP_ALLOC(N*sizeof(ulong));
+    cmpmask = (ulong *) TMP_ALLOC(N*sizeof(ulong));
     mpoly_get_cmpmask(cmpmask, N, bits, ctx->minfo);
 
     for (i = A->length - 1; i >= 0; i--)

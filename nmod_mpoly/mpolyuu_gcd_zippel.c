@@ -146,22 +146,22 @@ void nmod_mpolyu_evaluate_one_ui(
     mp_limb_t alpha,
     const nmod_mpoly_ctx_t ctx)
 {
-    slong i, Elen;
+    slong i, Ei;
 
     FLINT_ASSERT(E != A);
     FLINT_ASSERT(E->bits == A->bits);
 
     nmod_mpolyu_fit_length(E, A->length, ctx);
-    Elen = 0;
+    Ei = 0;
     for (i = 0; i < A->length; i++)
     {
-        E->exps[i] = A->exps[i];
-        nmod_mpoly_evaluate_one_ui(E->coeffs + i, A->coeffs + i, var, alpha, ctx);
-        nmod_mpoly_repack_bits_inplace(E->coeffs + i, E->bits, ctx);
-        Elen += !nmod_mpoly_is_zero(E->coeffs + i, ctx);
+        E->exps[Ei] = A->exps[i];
+        nmod_mpoly_evaluate_one_ui(E->coeffs + Ei, A->coeffs + i, var, alpha, ctx);
+        nmod_mpoly_repack_bits_inplace(E->coeffs + Ei, E->bits, ctx);
+        Ei += !nmod_mpoly_is_zero(E->coeffs + Ei, ctx);
     }
 
-    E->length = Elen;
+    E->length = Ei;
 }
 
 static void nmod_mpolyuu_get_n_bpoly(
@@ -495,8 +495,8 @@ static int zip_solve(
     real answers
 
         rG = pp(G)
-        rAbar = Abar/lc(G)
-        rBbar = Bbar/lc(G)
+        rAbar = Abar/lc(rG)
+        rBbar = Bbar/lc(rG)
 
     deg(G) + deg
 
@@ -511,7 +511,7 @@ int nmod_mpolyuu_gcd_zippel(
     const nmod_mpoly_t gamma,
     const nmod_mpoly_ctx_t ctx)
 {
-    int success, changed, use = USE_G;
+    int success, use;
     nmod_t mod = ctx->ffinfo->mod;
     slong i, j, m;
     slong nvars = ctx->minfo->nvars;
@@ -536,16 +536,7 @@ int nmod_mpolyuu_gcd_zippel(
     n_poly_bpoly_stack_t St;
     mp_limb_t c, start_alpha;
     ulong GdegboundXY, newdegXY;
-/*
-timeit_t timer;
-timeit_start(timer);
 
-flint_printf("nmod_mpolyuu_gcd_zippel called nvars = %wd\n", nvars);
-flint_printf("mod.n = %wu\n", mod.n);
-flint_printf("A: "); nmod_mpolyuu_print_pretty(A, NULL, 2, ctx); flint_printf("\n");
-flint_printf("B: "); nmod_mpolyuu_print_pretty(B, NULL, 2, ctx); flint_printf("\n");
-flint_printf("gamma: "); nmod_mpoly_print_pretty(gamma, NULL, ctx); flint_printf("\n");
-*/
     FLINT_ASSERT(bits <= FLINT_BITS);
     FLINT_ASSERT(bits == rG->bits);
     FLINT_ASSERT(bits == rAbar->bits);
@@ -650,15 +641,18 @@ choose_alphas:
         nmod_mpolyu_evaluate_one_ui(Aevals + i, Aevals + i + 1, i, alphas[i], ctx);
         nmod_mpolyu_evaluate_one_ui(Bevals + i, Bevals + i + 1, i, alphas[i], ctx);
         nmod_mpoly_evaluate_one_ui(gammaevals + i, gammaevals + i + 1, i, alphas[i], ctx);
+        nmod_mpoly_repack_bits_inplace(gammaevals + i, bits, ctx);
         if (nmod_mpoly_is_zero(gammaevals + i, ctx))
             goto choose_alphas;
-        nmod_mpoly_repack_bits_inplace(gammaevals + i, bits, ctx);
+        if (Aevals[i].length < 1 || Aevals[i].exps[0] != A->exps[i])
+            goto choose_alphas;
+        if (Bevals[i].length < 1 || Bevals[i].exps[0] != B->exps[i])
+            goto choose_alphas;
     }
 
     m = 0;
 
     use = USE_G | USE_ABAR | USE_BBAR;
-    use = USE_G;
 
     FLINT_ASSERT(alphapow->alloc > 1);
     alphapow->coeffs[0] = 1;
@@ -667,6 +661,7 @@ choose_alphas:
 
     nmod_mpolyuu_get_n_bpoly(Aev, Aevals + m, ctx);
     nmod_mpolyuu_get_n_bpoly(Bev, Bevals + m, ctx);
+
     success = n_bpoly_mod_gcd_brown_smprime(Gev, Abarev, Bbarev, Aev, Bev, mod, St);
     if (!success)
         goto cleanup;
@@ -714,6 +709,10 @@ choose_alpha_0:
         nmod_mpolyuu_get_n_bpoly(Bev, Bevals + m, ctx);
         gammaev = nmod_mpoly_get_ui(gammaevals + m, ctx);
         if (gammaev == 0)
+            goto choose_alpha_0;
+        if (Aev->length < 1 || n_bpoly_bidegree(Aev) != A->exps[0])
+            goto choose_alpha_0;
+        if (Bev->length < 1 || n_bpoly_bidegree(Bev) != B->exps[0])
             goto choose_alpha_0;
 
         success = n_bpoly_mod_gcd_brown_smprime(Gev, Abarev, Bbarev, Aev, Bev, mod, St);
@@ -849,7 +848,6 @@ choose_alpha_0:
         start_alpha = alphas[m];
 
         use = USE_G | USE_ABAR | USE_BBAR;
-        use = USE_G;
 
     choose_betas:
 
@@ -890,6 +888,10 @@ choose_alpha_m:
                 n_bpoly_mod_eval_step(Bev, Beh, mod);
                 gammaev = n_poly_mod_eval_step(gammaeh, mod);
                 if (gammaev == 0)
+                    goto choose_betas;
+                if (Aev->length < 1 || n_bpoly_bidegree(Aev) != A->exps[0])
+                    goto choose_betas;
+                if (Bev->length < 1 || n_bpoly_bidegree(Bev) != B->exps[0])
                     goto choose_betas;
 
                 success = n_bpoly_mod_gcd_brown_smprime(Gev, Abarev, Bbarev, Aev, Bev, mod, St);        
@@ -1088,20 +1090,7 @@ cleanup:
     flint_free(gammadegs);
     flint_free(Adegs);
     flint_free(Bdegs);
-/*
-timeit_stop(timer);
-flint_printf("(%wd ms) mpolyuu_gcd returning %d\n", timer->wall, success);
 
-flint_printf("rG: ");
-nmod_mpolyuu_print_pretty(rG, NULL, 2, ctx);
-flint_printf("\n");
-flint_printf("rAbar: ");
-nmod_mpolyuu_print_pretty(rAbar, NULL, 2, ctx);
-flint_printf("\n");
-flint_printf("rBbar: ");
-nmod_mpolyuu_print_pretty(rBbar, NULL, 2, ctx);
-flint_printf("\n");
-*/
     return success;
 
 gcd_is_trivial:

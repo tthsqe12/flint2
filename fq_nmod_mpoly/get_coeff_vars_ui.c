@@ -30,7 +30,6 @@ void fq_nmod_mpoly_get_coeff_vars_ui(
     slong nvars = ctx->minfo->nvars;
     mp_limb_t * Ccoeffs;
     ulong * Cexps;
-    slong Ccoeffs_alloc, Cexps_alloc;
     slong Clen;
     TMP_INIT;
 
@@ -63,7 +62,7 @@ void fq_nmod_mpoly_get_coeff_vars_ui(
     tmask = (ulong *) TMP_ALLOC(N*sizeof(ulong));
     texp = (ulong *) TMP_ALLOC(N*sizeof(ulong));
     mpoly_monomial_zero(tmask, N);
-    mpoly_set_monomial_ui(texp, uexp, A->bits, ctx->minfo);
+    mpoly_set_monomial_ui(texp, uexp, bits, ctx->minfo);
 
     if (bits <= FLINT_BITS)
     {
@@ -72,7 +71,7 @@ void fq_nmod_mpoly_get_coeff_vars_ui(
         minoffset = N;
         for (i = 0; i < length; i++)
         {
-            mpoly_gen_offset_shift_sp(&offset, &shift, vars[i], A->bits, ctx->minfo);
+            mpoly_gen_offset_shift_sp(&offset, &shift, vars[i], bits, ctx->minfo);
             tmask[offset] |= mask << shift;
             maxoffset = FLINT_MAX(maxoffset, offset);
             minoffset = FLINT_MIN(minoffset, offset);
@@ -81,8 +80,6 @@ void fq_nmod_mpoly_get_coeff_vars_ui(
 
         Ccoeffs = C->coeffs;
         Cexps = C->exps;
-        Ccoeffs_alloc = C->coeffs_alloc;
-        Cexps_alloc = C->exps_alloc;
         Clen = 0;
         for (i = 0; i < A->length; i++)
         {
@@ -92,8 +89,8 @@ void fq_nmod_mpoly_get_coeff_vars_ui(
                     goto continue_outer_sp;
             }
 
-            _fq_nmod_mpoly_fit_length(&Ccoeffs, &Ccoeffs_alloc, d,
-                                      &Cexps, &Cexps_alloc, N, Clen + 1);
+            _fq_nmod_mpoly_fit_length(&Ccoeffs, &C->coeffs_alloc, d,
+                                      &Cexps, &C->exps_alloc, N, Clen + 1);
 
             mpoly_monomial_sub(Cexps + N*Clen, A->exps + N*i, texp, N);
             _n_fq_set(Ccoeffs + d*Clen, A->coeffs + d*i, d);
@@ -103,8 +100,6 @@ continue_outer_sp:;
 
         C->coeffs = Ccoeffs;
         C->exps = Cexps;
-        C->coeffs_alloc = Ccoeffs_alloc;
-        C->exps_alloc = Cexps_alloc;
         _fq_nmod_mpoly_set_length(C, Clen, ctx);
     }
     else
@@ -124,8 +119,6 @@ continue_outer_sp:;
 
         Ccoeffs = C->coeffs;
         Cexps = C->exps;
-        Ccoeffs_alloc = C->coeffs_alloc;
-        Cexps_alloc = C->exps_alloc;
         Clen = 0;
         for (i = 0; i < A->length; i++)
         {
@@ -135,8 +128,8 @@ continue_outer_sp:;
                     goto continue_outer_mp;
             }
 
-            _fq_nmod_mpoly_fit_length(&Ccoeffs, &Ccoeffs_alloc, d,
-                                      &Cexps, &Cexps_alloc, N, Clen + 1);
+            _fq_nmod_mpoly_fit_length(&Ccoeffs, &C->coeffs_alloc, d,
+                                      &Cexps, &C->exps_alloc, N, Clen + 1);
 
             mpoly_monomial_sub_mp(Cexps + N*Clen, A->exps + N*i, texp, N);
             _n_fq_set(Ccoeffs + d*Clen, A->coeffs + d*i, d);
@@ -146,8 +139,6 @@ continue_outer_mp:;
 
         C->coeffs = Ccoeffs;
         C->exps = Cexps;
-        C->coeffs_alloc = Ccoeffs_alloc;
-        C->exps_alloc = Cexps_alloc;
         _fq_nmod_mpoly_set_length(C, Clen, ctx);
     }
 

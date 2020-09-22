@@ -294,17 +294,15 @@ void fq_nmod_mpoly_div_monagan_pearce(
         q = Q;
 
     /* do division with remainder */
-    while (
-        fq_nmod_mpoly_fit_length_reset_bits(q, A->length/B->length + 1, Qbits, ctx),
-        !_fq_nmod_mpoly_div_monagan_pearce(q, A->coeffs, Aexps, A->length,
-                                              B->coeffs, Bexps, B->length,
-                                               Qbits, N, cmpmask, ctx->fqctx))
-   {
-        if (freeAexps)
-            flint_free(Aexps);
+    while (1)
+    {
+        fq_nmod_mpoly_fit_length_reset_bits(q, A->length/B->length + 1, Qbits, ctx);
 
-        if (freeBexps)
-            flint_free(Bexps);
+        if (_fq_nmod_mpoly_div_monagan_pearce(q, A->coeffs, Aexps, A->length,
+                   B->coeffs, Bexps, B->length, Qbits, N, cmpmask, ctx->fqctx))
+        {
+            break;
+        }
 
         Qbits = mpoly_fix_bits(Qbits + 1, ctx->minfo);
 
@@ -312,13 +310,17 @@ void fq_nmod_mpoly_div_monagan_pearce(
         cmpmask = (ulong *) flint_realloc(cmpmask, N*sizeof(ulong));
         mpoly_get_cmpmask(cmpmask, N, Qbits, ctx->minfo);
 
-        freeAexps = 1; 
+        if (freeAexps)
+            flint_free(Aexps);
         Aexps = (ulong *) flint_malloc(N*A->length*sizeof(ulong));
         mpoly_repack_monomials(Aexps, Qbits, A->exps, A->bits, A->length, ctx->minfo);
+        freeAexps = 1;
 
-        freeBexps = 1; 
+        if (freeBexps)
+            flint_free(Bexps);
         Bexps = (ulong *) flint_malloc(N*B->length*sizeof(ulong));
         mpoly_repack_monomials(Bexps, Qbits, B->exps, B->bits, B->length, ctx->minfo);
+        freeBexps = 1; 
     }
 
     /* deal with aliasing */

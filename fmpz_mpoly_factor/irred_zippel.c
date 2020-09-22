@@ -323,9 +323,7 @@ static void _nmod_mpoly_set_fmpz_mpoly(
     slong Ap_len, i;
     FLINT_ASSERT(ctx->minfo->nvars == ctx->minfo->nvars);
     FLINT_ASSERT(ctx->minfo->ord == ctx->minfo->ord);
-    nmod_mpoly_fit_bits(Ap, A->bits, ctxp);
-    Ap->bits = A->bits;
-    nmod_mpoly_fit_length(Ap, A->length, ctxp);
+    nmod_mpoly_fit_length_reset_bits(Ap, A->length, A->bits, ctxp);
     Ap_len = 0;
     for (i = 0; i < A->length; i++)
     {
@@ -352,9 +350,7 @@ static void _fmpz_mpoly_modpk_taylor_coeff(
 
     fmpz_init(t);
 
-    nmod_mpoly_fit_bits(T, E->bits, ctxp);
-    T->bits = E->bits;
-    nmod_mpoly_fit_length(T, E->length, ctxp);
+    nmod_mpoly_fit_length_reset_bits(T, E->length, E->bits, ctxp);
     Tlen = 0;
     for (i = 0; i < E->length; i++)
     {

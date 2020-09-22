@@ -177,6 +177,7 @@ static void _fq_nmod_mpoly_mulsub(fq_nmod_mpoly_t A,
         }
     }
 
+    FLINT_ASSERT(Di <= Dlen);
     if (Di < Dlen)
     {
         _fq_nmod_mpoly_fit_length(&Acoeffs, &A->coeffs_alloc, d,

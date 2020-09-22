@@ -21,7 +21,7 @@ int fq_nmod_mpoly_pow_fmpz(fq_nmod_mpoly_t A, const fq_nmod_mpoly_t B,
     TMP_INIT;
 
     if (fmpz_sgn(k) < 0)
-        flint_throw(FLINT_ERROR, "Negative power in fq_nmod_mpoly_pow_fmpz");
+        flint_throw(FLINT_ERROR, "fq_nmod_mpoly_pow_fmpz: power is negative");
 
     if (fmpz_fits_si(k))
         return fq_nmod_mpoly_pow_ui(A, B, fmpz_get_ui(k), ctx);
@@ -49,8 +49,8 @@ int fq_nmod_mpoly_pow_fmpz(fq_nmod_mpoly_t A, const fq_nmod_mpoly_t B,
     mpoly_max_fields_fmpz(maxBfields, B->exps, B->length, B->bits, ctx->minfo);
     _fmpz_vec_scalar_mul_fmpz(maxBfields, maxBfields, ctx->minfo->nfields, k);
 
-    exp_bits = _fmpz_vec_max_bits(maxBfields, ctx->minfo->nfields);
-    exp_bits = mpoly_fix_bits(exp_bits + 1, ctx->minfo);
+    exp_bits = 1 + _fmpz_vec_max_bits(maxBfields, ctx->minfo->nfields);
+    exp_bits = mpoly_fix_bits(exp_bits, ctx->minfo);
     fq_nmod_mpoly_fit_length_reset_bits(A, 1, exp_bits, ctx);
 
     n_fq_pow_fmpz(A->coeffs, B->coeffs, k, ctx->fqctx);
