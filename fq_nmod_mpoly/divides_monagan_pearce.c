@@ -262,7 +262,7 @@ int fq_nmod_mpoly_divides_monagan_pearce(
     fmpz * Amaxfields, * Bmaxfields;
     ulong * cmpmask;
     ulong * Aexps = A->exps, * Bexps = B->exps, * expq;
-    int success, easy_exit, freeAexps = 0, freeBexps = 0;
+    int divides, easy_exit, freeAexps = 0, freeBexps = 0;
     ulong mask = 0;
     TMP_INIT;
 
@@ -309,7 +309,8 @@ int fq_nmod_mpoly_divides_monagan_pearce(
 
     if (easy_exit)
     {
-        success = 0;
+        fq_nmod_mpoly_zero(Q, ctx);
+        divides = 0;
         goto cleanup;
     }
 
@@ -323,7 +324,8 @@ int fq_nmod_mpoly_divides_monagan_pearce(
     /* quick check for easy case of inexact division of leading monomials */
     if (Qbits == A->bits && Qbits == B->bits && A->exps[N - 1] < B->exps[N - 1])
     {
-        success = 0;
+        fq_nmod_mpoly_zero(Q, ctx);
+        divides = 0;
         goto cleanup;
     }
 
@@ -351,7 +353,8 @@ int fq_nmod_mpoly_divides_monagan_pearce(
 
         if (!mpoly_monomial_divides(expq, Aexps, Bexps, N, mask))
         {
-            success = 0;
+            fq_nmod_mpoly_zero(Q, ctx);
+            divides = 0;
             goto cleanup;
         }
     }
@@ -359,7 +362,8 @@ int fq_nmod_mpoly_divides_monagan_pearce(
     {
         if (!mpoly_monomial_divides_mp(expq, Aexps, Bexps, N, Qbits))
         {
-            success = 0;
+            fq_nmod_mpoly_zero(Q, ctx);
+            divides = 0;
             goto cleanup;
         }
     }
@@ -370,7 +374,7 @@ int fq_nmod_mpoly_divides_monagan_pearce(
         fq_nmod_mpoly_t T;
         fq_nmod_mpoly_init(T, ctx);
         fq_nmod_mpoly_fit_length_reset_bits(T, A->length/B->length + 1, Qbits, ctx);
-        success = _fq_nmod_mpoly_divides_monagan_pearce(T,
+        divides = _fq_nmod_mpoly_divides_monagan_pearce(T,
                                           A->coeffs, Aexps, A->length,
                                           B->coeffs, Bexps, B->length,
                                                 Qbits, N, cmpmask, ctx->fqctx);
@@ -380,7 +384,7 @@ int fq_nmod_mpoly_divides_monagan_pearce(
     else
     {
         fq_nmod_mpoly_fit_length_reset_bits(Q, A->length/B->length + 1, Qbits, ctx);
-        success = _fq_nmod_mpoly_divides_monagan_pearce(Q,
+        divides = _fq_nmod_mpoly_divides_monagan_pearce(Q,
                                           A->coeffs, Aexps, A->length,
                                           B->coeffs, Bexps, B->length,
                                                 Qbits, N, cmpmask, ctx->fqctx);
@@ -396,5 +400,5 @@ cleanup:
 
     TMP_END;
 
-    return success;
+    return divides;
 }

@@ -1883,9 +1883,7 @@ int _nmod_mpoly_divides_heap_threaded_pool(
     (worker_args + num_handles)->H = H;
     worker_loop(worker_args + num_handles);
     for (i = 0; i < num_handles; i++)
-    {
         thread_pool_wait(global_thread_pool, handles[i]);
-    }
 
 #if PROFILE_THIS
     timeit_stop(H->timer);
@@ -1896,7 +1894,6 @@ int _nmod_mpoly_divides_heap_threaded_pool(
         vec_slong_print((worker_args + i)->time_data);
         flint_printf("],\n");
         vec_slong_clear((worker_args + i)->time_data);
-
     }
     flint_printf("%wd]\n", H->timer->wall);
 #endif
@@ -1910,6 +1907,7 @@ int _nmod_mpoly_divides_heap_threaded_pool(
     divides = divides_heap_base_clear(Q, H);
 
 cleanup1:
+
     fmpz_mpoly_clear(S, zctx);
     fmpz_mpoly_ctx_clear(zctx);
 
@@ -1942,9 +1940,11 @@ int nmod_mpoly_divides_heap_threaded(
         {
             nmod_mpoly_set(Q, A, ctx);
             return 1;
-        } else
-            flint_throw(FLINT_DIVZERO,
-                         "Divide by zero in nmod_mpoly_divides_heap_threaded");
+        }
+        else
+        {
+            flint_throw(FLINT_DIVZERO, "nmod_mpoly_divides_heap_threaded: divide by zero");
+        }
     }
 
     if (B->length < 2 || A->length < 2)
@@ -1960,8 +1960,7 @@ int nmod_mpoly_divides_heap_threaded(
 
     if (1 != n_gcd(B->coeffs[0], ctx->ffinfo->mod.n))
     {
-        flint_throw(FLINT_IMPINV, "Exception in nmod_mpoly_divides_heap"
-                               "_threaded: Cannot invert leading coefficient");
+        flint_throw(FLINT_IMPINV, "nmod_mpoly_divides_heap_threaded: Cannot invert leading coefficient");
     }
 
     num_handles = flint_request_threads(&handles, thread_limit);

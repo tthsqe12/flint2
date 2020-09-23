@@ -14,22 +14,22 @@
 static int _nmod_mpoly_divrem_monagan_pearce1(
     nmod_mpoly_t Q,
     nmod_mpoly_t R,
-    const mp_limb_t * coeff2, const ulong * exp2, slong len2,
-    const mp_limb_t * coeff3, const ulong * exp3, slong len3,
+    const mp_limb_t * Acoeffs, const ulong * Aexps, slong len2,
+    const mp_limb_t * Bcoeffs, const ulong * Bexps, slong Blen,
     flint_bitcnt_t bits,
     ulong maskhi,
     const nmodf_ctx_t fctx)
 {
-    slong i, j, q_len, r_len, s;
+    slong i, j, Qlen, Rlen, s;
     slong next_loc, heap_len = 2;
     mpoly_heap1_s * heap;
     mpoly_heap_t * chain;
     slong * store, * store_base;
     mpoly_heap_t * x;
-    mp_limb_t * q_coeff = Q->coeffs;
-    mp_limb_t * r_coeff = R->coeffs;
-    ulong * q_exp = Q->exps;
-    ulong * r_exp = R->exps;
+    mp_limb_t * Qcoeffs = Q->coeffs;
+    mp_limb_t * Rcoeffs = R->coeffs;
+    ulong * Qexps = Q->exps;
+    ulong * Rexps = R->exps;
     slong * hind;
     ulong mask, exp;
     int lt_divides;
@@ -39,14 +39,14 @@ static int _nmod_mpoly_divrem_monagan_pearce1(
     TMP_START;
 
     /* alloc array of heap nodes which can be chained together */
-    next_loc = len3 + 4;   /* something bigger than heap can ever be */
-    heap = (mpoly_heap1_s *) TMP_ALLOC((len3 + 1)*sizeof(mpoly_heap1_s));
-    chain = (mpoly_heap_t *) TMP_ALLOC(len3*sizeof(mpoly_heap_t));
-    store = store_base = (slong *) TMP_ALLOC(2*len3*sizeof(slong));
+    next_loc = Blen + 4;   /* something bigger than heap can ever be */
+    heap = (mpoly_heap1_s *) TMP_ALLOC((Blen + 1)*sizeof(mpoly_heap1_s));
+    chain = (mpoly_heap_t *) TMP_ALLOC(Blen*sizeof(mpoly_heap_t));
+    store = store_base = (slong *) TMP_ALLOC(2*Blen*sizeof(slong));
 
     /* space for flagged heap indicies */
-    hind = (slong *) TMP_ALLOC(len3*sizeof(slong));
-    for (i = 0; i < len3; i++)
+    hind = (slong *) TMP_ALLOC(Blen*sizeof(slong));
+    for (i = 0; i < Blen; i++)
         hind[i] = 1;
 
     /* mask with high bit set in each field of exponent vector */
@@ -55,21 +55,21 @@ static int _nmod_mpoly_divrem_monagan_pearce1(
         mask = (mask << bits) + (UWORD(1) << (bits - 1));
 
     /* quotient and remainder poly indices start at -1 */
-    q_len = WORD(0);
-    r_len = WORD(0);
+    Qlen = WORD(0);
+    Rlen = WORD(0);
 
     /* s is the number of terms * (latest quotient) we should put into heap */
-    s = len3;
+    s = Blen;
 
-    /* insert (-1, 0, exp2[0]) into heap */
+    /* insert (-1, 0, Aexps[0]) into heap */
     x = chain + 0;
     x->i = -WORD(1);
     x->j = 0;
     x->next = NULL;
-    HEAP_ASSIGN(heap[1], exp2[0], x);
+    HEAP_ASSIGN(heap[1], Aexps[0], x);
 
     /* precompute leading cofficient info */
-    lc_minus_inv = fctx->mod.n - nmod_inv(coeff3[0], fctx->mod);
+    lc_minus_inv = fctx->mod.n - nmod_inv(Bcoeffs[0], fctx->mod);
 
     while (heap_len > 1)
     {
@@ -78,10 +78,10 @@ static int _nmod_mpoly_divrem_monagan_pearce1(
         if (mpoly_monomial_overflows1(exp, mask))
             goto exp_overflow;
 
-        _nmod_mpoly_fit_length(&q_coeff, &Q->coeffs_alloc,
-                               &q_exp, &Q->exps_alloc, 1, q_len + 1);
+        _nmod_mpoly_fit_length(&Qcoeffs, &Q->coeffs_alloc,
+                               &Qexps, &Q->exps_alloc, 1, Qlen + 1);
 
-        lt_divides = mpoly_monomial_divides1(q_exp + q_len, exp, exp3[0], mask);
+        lt_divides = mpoly_monomial_divides1(Qexps + Qlen, exp, Bexps[0], mask);
 
         acc0 = acc1 = acc2 = 0;
         do
@@ -96,11 +96,11 @@ static int _nmod_mpoly_divrem_monagan_pearce1(
 
                 if (x->i == -WORD(1))
                 {
-                    add_sssaaaaaa(acc2, acc1, acc0, acc2, acc1, acc0, WORD(0), WORD(0), fctx->mod.n - coeff2[x->j]);
+                    add_sssaaaaaa(acc2, acc1, acc0, acc2, acc1, acc0, WORD(0), WORD(0), fctx->mod.n - Acoeffs[x->j]);
                 }
                 else
                 {
-                    umul_ppmm(pp1, pp0, coeff3[x->i], q_coeff[x->j]);
+                    umul_ppmm(pp1, pp0, Bcoeffs[x->i], Qcoeffs[x->j]);
                     add_sssaaaaaa(acc2, acc1, acc0, acc2, acc1, acc0, WORD(0), pp1, pp0);
                 }
 
@@ -124,13 +124,13 @@ static int _nmod_mpoly_divrem_monagan_pearce1(
                     x->i = i;
                     x->j = j + 1;
                     x->next = NULL;
-                    _mpoly_heap_insert1(heap, exp2[x->j], x,
+                    _mpoly_heap_insert1(heap, Aexps[x->j], x,
                                                  &next_loc, &heap_len, maskhi);
                 }
             } else
             {
                 /* should we go right? */
-                if (  (i + 1 < len3)
+                if (  (i + 1 < Blen)
                    && (hind[i + 1] == 2*j + 1)
                    )
                 {
@@ -139,11 +139,11 @@ static int _nmod_mpoly_divrem_monagan_pearce1(
                     x->j = j;
                     x->next = NULL;
                     hind[x->i] = 2*(x->j + 1) + 0;
-                    _mpoly_heap_insert1(heap, exp3[x->i] + q_exp[x->j], x,
+                    _mpoly_heap_insert1(heap, Bexps[x->i] + Qexps[x->j], x,
                                                  &next_loc, &heap_len, maskhi);
                 }
                 /* should we go up? */
-                if (j + 1 == q_len)
+                if (j + 1 == Qlen)
                 {
                     s++;
                 } else if (  ((hind[i] & 1) == 1)
@@ -155,7 +155,7 @@ static int _nmod_mpoly_divrem_monagan_pearce1(
                     x->j = j + 1;
                     x->next = NULL;
                     hind[x->i] = 2*(x->j + 1) + 0;
-                    _mpoly_heap_insert1(heap, exp3[x->i] + q_exp[x->j], x,
+                    _mpoly_heap_insert1(heap, Bexps[x->i] + Qexps[x->j], x,
                                                  &next_loc, &heap_len, maskhi);
                 }
             }
@@ -168,15 +168,15 @@ static int _nmod_mpoly_divrem_monagan_pearce1(
         }
         if (!lt_divides)
         {
-            _nmod_mpoly_fit_length(&r_coeff, &R->coeffs_alloc,
-                                   &r_exp, &R->exps_alloc, 1, r_len + 1);
-            r_coeff[r_len] = fctx->mod.n - acc0;
-            r_exp[r_len] = exp;
-            r_len++;
+            _nmod_mpoly_fit_length(&Rcoeffs, &R->coeffs_alloc,
+                                   &Rexps, &R->exps_alloc, 1, Rlen + 1);
+            Rcoeffs[Rlen] = fctx->mod.n - acc0;
+            Rexps[Rlen] = exp;
+            Rlen++;
             continue;
         }
 
-        q_coeff[q_len] = nmod_mul(acc0, lc_minus_inv, fctx->mod);
+        Qcoeffs[Qlen] = nmod_mul(acc0, lc_minus_inv, fctx->mod);
 
         /* put newly generated quotient term back into the heap if neccesary */
         if (s > 1)
@@ -184,23 +184,23 @@ static int _nmod_mpoly_divrem_monagan_pearce1(
             i = 1;
             x = chain + i;
             x->i = i;
-            x->j = q_len;
+            x->j = Qlen;
             x->next = NULL;
             hind[x->i] = 2*(x->j + 1) + 0;
-            _mpoly_heap_insert1(heap, exp3[x->i] + q_exp[x->j], x,
+            _mpoly_heap_insert1(heap, Bexps[x->i] + Qexps[x->j], x,
                                                  &next_loc, &heap_len, maskhi);
         }
         s = 1;
-        q_len++;
+        Qlen++;
     }
 
-    Q->coeffs = q_coeff;
-    Q->exps = q_exp;
-    Q->length = q_len;
+    Q->coeffs = Qcoeffs;
+    Q->exps = Qexps;
+    Q->length = Qlen;
 
-    R->coeffs = r_coeff;
-    R->exps = r_exp;
-    R->length = r_len;
+    R->coeffs = Rcoeffs;
+    R->exps = Rexps;
+    R->length = Rlen;
 
     TMP_END;
 
@@ -208,12 +208,12 @@ static int _nmod_mpoly_divrem_monagan_pearce1(
 
 exp_overflow:
 
-    Q->coeffs = q_coeff;
-    Q->exps = q_exp;
+    Q->coeffs = Qcoeffs;
+    Q->exps = Qexps;
     Q->length = 0;
 
-    R->coeffs = r_coeff;
-    R->exps = r_exp;
+    R->coeffs = Rcoeffs;
+    R->exps = Rexps;
     R->length = 0;
 
     TMP_END;
@@ -226,24 +226,24 @@ exp_overflow:
 static int _nmod_mpoly_divrem_monagan_pearce(
     nmod_mpoly_t Q,
     nmod_mpoly_t R,
-    const mp_limb_t * coeff2, const ulong * exp2, slong len2,
-    const mp_limb_t * coeff3, const ulong * exp3, slong len3,
+    const mp_limb_t * Acoeffs, const ulong * Aexps, slong len2,
+    const mp_limb_t * Bcoeffs, const ulong * Bexps, slong Blen,
     slong bits,
     slong N,
     const ulong * cmpmask,
     const nmodf_ctx_t fctx)
 {
-    slong i, j, q_len, r_len, s;
+    slong i, j, Qlen, Rlen, s;
     slong next_loc;
     slong heap_len = 2; /* heap zero index unused */
     mpoly_heap_s * heap;
     mpoly_heap_t * chain;
     slong * store, * store_base;
     mpoly_heap_t * x;
-    mp_limb_t * q_coeff = Q->coeffs;
-    mp_limb_t * r_coeff = R->coeffs;
-    ulong * q_exp = Q->exps;
-    ulong * r_exp = R->exps;
+    mp_limb_t * Qcoeffs = Q->coeffs;
+    mp_limb_t * Rcoeffs = R->coeffs;
+    ulong * Qexps = Q->exps;
+    ulong * Rexps = R->exps;
     ulong * exp, * exps;
     ulong ** exp_list;
     slong exp_next;
@@ -255,32 +255,32 @@ static int _nmod_mpoly_divrem_monagan_pearce(
 
     if (N == 1)
     {
-        return _nmod_mpoly_divrem_monagan_pearce1(Q, R, coeff2, exp2, len2,
-                                   coeff3, exp3, len3, bits, cmpmask[0], fctx);
+        return _nmod_mpoly_divrem_monagan_pearce1(Q, R, Acoeffs, Aexps, len2,
+                                   Bcoeffs, Bexps, Blen, bits, cmpmask[0], fctx);
     }
 
     TMP_START;
 
     /* alloc array of heap nodes which can be chained together */
-    next_loc = len3 + 4;   /* something bigger than heap can ever be */
-    heap = (mpoly_heap_s *) TMP_ALLOC((len3 + 1)*sizeof(mpoly_heap_s));
-    chain = (mpoly_heap_t *) TMP_ALLOC(len3*sizeof(mpoly_heap_t));
-    store = store_base = (slong *) TMP_ALLOC(2*len3*sizeof(slong));
+    next_loc = Blen + 4;   /* something bigger than heap can ever be */
+    heap = (mpoly_heap_s *) TMP_ALLOC((Blen + 1)*sizeof(mpoly_heap_s));
+    chain = (mpoly_heap_t *) TMP_ALLOC(Blen*sizeof(mpoly_heap_t));
+    store = store_base = (slong *) TMP_ALLOC(2*Blen*sizeof(slong));
 
     /* array of exponent vectors, each of "N" words */
-    exps = (ulong *) TMP_ALLOC(len3*N*sizeof(ulong));
+    exps = (ulong *) TMP_ALLOC(Blen*N*sizeof(ulong));
     /* list of pointers to available exponent vectors */
-    exp_list = (ulong **) TMP_ALLOC(len3*sizeof(ulong *));
+    exp_list = (ulong **) TMP_ALLOC(Blen*sizeof(ulong *));
     /* space to save copy of current exponent vector */
     exp = (ulong *) TMP_ALLOC(N*sizeof(ulong));
     /* set up list of available exponent vectors */
     exp_next = 0;
-    for (i = 0; i < len3; i++)
+    for (i = 0; i < Blen; i++)
         exp_list[i] = exps + i*N;
 
     /* space for flagged heap indicies */
-    hind = (slong *) TMP_ALLOC(len3*sizeof(slong));
-    for (i = 0; i < len3; i++)
+    hind = (slong *) TMP_ALLOC(Blen*sizeof(slong));
+    for (i = 0; i < Blen; i++)
         hind[i] = 1;
 
     /* mask with high bit set in each word of each field of exponent vector */
@@ -288,28 +288,28 @@ static int _nmod_mpoly_divrem_monagan_pearce(
     for (i = 0; i < FLINT_BITS/bits; i++)
         mask = (mask << bits) + (UWORD(1) << (bits - 1));
 
-    q_len = WORD(0);
-    r_len = WORD(0);
+    Qlen = WORD(0);
+    Rlen = WORD(0);
    
     /* s is the number of terms * (latest quotient) we should put into heap */
-    s = len3;
+    s = Blen;
    
-    /* insert (-1, 0, exp2[0]) into heap */
+    /* insert (-1, 0, Aexps[0]) into heap */
     x = chain + 0;
     x->i = -WORD(1);
     x->j = 0;
     x->next = NULL;
     heap[1].next = x;
     heap[1].exp = exp_list[exp_next++];
-    mpoly_monomial_set(heap[1].exp, exp2, N);
+    mpoly_monomial_set(heap[1].exp, Aexps, N);
 
     /* precompute leading cofficient info */
-    lc_minus_inv = fctx->mod.n - nmod_inv(coeff3[0], fctx->mod);
+    lc_minus_inv = fctx->mod.n - nmod_inv(Bcoeffs[0], fctx->mod);
    
     while (heap_len > 1)
     {
-        _nmod_mpoly_fit_length(&q_coeff, &Q->coeffs_alloc,
-                               &q_exp, &Q->exps_alloc, N, q_len + 1);
+        _nmod_mpoly_fit_length(&Qcoeffs, &Q->coeffs_alloc,
+                               &Qexps, &Q->exps_alloc, N, Qlen + 1);
 
         mpoly_monomial_set(exp, heap[1].exp, N);
 
@@ -318,14 +318,14 @@ static int _nmod_mpoly_divrem_monagan_pearce(
             if (mpoly_monomial_overflows(exp, N, mask))
                 goto exp_overflow2;
 
-            lt_divides = mpoly_monomial_divides(q_exp + q_len*N, exp, exp3, N, mask);
+            lt_divides = mpoly_monomial_divides(Qexps + Qlen*N, exp, Bexps, N, mask);
         }
         else
         {
             if (mpoly_monomial_overflows_mp(exp, N, bits))
                 goto exp_overflow2;
 
-            lt_divides = mpoly_monomial_divides_mp(q_exp + q_len*N, exp, exp3, N, bits);
+            lt_divides = mpoly_monomial_divides_mp(Qexps + Qlen*N, exp, Bexps, N, bits);
         }
 
         acc0 = acc1 = acc2 = 0;
@@ -341,12 +341,12 @@ static int _nmod_mpoly_divrem_monagan_pearce(
                 if (x->i == -WORD(1))
                 {
                     add_sssaaaaaa(acc2, acc1, acc0, acc2, acc1, acc0,
-                               UWORD(0), UWORD(0), fctx->mod.n - coeff2[x->j]);
+                               UWORD(0), UWORD(0), fctx->mod.n - Acoeffs[x->j]);
                 }
                 else
                 {
                     hind[x->i] |= WORD(1);
-                    umul_ppmm(pp1, pp0, coeff3[x->i], q_coeff[x->j]);
+                    umul_ppmm(pp1, pp0, Bcoeffs[x->i], Qcoeffs[x->j]);
                     add_sssaaaaaa(acc2, acc1, acc0, acc2, acc1, acc0, UWORD(0), pp1, pp0);
                 }
             } while ((x = x->next) != NULL);
@@ -369,7 +369,7 @@ static int _nmod_mpoly_divrem_monagan_pearce(
                     x->i = i;
                     x->j = j + 1;
                     x->next = NULL;
-                    mpoly_monomial_set(exp_list[exp_next], exp2 + x->j*N, N);
+                    mpoly_monomial_set(exp_list[exp_next], Aexps + x->j*N, N);
                     exp_next += _mpoly_heap_insert(heap, exp_list[exp_next], x,
                                              &next_loc, &heap_len, N, cmpmask);
                 }
@@ -377,7 +377,7 @@ static int _nmod_mpoly_divrem_monagan_pearce(
             else
             {
                 /* should we go right? */
-                if (  (i + 1 < len3)
+                if (  (i + 1 < Blen)
                    && (hind[i + 1] == 2*j + 1)
                    )
                 {
@@ -386,13 +386,13 @@ static int _nmod_mpoly_divrem_monagan_pearce(
                     x->j = j;
                     x->next = NULL;
                     hind[x->i] = 2*(x->j + 1) + 0;
-                    mpoly_monomial_add_mp(exp_list[exp_next], exp3 + x->i*N,
-                                                            q_exp + x->j*N, N);
+                    mpoly_monomial_add_mp(exp_list[exp_next], Bexps + x->i*N,
+                                                            Qexps + x->j*N, N);
                     exp_next += _mpoly_heap_insert(heap, exp_list[exp_next], x,
                                              &next_loc, &heap_len, N, cmpmask);
                 }
                 /* should we go up? */
-                if (j + 1 == q_len)
+                if (j + 1 == Qlen)
                 {
                     s++;
                 } else if (  ((hind[i] & 1) == 1)
@@ -404,8 +404,8 @@ static int _nmod_mpoly_divrem_monagan_pearce(
                     x->j = j + 1;
                     x->next = NULL;
                     hind[x->i] = 2*(x->j + 1) + 0;
-                    mpoly_monomial_add_mp(exp_list[exp_next], exp3 + x->i*N,
-                                                             q_exp + x->j*N, N);
+                    mpoly_monomial_add_mp(exp_list[exp_next], Bexps + x->i*N,
+                                                             Qexps + x->j*N, N);
                     exp_next += _mpoly_heap_insert(heap, exp_list[exp_next], x,
                                              &next_loc, &heap_len, N, cmpmask);
                 }
@@ -418,15 +418,15 @@ static int _nmod_mpoly_divrem_monagan_pearce(
 
         if (!lt_divides)
         {
-            _nmod_mpoly_fit_length(&r_coeff, &R->coeffs_alloc,
-                                   &r_exp, &R->exps_alloc, N, r_len + 1);
-            r_coeff[r_len] = fctx->mod.n - acc0;
-            mpoly_monomial_set(r_exp + r_len*N, exp, N);
-            r_len++;
+            _nmod_mpoly_fit_length(&Rcoeffs, &R->coeffs_alloc,
+                                   &Rexps, &R->exps_alloc, N, Rlen + 1);
+            Rcoeffs[Rlen] = fctx->mod.n - acc0;
+            mpoly_monomial_set(Rexps + Rlen*N, exp, N);
+            Rlen++;
             continue;
         }
 
-        q_coeff[q_len] = nmod_mul(acc0, lc_minus_inv, fctx->mod);
+        Qcoeffs[Qlen] = nmod_mul(acc0, lc_minus_inv, fctx->mod);
 
         /* put newly generated quotient term back into the heap if neccesary */
         if (s > 1)
@@ -434,25 +434,25 @@ static int _nmod_mpoly_divrem_monagan_pearce(
             i = 1;
             x = chain + i;
             x->i = i;
-            x->j = q_len;
+            x->j = Qlen;
             x->next = NULL;
             hind[x->i] = 2*(x->j + 1) + 0;
-            mpoly_monomial_add_mp(exp_list[exp_next], exp3 + x->i*N,
-                                                     q_exp + x->j*N, N);
+            mpoly_monomial_add_mp(exp_list[exp_next], Bexps + x->i*N,
+                                                     Qexps + x->j*N, N);
             exp_next += _mpoly_heap_insert(heap, exp_list[exp_next], x,
                                              &next_loc, &heap_len, N, cmpmask);
         }
         s = 1;
-        q_len++;
+        Qlen++;
     }
 
-    Q->coeffs = q_coeff;
-    Q->exps = q_exp;
-    Q->length = q_len;
+    Q->coeffs = Qcoeffs;
+    Q->exps = Qexps;
+    Q->length = Qlen;
 
-    R->coeffs = r_coeff;
-    R->exps = r_exp;
-    R->length = r_len;
+    R->coeffs = Rcoeffs;
+    R->exps = Rexps;
+    R->length = Rlen;
 
     TMP_END;
 
@@ -460,12 +460,12 @@ static int _nmod_mpoly_divrem_monagan_pearce(
 
 exp_overflow2:
 
-    Q->coeffs = q_coeff;
-    Q->exps = q_exp;
+    Q->coeffs = Qcoeffs;
+    Q->exps = Qexps;
     Q->length = 0;
 
-    R->coeffs = r_coeff;
-    R->exps = r_exp;
+    R->coeffs = Rcoeffs;
+    R->exps = Rexps;
     R->length = 0;
 
     TMP_END;

@@ -9,12 +9,6 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
-#include <gmp.h>
-#include "flint.h"
-#include "fmpz.h"
 #include "fmpz_mpoly.h"
 
 
@@ -69,34 +63,6 @@ void fmpz_mpoly_geobucket_empty(fmpz_mpoly_t p, fmpz_mpoly_geobucket_t B,
     B->length = 0;
 }
 
-void fmpz_mpoly_geobucket_print(fmpz_mpoly_geobucket_t B, const char ** x,
-                                                    const fmpz_mpoly_ctx_t ctx)
-{
-    slong i;
-    printf("{");
-    for (i = 0; i < B->length; i++)
-    {
-        fmpz_mpoly_print_pretty(B->polys + i, x, ctx);
-        if (i + 1 < B->length)
-            printf(", ");
-    }
-    printf("}");
-}
-
-/* ceiling(log_4(x)) - 1 */
-slong fmpz_mpoly_geobucket_clog4(slong x)
-{
-    if (x <= 4)
-        return 0;
-    /*
-        FLINT_BIT_COUNT returns unsigned int.
-        Signed division is not defined.
-        Do the calculation with unsigned ints and then convert to slong.
-    */
-    x = (FLINT_BIT_COUNT(x - 1) - (unsigned int) 1)/((unsigned int) 2);
-    return x;
-}
-
 void fmpz_mpoly_geobucket_fit_length(fmpz_mpoly_geobucket_t B, slong len,
                                                     const fmpz_mpoly_ctx_t ctx)
 {
@@ -110,8 +76,7 @@ void fmpz_mpoly_geobucket_fit_length(fmpz_mpoly_geobucket_t B, slong len,
 void fmpz_mpoly_geobucket_set(fmpz_mpoly_geobucket_t B, fmpz_mpoly_t p,
                                                     const fmpz_mpoly_ctx_t ctx)
 {
-    slong i;
-    i = fmpz_mpoly_geobucket_clog4(p->length);
+    slong i = mpoly_geobucket_clog4(p->length);
     B->length = 0;
     fmpz_mpoly_geobucket_fit_length(B, i + 1, ctx);
     fmpz_mpoly_swap(B->polys + i, p, ctx);
@@ -122,7 +87,7 @@ void fmpz_mpoly_geobucket_set(fmpz_mpoly_geobucket_t B, fmpz_mpoly_t p,
 static void _fmpz_mpoly_geobucket_fix(fmpz_mpoly_geobucket_t B, slong i,
                                                     const fmpz_mpoly_ctx_t ctx)
 {
-    while (fmpz_mpoly_geobucket_clog4((B->polys + i)->length) > i)
+    while (mpoly_geobucket_clog4((B->polys + i)->length) > i)
     {
         FLINT_ASSERT(i + 1 <= B->length);
         if (i + 1 == B->length)
@@ -140,16 +105,16 @@ static void _fmpz_mpoly_geobucket_fix(fmpz_mpoly_geobucket_t B, slong i,
     }
 }
 
-/* add polynomial p to buckect B */
+/* add polynomial p to bucket B */
 void fmpz_mpoly_geobucket_add(fmpz_mpoly_geobucket_t B, fmpz_mpoly_t p,
                                                     const fmpz_mpoly_ctx_t ctx)
 {
     slong i;
 
-    if (p->length < 1)
+    if (fmpz_mpoly_is_zero(p, ctx))
         return;
 
-    i = fmpz_mpoly_geobucket_clog4(p->length);
+    i = mpoly_geobucket_clog4(p->length);
     fmpz_mpoly_geobucket_fit_length(B, i + 1, ctx);
     fmpz_mpoly_add(B->temps + i, B->polys + i, p, ctx);
     fmpz_mpoly_swap(B->polys + i, B->temps + i, ctx);
@@ -162,10 +127,10 @@ void fmpz_mpoly_geobucket_sub(fmpz_mpoly_geobucket_t B, fmpz_mpoly_t p,
 {
     slong i;
 
-    if (p->length < 1)
+    if (fmpz_mpoly_is_zero(p, ctx))
         return;
 
-    i = fmpz_mpoly_geobucket_clog4(p->length);
+    i = mpoly_geobucket_clog4(p->length);
     fmpz_mpoly_geobucket_fit_length(B, i + 1, ctx);
     fmpz_mpoly_sub(B->temps + i, B->polys + i, p, ctx);
     fmpz_mpoly_swap(B->polys + i, B->temps + i, ctx);

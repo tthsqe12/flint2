@@ -452,25 +452,25 @@ not_exact_division:
 
 /* return 1 if quotient is exact */
 int nmod_mpoly_divides_monagan_pearce(
-    nmod_mpoly_t poly1,
-    const nmod_mpoly_t poly2,
-    const nmod_mpoly_t poly3,
+    nmod_mpoly_t Q,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_t B,
     const nmod_mpoly_ctx_t ctx)
 {
     slong i, N;
     flint_bitcnt_t Qbits;
-    fmpz * max_fields2, * max_fields3;
+    fmpz * Amaxfields, * Bmaxfields;
     ulong * cmpmask;
-    ulong * exp2 = poly2->exps, * exp3 = poly3->exps, * expq;
-    int success, easy_exit, free2 = 0, free3 = 0;
+    ulong * exp2 = A->exps, * exp3 = B->exps, * expq;
+    int divides, easy_exit, free2 = 0, free3 = 0;
     ulong mask = 0;
     TMP_INIT;
 
-    if (poly3->length == 0)
+    if (B->length == 0)
     {
-        if (poly2->length == 0 || nmod_mpoly_ctx_modulus(ctx) == 1)
+        if (A->length == 0 || nmod_mpoly_ctx_modulus(ctx) == 1)
         {
-            nmod_mpoly_set(poly1, poly2, ctx);
+            nmod_mpoly_set(Q, A, ctx);
             return 1;
         }
         else
@@ -479,51 +479,52 @@ int nmod_mpoly_divides_monagan_pearce(
         }
     }
 
-    if (poly2->length == 0)
+    if (A->length == 0)
     {
-        nmod_mpoly_zero(poly1, ctx);
+        nmod_mpoly_zero(Q, ctx);
         return 1;
     }
 
     TMP_START;
 
-    max_fields2 = (fmpz *) TMP_ALLOC(ctx->minfo->nfields*sizeof(fmpz));
-    max_fields3 = (fmpz *) TMP_ALLOC(ctx->minfo->nfields*sizeof(fmpz));
+    Amaxfields = (fmpz *) TMP_ALLOC(ctx->minfo->nfields*sizeof(fmpz));
+    Bmaxfields = (fmpz *) TMP_ALLOC(ctx->minfo->nfields*sizeof(fmpz));
     for (i = 0; i < ctx->minfo->nfields; i++)
     {
-        fmpz_init(max_fields2 + i);
-        fmpz_init(max_fields3 + i);
+        fmpz_init(Amaxfields + i);
+        fmpz_init(Bmaxfields + i);
     }
 
-    mpoly_max_fields_fmpz(max_fields2, poly2->exps, poly2->length,
-                                                      poly2->bits, ctx->minfo);
-    mpoly_max_fields_fmpz(max_fields3, poly3->exps, poly3->length,
-                                                      poly3->bits, ctx->minfo);
+    mpoly_max_fields_fmpz(Amaxfields, A->exps, A->length,
+                                                      A->bits, ctx->minfo);
+    mpoly_max_fields_fmpz(Bmaxfields, B->exps, B->length,
+                                                      B->bits, ctx->minfo);
     easy_exit = 0;
     for (i = 0; i < ctx->minfo->nfields; i++)
     {
         /*
-            cannot be exact division if any max field from poly2
-            is less than corresponding max field from poly3
+            cannot be exact division if any max field from A
+            is less than corresponding max field from B
         */
-        if (fmpz_cmp(max_fields2 + i, max_fields3 + i) < 0)
+        if (fmpz_cmp(Amaxfields + i, Bmaxfields + i) < 0)
             easy_exit = 1;
     }
 
-    Qbits = 1 + _fmpz_vec_max_bits(max_fields2, ctx->minfo->nfields);
-    Qbits = FLINT_MAX(Qbits, poly2->bits);
-    Qbits = FLINT_MAX(Qbits, poly3->bits);
+    Qbits = 1 + _fmpz_vec_max_bits(Amaxfields, ctx->minfo->nfields);
+    Qbits = FLINT_MAX(Qbits, A->bits);
+    Qbits = FLINT_MAX(Qbits, B->bits);
     Qbits = mpoly_fix_bits(Qbits, ctx->minfo);
 
     for (i = 0; i < ctx->minfo->nfields; i++)
     {
-        fmpz_clear(max_fields2 + i);
-        fmpz_clear(max_fields3 + i);
+        fmpz_clear(Amaxfields + i);
+        fmpz_clear(Bmaxfields + i);
     }
 
     if (easy_exit)
     {
-        success = 0;
+        nmod_mpoly_zero(Q, ctx);
+        divides = 0;
         goto cleanup;
     }
 
@@ -535,27 +536,28 @@ int nmod_mpoly_divides_monagan_pearce(
     expq = (ulong *) TMP_ALLOC(N*sizeof(ulong));
 
     /* quick check for easy case of inexact division of leading monomials */
-    if (Qbits == poly2->bits && Qbits == poly3->bits && poly2->exps[N - 1] < poly3->exps[N - 1])
+    if (Qbits == A->bits && Qbits == B->bits && A->exps[N - 1] < B->exps[N - 1])
     {
-        success = 0;
+        nmod_mpoly_zero(Q, ctx);
+        divides = 0;
         goto cleanup;
     }
 
     /* ensure input exponents packed to same size as output exponents */
-    if (Qbits > poly2->bits)
+    if (Qbits > A->bits)
     {
         free2 = 1;
-        exp2 = (ulong *) flint_malloc(N*poly2->length*sizeof(ulong));
-        mpoly_repack_monomials(exp2, Qbits, poly2->exps, poly2->bits,
-                                                    poly2->length, ctx->minfo);
+        exp2 = (ulong *) flint_malloc(N*A->length*sizeof(ulong));
+        mpoly_repack_monomials(exp2, Qbits, A->exps, A->bits,
+                                                    A->length, ctx->minfo);
     }
 
-    if (Qbits > poly3->bits)
+    if (Qbits > B->bits)
     {
         free3 = 1;
-        exp3 = (ulong *) flint_malloc(N*poly3->length*sizeof(ulong));
-        mpoly_repack_monomials(exp3, Qbits, poly3->exps, poly3->bits,
-                                                    poly3->length, ctx->minfo);
+        exp3 = (ulong *) flint_malloc(N*B->length*sizeof(ulong));
+        mpoly_repack_monomials(exp3, Qbits, B->exps, B->bits,
+                                                    B->length, ctx->minfo);
     }
 
     /* check leading monomial divides exactly */
@@ -567,7 +569,8 @@ int nmod_mpoly_divides_monagan_pearce(
 
         if (!mpoly_monomial_divides(expq, exp2, exp3, N, mask))
         {
-            success = 0;
+            nmod_mpoly_zero(Q, ctx);
+            divides = 0;
             goto cleanup;
         }
     }
@@ -575,30 +578,31 @@ int nmod_mpoly_divides_monagan_pearce(
     {
         if (!mpoly_monomial_divides_mp(expq, exp2, exp3, N, Qbits))
         {
-            success = 0;
+            nmod_mpoly_zero(Q, ctx);
+            divides = 0;
             goto cleanup;
         }
     }
 
     /* deal with aliasing and divide polynomials */
-    if (poly1 == poly2 || poly1 == poly3)
+    if (Q == A || Q == B)
     {
         nmod_mpoly_t temp;
-        nmod_mpoly_init3(temp, poly2->length/poly3->length + 1, Qbits, ctx);
-        success = _nmod_mpoly_divides_monagan_pearce(temp,
-                                      poly2->coeffs, exp2, poly2->length,
-                                      poly3->coeffs, exp3, poly3->length,
+        nmod_mpoly_init3(temp, A->length/B->length + 1, Qbits, ctx);
+        divides = _nmod_mpoly_divides_monagan_pearce(temp,
+                                      A->coeffs, exp2, A->length,
+                                      B->coeffs, exp3, B->length,
                                             Qbits, N, cmpmask, ctx->ffinfo);
-        nmod_mpoly_swap(temp, poly1, ctx);
+        nmod_mpoly_swap(temp, Q, ctx);
         nmod_mpoly_clear(temp, ctx);
     }
     else
     {
-        nmod_mpoly_fit_length_reset_bits(poly1, poly2->length/poly3->length + 1, Qbits, ctx);
+        nmod_mpoly_fit_length_reset_bits(Q, A->length/B->length + 1, Qbits, ctx);
 
-        success = _nmod_mpoly_divides_monagan_pearce(poly1,
-                                    poly2->coeffs, exp2, poly2->length,
-                                    poly3->coeffs, exp3, poly3->length,
+        divides = _nmod_mpoly_divides_monagan_pearce(Q,
+                                    A->coeffs, exp2, A->length,
+                                    B->coeffs, exp3, B->length,
                                             Qbits, N, cmpmask, ctx->ffinfo);
     }
 
@@ -612,5 +616,5 @@ cleanup:
 
     TMP_END;
 
-    return success;
+    return divides;
 }

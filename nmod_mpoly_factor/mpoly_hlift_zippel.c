@@ -374,8 +374,11 @@ static int nmod_mpoly_from_zip(
         {
             if (Bcoeffs[j] == 0)
                 continue;
+
+            FLINT_ASSERT(Bi < B->coeffs_alloc);
+            FLINT_ASSERT(N*Bi < B->exps_alloc);
+
             Bcoeffs[Bi] = Bcoeffs[j];
-            FLINT_ASSERT(Bi < B->alloc);
             mpoly_monomial_set(Bexps + N*Bi, Hc->exps + N*i, N);
             (Bexps + N*Bi)[yoff] += y << yshift;
             Bi++;

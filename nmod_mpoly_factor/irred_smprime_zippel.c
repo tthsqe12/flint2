@@ -46,7 +46,7 @@ int nmod_mpoly_factor_irred_smprime_zippel(
     FLINT_ASSERT(A->coeffs[0] == 1);
     FLINT_ASSERT(A->bits <= FLINT_BITS);
 
-    if (ctx->ffinfo->mod.n < 5 || ctx->ffinfo->mod.n < A->length)
+    if (ctx->ffinfo->mod.n < 7)
         return 0;
 
     nmod_mpoly_init(Acopy, ctx);
@@ -78,6 +78,17 @@ int nmod_mpoly_factor_irred_smprime_zippel(
     alphabetas_length = 2;
     alphas_tries_remaining = 10;
 	nmod_mpoly_degrees_si(degs, A, ctx);
+
+    k = 0;
+    for (i = 0; i <= n; i++)
+    {
+        k += degs[i];
+        if (ctx->ffinfo->mod.n < (ulong) k)
+        {
+            success = 0;
+            goto cleanup;
+        }
+    }
 
 next_alpha:
 

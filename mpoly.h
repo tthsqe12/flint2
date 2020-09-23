@@ -960,6 +960,19 @@ void mpoly_max_degrees_tight(slong * max_exp,
 }
 
 
+/* ceiling(log_4(x)) - 1 */
+MPOLY_INLINE slong mpoly_geobucket_clog4(slong x)
+{
+    if (x <= 4)
+        return 0;
+    /*
+        FLINT_BIT_COUNT returns unsigned int.
+        Signed division is not defined.
+        Do the calculation with unsigned ints and then convert to slong.
+    */
+    return (slong)((FLINT_BIT_COUNT(x - 1) - UWORD(1))/(UWORD(2)));
+}
+
 /* generators ****************************************************************/
 
 FLINT_DLL void mpoly_gen_fields_ui(ulong * exp, slong var,

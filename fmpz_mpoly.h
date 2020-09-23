@@ -1309,6 +1309,7 @@ FLINT_DLL int fmpz_mpoly_interp_crt_p_mpolyn(
     const nmod_mpoly_ctx_t pctx);
 
 /* geobuckets ****************************************************************/
+
 typedef struct fmpz_mpoly_geobucket
 {
     fmpz_mpoly_struct polys[FLINT_BITS/2];
@@ -1326,9 +1327,6 @@ FLINT_DLL void fmpz_mpoly_geobucket_clear(fmpz_mpoly_geobucket_t B,
 
 FLINT_DLL void fmpz_mpoly_geobucket_empty(fmpz_mpoly_t p,
                          fmpz_mpoly_geobucket_t B, const fmpz_mpoly_ctx_t ctx);
-
-FLINT_DLL void fmpz_mpoly_geobucket_print(fmpz_mpoly_geobucket_t B,
-                                  const char ** x, const fmpz_mpoly_ctx_t ctx);
 
 FLINT_DLL void fmpz_mpoly_geobucket_fit_length(fmpz_mpoly_geobucket_t B,
                                           slong i, const fmpz_mpoly_ctx_t ctx);

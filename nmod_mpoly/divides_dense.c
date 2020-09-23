@@ -186,8 +186,11 @@ int nmod_mpoly_divides_dense(nmod_mpoly_t Q,
         {
             nmod_mpoly_set(Q, A, ctx);
             return 1;
-        } else
-            flint_throw(FLINT_DIVZERO, "Divide by zero in nmod_mpoly_divides_dense");
+        }
+        else
+        {
+            flint_throw(FLINT_DIVZERO, "nmod_mpoly_divides_dense: divide by zero");
+        }
     }
 
     if (A->length == 0)

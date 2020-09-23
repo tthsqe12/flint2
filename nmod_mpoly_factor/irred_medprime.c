@@ -42,7 +42,7 @@ static void _frob_combine(
     const nmod_mpoly_ctx_t ctx,
     const fq_zech_mpoly_ctx_t ectx)
 {
-    slong i, j;
+    slong i, j, N;
     fq_zech_mpolyv_t tfac;
     fq_zech_mpoly_t t;
     nmod_mpoly_struct * s;
@@ -95,10 +95,10 @@ static void _frob_combine(
         s = Af->coeffs + Af->length;
         Af->length++;
 
-        nmod_mpoly_fit_length_set_bits(s, t->length, t->bits, ctx);
+        nmod_mpoly_fit_length_reset_bits(s, t->length, t->bits, ctx);
         s->length = t->length;
-        mpoly_copy_monomials(s->exps, t->exps,
-                         mpoly_words_per_exp(t->bits, ectx->minfo), t->length);
+        N = mpoly_words_per_exp(t->bits, ectx->minfo);
+        mpoly_copy_monomials(s->exps, t->exps, t->length, N);
         for (i = 0; i < t->length; i++)
         {
             nmod_poly_t asdf;

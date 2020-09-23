@@ -140,7 +140,7 @@ slong fxn_name(nmod_mpoly_t P, slong Plen, coeff_decl,                         \
                     exp += (d % mults[j]) << (P->bits*j);                      \
                     d = d / mults[j];                                          \
                 }                                                              \
-                _nmod_mpoly_fit_length(&P->coeffs, &P->exps_alloc,             \
+                _nmod_mpoly_fit_length(&P->coeffs, &P->coeffs_alloc,           \
                                        &P->exps, &P->exps_alloc, 1, Plen + 1); \
                 P->exps[Plen] = exp;                                           \
                 P->coeffs[Plen] = coeff;                                       \
@@ -581,7 +581,7 @@ slong fxn_name(nmod_mpoly_t P, slong Plen, coeff_decl,                         \
             if (coeff != UWORD(0))                                             \
             {                                                                  \
                 _nmod_mpoly_fit_length(&P->coeffs, &P->coeffs_alloc,           \
-                                       &P->exps, &P->exps_alloc, Plen + 1, 1); \
+                                       &P->exps, &P->exps_alloc, 1, Plen + 1); \
                 P->exps[Plen] = exp;                                           \
                 P->coeffs[Plen] = coeff;                                       \
                 Plen++;                                                        \

@@ -82,12 +82,6 @@ FLINT_DLL int nmod_mpoly_get_nmod_poly(
     slong var,
     const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL void nmod_mpoly_fit_length_set_bits(
-    nmod_mpoly_t A,
-    slong len,
-    flint_bitcnt_t bits,
-    const nmod_mpoly_ctx_t ctx);
-
 FLINT_DLL void _nmod_mpoly_set_nmod_poly(
     nmod_mpoly_t A,
     flint_bitcnt_t Abits,
@@ -374,6 +368,8 @@ typedef struct {
     nmod_mpoly_struct * deltas;
     nmod_mpoly_struct * xalpha;
     nmod_mpoly_struct * q;
+    nmod_mpoly_univar_struct * U;
+    nmod_mpoly_geobucket_struct * G;
     nmod_mpoly_struct * qt;
     nmod_mpoly_struct * newt;
     nmod_mpolyv_struct * delta_coeffs;

@@ -72,7 +72,6 @@ void nmod_mpoly_set_bpoly(
     slong Alen;
     mp_limb_t * Acoeff;
     ulong * Aexp;
-    slong Aalloc;
     ulong * Aexps;
     TMP_INIT;
 
@@ -85,17 +84,16 @@ void nmod_mpoly_set_bpoly(
         Aexps[i] = 0;
 
     NA = mpoly_words_per_exp(Abits, ctx->minfo);
-    nmod_mpoly_fit_bits(A, Abits, ctx);
-    A->bits = Abits;
+    nmod_mpoly_fit_length_reset_bits(A, 4, Abits, ctx);
 
     Acoeff = A->coeffs;
     Aexp = A->exps;
-    Aalloc = A->alloc;
     Alen = 0;
     for (i = 0; i < B->length; i++)
     {
         n_poly_struct * Bc = B->coeffs + i;
-        _nmod_mpoly_fit_length(&Acoeff, &Aexp, &Aalloc, Alen + Bc->length, NA);
+        _nmod_mpoly_fit_length(&Acoeff, &A->coeffs_alloc,
+                               &Aexp, &A->exps_alloc, NA, Alen + Bc->length);
 
         for (j = 0; j < Bc->length; j++)
         {
@@ -111,7 +109,6 @@ void nmod_mpoly_set_bpoly(
     }
     A->coeffs = Acoeff;
     A->exps = Aexp;
-    A->alloc = Aalloc;
     A->length = Alen;
 
     TMP_END;

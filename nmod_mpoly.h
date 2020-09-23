@@ -170,20 +170,6 @@ typedef struct
 
 typedef nmod_mpolyd_struct nmod_mpolyd_t[1];
 
-/*
-    nmod_mpoly_geobucket_t
-    power of 4 increment
-*/
-typedef struct nmod_mpoly_geobucket
-{
-    nmod_mpoly_struct polys[FLINT_BITS/2];
-    slong length;
-} nmod_mpoly_geobucket_struct;
-
-typedef nmod_mpoly_geobucket_struct nmod_mpoly_geobucket_t[1];
-
-
-
 /* stack type used in gcd which are generally useful as well *****************/
 
 typedef struct
@@ -1722,6 +1708,15 @@ FLINT_DLL int nmod_mpolyun_interp_crt_sm_mpolyu(slong * lastdeg,
 
 /* geobuckets ****************************************************************/
 
+typedef struct nmod_mpoly_geobucket
+{
+    nmod_mpoly_struct polys[FLINT_BITS/2];
+    nmod_mpoly_struct temps[FLINT_BITS/2];
+    slong length;
+} nmod_mpoly_geobucket_struct;
+
+typedef nmod_mpoly_geobucket_struct nmod_mpoly_geobucket_t[1];
+
 FLINT_DLL void nmod_mpoly_geobucket_init(nmod_mpoly_geobucket_t B,
                                                    const nmod_mpoly_ctx_t ctx);
 
@@ -1730,9 +1725,6 @@ FLINT_DLL void nmod_mpoly_geobucket_clear(nmod_mpoly_geobucket_t B,
 
 FLINT_DLL void nmod_mpoly_geobucket_empty(nmod_mpoly_t p,
                          nmod_mpoly_geobucket_t B, const nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL void nmod_mpoly_geobucket_print(nmod_mpoly_geobucket_t B,
-                                  const char ** x, const nmod_mpoly_ctx_t ctx);
 
 FLINT_DLL void nmod_mpoly_geobucket_fit_length(nmod_mpoly_geobucket_t B,
                                           slong i, const nmod_mpoly_ctx_t ctx);
