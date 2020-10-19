@@ -65,7 +65,8 @@ static void nmod_mpoly_get_eval_helper2(
         p = EHterms[EHi].coeff->coeffs;
         EHi++;
 
-        _nmod_mpoly_monomial_evals(p, Aexps + N*start, bits, n, betas, 2, ctx);
+        _nmod_mpoly_monomial_evals(p, Aexps + N*start, bits, n, betas,
+                                                    2, ctx->minfo->nvars, ctx);
 
         for (j = n - 1; j >= 0; j--)
         {
@@ -141,7 +142,8 @@ static slong nmod_mpoly_set_eval_helper_and_zip_form2(
         p = EHterms[EHi].coeff->coeffs;
         EHi++;
 
-        _nmod_mpoly_monomial_evals(p, Bexps + N*start, Bbits, n, betas, 2, ctx);
+        _nmod_mpoly_monomial_evals(p, Bexps + N*start, Bbits, n, betas,
+                                                    2, ctx->minfo->nvars, ctx);
 
         if (e0 < deg0)
         {
@@ -178,7 +180,7 @@ static slong nmod_mpoly_set_eval_helper_and_zip_form2(
 }
 
 
-static int n_polyu2_add_zip_must_match(
+int n_polyu2_add_zip_must_match(
     n_polyun_t Z,
     const n_bpoly_t A,
     slong cur_length)
@@ -282,7 +284,7 @@ static int _fmpz_mpoly_modpk_update_zip(
                         Z->terms[i].coeff->coeffs, Z->terms[i].coeff->length,
                         M->terms[i].coeff->coeffs, t->coeffs,
                                                             ctxp->ffinfo->mod);
-        if (success <= 0)
+        if (success < 1)
         {
             n_poly_clear(t);
             n_poly_clear(c);
@@ -321,9 +323,7 @@ static void _nmod_mpoly_set_fmpz_mpoly(
     slong Ap_len, i;
     FLINT_ASSERT(ctx->minfo->nvars == ctx->minfo->nvars);
     FLINT_ASSERT(ctx->minfo->ord == ctx->minfo->ord);
-    nmod_mpoly_fit_bits(Ap, A->bits, ctxp);
-    Ap->bits = A->bits;
-    nmod_mpoly_fit_length(Ap, A->length, ctxp);
+    nmod_mpoly_fit_length_reset_bits(Ap, A->length, A->bits, ctxp);
     Ap_len = 0;
     for (i = 0; i < A->length; i++)
     {
@@ -350,9 +350,7 @@ static void _fmpz_mpoly_modpk_taylor_coeff(
 
     fmpz_init(t);
 
-    nmod_mpoly_fit_bits(T, E->bits, ctxp);
-    T->bits = E->bits;
-    nmod_mpoly_fit_length(T, E->length, ctxp);
+    nmod_mpoly_fit_length_reset_bits(T, E->length, E->bits, ctxp);
     Tlen = 0;
     for (i = 0; i < E->length; i++)
     {
@@ -535,7 +533,7 @@ static void n_polyun_eval_reset(n_polyun_t A)
         n_poly_eval_reset(A->terms[Ai].coeff);
 }
 
-static void n_bpoly_mod_eval_step(n_bpoly_t E, n_polyun_t A, nmod_t ctx)
+void n_bpoly_mod_eval_step(n_bpoly_t E, n_polyun_t A, nmod_t ctx)
 {
     slong Ai;
     mp_limb_t c;
@@ -802,7 +800,7 @@ int fmpz_mpoly_factor_irred_zippel(
     flint_rand_t state,
     zassenhaus_prune_t zas)
 {
-    int success, kfails = 0;
+    int success, kfails_left = 4;
     const slong n = ctx->minfo->nvars - 1;
     slong i, j, k;
     fmpz * alpha;
@@ -895,7 +893,7 @@ next_alpha:
             fmpz_set_ui(alpha + i, 1 + (l & (mask - 1)));
     }
 
-#if FLINT_WANT_ASSERT
+#if WANT_ASSERT
     fmpz_mpoly_degrees_si(tdegs, A, ctx);
     for (i = 0; i < n + 1; i++)
         FLINT_ASSERT(degs[i] == tdegs[i]);
@@ -952,7 +950,7 @@ next_alpha:
         {
             success = fmpz_mpoly_factor_lcc_kaltofen(lc_divs->coeffs, lcAfac,
                                                 A, r, alpha, degs, Aufac, ctx);
-            if (success < 0 || (success == 0 && ++kfails < 4))
+            if (success < 0 || (success == 0 && --kfails_left >= 0))
                 goto next_alpha;
         }
     }
@@ -1061,6 +1059,14 @@ next_zip_prime:
     }
 
     p = n_nextprime(p, 1);
+    if ((p % 4) != 1 && p < UWORD_MAX_PRIME)
+    {
+        p = n_nextprime(p, 1);
+        if ((p % 4) != 1 && p < UWORD_MAX_PRIME)
+        {
+            p = n_nextprime(p, 1);
+        }
+    }
 
     nmod_mpoly_ctx_set_modulus(ctxp, p);
     nmod_mpolyv_fit_length(facp, r, ctxp);

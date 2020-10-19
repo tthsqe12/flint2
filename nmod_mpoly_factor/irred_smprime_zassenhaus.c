@@ -43,7 +43,7 @@ static int _try_lift(
     nmod_mpoly_init(newq, ctx);
     nmod_mpoly_univar_init(u, ctx);
 
-#if FLINT_WANT_ASSERT
+#if WANT_ASSERT
     nmod_mpoly_one(t, ctx);
     for (i = 0; i < pfac->length; i++)
         nmod_mpoly_mul(t, t, pfac->coeffs + i, ctx);
@@ -108,7 +108,7 @@ cleanup:
     nmod_mpoly_clear(newq, ctx);
     nmod_mpoly_univar_clear(u, ctx);
 
-#if FLINT_WANT_ASSERT
+#if WANT_ASSERT
     if (success > 0)
     {
         nmod_mpoly_init(t, ctx);
@@ -140,7 +140,6 @@ int nmod_mpoly_factor_irred_smprime_zassenhaus(
     slong * deg, * degeval;
     nmod_mpolyv_t qfac, pfac, tfac, dfac;
     nmod_mpoly_t t, p, q;
-    nmod_mpoly_univar_t u;
     n_poly_t c;
     n_bpoly_t B;
     n_tpoly_t F;
@@ -164,7 +163,6 @@ int nmod_mpoly_factor_irred_smprime_zassenhaus(
 	nmod_mpoly_init(t, ctx);
 	nmod_mpoly_init(p, ctx);
 	nmod_mpoly_init(q, ctx);
-	nmod_mpoly_univar_init(u, ctx);
     n_poly_init(c);
     n_bpoly_init(B);
     n_tpoly_init(F);
@@ -202,8 +200,9 @@ next_alpha:
     /* make evaluations primitive */
     for (i = n - 1; i > 0; i--)
     {
-    	nmod_mpoly_to_univar(u, Aevals + i, 0, ctx);
-        success = _nmod_mpoly_vec_content_mpoly(t, u->coeffs, u->length, ctx);
+        if (Aevals[i].bits > FLINT_BITS)
+            nmod_mpoly_repack_bits_inplace(Aevals + i, A->bits, ctx);
+        success = nmod_mpolyl_content(t, Aevals + i, 1, ctx);
         if (!success)
             goto cleanup;
         success = nmod_mpoly_divides(Aevals + i, Aevals + i, t, ctx);
@@ -234,7 +233,7 @@ next_alpha:
         nmod_mpoly_set(q, m < n ? Aevals + m : A, ctx);
         nmod_mpoly_set(p, Aevals + m - 1, ctx);
 
-    #if FLINT_WANT_ASSERT
+    #if WANT_ASSERT
         nmod_mpoly_one(t, ctx);
         for (i = 0; i < pfac->length; i++)
             nmod_mpoly_mul(t, t, pfac->coeffs + i, ctx);
@@ -283,7 +282,7 @@ next_alpha:
         {
             zassenhaus_subset_first(subset, len, k);
 
-        #if FLINT_WANT_ASSERT
+        #if WANT_ASSERT
             nmod_mpoly_one(t, ctx);
             for (i = 0; i < len; i++)
             {
@@ -369,12 +368,11 @@ cleanup:
     nmod_mpoly_clear(t, ctx);
     nmod_mpoly_clear(p, ctx);
     nmod_mpoly_clear(q, ctx);
-    nmod_mpoly_univar_clear(u, ctx);
     n_poly_clear(c);
     n_bpoly_clear(B);
     n_tpoly_clear(F);
 
-#if FLINT_WANT_ASSERT
+#if WANT_ASSERT
     if (success)
     {
         nmod_mpoly_init(t, ctx);

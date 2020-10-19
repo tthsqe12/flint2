@@ -102,7 +102,11 @@ next_alpha:
 
     /* make sure univar is squarefree */
 	nmod_mpoly_derivative(t, Aevals + 0, 0, ctx);
-	nmod_mpoly_gcd(t, t, Aevals + 0, ctx);
+	if (!nmod_mpoly_gcd(t, t, Aevals + 0, ctx))
+    {
+        success = -1;
+        goto cleanup;
+    }
 	if (!nmod_mpoly_is_one(t, ctx))
 		goto next_alpha;
 
@@ -251,22 +255,20 @@ next_alphabetas:
 
     if (!nmod_mpoly_is_ui(m, ctx))
     {
-        nmod_mpoly_univar_t u;
-        nmod_mpoly_univar_init(u, ctx);
         for (i = 0; i < r; i++)
         {
-            nmod_mpoly_to_univar(u, fac->coeffs + i, 0, ctx);
-            success = _nmod_mpoly_vec_content_mpoly(t, u->coeffs, u->length, ctx);
-            if (!success)
+            if (fac->coeffs[i].bits > FLINT_BITS)
+                nmod_mpoly_repack_bits_inplace(fac->coeffs + i, newA->bits, ctx);
+
+            if (!nmod_mpolyl_content(t, fac->coeffs + i, 1, ctx))
             {
-                nmod_mpoly_univar_clear(u, ctx);
+                success = -1;
                 goto cleanup;
             }
-            success = nmod_mpoly_divides(fac->coeffs + i,
-                                         fac->coeffs + i, t, ctx);
+
+            success = nmod_mpoly_divides(fac->coeffs + i, fac->coeffs + i, t, ctx);
             FLINT_ASSERT(success);
         }
-        nmod_mpoly_univar_clear(u, ctx);
     }
 
     for (i = 0; i < r; i++)
@@ -301,7 +303,7 @@ cleanup:
     nmod_mpoly_clear(m, ctx);
     nmod_mpoly_clear(mpow, ctx);
 
-#if FLINT_WANT_ASSERT
+#if WANT_ASSERT
     if (success)
     {
         nmod_mpoly_t prod;

@@ -168,7 +168,7 @@ void profile_power(const char * astr, const char * bstr, slong nvars,
 
     FLINT_ASSERT(nvars <= 7);
 
-    nmod_mpoly_ctx_init(ctx, nvars, ORD_LEX, 536870909);
+    nmod_mpoly_ctx_init(ctx, nvars, ORD_LEX, UWORD(4611686018427388039));
     nmod_mpoly_init(a, ctx);
     nmod_mpoly_init(b, ctx);
     nmod_mpoly_init(t, ctx);
@@ -232,6 +232,42 @@ int main(int argc, char *argv[])
         n1 = 5;
         m2 = 4;
         n2 = 8;
+    }
+
+    {
+        nmod_mpoly_ctx_t ctx;
+        nmod_mpoly_t a, b, t, g;
+        const char * vars[] = {"x", "y", "z", "t" ,"u", "v", "w"};
+        timeit_t timer;
+
+        nmod_mpoly_ctx_init(ctx, 7, ORD_LEX, 536870909);
+        nmod_mpoly_init(a, ctx);
+        nmod_mpoly_init(b, ctx);
+        nmod_mpoly_init(t, ctx);
+        nmod_mpoly_init(g, ctx);
+
+        nmod_mpoly_set_str_pretty(a, "(1+x+y+z+t+u+2*v+w)^7", vars, ctx);
+        nmod_mpoly_set_str_pretty(b, "(1-2*x-y+z+t+u+v+w)^7", vars, ctx);
+        nmod_mpoly_set_str_pretty(t, "(1+x+y+z-t+u+v+3*w)^7", vars, ctx);
+        nmod_mpoly_mul(a, a, t, ctx);
+        nmod_mpoly_mul(b, b, t, ctx);
+
+        timeit_start(timer);
+        nmod_mpoly_gcd(g, a, b, ctx);
+        timeit_stop(timer);
+
+        flint_printf("time: %wd\n", timer->wall);
+        if (g->length != t->length)
+            flint_printf("oops!!!\n");
+
+        nmod_mpoly_clear(a, ctx);
+        nmod_mpoly_clear(b, ctx);
+        nmod_mpoly_clear(t, ctx);
+        nmod_mpoly_clear(g, ctx);
+        nmod_mpoly_ctx_clear(ctx);
+
+        flint_cleanup_master();
+        return 0;
     }
 
     flint_printf("setting up nmod_mpoly %s gcd ... ", name);

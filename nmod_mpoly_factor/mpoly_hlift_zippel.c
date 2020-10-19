@@ -82,12 +82,12 @@ void _nmod_mpoly_monomial_evals(
     slong Alen,
     const mp_limb_t * alpha,
     slong vstart,
+    slong vstop, /* default ctx->minfo->nvars */
     const nmod_mpoly_ctx_t ctx)
 {
     slong i, j;
     slong offset, shift;
     slong N = mpoly_words_per_exp_sp(Abits, ctx->minfo);
-    slong nvars = ctx->minfo->nvars;
     slong * LUToffset;
     ulong * LUTmask;
     mp_limb_t * LUTvalue;
@@ -95,6 +95,8 @@ void _nmod_mpoly_monomial_evals(
     mp_limb_t xpoweval;
     ulong * inputexpmask;
     TMP_INIT;
+
+    FLINT_ASSERT(vstop <= ctx->minfo->nvars);
 
     TMP_START;
 
@@ -113,7 +115,7 @@ void _nmod_mpoly_monomial_evals(
     }
 
     LUTlen = 0;
-    for (j = nvars - 1; j >= vstart; j--)
+    for (j = vstop - 1; j >= vstart; j--)
     {
         mpoly_gen_offset_shift_sp(&offset, &shift, j, Abits, ctx->minfo);
 
@@ -372,8 +374,11 @@ static int nmod_mpoly_from_zip(
         {
             if (Bcoeffs[j] == 0)
                 continue;
+
+            FLINT_ASSERT(Bi < B->coeffs_alloc);
+            FLINT_ASSERT(N*Bi < B->exps_alloc);
+
             Bcoeffs[Bi] = Bcoeffs[j];
-            FLINT_ASSERT(Bi < B->alloc);
             mpoly_monomial_set(Bexps + N*Bi, Hc->exps + N*i, N);
             (Bexps + N*Bi)[yoff] += y << yshift;
             Bi++;
@@ -832,7 +837,7 @@ int nmod_mpoly_hlift_zippel(
     FLINT_ASSERT(r > 1);
     FLINT_ASSERT(bits <= FLINT_BITS);
 
-#if FLINT_WANT_ASSERT
+#if WANT_ASSERT
     {
         nmod_mpoly_t T;
         slong j, * check_degs = FLINT_ARRAY_ALLOC(ctx->minfo->nvars, slong);

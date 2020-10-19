@@ -28,6 +28,8 @@ void gcd_check(
     int res;
     nmod_mpoly_t ca, cb, cg, u, v, w;
 
+flint_printf("i = %wd, j = %wd, %s\n", i, j, name);
+
     nmod_mpoly_init(ca, ctx);
     nmod_mpoly_init(cb, ctx);
     nmod_mpoly_init(cg, ctx);
@@ -244,9 +246,6 @@ main(void)
     const slong max_threads = 5;
     slong i, j, k, tmul = 3;
     FLINT_TEST_INIT(state);
-#ifdef _WIN32
-    tmul = 1;
-#endif
 
     flint_printf("gcd_cofactors....");
     fflush(stdout);

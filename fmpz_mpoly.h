@@ -178,12 +178,10 @@ FMPZ_MPOLY_INLINE
 void _fmpz_mpoly_set_length(fmpz_mpoly_t A, slong newlen, 
                                                    const fmpz_mpoly_ctx_t ctx)
 {
-    if (A->length > newlen)
-    {
-        slong i;
-        for (i = newlen; i < A->length; i++)
-           _fmpz_demote(A->coeffs + i); 
-    }
+    slong i;
+    for (i = newlen; i < A->length; i++)
+       _fmpz_demote(A->coeffs + i); 
+
     A->length = newlen;
 }
 
@@ -657,6 +655,14 @@ FLINT_DLL void fmpz_mpoly_scalar_mul_si(fmpz_mpoly_t A,
 
 FLINT_DLL void fmpz_mpoly_scalar_mul_ui(fmpz_mpoly_t A,
                     const fmpz_mpoly_t B, ulong c, const fmpz_mpoly_ctx_t ctx);
+
+FLINT_DLL void fmpz_mpoly_scalar_fmma(
+    fmpz_mpoly_t poly1,
+    const fmpz_mpoly_t poly2,
+    const fmpz_t c,
+    const fmpz_mpoly_t poly3,
+    const fmpz_t e,
+    const fmpz_mpoly_ctx_t ctx);
 
 FLINT_DLL void fmpz_mpoly_scalar_divexact_fmpz(fmpz_mpoly_t A,
              const fmpz_mpoly_t B, const fmpz_t c, const fmpz_mpoly_ctx_t ctx);
@@ -1309,6 +1315,7 @@ FLINT_DLL int fmpz_mpoly_interp_crt_p_mpolyn(
     const nmod_mpoly_ctx_t pctx);
 
 /* geobuckets ****************************************************************/
+
 typedef struct fmpz_mpoly_geobucket
 {
     fmpz_mpoly_struct polys[FLINT_BITS/2];
@@ -1326,9 +1333,6 @@ FLINT_DLL void fmpz_mpoly_geobucket_clear(fmpz_mpoly_geobucket_t B,
 
 FLINT_DLL void fmpz_mpoly_geobucket_empty(fmpz_mpoly_t p,
                          fmpz_mpoly_geobucket_t B, const fmpz_mpoly_ctx_t ctx);
-
-FLINT_DLL void fmpz_mpoly_geobucket_print(fmpz_mpoly_geobucket_t B,
-                                  const char ** x, const fmpz_mpoly_ctx_t ctx);
 
 FLINT_DLL void fmpz_mpoly_geobucket_fit_length(fmpz_mpoly_geobucket_t B,
                                           slong i, const fmpz_mpoly_ctx_t ctx);
@@ -1529,6 +1533,14 @@ FLINT_DLL void _fmpz_mpoly_submul_array1_slong2_1(ulong * poly1,
 FLINT_DLL void _fmpz_mpoly_submul_array1_fmpz_1(fmpz * poly1, 
                           const fmpz_t d, ulong exp2,
                            const fmpz * poly3, const ulong * exp3, slong len3);
+
+FLINT_DLL void mpoly_main_variable_split_LEX(slong * ind, ulong * pexp,
+             const ulong * Aexp,
+             slong l1, slong Alen, const ulong * mults, slong num, slong Abits);
+
+FLINT_DLL void mpoly_main_variable_split_DEG(slong * ind, ulong * pexp,
+             const ulong * Aexp,
+             slong l1, slong Alen, ulong deg, slong num, slong Abits);
 
 FLINT_DLL slong fmpz_mpoly_append_array_sm1_LEX(fmpz_mpoly_t P,
                         slong Plen, ulong * coeff_array,

@@ -1,6 +1,6 @@
 /*
     Copyright (C) 2016-2017 William Hart
-    Copyright (C) 2017-2019 Daniel Schultz
+    Copyright (C) 2017-2020 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -960,6 +960,19 @@ void mpoly_max_degrees_tight(slong * max_exp,
 }
 
 
+/* ceiling(log_4(x)) - 1 */
+MPOLY_INLINE slong mpoly_geobucket_clog4(slong x)
+{
+    if (x <= 4)
+        return 0;
+    /*
+        FLINT_BIT_COUNT returns unsigned int.
+        Signed division is not defined.
+        Do the calculation with unsigned ints and then convert to slong.
+    */
+    return (slong)((FLINT_BIT_COUNT(x - 1) - UWORD(1))/(UWORD(2)));
+}
+
 /* generators ****************************************************************/
 
 FLINT_DLL void mpoly_gen_fields_ui(ulong * exp, slong var,
@@ -1320,6 +1333,9 @@ FLINT_DLL void mpoly_gcd_info_measure_bma(mpoly_gcd_info_t I,
                          slong Alength, slong Blength, const mpoly_ctx_t mctx);
 
 FLINT_DLL void mpoly_gcd_info_measure_zippel(mpoly_gcd_info_t I,
+                         slong Alength, slong Blength, const mpoly_ctx_t mctx);
+
+FLINT_DLL void mpoly_gcd_info_measure_zippel2(mpoly_gcd_info_t I,
                          slong Alength, slong Blength, const mpoly_ctx_t mctx);
 
 typedef struct

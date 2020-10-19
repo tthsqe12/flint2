@@ -28,7 +28,7 @@ slong fq_nmod_mpoly_set_eval_helper_and_zip_form2(
     mp_limb_t * p;
     slong zip_length = 0;
     flint_bitcnt_t Bbits = B->bits;
-    const fq_nmod_struct * Bcoeffs = B->coeffs;
+    const mp_limb_t * Bcoeffs = B->coeffs;
     slong Blen = B->length;
     const ulong * Bexps = B->exps;
     ulong mask = (-UWORD(1)) >> (FLINT_BITS - Bbits);
@@ -74,8 +74,8 @@ slong fq_nmod_mpoly_set_eval_helper_and_zip_form2(
         p = EHterms[EHi].coeff->coeffs;
         EHi++;
 
-        _fq_nmod_mpoly_monomial_evals(p, Bexps + N*start, Bbits, n, betas, 2, ctx);
-
+        _fq_nmod_mpoly_monomial_evals(p, Bexps + N*start, Bbits, n, betas,
+                                                    2, ctx->minfo->nvars, ctx);
         if (e0 < deg0)
         {
             n_polyun_fit_length(H, Hi + 1);
@@ -88,7 +88,7 @@ slong fq_nmod_mpoly_set_eval_helper_and_zip_form2(
             zip_length = FLINT_MAX(zip_length, n);
             Hterms[Hi].coeff->length = n;
             flint_mpn_copyi(Hterms[Hi].coeff->coeffs, p, d*n);
-            n_poly_fq_product_roots_n_fq(Mterms[Hi].coeff, p, n, ctx->fqctx);
+            n_fq_poly_product_roots_n_fq(Mterms[Hi].coeff, p, n, ctx->fqctx);
             Hi++;
         }
 
@@ -96,7 +96,7 @@ slong fq_nmod_mpoly_set_eval_helper_and_zip_form2(
         {
             _n_fq_set(p + d*(3*j + 2), p + d*j, d);
             _n_fq_set(p + d*(3*j + 0), p + d*(3*j + 2), d);
-            n_fq_set_fq_nmod(p + d*(3*j + 1), Bcoeffs + start + j, ctx->fqctx);
+            _n_fq_set(p + d*(3*j + 1), Bcoeffs + d*(start + j), d);
         }
     }
 

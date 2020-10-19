@@ -40,7 +40,7 @@ void nmod_mpoly_convert_perm(
     NA = mpoly_words_per_exp(Abits, Actx->minfo);
     NB = mpoly_words_per_exp(B->bits, Bctx->minfo);
 
-    nmod_mpoly_fit_length_set_bits(A, B->length, Abits, Actx);
+    nmod_mpoly_fit_length_reset_bits(A, B->length, Abits, Actx);
     A->length = B->length;
     for (i = 0; i < B->length; i++)
     {        
@@ -81,7 +81,7 @@ static int _irreducible_factors(
     flint_bitcnt_t Lbits, Abits;
     int perm_is_id;
     flint_rand_t state;
-#if FLINT_WANT_ASSERT
+#if WANT_ASSERT
     nmod_mpoly_t Aorg;
 
     nmod_mpoly_init(Aorg, ctx);
@@ -360,7 +360,7 @@ cleanup:
     flint_randclear(state);
     flint_free(Adegs);
 
-#if FLINT_WANT_ASSERT
+#if WANT_ASSERT
     if (success)
     {
         nmod_mpoly_t prod;

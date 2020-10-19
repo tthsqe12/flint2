@@ -11,19 +11,17 @@
 
 #include "n_poly.h"
 
-void n_poly_fq_inv_series(
+
+void n_fq_poly_neg(
     n_poly_t A,
     const n_poly_t B,
-    slong order,
     const fq_nmod_ctx_t ctx)
 {
-    fq_nmod_poly_t a, b;
-    fq_nmod_poly_init(a, ctx);
-    fq_nmod_poly_init(b, ctx);
-    n_poly_fq_get_fq_nmod_poly(a, A, ctx);
-    n_poly_fq_get_fq_nmod_poly(b, B, ctx);
-    fq_nmod_poly_inv_series(a, b,  order, ctx);
-    n_poly_fq_set_fq_nmod_poly(A, a, ctx);
-    fq_nmod_poly_clear(a, ctx);
-    fq_nmod_poly_clear(b, ctx);
+    slong d = fq_nmod_ctx_degree(ctx);
+    slong Blen = B->length;
+
+    n_poly_fit_length(A, d*Blen);
+    _nmod_vec_neg(A->coeffs, B->coeffs, d*Blen, ctx->mod);
+    A->length = Blen;
+    _n_fq_poly_normalise(A, d);
 }

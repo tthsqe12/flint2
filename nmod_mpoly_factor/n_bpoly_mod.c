@@ -12,22 +12,6 @@
 #include "nmod_mpoly_factor.h"
 
 
-int n_bpoly_mod_is_canonical(const n_bpoly_t A, nmod_t mod)
-{
-    slong i;
-
-    if (A->length <= 0)
-        return A->length == 0;
-
-    for (i = 0; i < A->length; i++)
-    {
-        if (!n_poly_mod_is_canonical(A->coeffs + i, mod))
-            return 0;
-    }
-
-    return !n_poly_is_zero(A->coeffs + A->length - 1);
-}
-
 void nmod_mpoly_get_bpoly(
     n_bpoly_t A,
     const nmod_mpoly_t B,
@@ -72,7 +56,6 @@ void nmod_mpoly_set_bpoly(
     slong Alen;
     mp_limb_t * Acoeff;
     ulong * Aexp;
-    slong Aalloc;
     ulong * Aexps;
     TMP_INIT;
 
@@ -85,17 +68,16 @@ void nmod_mpoly_set_bpoly(
         Aexps[i] = 0;
 
     NA = mpoly_words_per_exp(Abits, ctx->minfo);
-    nmod_mpoly_fit_bits(A, Abits, ctx);
-    A->bits = Abits;
+    nmod_mpoly_fit_length_reset_bits(A, 4, Abits, ctx);
 
     Acoeff = A->coeffs;
     Aexp = A->exps;
-    Aalloc = A->alloc;
     Alen = 0;
     for (i = 0; i < B->length; i++)
     {
         n_poly_struct * Bc = B->coeffs + i;
-        _nmod_mpoly_fit_length(&Acoeff, &Aexp, &Aalloc, Alen + Bc->length, NA);
+        _nmod_mpoly_fit_length(&Acoeff, &A->coeffs_alloc,
+                               &Aexp, &A->exps_alloc, NA, Alen + Bc->length);
 
         for (j = 0; j < Bc->length; j++)
         {
@@ -111,7 +93,6 @@ void nmod_mpoly_set_bpoly(
     }
     A->coeffs = Acoeff;
     A->exps = Aexp;
-    A->alloc = Aalloc;
     A->length = Alen;
 
     TMP_END;
@@ -119,7 +100,7 @@ void nmod_mpoly_set_bpoly(
     nmod_mpoly_sort_terms(A, ctx);
 }
 
-void n_bpoly_mod_taylor_shift_var1(n_bpoly_t A, const n_bpoly_t B,
+void n_bpoly_mod_taylor_shift_gen1(n_bpoly_t A, const n_bpoly_t B,
                                                       mp_limb_t c, nmod_t ctx)
 {
     slong i;
@@ -319,31 +300,6 @@ void n_bpoly_mod_mul_series(n_bpoly_t A, const n_bpoly_t B, const n_bpoly_t C,
 }
 
 
-void n_bpoly_mod_derivative(
-    n_bpoly_t A,
-    const n_bpoly_t B,
-    nmod_t ctx)
-{
-    slong i;
-
-    FLINT_ASSERT(A != B);
-
-    if (B->length < 2)
-    {
-        n_bpoly_zero(A);
-        return;
-    }
-
-    n_bpoly_fit_length(A, B->length - 1);
-
-    for (i = 1; i < B->length; i++)
-        n_poly_mod_scalar_mul_ui(A->coeffs + i - 1, B->coeffs + i, i, ctx);
-
-    A->length = B->length - 1;
-    n_bpoly_normalise(A);
-}
-
-
 /*
     division in ((Z/nZ)[y]/y^order)[x]
     inputs need not be reduced mod y^order
@@ -477,29 +433,48 @@ cleanup:
     return divides;
 }
 
-void n_bpoly_mod_taylor_shift_var0(n_bpoly_t A, mp_limb_t c, nmod_t mod)
+void n_bpoly_mod_taylor_shift_gen0(n_bpoly_t A, mp_limb_t alpha, nmod_t ctx)
 {
-    slong n, i, j;
-    n_poly_t t;
+    slong i, j;
+    slong n = A->length;
+    n_poly_struct * Acoeffs = A->coeffs;
+    mp_limb_t c;
 
-    FLINT_ASSERT(c < mod.n);
+    FLINT_ASSERT(alpha < ctx.n);
 
-    if (c == 0)
+    if (alpha == 0)
         return;
 
-    n_poly_init(t);
-    n = A->length;
+    c = 1;
+    for (i = 1; i < n; i++)
+    {
+        c = nmod_mul(c, alpha, ctx);
+        if (c != 1)
+        {
+            _nmod_vec_scalar_mul_nmod(Acoeffs[i].coeffs, Acoeffs[i].coeffs,
+                                                    Acoeffs[i].length, c, ctx);
+        }
+    }
 
     for (i = n - 2; i >= 0; i--)
     {
         for (j = i; j < n - 1; j++)
         {
-            _n_poly_mod_scalar_mul_nmod(t, A->coeffs + j + 1, c, mod);
-            n_poly_mod_add(A->coeffs + j, A->coeffs + j, t, mod);
+            n_poly_mod_add(Acoeffs + j, Acoeffs + j, Acoeffs + j + 1, ctx);
         }
     }
 
-    n_poly_clear(t);
+    alpha = nmod_inv(alpha, ctx);
+    c = 1;
+    for (i = 1; i < n; i++)
+    {
+        c = nmod_mul(c, alpha, ctx);
+        if (c != 1)
+        {
+            _nmod_vec_scalar_mul_nmod(Acoeffs[i].coeffs, Acoeffs[i].coeffs,
+                                                    Acoeffs[i].length, c, ctx);
+        }
+    }
 }
 
 

@@ -11,7 +11,7 @@
 
 #include "fq_nmod_mpoly.h"
 
-
+#if 0
 void fq_nmod_mpolyd_ctx_init(fq_nmod_mpolyd_ctx_t dctx, slong nvars,
                                                         mp_limb_t p, slong deg)
 {
@@ -554,3 +554,5 @@ void fq_nmod_mpoly_convert_from_fq_nmod_mpolyd(fq_nmod_mpoly_t A, const fq_nmod_
 
     TMP_END;
 }
+
+#endif

@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2017 Daniel Schultz
+    Copyright (C) 2018 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -11,11 +11,16 @@
 
 #include "nmod_mpoly.h"
 
-void nmod_mpoly_clear(nmod_mpoly_t poly, const nmod_mpoly_ctx_t ctx)
+
+void nmod_mpoly_fit_length_reset_bits(
+    nmod_mpoly_t A,
+    slong len,
+    flint_bitcnt_t bits,
+    const nmod_mpoly_ctx_t ctx)
 {
-    if (poly->alloc != 0)
-    {
-        flint_free(poly->coeffs);
-        flint_free(poly->exps);
-    }
+    slong N = mpoly_words_per_exp(bits, ctx->minfo);
+
+    _nmod_mpoly_fit_length(&A->coeffs, &A->coeffs_alloc,
+                           &A->exps, &A->exps_alloc, N, len);
+    A->bits = bits;
 }

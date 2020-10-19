@@ -23,13 +23,18 @@ nmod_mat_print_pretty(const nmod_mat_t mat)
     slong i, j;
     int width;
     char fmt[FLINT_BITS + 5];
+    mp_limb_t max_entry = 1;
 
     flint_printf("<%wd x %wd integer matrix mod %wu>\n", mat->r, mat->c, mat->mod.n);
 
     if (!(mat->c) || !(mat->r))
         return;
 
-    width = n_sizeinbase(mat->mod.n, 10);
+    for (i = 0; i < mat->r; i++)
+        for (j = 0; j < mat->c; j++)
+            max_entry = FLINT_MAX(max_entry, mat->rows[i][j]);
+
+    width = n_sizeinbase(max_entry, 10);
 
     flint_sprintf(fmt, "%%%dwu", width);
 

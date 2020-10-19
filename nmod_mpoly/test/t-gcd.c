@@ -19,6 +19,8 @@ void gcd_check(nmod_mpoly_t g, nmod_mpoly_t a, nmod_mpoly_t b,
     int res;
     nmod_mpoly_t ca, cb, cg;
 
+flint_printf("i = %wd, j = %wd, %s, nvars = %wd\n", i, j, name, ctx->minfo->nvars);
+
     nmod_mpoly_init(ca, ctx);
     nmod_mpoly_init(cb, ctx);
     nmod_mpoly_init(cg, ctx);
@@ -120,16 +122,37 @@ int
 main(void)
 {
     const slong max_threads = 5;
-    slong i, j, k, tmul = 10;
+    slong i, j, k, tmul = 40;
     FLINT_TEST_INIT(state);
-#ifdef _WIN32
-    tmul = 1;
-#endif
 
     flint_printf("gcd....");
     fflush(stdout);
 
     {
+        nmod_mpoly_ctx_t ctx;
+        nmod_mpoly_t g, a, b;
+        const char * vars[] = {"t" ,"x", "y", "z"};
+
+        nmod_mpoly_ctx_init(ctx, 4, ORD_LEX, 536870909);
+        nmod_mpoly_init(a, ctx);
+        nmod_mpoly_init(b, ctx);
+        nmod_mpoly_init(g, ctx);
+
+        nmod_mpoly_set_str_pretty(g, "x + y + z + t", vars, ctx);
+        nmod_mpoly_set_str_pretty(a, "x^2 + y^2 + z^2 + t^2", vars, ctx);
+        nmod_mpoly_set_str_pretty(b, "x^3 + y^3 + z^3 + t^3", vars, ctx);
+        nmod_mpoly_mul(a, a, g, ctx);
+        nmod_mpoly_mul(b, b, g, ctx);
+
+        gcd_check(g, a, b, ctx, 0, 0, "sparse example");
+
+        nmod_mpoly_clear(a, ctx);
+        nmod_mpoly_clear(b, ctx);
+        nmod_mpoly_clear(g, ctx);
+        nmod_mpoly_ctx_clear(ctx);
+    }
+
+    if (0) {
         nmod_mpoly_ctx_t ctx;
         nmod_mpoly_t g, a, b;
         const char * vars[] = {"t" ,"x", "y", "z"};
@@ -403,7 +426,7 @@ main(void)
         modulus = n_randbits(state, modulus);
         modulus = n_nextprime(modulus, 1);
 
-        nmod_mpoly_ctx_init_rand(ctx, state, 5, modulus);
+        nmod_mpoly_ctx_init_rand(ctx, state, 7, modulus);
         nmod_mpoly_init(g, ctx);
         nmod_mpoly_init(a, ctx);
         nmod_mpoly_init(b, ctx);
@@ -413,7 +436,7 @@ main(void)
         len1 = n_randint(state, 30);
         len2 = n_randint(state, 30);
 
-        degbound = 30/(2*ctx->minfo->nvars - 1);
+        degbound = 40/(2*ctx->minfo->nvars - 1);
 
         for (j = 0; j < 4; j++)
         {
@@ -454,7 +477,7 @@ main(void)
         modulus = n_randbits(state, modulus);
         modulus = n_nextprime(modulus, 1);
 
-        nmod_mpoly_ctx_init_rand(ctx, state, 5, modulus);
+        nmod_mpoly_ctx_init_rand(ctx, state, 7, modulus);
         nmod_mpoly_init(g, ctx);
         nmod_mpoly_init(a, ctx);
         nmod_mpoly_init(b, ctx);
@@ -464,7 +487,7 @@ main(void)
         len1 = n_randint(state, 30);
         len2 = n_randint(state, 30);
 
-        degbound = 30/(2*ctx->minfo->nvars - 1);
+        degbound = 40/(2*ctx->minfo->nvars - 1);
 
         for (j = 0; j < 4; j++)
         {
@@ -520,7 +543,7 @@ main(void)
         modulus = n_randbits(state, modulus);
         modulus = n_nextprime(modulus, 1);
 
-        nmod_mpoly_ctx_init_rand(ctx, state, 5, modulus);
+        nmod_mpoly_ctx_init_rand(ctx, state, 7, modulus);
         nmod_mpoly_init(g, ctx);
         nmod_mpoly_init(a, ctx);
         nmod_mpoly_init(b, ctx);
@@ -530,7 +553,7 @@ main(void)
         len1 = n_randint(state, 30);
         len2 = n_randint(state, 30);
 
-        degbound = 30/(2*ctx->minfo->nvars - 1);
+        degbound = 40/(2*ctx->minfo->nvars - 1);
 
         stride_bits = n_randint(state, 100) + 2;
         shift_bits = n_randint(state, 100) + 2;

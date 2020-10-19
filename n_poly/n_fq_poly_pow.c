@@ -11,25 +11,20 @@
 
 #include "n_poly.h"
 
-
-void n_poly_fq_add_si(
-    n_poly_t A,
-    const n_poly_t B,
-    slong c,
+void n_fq_poly_pow(
+    n_fq_poly_t A,
+    const n_fq_poly_t B,
+    ulong e,
     const fq_nmod_ctx_t ctx)
 {
-    slong d = fq_nmod_ctx_degree(ctx);
-
-    if (A != B)
-        n_poly_fq_set(A, B, ctx);
-
-    if (A->length < 1)
-    {
-        n_poly_fit_length(A, d);
-        A->length = 1;
-    }
-
-    n_fq_add_si(A->coeffs + d*0, A->coeffs + d*0, c, ctx);
-
-    _n_poly_fq_normalise(A, d);
+    fq_nmod_poly_t a, b;
+    fq_nmod_poly_init(a, ctx);
+    fq_nmod_poly_init(b, ctx);
+    n_fq_poly_get_fq_nmod_poly(a, A, ctx);
+    n_fq_poly_get_fq_nmod_poly(b, B, ctx);
+    fq_nmod_poly_pow(a, b, e, ctx);
+    n_fq_poly_set_fq_nmod_poly(A, a, ctx);
+    fq_nmod_poly_clear(a, ctx);
+    fq_nmod_poly_clear(b, ctx);
 }
+

@@ -9,7 +9,7 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "nmod_mpoly_factor.h"
+#include "n_poly.h"
 
 #define MAC(h, m, l, a, b)                          \
 {                                                   \
@@ -58,7 +58,7 @@ static int _fill_matrices4(
     mp_limb_t * list;
     mp_limb_t g0i, c;
 
-    list = (mp_limb_t *) flint_malloc(d*sizeof(mp_limb_t));
+    list = FLINT_ARRAY_ALLOC(d, mp_limb_t);
     if (d != _find_eval_points4(list, d, ctx))
     {
         flint_free(list);
@@ -112,9 +112,11 @@ static void _from_coeffs4(
     FLINT_ASSERT(0 <= alen);
     FLINT_ASSERT(alen <= 1 + 4*d);
 
-    if (alen < 1)
+    if (alen <= 1)
     {
-        flint_mpn_zero(v, 4*d+1);
+        mp_limb_t t = (alen == 1) ? a[0] : 0;
+        for (i = 0; i < 4*d+1; i++)
+            v[i] = t;
         return;
     }
 
@@ -266,10 +268,10 @@ static int _fill_matrices2(
 
 
 static void _from_coeffs2(
-    mp_limb_t * v,          /* length 4d+1 */
+    mp_limb_t * v,          /* length 2d+1 */
     const mp_limb_t * a,    /* length alen <= 2d+1 */
     slong alen,
-    const mp_limb_t * M,    /* length d by 4d */
+    const mp_limb_t * M,    /* length d by 2d */
     slong d,
     nmod_t ctx)
 {
@@ -278,9 +280,11 @@ static void _from_coeffs2(
     FLINT_ASSERT(0 <= alen);
     FLINT_ASSERT(alen <= 1 + 2*d);
 
-    if (alen < 1)
+    if (alen <= 1)
     {
-        flint_mpn_zero(v, 2*d+1);
+        mp_limb_t t = (alen == 1) ? a[0] : 0;
+        for (i = 0; i < 2*d+1; i++)
+            v[i] = t;
         return;
     }
 
@@ -351,19 +355,6 @@ static void _to_coeffs2(
         NMOD_RED3(a[2*i + 2], c2h, c2m, c2, ctx);
     }
 }
-
-typedef struct {
-    mp_limb_t * M;
-    mp_limb_t * T;
-    mp_limb_t * Q;
-    mp_limb_t * array;
-    slong alloc;
-    slong d;
-    slong radix;
-    mp_limb_t w;
-} nmod_eval_interp_struct;
-
-typedef nmod_eval_interp_struct nmod_eval_interp_t[1];
 
 
 void nmod_eval_interp_init(nmod_eval_interp_t E)
@@ -443,11 +434,6 @@ int nmod_eval_interp_set_degree_modulus(
     }
 }
 
-int nmod_eval_interp_eval_length(nmod_eval_interp_t E)
-{
-    return 1 + E->radix*E->d;
-}
-
 void nmod_eval_interp_to_coeffs(
     mp_limb_t * a,
     const mp_limb_t * v,
@@ -471,202 +457,4 @@ void nmod_eval_interp_from_coeffs(
         _from_coeffs4(v, a, alen, E->M, E->d, E->w, ctx);
     else
         _from_coeffs2(v, a, alen, E->M, E->d, ctx);
-}
-
-
-/*****************************************************************************/
-
-/* M is a d x d array */
-void computeM(
-    mp_limb_t * M,
-    slong d,
-    const nmod_t ctx)
-{
-    slong i, j;
-    mp_limb_t i2, i2j;
-
-    for (i = 1; i <= d; i++)
-    {
-        i2 = nmod_mul(i, i, ctx);
-        i2j = 1;
-        for (j = 1; j <= d; j++)
-        {
-            i2j = nmod_mul(i2j, i2, ctx);
-            M[j - 1 + d*(i - 1)] = i2j;
-        }
-    }
-}
-
-void coeffs2ptvals(
-    mp_limb_t * Aptvals,
-    slong d,
-    const mp_limb_t * Acoeffs,
-    slong Alength,
-    const mp_limb_t * M,
-    const nmod_t ctx)
-{
-    slong i, j;
-    mp_limb_t vp0, vp1, vp2, vm0, vm1, vm2, pp1, pp0;
-
-    if (Alength <= 1)
-    {
-        vp0 = Alength == 1 ? Acoeffs[0] : 0;
-        for (i = 0; i <= 2*d; i++)
-            Aptvals[i] = vp0;
-        return;
-    }
-
-    Aptvals[0] = Acoeffs[0];
-
-    for (i = 1; i <= d; i++)
-    {
-        vp2 = 0; vp1 = 0; vp0 = Acoeffs[0];
-        vm2 = 0; vm1 = 0; vm0 = Acoeffs[1];
-        for (j = 1; j < Alength/2; j++)
-        {
-            umul_ppmm(pp1, pp0, Acoeffs[2*j + 0], M[j - 1]);
-            add_sssaaaaaa(vp2, vp1, vp0, vp2, vp1, vp0, 0, pp1, pp0);
-            umul_ppmm(pp1, pp0, Acoeffs[2*j + 1], M[j - 1]);
-            add_sssaaaaaa(vm2, vm1, vm0, vm2, vm1, vm0, 0, pp1, pp0);
-        }
-        NMOD_RED3(vm0, vm2, vm1, vm0, ctx);
-        if ((Alength % 2) != 0)
-        {
-            umul_ppmm(pp1, pp0, Acoeffs[2*j + 0], M[j - 1]);
-            add_sssaaaaaa(vp2, vp1, vp0, vp2, vp1, vp0, 0, pp1, pp0);
-        }
-        NMOD_RED3(vp0, vp2, vp1, vp0, ctx);
-        vm0 = nmod_mul(i, vm0, ctx);
-        Aptvals[2*i - 1] = nmod_add(vp0, vm0, ctx);
-        Aptvals[2*i - 0] = nmod_sub(vp0, vm0, ctx);
-        M += d;
-    }
-}
-
-/* L is a (2*d + 1) x (d + 1) array */
-void computeL(
-    mp_limb_t * L,
-    slong d,
-    const nmod_t ctx)
-{
-    slong i, j;
-    nmod_poly_t f, g;
-    mp_limb_t c;
-
-    nmod_poly_init_mod(f, ctx);
-    nmod_poly_init_mod(g, ctx);
-
-    nmod_poly_set_coeff_ui(f, 1, 1);
-    nmod_poly_set_coeff_ui(g, 2, 1);
-    for (i = 1; i <= d; i++)
-    {
-        nmod_poly_set_coeff_ui(g, 0, nmod_neg(nmod_mul(i, i, ctx), ctx));
-        nmod_poly_mul(f, f, g);
-    }
-    for (i = 0; i <= d; i++)
-    {
-        nmod_poly_zero(g);
-        nmod_poly_set_coeff_ui(g, 1, 1);
-        nmod_poly_set_coeff_ui(g, 0, nmod_neg(i, ctx));
-        nmod_poly_div(g, f, g);
-        c = nmod_poly_evaluate_nmod(g, i);
-        c = nmod_inv(c, ctx);
-        nmod_poly_scalar_mul_nmod(g, g, c);
-        for (j = 0; j <= 2*d; j++)
-        {
-            L[j*(d + 1) + i] = nmod_poly_get_coeff_ui(g, j);
-        }
-    }
-
-    nmod_poly_clear(f);
-    nmod_poly_clear(g);
-}
-
-void ptvals2coeffs(
-    mp_limb_t * Acoeffs,
-    slong Alength,
-    const mp_limb_t * Aptvals,
-    slong d,
-    const mp_limb_t * L,
-    mp_limb_t * t,
-    const nmod_t ctx)
-{
-    slong i, j;
-    mp_limb_t vp2, vp1, vp0, vm2, vm1, vm0, pp1, pp0;
-
-    t[0] = Aptvals[0];
-    for (i = 1; i <= d; i++)
-    {
-        vp0 = Aptvals[2*i - 1];
-        vm0 = Aptvals[2*i - 0];
-        t[2*i - 1] = nmod_add(vp0, vm0, ctx);
-        t[2*i - 0] = nmod_sub(vp0, vm0, ctx);
-    }
-
-    for (i = 0; i + 2 <= Alength; i += 2)
-    {
-        vp2 = 0; umul_ppmm(vp1, vp0, L[0], t[0]);
-        vm2 = 0; umul_ppmm(vm1, vm0, L[d + 1], t[0]);
-        for (j = 1; j <= d; j++)
-        {
-            umul_ppmm(pp1, pp0, t[2*j - 1], L[j]);
-            add_sssaaaaaa(vp2, vp1, vp0, vp2, vp1, vp0, 0, pp1, pp0);
-            umul_ppmm(pp1, pp0, t[2*j - 0], L[j + d + 1]);
-            add_sssaaaaaa(vm2, vm1, vm0, vm2, vm1, vm0, 0, pp1, pp0);
-        }
-        NMOD_RED3(Acoeffs[i + 0], vp2, vp1, vp0, ctx);
-        NMOD_RED3(Acoeffs[i + 1], vm2, vm1, vm0, ctx);
-        L += 2*(d + 1);
-    }
-
-    if (i < Alength)
-    {
-        vp2 = 0; umul_ppmm(vp1, vp0, L[0], t[0]);
-        for (j = 1; j <= d; j++)
-        {
-            umul_ppmm(pp1, pp0, t[2*j - 1], L[j]);
-            add_sssaaaaaa(vp2, vp1, vp0, vp2, vp1, vp0, 0, pp1, pp0);
-        }
-        NMOD_RED3(Acoeffs[i], vp2, vp1, vp0, ctx);
-    }
-}
-
-void nmod_poly_to_ptvals(
-    nmod_poly_t v,
-    slong d,
-    const nmod_poly_t a,
-    mp_limb_t * M,
-    nmod_t ctx)
-{
-    nmod_poly_fit_length(v, 2*d + 1);
-    v->length = 2*d + 1;
-    coeffs2ptvals(v->coeffs, d, a->coeffs, a->length, M, ctx);
-}
-
-void nmod_ptvals_to_poly(
-    nmod_poly_t a,
-    const mp_limb_t * v,
-    slong d,
-    mp_limb_t * L,
-    nmod_t ctx)
-{
-    mp_limb_t * t = flint_malloc((2*d + 1)*sizeof(mp_limb_t));
-    nmod_poly_fit_length(a, 2*d + 1);
-    ptvals2coeffs(a->coeffs, 2*d + 1, v, d, L, t, ctx);
-    a->length = 2*d + 1;
-    _nmod_poly_normalise(a);
-    flint_free(t);
-}
-
-
-void _nmod_vec_addmul(
-    mp_limb_t * a,
-    const mp_limb_t * b,
-    const mp_limb_t * c,
-    slong length,
-    nmod_t ctx)
-{
-    slong i;
-    for (i = 0; i < length; i++)
-        a[i] = nmod_add(a[i], nmod_mul(b[i], c[i], ctx), ctx);
 }

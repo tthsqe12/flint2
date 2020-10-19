@@ -13,18 +13,6 @@
 
 
 /* from gcd.c */
-void fmpz_mpoly_evals(
-    nmod_poly_struct * out,
-    const int * ignore,
-    const fmpz_mpoly_t A,
-    ulong * Amin_exp,
-    ulong * Amax_exp,
-    ulong * Astride,
-    mp_limb_t * alpha,
-    const fmpz_mpoly_ctx_t ctx,
-    const thread_pool_handle * handles,
-    slong num_handles);
-
 void mpoly_gcd_info_set_estimates_fmpz_mpoly(
     mpoly_gcd_info_t I,
     const fmpz_mpoly_t A,

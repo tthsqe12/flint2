@@ -20,7 +20,7 @@ main(void)
     flint_printf("gcd_zippel....");
     fflush(stdout);
 
-    for (i = 0; i < 20*flint_test_multiplier(); i++)
+    for (i = 0; i < 100*flint_test_multiplier(); i++)
     {
         fq_nmod_mpoly_ctx_t ctx;
         fq_nmod_mpoly_t a, b, g, ca, cb, cg, t;
@@ -33,8 +33,10 @@ main(void)
 
         pbits = 1 + n_randint(state, FLINT_BITS);
         pbits = 1 + n_randint(state, pbits);
-        deg = 1 + n_randint(state, 4);
-        fq_nmod_mpoly_ctx_init_rand(ctx, state, 10, pbits, deg);
+        deg = 2 + n_randint(state, 4);
+        fq_nmod_mpoly_ctx_init_rand(ctx, state, 5, pbits, deg);
+
+flint_printf("i = %wd: %wu^%wd\n", i, ctx->fqctx->mod.n, fq_nmod_ctx_degree(ctx->fqctx));
 
         fq_nmod_mpoly_init(g, ctx);
         fq_nmod_mpoly_init(a, ctx);
@@ -44,9 +46,9 @@ main(void)
         fq_nmod_mpoly_init(cg, ctx);
         fq_nmod_mpoly_init(t, ctx);
 
-        len = n_randint(state, 10) + 1;
-        len1 = n_randint(state, 10);
-        len2 = n_randint(state, 10);
+        len = n_randint(state, 30) + 1;
+        len1 = n_randint(state, 30);
+        len2 = n_randint(state, 30);
 
         degbound = 50/(2*ctx->minfo->nvars - 1);
         degbounds = (ulong * ) flint_malloc(ctx->minfo->nvars*sizeof(ulong));
@@ -83,6 +85,14 @@ main(void)
             }
             fq_nmod_mpoly_assert_canonical(g, ctx);
 
+            if (!fq_nmod_mpoly_is_zero(t, ctx) &&
+                !fq_nmod_mpoly_divides(ca, g, t, ctx))
+            {
+                printf("FAIL\n");
+                flint_printf("Check gcd divisor\ni = %wd, j = %wd\n", i ,j);
+                flint_abort();                
+            }
+
             if (fq_nmod_mpoly_is_zero(g, ctx))
             {
                 if (!fq_nmod_mpoly_is_zero(a, ctx) || !fq_nmod_mpoly_is_zero(b, ctx))
@@ -94,7 +104,7 @@ main(void)
                 continue;
             }
 
-            if (!fq_nmod_is_one(g->coeffs + 0, ctx->fqctx))
+            if (!fq_nmod_mpoly_is_monic(g, ctx))
             {
                 printf("FAIL\n");
                 flint_printf("Check gcd is monic\ni = %wd, j = %wd\n", i ,j);

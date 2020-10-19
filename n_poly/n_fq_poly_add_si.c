@@ -12,16 +12,24 @@
 #include "n_poly.h"
 
 
-void n_poly_fq_neg(
-    n_poly_t A,
-    const n_poly_t B,
+void n_fq_poly_add_si(
+    n_fq_poly_t A,
+    const n_fq_poly_t B,
+    slong c,
     const fq_nmod_ctx_t ctx)
 {
     slong d = fq_nmod_ctx_degree(ctx);
-    slong Blen = B->length;
 
-    n_poly_fit_length(A, d*Blen);
-    _nmod_vec_neg(A->coeffs, B->coeffs, d*Blen, ctx->mod);
-    A->length = Blen;
-    _n_poly_fq_normalise(A, d);
+    if (A != B)
+        n_fq_poly_set(A, B, ctx);
+
+    if (A->length < 1)
+    {
+        n_poly_fit_length(A, d);
+        A->length = 1;
+    }
+
+    n_fq_add_si(A->coeffs + d*0, A->coeffs + d*0, c, ctx);
+
+    _n_fq_poly_normalise(A, d);
 }

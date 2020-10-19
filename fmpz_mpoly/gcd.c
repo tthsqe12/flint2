@@ -568,6 +568,7 @@ cleanup:
 }
 
 
+/************************ See if B divides A ********************************/
 static int _try_divides(
     fmpz_mpoly_t G,
     const fmpz_mpoly_t A,

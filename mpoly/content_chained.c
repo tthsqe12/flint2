@@ -13,11 +13,6 @@
 
 void _fmpz_vec_content_chained(fmpz_t res, const fmpz * vec, slong len)
 {
-    while (--len >= 0)
-    {
-        if (fmpz_is_one(res))
-            return;
-
+    while ((--len >= 0) && !fmpz_is_one(res))
         fmpz_gcd(res, res, vec + len);
-    }
 }
