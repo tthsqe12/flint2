@@ -1043,40 +1043,41 @@ void nmod_mpolyu_cvtto_mpolyun(nmod_mpolyun_t A, const nmod_mpolyu_t B,
 
 
 /* put the last variable of B back into A */
-void nmod_mpoly_cvtfrom_mpolyn(nmod_mpoly_t A, const nmod_mpolyn_t B,
-                                         slong var, const nmod_mpoly_ctx_t ctx)
+void nmod_mpoly_cvtfrom_mpolyn(
+    nmod_mpoly_t A,
+    const nmod_mpolyn_t B,
+    slong var,
+    const nmod_mpoly_ctx_t ctx)
 {
-    slong i, j;
-    slong k;
-    slong N;
-    ulong * oneexp;
+    slong i, j, k;
+    slong N = mpoly_words_per_exp_sp(B->bits, ctx->minfo);
+    ulong * genexp;
     TMP_INIT;
 
-    FLINT_ASSERT(B->bits == A->bits);
     FLINT_ASSERT(B->bits <= FLINT_BITS);
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
 
     TMP_START;
 
-    N = mpoly_words_per_exp_sp(B->bits, ctx->minfo);
-    oneexp = (ulong *) TMP_ALLOC(N*sizeof(ulong));
-    mpoly_gen_monomial_sp(oneexp, var, B->bits, ctx->minfo);
+    genexp = (ulong *) TMP_ALLOC(N*sizeof(ulong));
+    mpoly_gen_monomial_sp(genexp, var, B->bits, ctx->minfo);
 
-    nmod_mpoly_fit_length(A, B->length, ctx);
+    nmod_mpoly_fit_length_reset_bits(A, B->length, B->bits, ctx);
 
     k = 0;
     for (i = 0; i < B->length; i++)
     {
-        for (j = (B->coeffs + i)->length - 1; j >= 0; j--)
+        for (j = B->coeffs[i].length - 1; j >= 0; j--)
         {
-            mp_limb_t c = (B->coeffs + i)->coeffs[j];
-            if (c != UWORD(0))
-            {
-                nmod_mpoly_fit_length(A, k + 1, ctx);
-                A->coeffs[k] = c;
-                mpoly_monomial_madd(A->exps + N*k, B->exps + N*i, j, oneexp, N);                
-                k++;
-            }
+            mp_limb_t c = B->coeffs[i].coeffs[j];
+            if (c == 0)
+                continue;
+
+            _nmod_mpoly_fit_length(&A->coeffs, &A->coeffs_alloc,
+                                   &A->exps, &A->exps_alloc, N, k + 1);
+            A->coeffs[k] = c;
+            mpoly_monomial_madd(A->exps + N*k, B->exps + N*i, j, genexp, N);                
+            k++;
         }
     }
 

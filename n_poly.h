@@ -488,14 +488,20 @@ FLINT_DLL void n_poly_mod_scalar_addmul_nmod(
     mp_limb_t d0,
     nmod_t ctx);
 
+FLINT_DLL mp_limb_t _n_poly_eval_pow(n_poly_t P, n_poly_t alphapow, int nlimbs,
+                                                                   nmod_t ctx);
+
+FLINT_DLL mp_limb_t n_poly_mod_eval_pow(n_poly_t P, n_poly_t alphapow,
+                                                                   nmod_t ctx);
+
 FLINT_DLL void n_poly_mod_eval2_pow(mp_limb_t * vp, mp_limb_t * vm,
-                              const n_poly_t P, n_poly_t alphapow, nmod_t mod);
+                              const n_poly_t P, n_poly_t alphapow, nmod_t ctx);
 
 FLINT_DLL mp_limb_t n_poly_mod_div_root(n_poly_t Q, 
                                     const n_poly_t A, mp_limb_t c, nmod_t ctx);
 
 N_POLY_INLINE
-void _n_poly_mod_mul(n_poly_t A, const n_poly_t B, const n_poly_t C, nmod_t mod)
+void _n_poly_mod_mul(n_poly_t A, const n_poly_t B, const n_poly_t C, nmod_t ctx)
 {
     slong Blen = B->length;
     slong Clen = C->length;
@@ -504,7 +510,7 @@ void _n_poly_mod_mul(n_poly_t A, const n_poly_t B, const n_poly_t C, nmod_t mod)
     FLINT_ASSERT(A != B);
     FLINT_ASSERT(A != C);
 
-    if (Clen <= 0 || Blen <= 0)
+    if (Clen < 1 || Blen < 1)
     {
         A->length = 0;
         return;
@@ -514,9 +520,9 @@ void _n_poly_mod_mul(n_poly_t A, const n_poly_t B, const n_poly_t C, nmod_t mod)
     A->length = Alen;
 
     if (Blen >= Clen)
-        _nmod_poly_mul(A->coeffs, B->coeffs, Blen, C->coeffs, Clen, mod);
+        _nmod_poly_mul(A->coeffs, B->coeffs, Blen, C->coeffs, Clen, ctx);
     else
-        _nmod_poly_mul(A->coeffs, C->coeffs, Clen, B->coeffs, Blen, mod);
+        _nmod_poly_mul(A->coeffs, C->coeffs, Clen, B->coeffs, Blen, ctx);
 }
 
 N_POLY_INLINE

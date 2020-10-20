@@ -588,190 +588,6 @@ cleanup:
     return success;
 }
 
-static int _try_zippel2(
-    nmod_mpoly_t G,
-    nmod_mpoly_t Abar,
-    nmod_mpoly_t Bbar,
-    const nmod_mpoly_t A,
-    const nmod_mpoly_t B,
-    const mpoly_gcd_info_t I,
-    const nmod_mpoly_ctx_t ctx)
-{
-    slong i, k;
-    slong m = I->mvars;
-    int success;
-    flint_bitcnt_t wbits;
-    nmod_mpoly_ctx_t uctx;
-    nmod_mpolyu_t Auu, Buu, Guu, Abaruu, Bbaruu;
-    nmod_mpoly_t Ac, Bc, Gc, Abarc, Bbarc, Gamma;
-    slong * tmp, * Guu_degs, * Auu_degs, * Buu_degs, * Gamma_degs, * Gguess;
-    slong max_minor_degree;
-
-    FLINT_ASSERT(A->bits <= FLINT_BITS);
-    FLINT_ASSERT(B->bits <= FLINT_BITS);
-    FLINT_ASSERT(A->length > 0);
-    FLINT_ASSERT(B->length > 0);
-
-    if (!I->can_use_bma)
-        return 0;
-
-    FLINT_ASSERT(m >= WORD(3));
-
-    tmp = FLINT_ARRAY_ALLOC(5*m, slong);
-    Auu_degs   = tmp + 1*m;
-    Buu_degs   = tmp + 2*m;
-    Gamma_degs = tmp + 3*m;
-    Guu_degs   = tmp + 4*m;
-
-    /* uctx is context for Fp[y_2,...,y_{m - 1}]*/
-    nmod_mpoly_ctx_init(uctx, m - 2, ORD_LEX, ctx->ffinfo->mod.n);
-
-    max_minor_degree = 0;
-    for (i = 2; i < m; i++)
-    {
-        k = I->bma_perm[i];
-
-        Guu_degs[i - 2] = I->Gdeflate_deg_bound[k];
-
-        Auu_degs[i - 2] = I->Adeflate_deg[k];
-        max_minor_degree = FLINT_MAX(max_minor_degree, Auu_degs[i - 2]);
-
-        Buu_degs[i - 2] = I->Bdeflate_deg[k];
-        max_minor_degree = FLINT_MAX(max_minor_degree, Buu_degs[i - 2]);
-    }
-
-    wbits = 1 + FLINT_BIT_COUNT(max_minor_degree);
-    wbits = mpoly_fix_bits(wbits, uctx->minfo);
-    FLINT_ASSERT(wbits <= FLINT_BITS);
-
-    nmod_mpolyu_init(Auu, wbits, uctx);
-    nmod_mpolyu_init(Buu, wbits, uctx);
-    nmod_mpolyu_init(Guu, wbits, uctx);
-    nmod_mpolyu_init(Abaruu, wbits, uctx);
-    nmod_mpolyu_init(Bbaruu, wbits, uctx);
-    nmod_mpoly_init3(Ac, 0, wbits, uctx);
-    nmod_mpoly_init3(Bc, 0, wbits, uctx);
-    nmod_mpoly_init3(Gc, 0, wbits, uctx);
-    nmod_mpoly_init3(Abarc, 0, wbits, uctx);
-    nmod_mpoly_init3(Bbarc, 0, wbits, uctx);
-    nmod_mpoly_init3(Gamma, 0, wbits, uctx);
-
-    nmod_mpoly_to_mpolyuu_perm_deflate_threaded_pool(Auu, uctx, A, ctx,
-                   I->bma_perm, I->Amin_exp, I->Gstride, I->Amax_exp, NULL, 0);
-    nmod_mpoly_to_mpolyuu_perm_deflate_threaded_pool(Buu, uctx, B, ctx,
-                   I->bma_perm, I->Bmin_exp, I->Gstride, I->Bmax_exp, NULL, 0);
-
-    success = nmod_mpolyu_content_mpoly_threaded_pool(Ac, Auu, uctx, NULL, 0);
-    success = success &&
-              nmod_mpolyu_content_mpoly_threaded_pool(Bc, Buu, uctx, NULL, 0);
-    success = success &&
-              _nmod_mpoly_gcd_cofactors_threaded_pool(Gc, wbits, Abarc, wbits,
-                                          Bbarc, wbits, Ac, Bc, uctx, NULL, 0);
-    if (!success)
-        goto cleanup;
-
-    nmod_mpoly_degrees_si(tmp, Ac, uctx);
-    for (i = 0; i < m - 2; i++)
-        Auu_degs[i] -= tmp[i];
-
-    nmod_mpolyu_divexact_mpoly_inplace(Auu, Ac, uctx);
-
-    nmod_mpoly_degrees_si(tmp, Bc, uctx);
-    for (i = 0; i < m - 2; i++)
-        Buu_degs[i] -= tmp[i];
-
-    nmod_mpolyu_divexact_mpoly_inplace(Buu, Bc, uctx);
-
-    nmod_mpoly_degrees_si(tmp, Gc, uctx);
-    for (i = 0; i < m - 2; i++)
-        Guu_degs[i] -= tmp[i];
-
-    FLINT_ASSERT(Auu->bits == wbits);
-    FLINT_ASSERT(Buu->bits == wbits);
-    FLINT_ASSERT(Auu->length > 1);
-    FLINT_ASSERT(Buu->length > 1);
-    FLINT_ASSERT(Ac->bits == wbits);
-    FLINT_ASSERT(Bc->bits == wbits);
-
-    success = _nmod_mpoly_gcd_threaded_pool(Gamma, wbits, Auu->coeffs + 0,
-                                               Buu->coeffs + 0, uctx, NULL, 0);
-    if (!success)
-        goto cleanup;
-
-    nmod_mpoly_degrees_si(Gamma_degs, Gamma, uctx);
-
-    /* Auu*Gamma and Buu*Gamma must not overflow */
-    for (i = 0; i < m - 2; i++)
-    {
-        ulong this_deg = (ulong) Gamma_degs[i] + FLINT_MAX(Auu_degs[i], Buu_degs[i]);
-        if ((FLINT_BIT_COUNT(this_deg)) >= wbits)
-        {
-            wbits = mpoly_fix_bits(wbits + 1, uctx->minfo);
-            if (wbits > FLINT_BITS)
-            {
-                success = 0;
-                goto cleanup;
-            }
-
-            nmod_mpolyu_repack_bits_inplace(Guu, wbits, uctx);
-            nmod_mpolyu_repack_bits_inplace(Abaruu, wbits, uctx);
-            nmod_mpolyu_repack_bits_inplace(Bbaruu, wbits, uctx);
-            nmod_mpolyu_repack_bits_inplace(Auu, wbits, uctx);
-            nmod_mpolyu_repack_bits_inplace(Buu, wbits, uctx);
-            nmod_mpoly_repack_bits_inplace(Gamma, wbits, uctx);
-            nmod_mpoly_repack_bits_inplace(Gc, wbits, uctx);
-            nmod_mpoly_repack_bits_inplace(Abarc, wbits, uctx);
-            nmod_mpoly_repack_bits_inplace(Bbarc, wbits, uctx);
-            break;
-        }
-    }
-
-    Gguess = I->Gdeflate_deg_bounds_are_nice ? Guu_degs : NULL;
-
-    success = nmod_mpolyuu_gcd_zippel_smprime(Guu, Gguess, Abaruu, Bbaruu,
-                        Auu, Auu_degs, Buu, Buu_degs, Gamma, Gamma_degs, uctx);
-    if (!success)
-    {
-        success = nmod_mpolyuu_gcd_zippel_lgprime(Guu, Gguess, Abaruu, Bbaruu,
-                        Auu, Auu_degs, Buu, Buu_degs, Gamma, Gamma_degs, uctx);
-        if (!success)
-            goto cleanup;
-    }
-
-
-    nmod_mpolyu_mul_mpoly_inplace(Guu, Gc, uctx);
-    nmod_mpolyu_mul_mpoly_inplace(Abaruu, Abarc, uctx);
-    nmod_mpolyu_mul_mpoly_inplace(Bbaruu, Bbarc, uctx);
-
-    nmod_mpoly_from_mpolyuu_perm_inflate(G, I->Gbits, ctx, Guu, uctx,
-                                         I->bma_perm, I->Gmin_exp, I->Gstride);
-    nmod_mpoly_from_mpolyuu_perm_inflate(Abar, I->Abarbits, ctx, Abaruu, uctx,
-                                      I->bma_perm, I->Abarmin_exp, I->Gstride);
-    nmod_mpoly_from_mpolyuu_perm_inflate(Bbar, I->Bbarbits, ctx, Bbaruu, uctx,
-                                      I->bma_perm, I->Bbarmin_exp, I->Gstride);
-    success = 1;
-
-cleanup:
-
-    nmod_mpolyu_clear(Auu, uctx);
-    nmod_mpolyu_clear(Buu, uctx);
-    nmod_mpolyu_clear(Guu, uctx);
-    nmod_mpolyu_clear(Abaruu, uctx);
-    nmod_mpolyu_clear(Bbaruu, uctx);
-    nmod_mpoly_clear(Ac, uctx);
-    nmod_mpoly_clear(Bc, uctx);
-    nmod_mpoly_clear(Gc, uctx);
-    nmod_mpoly_clear(Abarc, uctx);
-    nmod_mpoly_clear(Bbarc, uctx);
-    nmod_mpoly_clear(Gamma, uctx);
-
-    nmod_mpoly_ctx_clear(uctx);
-
-    flint_free(tmp);
-
-    return success;
-}
-
 
 /*********************** Hit A and B with brown ******************************/
 typedef struct
@@ -1231,8 +1047,6 @@ calculate_trivial_gcd:
         {
             if (_try_zippel3(G, Abar, Bbar, A, B, I, ctx))
                 goto successful;
-            if (_try_zippel2(G, Abar, Bbar, A, B, I, ctx))
-                goto successful;
             if (_try_zippel(G, Abar, Bbar, A, B, I, ctx))
                 goto successful;
             if (_try_brown(G, Abar, Bbar, A, B, I, ctx, handles, num_handles))
@@ -1241,8 +1055,6 @@ calculate_trivial_gcd:
         else
         {
             if (_try_zippel3(G, Abar, Bbar, A, B, I, ctx))
-                goto successful;
-            if (_try_zippel2(G, Abar, Bbar, A, B, I, ctx))
                 goto successful;
             if (_try_brown(G, Abar, Bbar, A, B, I, ctx, handles, num_handles))
                 goto successful;

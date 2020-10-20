@@ -11,7 +11,6 @@
 
 #include "nmod_mpoly_factor.h"
 
-
 static int _hlift_quartic2(
     slong m,
     nmod_mpoly_struct * f,

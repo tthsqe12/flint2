@@ -43,10 +43,6 @@ void fq_nmod_mpoly_evals(
     mp_limb_t * t = FLINT_ARRAY_ALLOC(2*d, mp_limb_t);
     mp_limb_t * meval = t + d;
 
-    offsets = FLINT_ARRAY_ALLOC(2*nvars, slong);
-    shifts = offsets + nvars;
-    varexps = FLINT_ARRAY_ALLOC(nvars, ulong);
-    caches = FLINT_ARRAY_ALLOC(3*nvars, n_poly_struct);
     for (j = 0; j < nvars; j++)
     {
         mpoly_gen_offset_shift_sp(offsets + j, shifts + j, j, A->bits,

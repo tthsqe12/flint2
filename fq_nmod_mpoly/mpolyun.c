@@ -764,23 +764,20 @@ void fq_nmod_mpoly_cvtfrom_mpolyn(
     const fq_nmod_mpoly_ctx_t ctx)
 {
     slong d = fq_nmod_ctx_degree(ctx->fqctx);
-    slong i, j;
-    slong k;
-    slong N;
-    ulong * oneexp;
+    slong i, j, k;
+    slong N = mpoly_words_per_exp_sp(B->bits, ctx->minfo);
+    ulong * genexp;
     TMP_INIT;
 
-    FLINT_ASSERT(B->bits == A->bits);
     FLINT_ASSERT(B->bits <= FLINT_BITS);
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
 
     TMP_START;
 
-    N = mpoly_words_per_exp_sp(B->bits, ctx->minfo);
-    oneexp = (ulong *) TMP_ALLOC(N*sizeof(ulong));
-    mpoly_gen_monomial_sp(oneexp, var, B->bits, ctx->minfo);
+    genexp = (ulong *) TMP_ALLOC(N*sizeof(ulong));
+    mpoly_gen_monomial_sp(genexp, var, B->bits, ctx->minfo);
 
-    fq_nmod_mpoly_fit_length(A, B->length, ctx);
+    fq_nmod_mpoly_fit_length_reset_bits(A, B->length, B->bits, ctx);
 
     k = 0;
     for (i = 0; i < B->length; i++)
@@ -790,9 +787,11 @@ void fq_nmod_mpoly_cvtfrom_mpolyn(
             if (_n_fq_is_zero(B->coeffs[i].coeffs + d*j, d))
                 continue;
 
-            fq_nmod_mpoly_fit_length(A, k + 1, ctx);
+            _fq_nmod_mpoly_fit_length(&A->coeffs, &A->coeffs_alloc, d,
+                                      &A->exps, &A->exps_alloc, N, k + 1);
+
             _n_fq_set(A->coeffs + d*k, B->coeffs[i].coeffs + d*j, d);
-            mpoly_monomial_madd(A->exps + N*k, B->exps + N*i, j, oneexp, N);                
+            mpoly_monomial_madd(A->exps + N*k, B->exps + N*i, j, genexp, N);                
             k++;
         }
     }

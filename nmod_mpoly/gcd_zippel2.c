@@ -21,22 +21,18 @@ int nmod_mpoly_gcd_zippel2(
     int success;
     flint_bitcnt_t wbits = FLINT_MAX(A->bits, B->bits);
     slong i, m = ctx->minfo->nvars;
-    nmod_mpoly_ctx_t uctx;
-    nmod_mpolyu_t Auu, Buu, Guu, Abaruu, Bbaruu;
-    nmod_mpoly_t Ac, Bc, Gc, Gamma;
+    nmod_mpoly_ctx_t lctx;
+    nmod_mpoly_t Al, Bl, Gl, Abarl, Bbarl;
+    nmod_mpoly_t Ac, Bc, Gc, Gamma, Al_lc, Bl_lc;
     slong * perm, * A_degs, * B_degs, * Gamma_degs;
     ulong * shift, * stride;
 
     if (nmod_mpoly_is_zero(A, ctx))
     {
         if (nmod_mpoly_is_zero(B, ctx))
-        {
             nmod_mpoly_zero(G, ctx);
-        }
         else
-        {
             nmod_mpoly_make_monic(G, B, ctx);
-        }
         return 1;
     }
 
@@ -63,16 +59,18 @@ int nmod_mpoly_gcd_zippel2(
     B_degs = FLINT_ARRAY_ALLOC(m, slong);
     Gamma_degs = FLINT_ARRAY_ALLOC(m, slong);
 
-    nmod_mpoly_ctx_init(uctx, m - 2, ORD_LEX, ctx->ffinfo->mod.n);
-    nmod_mpolyu_init(Auu, wbits, uctx);
-    nmod_mpolyu_init(Buu, wbits, uctx);
-    nmod_mpolyu_init(Guu, wbits, uctx);
-    nmod_mpolyu_init(Abaruu, wbits, uctx);
-    nmod_mpolyu_init(Bbaruu, wbits, uctx);
-    nmod_mpoly_init3(Ac, 0, wbits, uctx);
-    nmod_mpoly_init3(Bc, 0, wbits, uctx);
-    nmod_mpoly_init3(Gc, 0, wbits, uctx);
-    nmod_mpoly_init3(Gamma, 0, wbits, uctx);
+    nmod_mpoly_ctx_init(lctx, m, ORD_LEX, ctx->ffinfo->mod.n);
+    nmod_mpoly_init3(Al, 0, wbits, lctx);
+    nmod_mpoly_init3(Bl, 0, wbits, lctx);
+    nmod_mpoly_init3(Gl, 0, wbits, lctx);
+    nmod_mpoly_init3(Abarl, 0, wbits, lctx);
+    nmod_mpoly_init3(Bbarl, 0, wbits, lctx);
+    nmod_mpoly_init3(Ac, 0, wbits, lctx);
+    nmod_mpoly_init3(Bc, 0, wbits, lctx);
+    nmod_mpoly_init3(Gc, 0, wbits, lctx);
+    nmod_mpoly_init3(Gamma, 0, wbits, lctx);
+    nmod_mpoly_init3(Al_lc, 0, wbits, lctx);
+    nmod_mpoly_init3(Bl_lc, 0, wbits, lctx);
 
     nmod_mpoly_degrees_si(A_degs, A, ctx);
     nmod_mpoly_degrees_si(B_degs, B, ctx);
@@ -92,90 +90,62 @@ int nmod_mpoly_gcd_zippel2(
         stride[i] = 1;
     }
 
-    nmod_mpoly_to_mpolyuu_perm_deflate_threaded_pool(Auu, uctx, A, ctx,
-                                           perm, shift, stride, NULL, NULL, 0);
-    nmod_mpoly_to_mpolyuu_perm_deflate_threaded_pool(Buu, uctx, B, ctx,
-                                           perm, shift, stride, NULL, NULL, 0);
+    nmod_mpoly_to_mpolyl_perm_deflate(Al, lctx, A, ctx, perm, shift, stride);
+    nmod_mpoly_to_mpolyl_perm_deflate(Bl, lctx, B, ctx, perm, shift, stride);
 
-    success = nmod_mpolyu_content_mpoly_threaded_pool(Ac, Auu, uctx, NULL, 0) &&
-              nmod_mpolyu_content_mpoly_threaded_pool(Bc, Buu, uctx, NULL, 0) &&
-              _nmod_mpoly_gcd_threaded_pool(Gc, wbits, Ac, Bc, uctx, NULL, 0);
+    success = nmod_mpolyl_content(Ac, Al, 2, lctx) &&
+              nmod_mpolyl_content(Bc, Bl, 2, lctx) &&
+              nmod_mpoly_gcd(Gc, Ac, Bc, lctx);
     if (!success)
         goto cleanup;
 
-    nmod_mpolyu_divexact_mpoly_inplace(Auu, Ac, uctx);
-    nmod_mpolyu_divexact_mpoly_inplace(Buu, Bc, uctx);
+    nmod_mpoly_divides(Al, Al, Ac, lctx);
+    nmod_mpoly_divides(Bl, Bl, Bc, lctx);
 
-    FLINT_ASSERT(Auu->bits == wbits);
-    FLINT_ASSERT(Buu->bits == wbits);
-    FLINT_ASSERT(Auu->length > 0);
-    FLINT_ASSERT(Buu->length > 0);
-    FLINT_ASSERT(Ac->bits == wbits);
-    FLINT_ASSERT(Bc->bits == wbits);
-
-    success = _nmod_mpoly_gcd_threaded_pool(Gamma, wbits, Auu->coeffs + 0,
-                                               Buu->coeffs + 0, uctx, NULL, 0);
+    nmod_mpoly_repack_bits_inplace(Al, wbits, lctx);
+    nmod_mpoly_repack_bits_inplace(Bl, wbits, lctx);
+    nmod_mpolyl_lead_coeff(Al_lc, Al, 2, lctx);
+    nmod_mpolyl_lead_coeff(Bl_lc, Bl, 2, lctx);
+    success = nmod_mpoly_gcd(Gamma, Al_lc, Bl_lc, lctx);
     if (!success)
         goto cleanup;
+    nmod_mpoly_repack_bits_inplace(Gamma, wbits, lctx);
 
-    nmod_mpoly_degrees_si(Gamma_degs, Gamma, uctx);
-    nmod_mpolyu_degrees_si(A_degs, Auu, uctx);
-    nmod_mpolyu_degrees_si(B_degs, Buu, uctx);
+    nmod_mpoly_degrees_si(Gamma_degs, Gamma, lctx);
+    nmod_mpoly_degrees_si(A_degs, Al, lctx);
+    nmod_mpoly_degrees_si(B_degs, Bl, lctx);
 
-    for (i = 0; i < m - 2; i++)
-    {
-        ulong this_deg = (ulong) Gamma_degs[i] + FLINT_MAX(A_degs[i], B_degs[i]);
-        if ((FLINT_BIT_COUNT(this_deg)) >= wbits)
-        {
-            wbits = mpoly_fix_bits(wbits + 1, uctx->minfo);
-            if (wbits > FLINT_BITS)
-            {
-                success = 0;
-                goto cleanup;
-            }
-
-            nmod_mpolyu_repack_bits_inplace(Guu, wbits, uctx);
-            nmod_mpolyu_repack_bits_inplace(Abaruu, wbits, uctx);
-            nmod_mpolyu_repack_bits_inplace(Bbaruu, wbits, uctx);
-            nmod_mpolyu_repack_bits_inplace(Auu, wbits, uctx);
-            nmod_mpolyu_repack_bits_inplace(Buu, wbits, uctx);
-            nmod_mpoly_repack_bits_inplace(Gamma, wbits, uctx);
-            nmod_mpoly_repack_bits_inplace(Gc, wbits, uctx);
-
-            break;
-        }
-    }
-
-    success = nmod_mpolyuu_gcd_zippel_smprime(Guu, NULL, Abaruu, Bbaruu,
-                            Auu, A_degs, Buu, B_degs, Gamma, Gamma_degs, uctx);
+    success = nmod_mpolyl_gcd_zippel_smprime(Gl, NULL, Abarl, Bbarl,
+                              Al, A_degs, Bl, B_degs, Gamma, Gamma_degs, lctx);
     if (!success)
     {
-        success = nmod_mpolyuu_gcd_zippel_lgprime(Guu, NULL, Abaruu, Bbaruu,
-                            Auu, A_degs, Buu, B_degs, Gamma, Gamma_degs, uctx);
+        success = nmod_mpolyl_gcd_zippel_lgprime(Gl, NULL, Abarl, Bbarl,
+                              Al, A_degs, Bl, B_degs, Gamma, Gamma_degs, lctx);
         if (!success)
             goto cleanup;
     }
 
-    nmod_mpolyu_mul_mpoly_inplace(Guu, Gc, uctx);
+    nmod_mpoly_mul(Gl, Gl, Gc, lctx);
 
-    nmod_mpoly_from_mpolyuu_perm_inflate(G, wbits, ctx, Guu, uctx,
-                                                          perm, shift, stride);
+    nmod_mpoly_from_mpolyl_perm_inflate(G, wbits, ctx, Gl, lctx, perm, shift, stride);
     success = 1;
 
     nmod_mpoly_make_monic(G, G, ctx);
 
 cleanup:
 
-    nmod_mpolyu_clear(Auu, uctx);
-    nmod_mpolyu_clear(Buu, uctx);
-    nmod_mpolyu_clear(Guu, uctx);
-    nmod_mpolyu_clear(Abaruu, uctx);
-    nmod_mpolyu_clear(Bbaruu, uctx);
-    nmod_mpoly_clear(Ac, uctx);
-    nmod_mpoly_clear(Bc, uctx);
-    nmod_mpoly_clear(Gc, uctx);
-    nmod_mpoly_clear(Gamma, uctx);
-    nmod_mpoly_ctx_clear(uctx);
+    nmod_mpoly_clear(Al, lctx);
+    nmod_mpoly_clear(Bl, lctx);
+    nmod_mpoly_clear(Gl, lctx);
+    nmod_mpoly_clear(Abarl, lctx);
+    nmod_mpoly_clear(Bbarl, lctx);
+    nmod_mpoly_clear(Ac, lctx);
+    nmod_mpoly_clear(Bc, lctx);
+    nmod_mpoly_clear(Gc, lctx);
+    nmod_mpoly_clear(Gamma, lctx);
+    nmod_mpoly_clear(Al_lc, lctx);
+    nmod_mpoly_clear(Bl_lc, lctx);
+    nmod_mpoly_ctx_clear(lctx);
     flint_free(perm);
     flint_free(shift);
     flint_free(stride);

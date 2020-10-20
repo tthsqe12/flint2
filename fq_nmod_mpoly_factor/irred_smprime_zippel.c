@@ -309,7 +309,6 @@ int fq_nmod_zip_find_coeffs_new_fq_nmod(
         _n_fq_mul(S, S, r, ctx, tmp);
         if (_n_fq_is_zero(S, d))
         {
-flint_printf("fail 1\n");
             success = -1;
             goto cleanup;
         }
@@ -341,7 +340,6 @@ flint_printf("fail 1\n");
         _n_fq_set(V, V0, d);
         if (!_n_fq_equal(V, evals + d*i, d))
         {
-flint_printf("fail 2\n");
             success = 0;
             goto cleanup;
         }

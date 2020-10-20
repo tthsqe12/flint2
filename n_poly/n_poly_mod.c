@@ -990,6 +990,36 @@ ulong n_poly_mod_remove(n_poly_t f, const n_poly_t p, nmod_t ctx)
     return i;
 }
 
+mp_limb_t _n_poly_eval_pow(n_poly_t P, n_poly_t alphapow, int nlimbs, nmod_t ctx)
+{
+    mp_limb_t * Pcoeffs = P->coeffs;
+    slong Plen = P->length;
+    mp_limb_t * alpha_powers = alphapow->coeffs;
+    mp_limb_t res;
+    slong k;
+
+    if (Plen > alphapow->length)
+    {
+        slong oldlength = alphapow->length;
+        FLINT_ASSERT(2 <= oldlength);
+        n_poly_fit_length(alphapow, Plen);
+        alphapow->length = Plen;
+        alpha_powers = alphapow->coeffs;
+        for (k = oldlength; k < Plen; k++)
+            alpha_powers[k] = nmod_mul(alpha_powers[k - 1], alpha_powers[1], ctx);
+    }
+
+    NMOD_VEC_DOT(res, k, Plen, Pcoeffs[k], alpha_powers[k], ctx, nlimbs);
+
+    return res;
+}
+
+mp_limb_t n_poly_mod_eval_pow(n_poly_t P, n_poly_t alphapow, nmod_t ctx)
+{
+    int nlimbs = _nmod_vec_dot_bound_limbs(P->length, ctx);
+    return _n_poly_eval_pow(P, alphapow, nlimbs, ctx);
+}
+
 void n_poly_mod_eval2_pow(
     mp_limb_t * vp,
     mp_limb_t * vm,

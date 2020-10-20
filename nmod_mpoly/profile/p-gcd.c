@@ -252,6 +252,10 @@ int main(int argc, char *argv[])
         nmod_mpoly_mul(a, a, t, ctx);
         nmod_mpoly_mul(b, b, t, ctx);
 
+flint_printf("a length: %wd\n", a->length);
+flint_printf("b length: %wd\n", b->length);
+flint_printf("t length: %wd\n", t->length);
+
         timeit_start(timer);
         nmod_mpoly_gcd(g, a, b, ctx);
         timeit_stop(timer);

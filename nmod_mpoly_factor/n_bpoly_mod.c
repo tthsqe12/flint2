@@ -233,9 +233,14 @@ void n_bpoly_mod_make_primitive(n_poly_t g, n_bpoly_t A, nmod_t ctx)
     n_poly_clear(r);
 }
 
-
-void n_bpoly_mod_mul(n_bpoly_t A, const n_bpoly_t B, const n_bpoly_t C,
-                                                                    nmod_t mod)
+/*
+    multiplication in F[y][x]
+*/
+void n_bpoly_mod_mul(
+    n_bpoly_t A,
+    const n_bpoly_t B,
+    const n_bpoly_t C,
+    nmod_t ctx)
 {
     slong i, j;
     n_poly_struct * t;
@@ -243,9 +248,46 @@ void n_bpoly_mod_mul(n_bpoly_t A, const n_bpoly_t B, const n_bpoly_t C,
     FLINT_ASSERT(A != B);
     FLINT_ASSERT(A != C);
 
-    if (B->length <= 0 || C->length <= 0)
+    if (B->length < 1 || C->length < 1)
     {
         A->length = 0;
+        return;
+    }
+
+    if (B->length > 2 && C->length > 2)
+    {
+        n_poly_t a, b, c;
+        slong order = n_bpoly_degree1(B) + n_bpoly_degree1(C) + 1;
+
+        n_poly_init(a);
+        n_poly_init(b);
+        n_poly_init(c);
+
+        for (i = B->length - 1; i >= 0; i--)
+        {
+            n_poly_struct * Bi = B->coeffs + i;
+            for (j = Bi->length - 1; j >= 0; j--)
+                n_poly_set_coeff(b, order*i + j, Bi->coeffs[j]);
+        }
+
+        for (i = C->length - 1; i >= 0; i--)
+        {
+            n_poly_struct * Ci = C->coeffs + i;
+            for (j = Ci->length - 1; j >= 0; j--)
+                n_poly_set_coeff(c, order*i + j, Ci->coeffs[j]);
+        }
+
+        n_poly_mod_mul(a, b, c, ctx);
+
+        for (i = B->length + C->length - 1; i >= 0; i--)
+        {
+            for (j = order - 1; j >= 0; j--)
+                n_bpoly_set_coeff(A, i, j, n_poly_get_coeff(a, order*i + j));
+        }
+
+        n_poly_clear(a);
+        n_poly_clear(b);
+        n_poly_clear(c);
         return;
     }
 
@@ -259,8 +301,8 @@ void n_bpoly_mod_mul(n_bpoly_t A, const n_bpoly_t B, const n_bpoly_t C,
     {
         for (j = 0; j < C->length; j++)
         {
-            _n_poly_mod_mul(t, B->coeffs + i, C->coeffs + j, mod);
-            n_poly_mod_add(A->coeffs + i + j, A->coeffs + i + j, t, mod);
+            _n_poly_mod_mul(t, B->coeffs + i, C->coeffs + j, ctx);
+            n_poly_mod_add(A->coeffs + i + j, A->coeffs + i + j, t, ctx);
         }
     }
 
@@ -269,14 +311,65 @@ void n_bpoly_mod_mul(n_bpoly_t A, const n_bpoly_t B, const n_bpoly_t C,
 }
 
 
-void n_bpoly_mod_mul_series(n_bpoly_t A, const n_bpoly_t B, const n_bpoly_t C,
-                                                       slong order, nmod_t mod)
+/*
+    multiplication in (F[y]/y^order)[x]
+        B, C need not be reduced mod y^order
+        A should come out reduced mod y^order
+*/
+void n_bpoly_mod_mul_series(
+    n_bpoly_t A,
+    const n_bpoly_t B,
+    const n_bpoly_t C,
+    slong order,
+    nmod_t ctx)
 {
     slong i, j;
     n_poly_t t;
 
     FLINT_ASSERT(A != B);
     FLINT_ASSERT(A != C);
+
+    if (B->length < 1 || C->length < 1)
+    {
+        A->length = 0;
+        return;
+    }
+
+    if (B->length > 2 && C->length > 2)
+    {
+        n_poly_t a, b, c;
+
+        n_poly_init(a);
+        n_poly_init(b);
+        n_poly_init(c);
+
+        for (i = B->length - 1; i >= 0; i--)
+        {
+            n_poly_struct * Bi = B->coeffs + i;
+            for (j = FLINT_MIN(order, Bi->length) - 1; j >= 0; j--)
+                n_poly_set_coeff(b, 2*order*i + j, Bi->coeffs[j]);
+        }
+
+        for (i = C->length - 1; i >= 0; i--)
+        {
+            n_poly_struct * Ci = C->coeffs + i;
+            for (j = FLINT_MIN(order, Ci->length) - 1; j >= 0; j--)
+                n_poly_set_coeff(c, 2*order*i + j, Ci->coeffs[j]);
+        }
+
+        n_poly_mod_mul(a, b, c, ctx);
+
+        for (i = B->length + C->length - 1; i >= 0; i--)
+        {
+            for (j = order - 1; j >= 0; j--)
+                n_bpoly_set_coeff(A, i, j, n_poly_get_coeff(a, 2*order*i + j));
+        }
+
+        n_poly_clear(a);
+        n_poly_clear(b);
+        n_poly_clear(c);
+        return;
+    }
 
     n_poly_init(t);
 
@@ -288,8 +381,8 @@ void n_bpoly_mod_mul_series(n_bpoly_t A, const n_bpoly_t B, const n_bpoly_t C,
     {
         for (j = 0; j < C->length; j++)
         {
-            n_poly_mod_mullow(t, B->coeffs + i, C->coeffs + j, order, mod);
-            n_poly_mod_add(A->coeffs + i + j, A->coeffs + i + j, t, mod);
+            n_poly_mod_mullow(t, B->coeffs + i, C->coeffs + j, order, ctx);
+            n_poly_mod_add(A->coeffs + i + j, A->coeffs + i + j, t, ctx);
         }
     }
 
@@ -301,8 +394,11 @@ void n_bpoly_mod_mul_series(n_bpoly_t A, const n_bpoly_t B, const n_bpoly_t C,
 
 
 /*
-    division in ((Z/nZ)[y]/y^order)[x]
-    inputs need not be reduced mod y^order
+    division in (F[y]/y^order)[x]
+        A, B need not be reduced mod y^order
+        Q, R should come out reduced mod y^order
+
+    TODO: make this faster
 */
 void n_bpoly_mod_divrem_series(
     n_bpoly_t Q,
@@ -365,7 +461,9 @@ void n_bpoly_mod_divrem_series(
     n_poly_clear(t);
 }
 
-
+/*
+    divisibility in F[y][x]
+*/
 int n_bpoly_mod_divides(
     n_bpoly_t Q,
     const n_bpoly_t A,
@@ -381,9 +479,80 @@ int n_bpoly_mod_divides(
     FLINT_ASSERT(Q != B);
     FLINT_ASSERT(B->length > 0);
 
+    /* ksub not faster :( */
+    if (0 && A->length > B->length && B->length > 2)
+    {
+        n_poly_t a, b, q, r;
+        slong j;
+        slong Adeg = n_bpoly_degree1(A);
+        slong Bdeg = n_bpoly_degree1(B);
+        slong Qdeg = Adeg - Bdeg;
+        slong order = Adeg + 1;
+
+        if (Qdeg < 0)
+            return 0;
+
+        n_poly_init(a);
+        n_poly_init(b);
+        n_poly_init(q);
+        n_poly_init(r);
+
+        for (i = B->length - 1; i >= 0; i--)
+        {
+            n_poly_struct * Bi = B->coeffs + i;
+            for (j = Bi->length - 1; j >= 0; j--)
+                n_poly_set_coeff(b, order*i + j, Bi->coeffs[j]);
+        }
+
+        for (i = A->length - 1; i >= 0; i--)
+        {
+            n_poly_struct * Ai = A->coeffs + i;
+            for (j = Ai->length - 1; j >= 0; j--)
+                n_poly_set_coeff(a, order*i + j, Ai->coeffs[j]);
+        }
+
+        n_poly_mod_divrem(q, r, a, b, ctx);
+
+        if (r->length > 0 ||
+            q->length - 1 < order*(A->length - B->length) ||
+            q->length - 1 > Qdeg + order*(A->length - B->length))
+        {
+            divides = 0;
+            goto cleanup_inner;
+        }
+
+        for (i = A->length - B->length; i >= 0; i--)
+        {
+            for (j = order - 1; j >= 0; j--)
+            {
+                mp_limb_t qc = n_poly_get_coeff(q, order*i + j);
+                if (qc == 0)
+                    continue;
+
+                if (j > Qdeg)
+                {
+                    divides = 0;
+                    goto cleanup_inner;
+                }
+                n_bpoly_set_coeff(Q, i, j, qc);
+            }
+        }
+
+        divides = 1;
+
+    cleanup_inner:
+
+        n_poly_clear(a);
+        n_poly_clear(b);
+        n_poly_clear(q);
+        n_poly_clear(r);
+        return divides;
+    }
+
     n_poly_init(q);
     n_poly_init(t);
     n_bpoly_init(R);
+
     n_bpoly_set(R, A);
 
     Q->length = 0;

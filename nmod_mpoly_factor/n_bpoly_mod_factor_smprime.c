@@ -67,12 +67,26 @@ static void n_bpoly_mod_eval(
     nmod_t ctx)
 {
     slong i;
+    n_poly_t alphapow;
+
     nmod_poly_zero(E);
-    for (i = A->length - 1; i >= 0; i--)
+
+    if (alpha == 0)
     {
-        mp_limb_t c = n_poly_mod_evaluate_nmod(A->coeffs + i, alpha, ctx);
-        nmod_poly_set_coeff_ui(E, i, c);
+        for (i = A->length - 1; i >= 0; i--)
+            nmod_poly_set_coeff_ui(E, i, n_poly_get_coeff(A->coeffs + i, 0));
+        return;
     }
+
+    n_poly_init2(alphapow, 2);
+    alphapow->length = 2;
+    alphapow->coeffs[0] = 1;
+    alphapow->coeffs[1] = alpha;
+
+    for (i = A->length - 1; i >= 0; i--)
+        nmod_poly_set_coeff_ui(E, i, n_poly_mod_eval_pow(A->coeffs + i, alphapow, ctx));
+
+    n_poly_clear(alphapow);
 }
 
 
@@ -414,6 +428,7 @@ static void n_bpoly_mod_lift_clear(n_bpoly_mod_lift_t L)
     flint_free(L->link);
     flint_free(L->lifted_fac);
     n_tpoly_clear(L->tmp);
+    n_bpoly_clear(L->bmp);
     nmod_eval_interp_clear(L->E);
 }
 
@@ -1132,9 +1147,10 @@ int n_bpoly_mod_factor_smprime(
     slong Alenx, Aleny;
     slong final_order, lift_order;
     slong * CLD;
-    mp_limb_t alpha;
     nmod_poly_t Aeval;
-    nmod_poly_factor_t local_fac;
+    mp_limb_t alpha_best, alpha_tmp;
+    nmod_poly_factor_t local_fac_best, local_fac_tmp;
+    int local_fac_tries = 0;
     n_bpoly_t monicA;
     nmod_mat_t N;
     slong old_nrows;
@@ -1150,7 +1166,8 @@ int n_bpoly_mod_factor_smprime(
     FLINT_ASSERT(Alenx > 1);
 
     nmod_poly_init_mod(Aeval, ctx);
-    nmod_poly_factor_init(local_fac);
+    nmod_poly_factor_init(local_fac_best);
+    nmod_poly_factor_init(local_fac_tmp);
     n_bpoly_init(monicA);
     nmod_mat_init(N, 0, 0, ctx.n);
     CLD = FLINT_ARRAY_ALLOC(Alenx, slong);
@@ -1163,21 +1180,25 @@ int n_bpoly_mod_factor_smprime(
 
     zassenhaus_prune_set_degree(zas, Alenx - 1);
 
-    alpha = 0;
+    alpha_tmp = 0;
+    alpha_best = 0;
     goto got_alpha;
 
 next_alpha:
 
-    alpha++;
-    if (!allow_shift || alpha >= ctx.n)
+    if (!allow_shift || alpha_tmp + 1 >= ctx.n)
     {
+        if (local_fac_best->num > 0)
+            goto doit;
         success = 0;
         goto cleanup;
     }
 
+    alpha_tmp++;
+
 got_alpha:
 
-    n_bpoly_mod_eval(Aeval, A, alpha, ctx);
+    n_bpoly_mod_eval(Aeval, A, alpha_tmp, ctx);
 
     /* if killed leading coeff, get new alpha */
     if (Aeval->length != Alenx)
@@ -1185,17 +1206,17 @@ got_alpha:
 
     /* note the constant term of Aeval can be zero */
 
-    local_fac->num = 0;
-    nmod_poly_factor(local_fac, Aeval);
-    r = local_fac->num;
+    local_fac_tmp->num = 0;
+    nmod_poly_factor(local_fac_tmp, Aeval);
+    r = local_fac_tmp->num;
 
     zassenhaus_prune_start_add_factors(zas);
     for (i = 0; i < r; i++)
-        zassenhaus_prune_add_factor(zas, local_fac->p[i].length - 1,
-                                         local_fac->exp[i]);
+        zassenhaus_prune_add_factor(zas, local_fac_tmp->p[i].length - 1,
+                                         local_fac_tmp->exp[i]);
     zassenhaus_prune_end_add_factors(zas);
 
-    if ((r < 2 && local_fac->exp[0] == 1) ||
+    if ((r < 2 && local_fac_tmp->exp[0] == 1) ||
          zassenhaus_prune_must_be_irreducible(zas))
     {
         n_tpoly_fit_length(F, 1);
@@ -1208,9 +1229,9 @@ got_alpha:
     /* if multiple factors, get new alpha */
     for (i = 0; i < r; i++)
     {
-        FLINT_ASSERT(local_fac->p[i].length > 1);
-        FLINT_ASSERT(local_fac->p[i].coeffs[local_fac->p[i].length - 1] == 1);
-        if (local_fac->exp[i] != 1)
+        FLINT_ASSERT(local_fac_tmp->p[i].length > 1);
+        FLINT_ASSERT(local_fac_tmp->p[i].coeffs[local_fac_tmp->p[i].length - 1] == 1);
+        if (local_fac_tmp->exp[i] != 1)
             goto next_alpha;
     }
 
@@ -1222,19 +1243,34 @@ got_alpha:
         F->length = r;
         for (i = 0; i < r; i++)
         {
-            n_poly_mock(mock, local_fac->p + i);
+            n_poly_mock(mock, local_fac_tmp->p + i);
             n_bpoly_set_poly_gen0(F->coeffs + i, mock);
         }
         success = 1;
         goto cleanup;
     }
 
+    /* alpha_tmp & local_fac_tmp are good; update best */
+    if (local_fac_best->num < 1 || local_fac_best->num > local_fac_tmp->num)
+    {
+        alpha_best = alpha_tmp;
+        nmod_poly_factor_swap(local_fac_best, local_fac_tmp);
+    }
+
+    if (++local_fac_tries < 2)
+        goto next_alpha;
+
+doit:
+
+    /* local_fac_best is a factorization mod (y - alpha_best) */
+    r = local_fac_best->num;
+
     /* precision for constructing true factors */
     final_order = Aleny;
 
-    n_bpoly_mod_taylor_shift_gen1(A, A, alpha, ctx);
+    n_bpoly_mod_taylor_shift_gen1(A, A, alpha_best, ctx);
 
-    n_bpoly_mod_lift_start(L, local_fac->p, r, ctx);
+    n_bpoly_mod_lift_start(L, local_fac_best->p, r, ctx);
 
     /* precision for lifted local factors */
     lift_order = final_order + r;
@@ -1261,7 +1297,7 @@ try_zas:
 
     /* combine local factors according the rows of N, then by subsets */
     F->length = 0;
-    success = _zassenhaus(zas, zas_limit, F, nmod_neg(alpha, ctx), N,
+    success = _zassenhaus(zas, zas_limit, F, nmod_neg(alpha_best, ctx), N,
                                         L->lifted_fac, r, final_order, A, ctx);
     if (success)
         goto cleanup;
@@ -1290,7 +1326,8 @@ cleanup:
 
     nmod_mat_clear(N);
     nmod_poly_clear(Aeval);
-    nmod_poly_factor_clear(local_fac);
+    nmod_poly_factor_clear(local_fac_best);
+    nmod_poly_factor_clear(local_fac_tmp);
     n_bpoly_clear(monicA);
 
     zassenhaus_prune_clear(zas);

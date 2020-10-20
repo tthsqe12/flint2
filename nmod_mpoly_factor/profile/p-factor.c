@@ -61,10 +61,10 @@ int main(int argc, char *argv[])
         nmod_mpoly_init(b, ctx);
         nmod_mpoly_init(c, ctx);
 
-        for (i = 1; i <= 100; i++)
+        for (i = 1; i <= 80; i++)
         {
-            nmod_mpoly_set_str_pretty(a, "x", vars, ctx);
-            nmod_mpoly_set_str_pretty(b, "y", vars, ctx);
+            nmod_mpoly_set_str_pretty(a, "x+1", vars, ctx);
+            nmod_mpoly_set_str_pretty(b, "y+2", vars, ctx);
             nmod_mpoly_set_str_pretty(c, "1+x+y+z*0+t*0", vars, ctx);
             nmod_mpoly_pow_ui(c, c, i, ctx);
             nmod_mpoly_add(a, a, c, ctx);

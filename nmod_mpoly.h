@@ -1385,29 +1385,6 @@ FLINT_DLL void nmod_mpoly_from_mpolyu_perm_inflate(
                         const nmod_mpolyu_t B, const nmod_mpoly_ctx_t uctx,
                 const slong * perm, const ulong * shift, const ulong * stride);
 
-FLINT_DLL void nmod_mpoly_to_mpolyuu_perm_deflate_threaded_pool(
-    nmod_mpolyu_t A,
-    const nmod_mpoly_ctx_t uctx,
-    const nmod_mpoly_t B,
-    const nmod_mpoly_ctx_t ctx,
-    const slong * perm,
-    const ulong * shift,
-    const ulong * stride,
-    const ulong * maxexps, /* nullptr is ok */
-    const thread_pool_handle * handles,
-    slong num_handles);
-
-FLINT_DLL void nmod_mpoly_from_mpolyuu_perm_inflate(
-    nmod_mpoly_t A,
-    flint_bitcnt_t Abits,
-    const nmod_mpoly_ctx_t ctx,
-    const nmod_mpolyu_t B,
-    const nmod_mpoly_ctx_t uctx,
-    const slong * perm,
-    const ulong * shift,
-    const ulong * stride);
-
-
 FLINT_DLL int nmod_mpolyuu_divides(nmod_mpolyu_t Q, const nmod_mpolyu_t A,
            const nmod_mpolyu_t B, slong nmainvars, const nmod_mpoly_ctx_t ctx);
 
@@ -1715,23 +1692,9 @@ FLINT_DLL int nmod_mpolyl_gcd_zippel_lgprime(
     const nmod_mpoly_t gamma, const slong * gammadegs,
     const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL int nmod_mpolyuu_gcd_zippel_smprime(
-    nmod_mpolyu_t rG, const slong * Gdeg,
-    nmod_mpolyu_t rAbar,
-    nmod_mpolyu_t rBbar,
-    const nmod_mpolyu_t A, const slong * Adegs,
-    const nmod_mpolyu_t B, const slong * Bdegs,
-    const nmod_mpoly_t gamma, const slong * gammadegs,
-    const nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL int nmod_mpolyuu_gcd_zippel_lgprime(
-    nmod_mpolyu_t rG, const slong * Gdeg,
-    nmod_mpolyu_t rAbar,
-    nmod_mpolyu_t rBbar,
-    const nmod_mpolyu_t A, const slong * Adegs,
-    const nmod_mpolyu_t B, const slong * Bdegs,
-    const nmod_mpoly_t gamma, const slong * gammadegs,
-    const nmod_mpoly_ctx_t ctx);
+FLINT_DLL int nmod_mpolyl_gcd_hensel(nmod_mpoly_t G, nmod_mpoly_t Abar,
+                nmod_mpoly_t Bbar, const nmod_mpoly_t A, const nmod_mpoly_t B,
+                                                   const nmod_mpoly_ctx_t ctx);
 
 /* interp ********************************************************************/
 
