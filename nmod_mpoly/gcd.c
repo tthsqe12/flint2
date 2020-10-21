@@ -12,6 +12,7 @@
 #include "n_poly.h"
 #include "nmod_mpoly.h"
 #include "fq_nmod_mpoly.h"
+#include "nmod_mpoly_factor.h"
 
 /*
     For each j, set out[j] to the evaluation of A at x_i = alpha[i] (i != j)
@@ -216,9 +217,7 @@ void mpoly_gcd_info_set_estimates_nmod_mpoly(
     mpoly_gcd_info_t I,
     const nmod_mpoly_t A,
     const nmod_mpoly_t B,
-    const nmod_mpoly_ctx_t ctx,
-    const thread_pool_handle * handles,
-    slong num_handles)
+    const nmod_mpoly_ctx_t ctx)
 {
     int try_count = 0;
     slong nvars = ctx->minfo->nvars;
@@ -330,9 +329,7 @@ void mpoly_gcd_info_set_estimates_nmod_mpoly_lgprime(
     mpoly_gcd_info_t I,
     const nmod_mpoly_t A,
     const nmod_mpoly_t B,
-    const nmod_mpoly_ctx_t smctx,
-    const thread_pool_handle * handles,
-    slong num_handles)
+    const nmod_mpoly_ctx_t smctx)
 {
     slong nvars = smctx->minfo->nvars;
     int try_count = 0;
@@ -608,37 +605,30 @@ static int _try_missing_var(
     const nmod_mpoly_ctx_t ctx)
 {
     int success;
-    slong i;
-    nmod_mpoly_t tG;
-    nmod_mpoly_univar_t Ax;
+    nmod_mpoly_univar_t Au;
 
-    nmod_mpoly_init(tG, ctx);
-    nmod_mpoly_univar_init(Ax, ctx);
+    nmod_mpoly_univar_init(Au, ctx);
 
-    nmod_mpoly_to_univar(Ax, A, var, ctx);
+#if FLINT_WANT_ASSERT
+    nmod_mpoly_to_univar(Au, B, var, ctx);
+    FLINT_ASSERT(Au->length == 1);
+#endif
+    nmod_mpoly_to_univar(Au, A, var, ctx);
 
-    FLINT_ASSERT(Ax->length > 0);
-    success = _nmod_mpoly_gcd_threaded_pool(tG, Gbits, B, Ax->coeffs + 0,
-                                                                 ctx, NULL, 0);
+    nmod_mpoly_univar_fit_length(Au, Au->length + 1, ctx);
+    nmod_mpoly_set(Au->coeffs + Au->length, B, ctx);
+    Au->length++;
+
+    success = _nmod_mpoly_vec_content_mpoly(G, Au->coeffs, Au->length, ctx);
     if (!success)
         goto cleanup;
 
-    for (i = 1; i < Ax->length; i++)
-    {
-        success = _nmod_mpoly_gcd_threaded_pool(tG, Gbits, tG, Ax->coeffs + i,
-                                                                 ctx, NULL, 0);
-        if (!success)
-            goto cleanup;
-    }
-
-    nmod_mpoly_swap(G, tG, ctx);
+    nmod_mpoly_repack_bits_inplace(G, Gbits, ctx);
     _mpoly_gen_shift_left(G->exps, G->bits, G->length,
                                    var, FLINT_MIN(Ashift, Bshift), ctx->minfo);
-
 cleanup:
 
-    nmod_mpoly_clear(tG, ctx);
-    nmod_mpoly_univar_clear(Ax, ctx);
+    nmod_mpoly_univar_clear(Au, ctx);
 
     return success;
 }
@@ -649,9 +639,7 @@ static int _try_divides(
     nmod_mpoly_t G,
     const nmod_mpoly_t A,
     const nmod_mpoly_t BB,
-    const nmod_mpoly_ctx_t ctx,
-    const thread_pool_handle * handles,
-    slong num_handles)
+    const nmod_mpoly_ctx_t ctx)
 {
     int success = 0;
     nmod_mpoly_t Q, B, M;
@@ -664,7 +652,7 @@ static int _try_divides(
     nmod_mpoly_term_content(M, BB, ctx);
     nmod_mpoly_divides(B, BB, M, ctx);
 
-    if (_nmod_mpoly_divides_threaded_pool(Q, A, B, ctx, handles, num_handles))
+    if (nmod_mpoly_divides(Q, A, B, ctx))
     {
         /* gcd(Q*B, M*B) */
         _try_monomial_gcd(G, A->bits, Q, M, ctx);
@@ -679,6 +667,12 @@ static int _try_divides(
     return success;
 }
 
+
+#define USE_HENSEL  1
+#define USE_BROWN   2
+#define USE_ZIPPEL  4
+#define USE_ZIPPEL2 8
+#define USE_ALL     15
 
 /********************** Hit A and B with zippel ******************************/
 static int _try_zippel(
@@ -743,9 +737,8 @@ static int _try_zippel(
     nmod_mpoly_to_mpolyu_perm_deflate_threaded_pool(Bu, uctx, B, ctx, zinfo->perm,
                                              I->Bmin_exp, I->Gstride, NULL, 0);
 
-    success = nmod_mpolyu_content_mpoly_threaded_pool(Ac, Au, uctx, NULL, 0);
-    success = success &&
-              nmod_mpolyu_content_mpoly_threaded_pool(Bc, Bu, uctx, NULL, 0);
+    success = nmod_mpolyu_content_mpoly(Ac, Au, uctx);
+    success = success && nmod_mpolyu_content_mpoly(Bc, Bu, uctx);
     if (!success)
         goto cleanup;
 
@@ -758,10 +751,11 @@ static int _try_zippel(
     if (!success)
         goto cleanup;
 
-    success = _nmod_mpoly_gcd_threaded_pool(Gc, wbits, Ac, Bc, uctx, NULL, 0);
+    success = nmod_mpoly_gcd(Gc, Ac, Bc, uctx);
     if (!success)
         goto cleanup;
 
+    nmod_mpoly_repack_bits_inplace(Gc, wbits, uctx);
     nmod_mpolyu_mul_mpoly_inplace(Gu, Gc, uctx);
 
     nmod_mpoly_from_mpolyu_perm_inflate(G, I->Gbits, ctx, Gu, uctx,
@@ -1054,9 +1048,7 @@ static int _try_brown(
     const nmod_mpoly_t A,
     const nmod_mpoly_t B,
     mpoly_gcd_info_t I,
-    const nmod_mpoly_ctx_t ctx,
-    const thread_pool_handle * handles,
-    slong num_handles)
+    const nmod_mpoly_ctx_t ctx)
 {
     int success;
     slong m = I->mvars;
@@ -1064,6 +1056,9 @@ static int _try_brown(
     nmod_mpoly_ctx_t nctx;
     nmod_mpolyn_t An, Bn, Gn, Abarn, Bbarn;
     nmod_poly_stack_t Sp;
+    slong thread_limit = FLINT_MIN(A->length, B->length)/1024;
+    thread_pool_handle * handles;
+    slong num_handles;
 
     if (!I->can_use_brown)
         return 0;
@@ -1083,6 +1078,8 @@ static int _try_brown(
     nmod_mpolyn_init(Gn, wbits, nctx);
     nmod_mpolyn_init(Abarn, wbits, nctx);
     nmod_mpolyn_init(Bbarn, wbits, nctx);
+
+    num_handles = flint_request_threads(&handles, thread_limit);
 
     if (num_handles > 0)
     {
@@ -1147,6 +1144,8 @@ static int _try_brown(
 
 cleanup:
 
+    flint_give_back_threads(handles, num_handles);
+
     nmod_mpolyn_clear(An, nctx);
     nmod_mpolyn_clear(Bn, nctx);
     nmod_mpolyn_clear(Gn, nctx);
@@ -1165,15 +1164,15 @@ cleanup:
 
     return is 1 for success, 0 for failure.
 */
-int _nmod_mpoly_gcd_threaded_pool(
-    nmod_mpoly_t G, flint_bitcnt_t Gbits,
+static int _nmod_mpoly_gcd_algo(
+    nmod_mpoly_t G,
     const nmod_mpoly_t A,
     const nmod_mpoly_t B,
     const nmod_mpoly_ctx_t ctx,
-    const thread_pool_handle * handles,
-    slong num_handles)
+    unsigned int algo)
 {
     int success;
+    flint_bitcnt_t Gbits = FLINT_MIN(A->bits, B->bits);
     slong v_in_both;
     slong v_in_either;
     slong v_in_A_only;
@@ -1371,9 +1370,9 @@ calculate_trivial_gcd:
         and there are at least two in the latter case
     */
 
-    mpoly_gcd_info_set_estimates_nmod_mpoly(I, A, B, ctx, handles, num_handles);
+    mpoly_gcd_info_set_estimates_nmod_mpoly(I, A, B, ctx);
     if (!I->Gdeflate_deg_bounds_are_nice)
-        mpoly_gcd_info_set_estimates_nmod_mpoly_lgprime(I, A, B, ctx, handles, num_handles);
+        mpoly_gcd_info_set_estimates_nmod_mpoly_lgprime(I, A, B, ctx);
     mpoly_gcd_info_set_perm(I, A->length, B->length, ctx->minfo);
 
     /* everything in I is valid now */
@@ -1398,21 +1397,18 @@ calculate_trivial_gcd:
         if (gcd_is_trivial)
             goto calculate_trivial_gcd;
 
-        if (try_a && _try_divides(G, B, A, ctx, handles, num_handles))
+        if (try_a && _try_divides(G, B, A, ctx))
             goto successful;
 
-        if (try_b && _try_divides(G, A, B, ctx, handles, num_handles))
+        if (try_b && _try_divides(G, A, B, ctx))
             goto successful;
     }
 
     mpoly_gcd_info_measure_brown(I, A->length, B->length, ctx->minfo);
 
-    if (_try_hensel(G, A, B, I, ctx))
-        goto successful;
-
     if (I->mvars == 2)
     {
-        if (_try_brown(G, A, B, I, ctx, handles, num_handles))
+        if (_try_brown(G, A, B, I, ctx))
             goto successful;
     }
     else
@@ -1426,7 +1422,7 @@ calculate_trivial_gcd:
                 goto successful;
             if (_try_zippel(G, A, B, I, ctx))
                 goto successful;
-            if (_try_brown(G, A, B, I, ctx, handles, num_handles))
+            if (_try_brown(G, A, B, I, ctx))
                 goto successful;
         }
         else
@@ -1436,10 +1432,13 @@ calculate_trivial_gcd:
                 goto successful;
             if (_try_zippel(G, A, B, I, ctx))
                 goto successful;
-            if (_try_brown(G, A, B, I, ctx, handles, num_handles))
+            if (_try_brown(G, A, B, I, ctx))
                 goto successful;
         }
     }
+
+    if (_try_hensel(G, A, B, I, ctx))
+        goto successful;
 
     success = 0;
     goto cleanup;
@@ -1470,20 +1469,127 @@ cleanup:
 }
 
 
+/*
+    The gcd calculation is unusual.
+    First see if both inputs fit into FLINT_BITS.
+    Then, try deflation as a last resort.
+*/
+static int _nmod_mpoly_gcd_algo_large(
+    nmod_mpoly_t G,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_t B,
+    const nmod_mpoly_ctx_t ctx,
+    unsigned int algo)
+{
+    int success;
+    slong k;
+    fmpz * Ashift, * Astride;
+    fmpz * Bshift, * Bstride;
+    fmpz * Gshift, * Gstride;
+    nmod_mpoly_t Anew, Bnew;
+    const nmod_mpoly_struct * Ause, * Buse;
+
+    if (A->length == 1)
+        return _try_monomial_gcd(G, FLINT_MIN(A->bits, B->bits), B, A, ctx);
+
+    else if (B->length == 1)
+        return _try_monomial_gcd(G, FLINT_MIN(A->bits, B->bits), A, B, ctx);
+
+    else if (_try_monomial_cofactors(G, FLINT_MIN(A->bits, B->bits), A, B, ctx))
+        return 1;
+
+    nmod_mpoly_init(Anew, ctx);
+    nmod_mpoly_init(Bnew, ctx);
+
+    Ause = A;
+    if (A->bits > FLINT_BITS)
+    {
+        if (!nmod_mpoly_repack_bits(Anew, A, FLINT_BITS, ctx))
+            goto could_not_repack;
+        Ause = Anew;
+    }
+
+    Buse = B;
+    if (B->bits > FLINT_BITS)
+    {
+        if (!nmod_mpoly_repack_bits(Bnew, B, FLINT_BITS, ctx))
+            goto could_not_repack;
+        Buse = Bnew;
+    }
+
+    success = _nmod_mpoly_gcd_algo(G, Ause, Buse, ctx, USE_ALL);
+
+    goto cleanup;
+
+could_not_repack:
+
+    /*
+        One of A or B could not be repacked into FLINT_BITS. See if
+        they both fit into FLINT_BITS after deflation.
+    */
+
+    Ashift  = _fmpz_vec_init(ctx->minfo->nvars);
+    Astride = _fmpz_vec_init(ctx->minfo->nvars);
+    Bshift  = _fmpz_vec_init(ctx->minfo->nvars);
+    Bstride = _fmpz_vec_init(ctx->minfo->nvars);
+    Gshift  = _fmpz_vec_init(ctx->minfo->nvars);
+    Gstride = _fmpz_vec_init(ctx->minfo->nvars);
+
+    nmod_mpoly_deflation(Ashift, Astride, A, ctx);
+    nmod_mpoly_deflation(Bshift, Bstride, B, ctx);
+    _fmpz_vec_min(Gshift, Ashift, Bshift, ctx->minfo->nvars);
+    for (k = 0; k < ctx->minfo->nvars; k++)
+    {
+        fmpz_gcd(Gstride + k, Astride + k, Bstride + k);
+    }
+
+    success = 0;
+
+    nmod_mpoly_deflate(Anew, A, Ashift, Gstride, ctx);
+    if (Anew->bits > FLINT_BITS)
+    {
+        if (!nmod_mpoly_repack_bits(Anew, Anew, FLINT_BITS, ctx))
+            goto deflate_cleanup;
+    }
+
+    nmod_mpoly_deflate(Bnew, B, Bshift, Gstride, ctx);
+    if (Bnew->bits > FLINT_BITS)
+    {
+        if (!nmod_mpoly_repack_bits(Bnew, Bnew, FLINT_BITS, ctx))
+            goto deflate_cleanup;
+    }
+
+    success = _nmod_mpoly_gcd_algo(G, Anew, Bnew, ctx, USE_ALL);
+    if (success)
+    {
+        nmod_mpoly_inflate(G, G, Gshift, Gstride, ctx);
+        nmod_mpoly_make_monic(G, G, ctx);
+    }
+
+deflate_cleanup:
+
+    _fmpz_vec_clear(Ashift, ctx->minfo->nvars);
+    _fmpz_vec_clear(Astride, ctx->minfo->nvars);
+    _fmpz_vec_clear(Bshift, ctx->minfo->nvars);
+    _fmpz_vec_clear(Bstride, ctx->minfo->nvars);
+    _fmpz_vec_clear(Gshift, ctx->minfo->nvars);
+    _fmpz_vec_clear(Gstride, ctx->minfo->nvars);
+
+cleanup:
+
+    nmod_mpoly_clear(Anew, ctx);
+    nmod_mpoly_clear(Bnew, ctx);
+
+    return success;
+}
+
+
 int nmod_mpoly_gcd(
     nmod_mpoly_t G,
     const nmod_mpoly_t A,
     const nmod_mpoly_t B,
     const nmod_mpoly_ctx_t ctx)
 {
-    flint_bitcnt_t Gbits;
-    int success;
-    thread_pool_handle * handles;
-    slong num_handles;
-    slong thread_limit;
-
-    thread_limit = FLINT_MIN(A->length, B->length)/256;
-
     if (nmod_mpoly_is_zero(A, ctx))
     {
         if (nmod_mpoly_is_zero(B, ctx))
@@ -1499,137 +1605,70 @@ int nmod_mpoly_gcd(
         return 1;
     }
 
-    Gbits = FLINT_MIN(A->bits, B->bits);
+    if (A->bits <= FLINT_BITS && B->bits <= FLINT_BITS)
+        return _nmod_mpoly_gcd_algo(G, A, B, ctx, USE_ALL);
+
+    return _nmod_mpoly_gcd_algo_large(G, A, B, ctx, USE_ALL);
+}
+
+
+int nmod_mpoly_gcd_hensel(
+    nmod_mpoly_t G,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_t B,
+    const nmod_mpoly_ctx_t ctx)
+{
+    if (nmod_mpoly_is_zero(A, ctx) || nmod_mpoly_is_zero(B, ctx))
+        return nmod_mpoly_gcd(G, A, B, ctx);
 
     if (A->bits <= FLINT_BITS && B->bits <= FLINT_BITS)
-    {
-        num_handles = flint_request_threads(&handles, thread_limit);
-        success = _nmod_mpoly_gcd_threaded_pool(G, Gbits, A, B, ctx,
-                                                         handles, num_handles);
-        flint_give_back_threads(handles, num_handles);
-        return success;
-    }
+        return _nmod_mpoly_gcd_algo(G, A, B, ctx, USE_HENSEL);
 
-    if (A->length == 1)
-    {
-        return _try_monomial_gcd(G, Gbits, B, A, ctx);
-    }
-    else if (B->length == 1)
-    {
-        return _try_monomial_gcd(G, Gbits, A, B, ctx);
-    }
-    else if (_try_monomial_cofactors(G, Gbits, A, B, ctx))
-    {
-        return 1;
-    }
-    else
-    {
-        /*
-            The gcd calculation is unusual.
-            First see if both inputs fit into FLINT_BITS.
-            Then, try deflation as a last resort.
-        */
+    return _nmod_mpoly_gcd_algo_large(G, A, B, ctx, USE_HENSEL);
+}
 
-        int success;
-        slong k;
-        fmpz * Ashift, * Astride;
-        fmpz * Bshift, * Bstride;
-        fmpz * Gshift, * Gstride;
-        nmod_mpoly_t Anew, Bnew;
-        const nmod_mpoly_struct * Ause, * Buse;
+int nmod_mpoly_gcd_brown(
+    nmod_mpoly_t G,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_t B,
+    const nmod_mpoly_ctx_t ctx)
+{
+    if (nmod_mpoly_is_zero(A, ctx) || nmod_mpoly_is_zero(B, ctx))
+        return nmod_mpoly_gcd(G, A, B, ctx);
 
-        nmod_mpoly_init(Anew, ctx);
-        nmod_mpoly_init(Bnew, ctx);
+    if (A->bits <= FLINT_BITS && B->bits <= FLINT_BITS)
+        return _nmod_mpoly_gcd_algo(G, A, B, ctx, USE_BROWN);
 
-        Ause = A;
-        if (A->bits > FLINT_BITS)
-        {
-            if (!nmod_mpoly_repack_bits(Anew, A, FLINT_BITS, ctx))
-                goto could_not_repack;
-            Ause = Anew;
-        }
+    return _nmod_mpoly_gcd_algo_large(G, A, B, ctx, USE_BROWN);
+}
 
-        Buse = B;
-        if (B->bits > FLINT_BITS)
-        {
-            if (!nmod_mpoly_repack_bits(Bnew, B, FLINT_BITS, ctx))
-                goto could_not_repack;
-            Buse = Bnew;
-        }
+int nmod_mpoly_gcd_zippel(
+    nmod_mpoly_t G,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_t B,
+    const nmod_mpoly_ctx_t ctx)
+{
+    if (nmod_mpoly_is_zero(A, ctx) || nmod_mpoly_is_zero(B, ctx))
+        return nmod_mpoly_gcd(G, A, B, ctx);
 
-        num_handles = flint_request_threads(&handles, thread_limit);
-        Gbits = FLINT_MIN(Ause->bits, Buse->bits);
-        success = _nmod_mpoly_gcd_threaded_pool(G, Gbits, Ause, Buse, ctx,
-                                                         handles, num_handles);
-        flint_give_back_threads(handles, num_handles);
+    if (A->bits <= FLINT_BITS && B->bits <= FLINT_BITS)
+        return _nmod_mpoly_gcd_algo(G, A, B, ctx, USE_ZIPPEL);
 
-        goto cleanup;
+    return _nmod_mpoly_gcd_algo_large(G, A, B, ctx, USE_ZIPPEL);
+}
 
-could_not_repack:
+int nmod_mpoly_gcd_zippel2(
+    nmod_mpoly_t G,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_t B,
+    const nmod_mpoly_ctx_t ctx)
+{
+    if (nmod_mpoly_is_zero(A, ctx) || nmod_mpoly_is_zero(B, ctx))
+        return nmod_mpoly_gcd(G, A, B, ctx);
 
-        /*
-            One of A or B could not be repacked into FLINT_BITS. See if
-            they both fit into FLINT_BITS after deflation.
-        */
+    if (A->bits <= FLINT_BITS && B->bits <= FLINT_BITS)
+        return _nmod_mpoly_gcd_algo(G, A, B, ctx, USE_ZIPPEL2);
 
-        Ashift  = _fmpz_vec_init(ctx->minfo->nvars);
-        Astride = _fmpz_vec_init(ctx->minfo->nvars);
-        Bshift  = _fmpz_vec_init(ctx->minfo->nvars);
-        Bstride = _fmpz_vec_init(ctx->minfo->nvars);
-        Gshift  = _fmpz_vec_init(ctx->minfo->nvars);
-        Gstride = _fmpz_vec_init(ctx->minfo->nvars);
-
-        nmod_mpoly_deflation(Ashift, Astride, A, ctx);
-        nmod_mpoly_deflation(Bshift, Bstride, B, ctx);
-        _fmpz_vec_min(Gshift, Ashift, Bshift, ctx->minfo->nvars);
-        for (k = 0; k < ctx->minfo->nvars; k++)
-        {
-            fmpz_gcd(Gstride + k, Astride + k, Bstride + k);
-        }
-
-        success = 0;
-
-        nmod_mpoly_deflate(Anew, A, Ashift, Gstride, ctx);
-        if (Anew->bits > FLINT_BITS)
-        {
-            if (!nmod_mpoly_repack_bits(Anew, Anew, FLINT_BITS, ctx))
-                goto deflate_cleanup;
-        }
-
-        nmod_mpoly_deflate(Bnew, B, Bshift, Gstride, ctx);
-        if (Bnew->bits > FLINT_BITS)
-        {
-            if (!nmod_mpoly_repack_bits(Bnew, Bnew, FLINT_BITS, ctx))
-                goto deflate_cleanup;
-        }
-
-        num_handles = flint_request_threads(&handles, thread_limit);
-        Gbits = FLINT_MIN(Anew->bits, Bnew->bits);
-        success = _nmod_mpoly_gcd_threaded_pool(G, Gbits, Anew, Bnew, ctx,
-                                                         handles, num_handles);
-        flint_give_back_threads(handles, num_handles);
-
-        if (success)
-        {
-            nmod_mpoly_inflate(G, G, Gshift, Gstride, ctx);
-            nmod_mpoly_make_monic(G, G, ctx);
-        }
-
-deflate_cleanup:
-
-        _fmpz_vec_clear(Ashift, ctx->minfo->nvars);
-        _fmpz_vec_clear(Astride, ctx->minfo->nvars);
-        _fmpz_vec_clear(Bshift, ctx->minfo->nvars);
-        _fmpz_vec_clear(Bstride, ctx->minfo->nvars);
-        _fmpz_vec_clear(Gshift, ctx->minfo->nvars);
-        _fmpz_vec_clear(Gstride, ctx->minfo->nvars);
-
-cleanup:
-
-        nmod_mpoly_clear(Anew, ctx);
-        nmod_mpoly_clear(Bnew, ctx);
-
-        return success;
-    }
+    return _nmod_mpoly_gcd_algo_large(G, A, B, ctx, USE_ZIPPEL2);
 }
 

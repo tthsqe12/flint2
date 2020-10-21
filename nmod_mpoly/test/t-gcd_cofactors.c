@@ -28,8 +28,6 @@ void gcd_check(
     int res;
     nmod_mpoly_t ca, cb, cg, u, v, w;
 
-flint_printf("i = %wd, j = %wd, %s\n", i, j, name);
-
     nmod_mpoly_init(ca, ctx);
     nmod_mpoly_init(cb, ctx);
     nmod_mpoly_init(cg, ctx);

@@ -201,6 +201,7 @@ next_alphabetas:
         nmod_mpoly_evaluate_one_ui(t, mpow, i + 1, alpha[i], ctx);
         nmod_mpoly_swap(t, mpow, ctx);
         nmod_mpoly_mul(Aevals + i, Aevals + i, mpow, ctx);
+        nmod_mpoly_repack_bits_inplace(Aevals + i, newA->bits, ctx);
     }
 
     nmod_mpolyv_fit_length(new_lcs, (n + 1)*r, ctx);
@@ -246,7 +247,6 @@ next_alphabetas:
 
         success = nmod_mpoly_hlift(k, tfac->coeffs, r, alpha,
                                          k < n ? Aevals + k : newA, degs, ctx);
-
         if (!success)
             goto next_alphabetas;
 
@@ -257,8 +257,8 @@ next_alphabetas:
     {
         for (i = 0; i < r; i++)
         {
-            if (fac->coeffs[i].bits > FLINT_BITS)
-                nmod_mpoly_repack_bits_inplace(fac->coeffs + i, newA->bits, ctx);
+            /* hlift should not have returned any large bits */
+            FLINT_ASSERT(fac->coeffs[i].bits <= FLINT_BITS);
 
             if (!nmod_mpolyl_content(t, fac->coeffs + i, 1, ctx))
             {
@@ -272,7 +272,11 @@ next_alphabetas:
     }
 
     for (i = 0; i < r; i++)
+    {
+        /* hlift should not have returned any large bits */
+        FLINT_ASSERT(fac->coeffs[i].bits <= FLINT_BITS);
         nmod_mpoly_make_monic(fac->coeffs + i, fac->coeffs + i, ctx);
+    }
 
     success = 1;
 

@@ -819,6 +819,10 @@ FLINT_DLL void nmod_mpoly_make_monic(nmod_mpoly_t A, const nmod_mpoly_t B,
 FLINT_DLL void nmod_mpoly_scalar_mul_nmod_invertible(nmod_mpoly_t A,
                 const nmod_mpoly_t B, mp_limb_t c, const nmod_mpoly_ctx_t ctx);
 
+FLINT_DLL void nmod_mpoly_scalar_addmul_ui(nmod_mpoly_t A,
+                        const nmod_mpoly_t B, const nmod_mpoly_t C, ulong d,
+                                                   const nmod_mpoly_ctx_t ctx);
+
 /* Differention **************************************************************/
 
 FLINT_DLL void nmod_mpoly_derivative(nmod_mpoly_t A,
@@ -997,19 +1001,9 @@ FLINT_DLL int nmod_mpoly_content_vars(nmod_mpoly_t g, const nmod_mpoly_t A,
 FLINT_DLL int nmod_mpoly_gcd(nmod_mpoly_t G,
        const nmod_mpoly_t A, const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL int _nmod_mpoly_gcd_threaded_pool(nmod_mpoly_t G, flint_bitcnt_t Gbits,
-       const nmod_mpoly_t A, const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx,
-                        const thread_pool_handle * handles, slong num_handles);
-
 FLINT_DLL int nmod_mpoly_gcd_cofactors(nmod_mpoly_t G,
                 nmod_mpoly_t Abar, nmod_mpoly_t Bbar, const nmod_mpoly_t A,
                              const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL int _nmod_mpoly_gcd_cofactors_threaded_pool(
-                      nmod_mpoly_t G, flint_bitcnt_t Gbits, nmod_mpoly_t Abar,
-          flint_bitcnt_t Abarbits, nmod_mpoly_t Bbar, flint_bitcnt_t Bbarbits,
-       const nmod_mpoly_t A, const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx,
-                        const thread_pool_handle * handles, slong num_handles);
 
 FLINT_DLL void nmod_mpoly_deflation(fmpz * shift, fmpz * stride,
                              const nmod_mpoly_t A, const nmod_mpoly_ctx_t ctx);
@@ -1049,6 +1043,18 @@ FLINT_DLL int nmod_mpoly_repack_bits(nmod_mpoly_t A, const nmod_mpoly_t B,
 
 FLINT_DLL int nmod_mpoly_repack_bits_inplace(nmod_mpoly_t A,
                              flint_bitcnt_t Abits, const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void mpoly_gcd_info_set_estimates_nmod_mpoly(
+    mpoly_gcd_info_t I,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_t B,
+    const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL void mpoly_gcd_info_set_estimates_nmod_mpoly_lgprime(
+    mpoly_gcd_info_t I,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_t B,
+    const nmod_mpoly_ctx_t ctx);
 
 typedef struct
 {
@@ -1304,11 +1310,11 @@ FLINT_DLL int nmod_mpolyd_ctx_set_for_gcd(nmod_mpolyd_ctx_t dctx,
 FLINT_DLL void nmod_mpolyd_last_content(nmod_poly_t cont, const nmod_mpolyd_t A,
                                                        const nmodf_ctx_t fctx);
 
-FLINT_DLL int nmod_mpoly_gcd_brown(nmod_mpoly_t G,
-                                const nmod_mpoly_t A, const nmod_mpoly_t B,
-                                                   const nmod_mpoly_ctx_t ctx);
-FLINT_DLL int nmod_mpoly_gcd_brown_threaded(nmod_mpoly_t G,
-       const nmod_mpoly_t A, const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
+FLINT_DLL int nmod_mpoly_gcd_hensel(nmod_mpoly_t G, const nmod_mpoly_t A,
+                             const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int nmod_mpoly_gcd_brown(nmod_mpoly_t G, const nmod_mpoly_t A,
+                             const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
 
 FLINT_DLL int nmod_mpoly_gcd_zippel(nmod_mpoly_t G, const nmod_mpoly_t A,
                              const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
@@ -1355,9 +1361,8 @@ FLINT_DLL void nmod_mpolyu_shift_right(nmod_mpolyu_t A, ulong s);
 
 FLINT_DLL void nmod_mpolyu_shift_left(nmod_mpolyu_t A, ulong s);
 
-FLINT_DLL int nmod_mpolyu_content_mpoly_threaded_pool(nmod_mpoly_t g,
-                           const nmod_mpolyu_t A, const nmod_mpoly_ctx_t ctx,
-                        const thread_pool_handle * handles, slong num_handles);
+FLINT_DLL int nmod_mpolyu_content_mpoly(nmod_mpoly_t g,
+                           const nmod_mpolyu_t A, const nmod_mpoly_ctx_t ctx);
 
 FLINT_DLL void nmod_mpolyu_scalar_mul_nmod(nmod_mpolyu_t A, mp_limb_t c,
                                                   const nmod_mpoly_ctx_t ctx);

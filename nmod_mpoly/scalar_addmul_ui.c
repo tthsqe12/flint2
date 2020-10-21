@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2017 Daniel Schultz
+    Copyright (C) 2020 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -11,10 +11,11 @@
 
 #include "nmod_mpoly.h"
 
-slong _nmod_mpoly_add1(
+slong _nmod_mpoly_scalar_addmul_ui1(
     mp_limb_t * Acoeffs, ulong * Aexps,
     const mp_limb_t * Bcoeffs, const ulong * Bexps, slong Blen,
     const mp_limb_t * Ccoeffs, const ulong * Cexps, slong Clen,
+    mp_limb_t d,
     ulong maskhi,
     const nmodf_ctx_t fctx)
 {
@@ -64,16 +65,23 @@ slong _nmod_mpoly_add1(
     return k;
 }
 
-slong _nmod_mpoly_add(mp_limb_t * Acoeffs,       ulong * Aexps,
-                const mp_limb_t * Bcoeffs, const ulong * Bexps, slong Blen,
-                const mp_limb_t * Ccoeffs, const ulong * Cexps, slong Clen,
-                   slong N, const ulong * cmpmask, const nmodf_ctx_t fctx)
+static slong _nmod_mpoly_scalar_addmul_ui(
+    mp_limb_t * Acoeffs, ulong * Aexps,
+    const mp_limb_t * Bcoeffs, const ulong * Bexps, slong Blen,
+    const mp_limb_t * Ccoeffs, const ulong * Cexps, slong Clen,
+    mp_limb_t d,
+    slong N,
+    const ulong * cmpmask,
+    const nmodf_ctx_t fctx)
 {
     slong i = 0, j = 0, k = 0;
 
     if (N == 1)
-        return _nmod_mpoly_add1(Acoeffs, Aexps, Bcoeffs, Bexps, Blen,
-                                       Ccoeffs, Cexps, Clen, cmpmask[0], fctx);
+    {
+        return _nmod_mpoly_scalar_addmul_ui1(Acoeffs, Aexps,
+                                    Bcoeffs, Bexps, Blen,
+                                    Ccoeffs, Cexps, Clen, d, cmpmask[0], fctx);
+    }
 
     while (i < Blen && j < Clen)
     {
@@ -121,8 +129,12 @@ slong _nmod_mpoly_add(mp_limb_t * Acoeffs,       ulong * Aexps,
     return k;
 }
 
-void nmod_mpoly_add(nmod_mpoly_t A, const nmod_mpoly_t B,
-                              const nmod_mpoly_t C, const nmod_mpoly_ctx_t ctx)
+void nmod_mpoly_scalar_addmul_ui(
+    nmod_mpoly_t A,
+    const nmod_mpoly_t B,
+    const nmod_mpoly_t C,
+    mp_limb_t d,
+    const nmod_mpoly_ctx_t ctx)
 {
     slong Abits, N;
     ulong * Bexps = B->exps, * Cexps = C->exps;
@@ -130,12 +142,17 @@ void nmod_mpoly_add(nmod_mpoly_t A, const nmod_mpoly_t B,
     int freeBexps = 0, freeCexps = 0;
     TMP_INIT;
 
+FLINT_ASSERT(0 && "function not finished");
+
+    if (d >= ctx->ffinfo->mod.n)
+        NMOD_RED(d, d, ctx->ffinfo->mod);
+
     if (B->length == 0)
     {
-        nmod_mpoly_set(A, C, ctx);
+        nmod_mpoly_scalar_mul_ui(A, C, d, ctx);
         return;
     }
-    else if (C->length == 0)
+    else if (C->length == 0 || d == 0)
     {
         nmod_mpoly_set(A, B, ctx);
         return;
@@ -167,9 +184,9 @@ void nmod_mpoly_add(nmod_mpoly_t A, const nmod_mpoly_t B,
     {
         nmod_mpoly_t T;
         nmod_mpoly_init3(T, B->length + C->length, Abits, ctx);
-        T->length = _nmod_mpoly_add(T->coeffs, T->exps, 
+        T->length = _nmod_mpoly_scalar_addmul_ui(T->coeffs, T->exps, 
                                     B->coeffs, Bexps, B->length,
-                                    C->coeffs, Cexps, C->length,
+                                    C->coeffs, Cexps, C->length, d,
                                                       N, cmpmask, ctx->ffinfo);
         nmod_mpoly_swap(A, T, ctx);
         nmod_mpoly_clear(T, ctx);
@@ -177,9 +194,9 @@ void nmod_mpoly_add(nmod_mpoly_t A, const nmod_mpoly_t B,
     else
     {
         nmod_mpoly_fit_length_reset_bits(A, B->length + C->length, Abits, ctx);
-        A->length = _nmod_mpoly_add(A->coeffs, A->exps, 
+        A->length = _nmod_mpoly_scalar_addmul_ui(A->coeffs, A->exps, 
                                     B->coeffs, Bexps, B->length,
-                                    C->coeffs, Cexps, C->length,
+                                    C->coeffs, Cexps, C->length, d,
                                                       N, cmpmask, ctx->ffinfo);
     }
 
@@ -191,3 +208,4 @@ void nmod_mpoly_add(nmod_mpoly_t A, const nmod_mpoly_t B,
 
     TMP_END;
 }
+

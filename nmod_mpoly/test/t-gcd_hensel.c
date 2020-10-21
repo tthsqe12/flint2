@@ -17,10 +17,10 @@ main(void)
     slong i, j;
     FLINT_TEST_INIT(state);
 
-    flint_printf("gcd_zippel2....");
+    flint_printf("gcd_hensel....");
     fflush(stdout);
 
-    for (i = 0; i < 100 * flint_test_multiplier(); i++)
+    for (i = 0; i < 10 * flint_test_multiplier(); i++)
     {
         nmod_mpoly_ctx_t ctx;
         nmod_mpoly_t a, b, g, ca, cb, cg, t;
@@ -28,7 +28,6 @@ main(void)
         ulong degbound;
         ulong * degbounds, * degbounds1, * degbounds2;
         mp_limb_t modulus;
-        int res;
 
         modulus = n_randint(state, (i % 10 == 0) ? 4: FLINT_BITS - 1) + 1;
         modulus = n_randbits(state, modulus);
@@ -49,9 +48,9 @@ main(void)
         len2 = n_randint(state, 16);
 
         degbound = 120/(2*ctx->minfo->nvars - 1);
-        degbounds = (ulong * ) flint_malloc(ctx->minfo->nvars*sizeof(ulong));
-        degbounds1 = (ulong * ) flint_malloc(ctx->minfo->nvars*sizeof(ulong));
-        degbounds2 = (ulong * ) flint_malloc(ctx->minfo->nvars*sizeof(ulong));
+        degbounds = (ulong *) flint_malloc(ctx->minfo->nvars*sizeof(ulong));
+        degbounds1 = (ulong *) flint_malloc(ctx->minfo->nvars*sizeof(ulong));
+        degbounds2 = (ulong *) flint_malloc(ctx->minfo->nvars*sizeof(ulong));
         for (j = 0; j < ctx->minfo->nvars; j++)
         {
             degbounds[j] = n_randint(state, degbound + UWORD(1)) + UWORD(1);
@@ -59,7 +58,7 @@ main(void)
             degbounds2[j] = n_randint(state, degbound + UWORD(1)) + UWORD(1);
         }
 
-        for (j = 0; j < 5; j++)
+        for (j = 0; j < 6; j++)
         {
             nmod_mpoly_randtest_bounds(t, state, len, degbounds, ctx);
             if (nmod_mpoly_is_zero(t, ctx))
@@ -67,13 +66,12 @@ main(void)
             nmod_mpoly_randtest_bounds(a, state, len1, degbounds1, ctx);
             nmod_mpoly_randtest_bounds(b, state, len2, degbounds2, ctx);
 
-            nmod_mpoly_mul_johnson(a, a, t, ctx);
-            nmod_mpoly_mul_johnson(b, b, t, ctx);
+            nmod_mpoly_mul(a, a, t, ctx);
+            nmod_mpoly_mul(b, b, t, ctx);
 
             nmod_mpoly_randtest_bits(g, state, len, FLINT_BITS, ctx);
 
-            res = nmod_mpoly_gcd_zippel2(g, a, b, ctx);
-            if (!res)
+            if (!nmod_mpoly_gcd_hensel(g, a, b, ctx))
             {
                 flint_printf("FAIL\n");
                 flint_printf("Check that gcd could be computed\ni = %wd, j = %wd\n", i ,j);
@@ -99,25 +97,22 @@ main(void)
                 flint_abort();
             }
 
-            res = 1;
-            res = res && nmod_mpoly_divides_monagan_pearce(ca, a, g, ctx);
-            res = res && nmod_mpoly_divides_monagan_pearce(cb, b, g, ctx);
-            if (!res)
+            if (!nmod_mpoly_divides(ca, a, g, ctx) ||
+                !nmod_mpoly_divides(cb, b, g, ctx))
             {
                 flint_printf("FAIL\n");
                 flint_printf("Check divisibility\ni = %wd, j = %wd\n", i ,j);
                 flint_abort();
             }
 
-            res = nmod_mpoly_gcd_zippel(cg, ca, cb, ctx);
-            if (!res)
+            if (!nmod_mpoly_gcd_hensel(cg, ca, cb, ctx))
             {
                 flint_printf("FAIL\n");
                 flint_printf("Check that cofactor gcd could be computed\ni = %wd, j = %wd\n", i ,j);
                 flint_abort();
             }
 
-            if (!nmod_mpoly_equal_ui(cg, UWORD(1), ctx))
+            if (!nmod_mpoly_is_one(cg, ctx))
             {
                 flint_printf("FAIL\n");
                 flint_printf("Check cofactors are relatively prime\ni = %wd, j = %wd\n", i ,j);                

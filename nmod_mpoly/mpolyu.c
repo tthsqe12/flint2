@@ -10,7 +10,7 @@
 */
 
 #include "nmod_mpoly.h"
-
+#include "nmod_mpoly_factor.h"
 
 void nmod_mpolyu_init(nmod_mpolyu_t A, flint_bitcnt_t bits,
                                                     const nmod_mpoly_ctx_t ctx)
@@ -1106,62 +1106,18 @@ void nmod_mpolyu_mul_mpoly_inplace(nmod_mpolyu_t A, nmod_mpoly_t c,
 
 
 
-int nmod_mpolyu_content_mpoly_threaded_pool(
+int nmod_mpolyu_content_mpoly(
     nmod_mpoly_t g,
     const nmod_mpolyu_t A,
-    const nmod_mpoly_ctx_t ctx,
-    const thread_pool_handle * handles,
-    slong num_handles)
+    const nmod_mpoly_ctx_t ctx)
 {
-    slong i, j;
     int success;
-    flint_bitcnt_t bits = A->bits;
 
-    FLINT_ASSERT(g->bits == bits);
-
-    if (A->length < 2)
-    {
-        if (A->length == 0)
-        {
-            nmod_mpoly_zero(g, ctx);
-        }
-        else
-        {
-            nmod_mpoly_make_monic(g, A->coeffs + 0, ctx);
-        }
-
-        FLINT_ASSERT(g->bits == bits);
-        return 1;
-    }
-
-    j = 0;
-    for (i = 1; i < A->length; i++)
-    {
-        if ((A->coeffs + i)->length < (A->coeffs + j)->length)
-        {
-            j = i;
-        }
-    }
-
-    if (j == 0)
-        j = 1;
-
-    success = _nmod_mpoly_gcd_threaded_pool(g, bits, A->coeffs + 0,
-                                     A->coeffs + j, ctx, handles, num_handles);
+    success = _nmod_mpoly_vec_content_mpoly(g, A->coeffs, A->length, ctx);
     if (!success)
-        return 0;
+        nmod_mpoly_zero(g, ctx);
 
-    for (i = 1; i < A->length; i++)
-    {
-        if (i == j)
-            continue;
+    nmod_mpoly_repack_bits_inplace(g, A->bits, ctx);
 
-        success = _nmod_mpoly_gcd_threaded_pool(g, bits, g,
-                                     A->coeffs + i, ctx, handles, num_handles);
-        FLINT_ASSERT(g->bits == bits);
-        if (!success)
-            return 0;
-    }
-
-    return 1;
+    return success;
 }
