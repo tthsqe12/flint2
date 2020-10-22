@@ -146,14 +146,6 @@ typedef n_poly_bpoly_stack_struct n_poly_bpoly_stack_t[1];
 /*****************************************************************************/
 
 N_POLY_INLINE
-mp_limb_t nmod_addmul(mp_limb_t a, mp_limb_t b, mp_limb_t c, nmod_t mod)
-{
-    NMOD_ADDMUL(a, b, c, mod);
-    return a;
-}
-
-
-N_POLY_INLINE
 ulong pack_exp2(ulong e0, ulong e1)
 {
     return (e0 << (1*(FLINT_BITS/2))) +

@@ -1255,6 +1255,9 @@ FLINT_DLL void _mpoly_gen_shift_left(ulong * Aexp, flint_bitcnt_t Abits,
 FLINT_DLL void mpoly_monomials_shift_right_ui(ulong * Aexps, flint_bitcnt_t Abits,
                slong Alength, const ulong * user_exps, const mpoly_ctx_t mctx);
 
+FLINT_DLL void mpoly_monomials_shift_right_ffmpz(ulong * Aexps, flint_bitcnt_t Abits,
+                slong Alength, const fmpz * user_exps, const mpoly_ctx_t mctx);
+
 FLINT_DLL slong _mpoly_compress_exps(slong * V, slong * D, slong * deg,
                                                   slong * S, slong n, slong l);
 

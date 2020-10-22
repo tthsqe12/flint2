@@ -1250,7 +1250,7 @@ cleanup:
 }
 
 
-int nmod_mpoly_gcd_cofactors(
+int OLD_nmod_mpoly_gcd_cofactors(
     nmod_mpoly_t G,
     nmod_mpoly_t Abar,
     nmod_mpoly_t Bbar,

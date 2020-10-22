@@ -57,7 +57,7 @@ void _fq_zech_mpoly_set_fq_nmod_mpoly(
     FLINT_ASSERT(ctxA->minfo->ord == ctxB->minfo->ord);
     FLINT_ASSERT(ctxA->minfo->nvars == ctxB->minfo->nvars);
 
-    fq_zech_mpoly_fit_length_set_bits(A, B->length, bits, ctxA);
+    fq_zech_mpoly_fit_length_reset_bits(A, B->length, bits, ctxA);
     A->length = B->length;
     for (i = 0; i < B->length; i++)
     {

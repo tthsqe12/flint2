@@ -30,6 +30,8 @@ main(void)
         mp_limb_t modulus;
         int res;
 
+flint_printf("i = %wd\n", i);
+
         modulus = n_randint(state, (i % 10 == 0) ? 4: FLINT_BITS - 1) + 1;
         modulus = n_randbits(state, modulus);
         modulus = n_nextprime(modulus, 1);

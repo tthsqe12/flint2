@@ -197,12 +197,11 @@ FLINT_DLL void _fq_zech_mpoly_fit_length(fq_zech_struct ** coeff,
                               ulong ** exps, slong * alloc, slong len, slong N,
                                                     const fq_zech_ctx_t fqctx);
 
-FLINT_DLL void fq_zech_mpoly_fit_length_set_bits(fq_zech_mpoly_t A,
+FLINT_DLL void fq_zech_mpoly_fit_length_reset_bits(fq_zech_mpoly_t A,
                 slong len, flint_bitcnt_t bits, const fq_zech_mpoly_ctx_t ctx);
 
 FLINT_DLL void fq_zech_mpoly_clear(fq_zech_mpoly_t A,
                                                 const fq_zech_mpoly_ctx_t ctx);
-
 
 FQ_ZECH_MPOLY_INLINE
 void _fq_zech_mpoly_set_length(fq_zech_mpoly_t A, slong newlen, 
@@ -581,6 +580,9 @@ FLINT_DLL void fq_zech_mpoly_scalar_mul_fq_zech(fq_zech_mpoly_t A,
 FLINT_DLL void fq_zech_mpoly_make_monic(fq_zech_mpoly_t A,
                        const fq_zech_mpoly_t B, const fq_zech_mpoly_ctx_t ctx);
 
+FLINT_DLL void fq_zech_mpoly_scalar_addmul_fq_zech(fq_zech_mpoly_t A,
+         const fq_zech_mpoly_t B, const fq_zech_mpoly_t C, const fq_zech_t d,
+                                                const fq_zech_mpoly_ctx_t ctx);
 
 /* Differentiation **********************************************************/
 
@@ -806,6 +808,25 @@ void fq_zech_mpoly_univar_swap_term_coeff(fq_zech_mpoly_t c,
    Internal functions (guaranteed to change without notice)
 
 ******************************************************************************/
+
+
+FLINT_DLL int _fq_zech_mpoly_get_nmod_mpoly(
+    nmod_mpoly_t s,
+    const nmod_mpoly_ctx_t sctx,
+    const fq_zech_mpoly_t t,
+    const fq_zech_mpoly_ctx_t tctx);
+
+FLINT_DLL void _fq_zech_mpoly_set_nmod_mpoly(
+    fq_zech_mpoly_t A,
+    const fq_zech_mpoly_ctx_t Actx,
+    const nmod_mpoly_t B,
+    const nmod_mpoly_ctx_t Bctx);
+
+FLINT_DLL void fq_zech_mpolyl_lead_coeff(
+    fq_zech_mpoly_t c,
+    const fq_zech_mpoly_t A,
+    slong num_vars,
+    const fq_zech_mpoly_ctx_t ctx);
 
 FLINT_DLL void fq_zech_mpoly_pow_rmul(fq_zech_mpoly_t A, const fq_zech_mpoly_t B,
                                        ulong k, const fq_zech_mpoly_ctx_t ctx);

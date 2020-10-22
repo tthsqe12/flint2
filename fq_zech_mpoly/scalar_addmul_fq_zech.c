@@ -11,15 +11,21 @@
 
 #include "fq_zech_mpoly.h"
 
-slong _fq_zech_mpoly_add(
+static slong _fq_zech_mpoly_scalar_addmul_fq_zech(
     fq_zech_struct * Acoeffs, ulong * Aexps,
     fq_zech_struct * Bcoeffs, const ulong * Bexps, slong Blen,
     fq_zech_struct * Ccoeffs, const ulong * Cexps, slong Clen,
+    const fq_zech_t d,
     slong N,
     const ulong * cmpmask,
     const fq_zech_ctx_t fqctx)
 {
     slong i = 0, j = 0, k = 0;
+    fq_zech_t p;
+
+    FLINT_ASSERT(!fq_zech_is_zero(d, fqctx));
+
+    fq_zech_init(p, fqctx);
 
     while (i < Blen && j < Clen)
     {
@@ -35,7 +41,8 @@ slong _fq_zech_mpoly_add(
         else if (cmp == 0)
         {
             mpoly_monomial_set(Aexps + k*N, Bexps + i*N, N);
-            fq_zech_add(Acoeffs + k, Bcoeffs + i, Ccoeffs + j, fqctx);
+            fq_zech_mul(p, Ccoeffs + j, d, fqctx);
+            fq_zech_add(Acoeffs + k, Bcoeffs + i, p, fqctx);
             k += !fq_zech_is_zero(Acoeffs + k, fqctx);
             i++;
             j++;
@@ -43,7 +50,7 @@ slong _fq_zech_mpoly_add(
         else
         {
             mpoly_monomial_set(Aexps + k*N, Cexps + j*N, N);
-            fq_zech_set(Acoeffs + k, Ccoeffs + j, fqctx);
+            fq_zech_mul(Acoeffs + k, Ccoeffs + j, d, fqctx);
             j++;
             k++;
         }
@@ -60,18 +67,21 @@ slong _fq_zech_mpoly_add(
     while (j < Clen)
     {
         mpoly_monomial_set(Aexps + k*N, Cexps + j*N, N);
-        fq_zech_set(Acoeffs + k, Ccoeffs + j, fqctx);
+        fq_zech_mul(Acoeffs + k, Ccoeffs + j, d, fqctx);
         j++;
         k++;
     }
 
+    fq_zech_clear(p, fqctx);
+
     return k;
 }
 
-void fq_zech_mpoly_add(
+void fq_zech_mpoly_scalar_addmul_fq_zech(
     fq_zech_mpoly_t A,
     const fq_zech_mpoly_t B,
     const fq_zech_mpoly_t C,
+    const fq_zech_t d,
     const fq_zech_mpoly_ctx_t ctx)
 {
     flint_bitcnt_t Abits;
@@ -83,10 +93,10 @@ void fq_zech_mpoly_add(
 
     if (fq_zech_mpoly_is_zero(B, ctx))
     {
-        fq_zech_mpoly_set(A, C, ctx);
+        fq_zech_mpoly_scalar_mul_fq_zech(A, C, d, ctx);
         return;
     }
-    else if (fq_zech_mpoly_is_zero(C, ctx))
+    else if (fq_zech_mpoly_is_zero(C, ctx) || fq_zech_is_zero(d, ctx->fqctx))
     {
         fq_zech_mpoly_set(A, B, ctx);
         return;
@@ -116,20 +126,20 @@ void fq_zech_mpoly_add(
     {
         fq_zech_mpoly_t T;
         fq_zech_mpoly_init3(T, B->length + C->length, Abits, ctx);
-        T->length = _fq_zech_mpoly_add(T->coeffs, T->exps, 
-                                       B->coeffs, Bexps, B->length,
-                                       C->coeffs, Cexps, C->length,
-                                                       N, cmpmask, ctx->fqctx);
+        T->length = _fq_zech_mpoly_scalar_addmul_fq_zech(T->coeffs, T->exps, 
+                                                  B->coeffs, Bexps, B->length,
+                                                  C->coeffs, Cexps, C->length,
+                                                    d, N, cmpmask, ctx->fqctx);
         fq_zech_mpoly_swap(A, T, ctx);
         fq_zech_mpoly_clear(T, ctx);
     }
     else
     {
         fq_zech_mpoly_fit_length_reset_bits(A, B->length + C->length, Abits, ctx);
-        A->length = _fq_zech_mpoly_add(A->coeffs, A->exps, 
-                                       B->coeffs, Bexps, B->length,
-                                       C->coeffs, Cexps, C->length,
-                                                       N, cmpmask, ctx->fqctx);
+        A->length = _fq_zech_mpoly_scalar_addmul_fq_zech(A->coeffs, A->exps, 
+                                                  B->coeffs, Bexps, B->length,
+                                                  C->coeffs, Cexps, C->length,
+                                                    d, N, cmpmask, ctx->fqctx);
     }
       
     if (freeBexps)

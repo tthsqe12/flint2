@@ -11,7 +11,7 @@
 
 #include "fq_zech_mpoly.h"
 
-void fq_zech_mpoly_fit_length_set_bits(
+void fq_zech_mpoly_fit_length_reset_bits(
     fq_zech_mpoly_t A,
     slong len,
     flint_bitcnt_t bits,

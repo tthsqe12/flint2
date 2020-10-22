@@ -770,6 +770,12 @@ FLINT_DLL void _fq_zech_mpoly_set_fq_zech_bpoly_var1_zero(
     slong var,
     const fq_zech_mpoly_ctx_t ctx);
 
+FLINT_DLL void _fq_zech_mpoly_set_lead0(
+    fq_zech_mpoly_t A,
+    const fq_zech_mpoly_t B,
+    const fq_zech_mpoly_t c,
+    const fq_zech_mpoly_ctx_t ctx);
+
 #ifdef __cplusplus
 }
 #endif

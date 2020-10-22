@@ -23,6 +23,9 @@ void gcd_check(nmod_mpoly_t g, nmod_mpoly_t a, nmod_mpoly_t b,
     nmod_mpoly_init(cb, ctx);
     nmod_mpoly_init(cg, ctx);
 
+flint_printf("i = %wd j = %wd %s\n", i, j, name);
+
+
     res = nmod_mpoly_gcd(g, a, b, ctx);
     nmod_mpoly_assert_canonical(g, ctx);
 
@@ -120,7 +123,7 @@ int
 main(void)
 {
     const slong max_threads = 5;
-    slong i, j, k, tmul = 40;
+    slong i, j, k, tmul = 3;
     FLINT_TEST_INIT(state);
 
     flint_printf("gcd....");

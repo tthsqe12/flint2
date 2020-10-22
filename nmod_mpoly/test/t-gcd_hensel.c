@@ -33,7 +33,7 @@ main(void)
         modulus = n_randbits(state, modulus);
         modulus = n_nextprime(modulus, 1);
 
-        nmod_mpoly_ctx_init_rand(ctx, state, 10, modulus);
+        nmod_mpoly_ctx_init_rand(ctx, state, 6, modulus);
 
         nmod_mpoly_init(g, ctx);
         nmod_mpoly_init(a, ctx);
