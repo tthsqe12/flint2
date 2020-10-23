@@ -39,6 +39,10 @@
  extern "C" {
 #endif
 
+/* TODO move this to fmpz_vec */
+void _fmpz_vec_content_chained(fmpz_t res, const fmpz * vec, slong len);
+
+
 
 #define MPOLY_MIN_BITS (UWORD(8))    /* minimum number of bits to pack into */
 
@@ -1258,15 +1262,13 @@ FLINT_DLL void mpoly_monomials_shift_right_ui(ulong * Aexps, flint_bitcnt_t Abit
 FLINT_DLL void mpoly_monomials_shift_right_ffmpz(ulong * Aexps, flint_bitcnt_t Abits,
                 slong Alength, const fmpz * user_exps, const mpoly_ctx_t mctx);
 
-FLINT_DLL slong _mpoly_compress_exps(slong * V, slong * D, slong * deg,
-                                                  slong * S, slong n, slong l);
+/* gcd ***********************************************************************/
 
-FLINT_DLL int mpoly_monomial_cofactors(fmpz * Abarexps, fmpz * Bbarexps,
-                                    const ulong * Aexps, flint_bitcnt_t Abits,
-                                    const ulong * Bexps, flint_bitcnt_t Bbits,
-                                        slong length,  const mpoly_ctx_t mctx);
-
-/* info related to gcd calculation *******************************************/
+#define MPOLY_GCD_USE_HENSEL  1
+#define MPOLY_GCD_USE_BROWN   2
+#define MPOLY_GCD_USE_ZIPPEL  4
+#define MPOLY_GCD_USE_ZIPPEL2 8
+#define MPOLY_GCD_USE_ALL     15
 
 typedef struct
 {
@@ -1354,7 +1356,19 @@ void mpoly_zipinfo_init(mpoly_zipinfo_t zinfo, slong nvars);
 
 void mpoly_zipinfo_clear(mpoly_zipinfo_t zinfo);
 
-void _fmpz_vec_content_chained(fmpz_t res, const fmpz * vec, slong len);
+FLINT_DLL int mpoly_monomial_cofactors(fmpz * Abarexps, fmpz * Bbarexps,
+                                    const ulong * Aexps, flint_bitcnt_t Abits,
+                                    const ulong * Bexps, flint_bitcnt_t Bbits,
+                                        slong length,  const mpoly_ctx_t mctx);
+
+/* factoring ****************************************************************/
+
+#define MPOLY_FACTOR_USE_ZAS 1
+#define MPOLY_FACTOR_USE_WANG 2
+#define MPOLY_FACTOR_USE_ZIP 4
+
+FLINT_DLL slong _mpoly_compress_exps(slong * V, slong * D, slong * deg,
+                                                  slong * S, slong n, slong l);
 
 /* Heap **********************************************************************/
 

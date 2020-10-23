@@ -788,7 +788,7 @@ static int _try_missing_var(
 
         nmod_mpoly_repack_bits_inplace(tG, Gbits, ctx);
         _mpoly_gen_shift_left(tG->exps, tG->bits, tG->length,
-                                       var, FLINT_MIN(Ashift, Bshift), ctx->minfo);
+                                   var, FLINT_MIN(Ashift, Bshift), ctx->minfo);
 
         if (Abar != NULL)
         {
@@ -934,8 +934,8 @@ static int _try_zippel(
     nmod_mpoly_to_mpolyu_perm_deflate_threaded_pool(Bu, uctx, B, ctx, zinfo->perm,
                                              I->Bmin_exp, I->Gstride, NULL, 0);
 
-    success = nmod_mpolyu_content_mpoly(Ac, Au, uctx);
-    success = success && nmod_mpolyu_content_mpoly(Bc, Bu, uctx);
+    success = nmod_mpolyu_content_mpoly(Ac, Au, uctx) && 
+              nmod_mpolyu_content_mpoly(Bc, Bu, uctx);
     if (!success)
         goto cleanup;
 
@@ -1179,6 +1179,7 @@ cleanup:
 }
 
 
+/******************** Hit A and B with hensel lifting ************************/
 static int _try_hensel(
     nmod_mpoly_t G,
     nmod_mpoly_t Abar,
@@ -1450,9 +1451,7 @@ cleanup:
 
 
 /*
-    The function must pack its answer into bits = Gbits <= FLINT_BITS
     Both A and B have to be packed into bits <= FLINT_BITS
-
     return is 1 for success, 0 for failure.
 */
 static int _nmod_mpoly_gcd_algo(
@@ -1576,8 +1575,7 @@ skip_monomial_cofactors:
     }
 
     /* check if ess(A) and ess(B) depend on another variable v_in_either */
-    FLINT_ASSERT(0 <= v_in_both);
-    FLINT_ASSERT(v_in_both < nvars);
+    FLINT_ASSERT(0 <= v_in_both && v_in_both < nvars);
 
     v_in_either = -WORD(1);
     for (j = 0; j < nvars; j++)
@@ -1681,7 +1679,6 @@ skip_monomial_cofactors:
         if (_try_hensel(G, Abar, Bbar, A, B, I, ctx))
             goto successful;
 
-
         if (_try_brown(G, Abar, Bbar, A, B, I, ctx))
             goto successful;
     }
@@ -1741,33 +1738,6 @@ cleanup:
             _nmod_vec_scalar_mul_nmod(G->coeffs, G->coeffs, G->length,
                    nmod_inv(G->coeffs[0], ctx->ffinfo->mod), ctx->ffinfo->mod);
         }
-/*
-flint_printf("--------  mod.n = %wu ----------------\n", ctx->ffinfo->mod.n);
-flint_printf("A: ");
-nmod_mpoly_print_pretty(A, NULL, ctx);
-flint_printf("\n");
-flint_printf("B: ");
-nmod_mpoly_print_pretty(B, NULL, ctx);
-flint_printf("\n");
-
-
-flint_printf("   G: ");
-nmod_mpoly_print_pretty(G, NULL, ctx);
-flint_printf("\n");
-if (Abar != NULL)
-{
-flint_printf("Abar: ");
-nmod_mpoly_print_pretty(Abar, NULL, ctx);
-flint_printf("\n");
-}
-
-if (Bbar != NULL)
-{
-flint_printf("Bbar: ");
-nmod_mpoly_print_pretty(Bbar, NULL, ctx);
-flint_printf("\n");
-}
-*/
 
         FLINT_ASSERT(nmod_mpoly_divides(T, Asave, G, ctx));
         FLINT_ASSERT(Abar == NULL || nmod_mpoly_equal(T, Abar, ctx));
@@ -1862,19 +1832,19 @@ could_not_repack:
         fmpz_gcd(Gstride + k, Astride + k, Bstride + k);
     }
 
-    success = 0;
-
     nmod_mpoly_deflate(Anew, A, Ashift, Gstride, ctx);
     if (Anew->bits > FLINT_BITS)
     {
-        if (!nmod_mpoly_repack_bits(Anew, Anew, FLINT_BITS, ctx))
+        success = nmod_mpoly_repack_bits(Anew, Anew, FLINT_BITS, ctx);
+        if (!success)
             goto deflate_cleanup;
     }
 
     nmod_mpoly_deflate(Bnew, B, Bshift, Gstride, ctx);
     if (Bnew->bits > FLINT_BITS)
     {
-        if (!nmod_mpoly_repack_bits(Bnew, Bnew, FLINT_BITS, ctx))
+        success = nmod_mpoly_repack_bits(Bnew, Bnew, FLINT_BITS, ctx);
+        if (!success)
             goto deflate_cleanup;
     }
 

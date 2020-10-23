@@ -90,6 +90,42 @@ int main(int argc, char *argv[])
 
     flint_printf("total_time: %wd\n", total_time);
 
+    {
+        timeit_t timer;
+        fmpz_mpoly_ctx_t ctx;
+        fmpz_mpoly_t p;
+        fmpz_mpoly_factor_t f;
+        const char * vars[] = {"s0", "s1", "s2", "s3", "s4"};
+        const char * polys[] = {"s1^6*s2^3-6*s0*s1^5*s2^2*s3+12*s0^2*s1^4*s2*s3^2-8*s0^3*s1^3*s3^3+3*s0^2*s1^4*s2^2*s4-12*s0^3*s1^3*s2*s3*s4+12*s0^4*s1^2*s3^2*s4+3*s0^4*s1^2*s2*s4^2-6*s0^5*s1*s3*s4^2+s0^6*s4^3+4*s1^4*s2^2*s3^2-16*s0*s1^3*s2*s3^3+16*s0^2*s1^2*s3^4-4*s1^4*s2^3*s4+16*s0*s1^3*s2^2*s3*s4-8*s0^2*s1^2*s2*s3^2*s4-16*s0^3*s1*s3^3*s4-8*s0^2*s1^2*s2^2*s4^2+16*s0^3*s1*s2*s3*s4^2+4*s0^4*s3^2*s4^2-4*s0^4*s2*s4^3+3*s1^2*s2*s3^4-6*s0*s1*s3^5-6*s1^2*s2^2*s3^2*s4+12*s0*s1*s2*s3^3*s4+3*s0^2*s3^4*s4+3*s1^2*s2^3*s4^2-6*s0*s1*s2^2*s3*s4^2-6*s0^2*s2*s3^2*s4^2+3*s0^2*s2^2*s4^3-2*s3^6+6*s2*s3^4*s4-6*s2^2*s3^2*s4^2+2*s2^3*s4^3",
+                              "s3^8-4*s2*s3^6*s4+6*s2^2*s3^4*s4^2-4*s2^3*s3^2*s4^3+s2^4*s4^4",
+                              "s1^4*s2^2-4*s0*s1^3*s2*s3+4*s0^2*s1^2*s3^2+2*s0^2*s1^2*s2*s4-4*s0^3*s1*s3*s4+s0^4*s4^2+2*s1^2*s2*s3^2-4*s0*s1*s3^3-2*s1^2*s2^2*s4+4*s0*s1*s2*s3*s4+2*s0^2*s3^2*s4-2*s0^2*s2*s4^2-s3^4+2*s2*s3^2*s4-s2^2*s4^2",
+                              "s1^4-2*s1^2*s4-s4^2"};
+
+        fmpz_mpoly_ctx_init(ctx, 5, ORD_LEX);
+        fmpz_mpoly_init(p, ctx);
+        fmpz_mpoly_factor_init(f, ctx);
+
+        for (i = 0; i < 4; i++)
+        {
+            flint_printf("--------------\n");
+            fmpz_mpoly_set_str_pretty(p, polys[i], vars, ctx);
+            timeit_start(timer);
+            if (!fmpz_mpoly_factor(f, p, ctx))
+            {
+                flint_printf("oops! could not factor\n");
+                flint_abort();
+            }
+            fmpz_mpoly_factor_print_pretty(f, vars, ctx);
+            flint_printf("\n");
+            timeit_stop(timer);
+            flint_printf("time: %wd ms\n", timer->wall);
+        }
+
+        fmpz_mpoly_factor_clear(f, ctx);
+        fmpz_mpoly_clear(p, ctx);
+        fmpz_mpoly_ctx_clear(ctx);
+    }
+
     flint_cleanup_master();
     return 0;
 }

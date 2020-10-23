@@ -11,6 +11,7 @@
 
 #include "nmod_mpoly.h"
 #include "fq_nmod_mpoly.h"
+#include "fq_nmod_mpoly_factor.h"
 
 
 int fq_nmod_mpolyu_is_canonical(const fq_nmod_mpolyu_t A,
@@ -554,6 +555,146 @@ void fq_nmod_mpoly_from_mpolyuu_perm_inflate( /* only for 2 main vars */
 
 
 
+/** 0 variables *************************************/
+
+
+void fq_nmod_mpoly_to_mpolyl_perm_deflate(
+    fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_ctx_t lctx,
+    const fq_nmod_mpoly_t B,
+    const fq_nmod_mpoly_ctx_t ctx,
+    const slong * perm,
+    const ulong * shift,
+    const ulong * stride)
+{
+    slong d;
+    slong j, k, l;
+    slong m = lctx->minfo->nvars;
+    slong n = ctx->minfo->nvars;
+    slong NA, NB;
+    ulong * lexps;
+    ulong * Bexps;
+    TMP_INIT;
+
+    FLINT_ASSERT(A->bits <= FLINT_BITS);
+    FLINT_ASSERT(B->bits <= FLINT_BITS);
+    FLINT_ASSERT(m <= n);
+    TMP_START;
+
+    fq_nmod_mpoly_fit_length(A, B->length, ctx);
+    A->length = B->length;
+
+    lexps = (ulong *) TMP_ALLOC(m*sizeof(ulong));
+    Bexps = (ulong *) TMP_ALLOC(n*sizeof(ulong));
+    NA = mpoly_words_per_exp(A->bits, lctx->minfo);
+    NB = mpoly_words_per_exp(B->bits, ctx->minfo);
+
+    d = fq_nmod_ctx_degree(ctx->fqctx);
+    _nmod_vec_set(A->coeffs, B->coeffs, B->length*d);
+
+    for (j = 0; j < B->length; j++)
+    {
+        mpoly_get_monomial_ui(Bexps, B->exps + NB*j, B->bits, ctx->minfo);
+        for (k = 0; k < m; k++)
+        {
+            l = perm[k];
+            if (stride[l] == 1)
+            {
+                lexps[k] = (Bexps[l] - shift[l]);
+            }
+            else
+            {
+                FLINT_ASSERT(stride[l] != 0);
+                FLINT_ASSERT(((Bexps[l] - shift[l]) % stride[l]) == 0);
+                lexps[k] = (Bexps[l] - shift[l]) / stride[l];
+            }
+        }
+
+        mpoly_set_monomial_ui(A->exps + NA*j, lexps, A->bits, lctx->minfo);
+    }
+
+    TMP_END;
+
+    fq_nmod_mpoly_sort_terms(A, lctx);
+
+    FLINT_ASSERT(fq_nmod_mpoly_is_canonical(A, lctx));
+}
+
+
+/*
+    Convert B to A using the variable permutation vector perm.
+    A must be constructed with bits = Abits.
+
+    operation on each term:
+
+        for 0 <= l < n
+            Aexp[l] = shift[l]
+
+        for 0 <= k < m + 2
+            l = perm[k]
+            Aexp[l] += scale[l]*Bexp[k]
+*/
+void fq_nmod_mpoly_from_mpolyl_perm_inflate(
+    fq_nmod_mpoly_t A,
+    flint_bitcnt_t Abits,
+    const fq_nmod_mpoly_ctx_t ctx,
+    const fq_nmod_mpoly_t B,
+    const fq_nmod_mpoly_ctx_t lctx,
+    const slong * perm,
+    const ulong * shift,
+    const ulong * stride)
+{
+    slong d;
+    slong n = ctx->minfo->nvars;
+    slong m = lctx->minfo->nvars;
+    slong i, k, l;
+    slong NA, NB;
+    ulong * Bexps;
+    ulong * Aexps;
+    TMP_INIT;
+
+    FLINT_ASSERT(B->length > 0);
+    FLINT_ASSERT(Abits <= FLINT_BITS);
+    FLINT_ASSERT(B->bits <= FLINT_BITS);
+    FLINT_ASSERT(m <= n);
+    TMP_START;
+
+    Bexps = (ulong *) TMP_ALLOC(m*sizeof(ulong));
+    Aexps = (ulong *) TMP_ALLOC(n*sizeof(ulong));
+
+    NA = mpoly_words_per_exp(Abits, ctx->minfo);
+    NB = mpoly_words_per_exp(B->bits, lctx->minfo);
+
+    fq_nmod_mpoly_fit_length_reset_bits(A, B->length, Abits, ctx);
+    A->length = B->length;
+
+    d = fq_nmod_ctx_degree(ctx->fqctx);
+    _nmod_vec_set(A->coeffs, B->coeffs, B->length*d);
+
+    for (i = 0; i < B->length; i++)
+    {
+	    mpoly_get_monomial_ui(Bexps, B->exps + NB*i, B->bits, lctx->minfo);
+
+        for (l = 0; l < n; l++)
+        {
+            Aexps[l] = shift[l];
+        }
+        for (k = 0; k < m; k++)
+        {
+            l = perm[k];
+            Aexps[l] += stride[l]*Bexps[k];
+        }
+
+        mpoly_set_monomial_ui(A->exps + NA*i, Aexps, Abits, ctx->minfo);
+    }
+
+    TMP_END;
+
+    fq_nmod_mpoly_sort_terms(A, ctx);
+
+    FLINT_ASSERT(fq_nmod_mpoly_is_canonical(A, ctx));
+}
+
 void fq_nmod_mpolyu_shift_right(fq_nmod_mpolyu_t A, ulong s)
 {
     slong i;
@@ -760,53 +901,13 @@ int fq_nmod_mpolyu_content_mpoly(
     const fq_nmod_mpolyu_t A,
     const fq_nmod_mpoly_ctx_t ctx)
 {
-    slong i, j;
     int success;
-    flint_bitcnt_t bits = A->bits;
 
-    FLINT_ASSERT(g->bits == bits);
-
-    if (A->length < 2)
-    {
-        if (A->length == 0)
-        {
-            fq_nmod_mpoly_zero(g, ctx);
-        }
-        else
-        {
-            fq_nmod_mpoly_make_monic(g, A->coeffs + 0, ctx);
-        }
-
-        FLINT_ASSERT(g->bits == bits);
-        return 1;
-    }
-
-    j = 0;
-    for (i = 1; i < A->length; i++)
-    {
-        if ((A->coeffs + i)->length < (A->coeffs + j)->length)
-        {
-            j = i;
-        }
-    }
-
-    if (j == 0)
-        j = 1;
-
-    success = _fq_nmod_mpoly_gcd(g, bits, A->coeffs + 0, A->coeffs + j, ctx);
+    success = _fq_nmod_mpoly_vec_content_mpoly(g, A->coeffs, A->length, ctx);
     if (!success)
-        return 0;
+        fq_nmod_mpoly_zero(g, ctx);
 
-    for (i = 1; i < A->length; i++)
-    {
-        if (i == j)
-            continue;
+    fq_nmod_mpoly_repack_bits_inplace(g, A->bits, ctx);
 
-        success = _fq_nmod_mpoly_gcd(g, bits, g, A->coeffs + i, ctx);
-        FLINT_ASSERT(g->bits == bits);
-        if (!success)
-            return 0;
-    }
-
-    return 1;
+    return success;
 }

@@ -993,6 +993,8 @@ FLINT_DLL void _n_fq_inv(
     const fq_nmod_ctx_t ctx,
     mp_limb_t * t);
 
+#define N_FQ_MUL_INV_ITCH FLINT_MAX(N_FQ_MUL_ITCH, N_FQ_INV_ITCH)
+
 FLINT_DLL void _n_fq_pow_ui(
     mp_limb_t * a,
     const mp_limb_t * b,

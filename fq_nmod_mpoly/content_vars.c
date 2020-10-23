@@ -9,18 +9,18 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-#include "nmod_mpoly.h"
-#include "nmod_mpoly_factor.h"
+#include "fq_nmod_mpoly.h"
+#include "fq_nmod_mpoly_factor.h"
 
 /*
     content wrt gen(0), ..., gen(num_vars-1)
     successful answer will be returned with g->bits == A->bits
 */
-int nmod_mpolyl_content(
-    nmod_mpoly_t g,
-    const nmod_mpoly_t A,
+int fq_nmod_mpolyl_content(
+    fq_nmod_mpoly_t g,
+    const fq_nmod_mpoly_t A,
     slong num_vars,
-    const nmod_mpoly_ctx_t ctx)
+    const fq_nmod_mpoly_ctx_t ctx)
 {
     int success;
     slong i, j, off, shift;
@@ -28,7 +28,7 @@ int nmod_mpolyl_content(
     slong N = mpoly_words_per_exp_sp(A->bits, ctx->minfo);
     ulong * Aexps = A->exps;
     slong Alen = A->length;
-    nmod_mpoly_struct * v;
+    fq_nmod_mpoly_struct * v;
     slong vlen, valloc;
 
     FLINT_ASSERT(g != A);
@@ -42,7 +42,7 @@ int nmod_mpolyl_content(
     old_shift = (Aexps + N*i)[off] >> shift;
 
     valloc = 4;
-    v = (nmod_mpoly_struct *) flint_malloc(valloc*sizeof(nmod_mpoly_struct));
+    v = FLINT_ARRAY_ALLOC(valloc, fq_nmod_mpoly_struct);
     vlen = 0;
 
     v[vlen].bits = A->bits;
@@ -74,8 +74,8 @@ new_one:
         if (vlen + 1 > valloc)
         {
             valloc += 2 + valloc/2;
-            v = (nmod_mpoly_struct *) flint_realloc(v, valloc*
-                                                    sizeof(nmod_mpoly_struct));
+            v = (fq_nmod_mpoly_struct *) flint_realloc(v, valloc*
+                                                 sizeof(fq_nmod_mpoly_struct));
         }
         v[vlen].bits = A->bits;
         v[vlen].coeffs = A->coeffs + i;
@@ -89,13 +89,13 @@ new_one:
     v[vlen - 1].length = i - v[vlen - 1].length;
     FLINT_ASSERT(v[vlen - 1].length > 0);
 
-    success = _nmod_mpoly_vec_content_mpoly(g, v, vlen, ctx);
+    success = _fq_nmod_mpoly_vec_content_mpoly(g, v, vlen, ctx);
 
     if (success)
     {
         /* remove gen(0) ... gen(num_vars-1) from the answer */
         ulong * gexps;
-        nmod_mpoly_repack_bits_inplace(g, A->bits, ctx);
+        fq_nmod_mpoly_repack_bits_inplace(g, A->bits, ctx);
         gexps = g->exps;
         for (i = 0; i < g->length; i++)
         {
@@ -110,32 +110,32 @@ new_one:
     return success;
 }
 
-int nmod_mpoly_content_vars(
-    nmod_mpoly_t g,
-    const nmod_mpoly_t A,
+int fq_nmod_mpoly_content_vars(
+    fq_nmod_mpoly_t g,
+    const fq_nmod_mpoly_t A,
     slong * vars, slong num_vars,
-    const nmod_mpoly_ctx_t ctx)
+    const fq_nmod_mpoly_ctx_t ctx)
 {
     int success;
     slong i, j, k;
-    nmod_mpolyv_t v, w;
-    nmod_mpoly_univar_t u;
+    fq_nmod_mpolyv_t v, w;
+    fq_nmod_mpoly_univar_t u;
 
     if (num_vars < 1)
     {
-        nmod_mpoly_set(g, A, ctx);
+        fq_nmod_mpoly_set(g, A, ctx);
         return 1;
     }
 
     for (i = 0; i < num_vars; i++)
     {
         if (vars[i] >= (ulong) ctx->minfo->nvars)
-            flint_throw(FLINT_ERROR, "nmod_mpoly_content_vars: variable out of range");
+            flint_throw(FLINT_ERROR, "fq_nmod_mpoly_content_vars: variable out of range");
     }
 
-    if (nmod_mpoly_is_zero(A, ctx))
+    if (fq_nmod_mpoly_is_zero(A, ctx))
     {
-        nmod_mpoly_zero(g, ctx);
+        fq_nmod_mpoly_zero(g, ctx);
         return 1;
     }
 
@@ -149,53 +149,53 @@ int nmod_mpoly_content_vars(
 
         if (g == A)
         {
-            nmod_mpoly_t t;
-            nmod_mpoly_init(t, ctx);
-            success = nmod_mpolyl_content(t, A, num_vars, ctx);
-            nmod_mpoly_swap(g, t, ctx);
-            nmod_mpoly_clear(t, ctx);
+            fq_nmod_mpoly_t t;
+            fq_nmod_mpoly_init(t, ctx);
+            success = fq_nmod_mpolyl_content(t, A, num_vars, ctx);
+            fq_nmod_mpoly_swap(g, t, ctx);
+            fq_nmod_mpoly_clear(t, ctx);
             return success;
         }
 
-        return nmod_mpolyl_content(g, A, num_vars, ctx);
+        return fq_nmod_mpolyl_content(g, A, num_vars, ctx);
     }
 
 do_general:
 
-    nmod_mpolyv_init(v, ctx);
+    fq_nmod_mpolyv_init(v, ctx);
 
-    nmod_mpolyv_init(w, ctx);
-    nmod_mpoly_univar_init(u, ctx);
+    fq_nmod_mpolyv_init(w, ctx);
+    fq_nmod_mpoly_univar_init(u, ctx);
 
     i = 0;
-    nmod_mpoly_to_univar(u, A, vars[i], ctx);
-    nmod_mpolyv_fit_length(v, u->length, ctx);
+    fq_nmod_mpoly_to_univar(u, A, vars[i], ctx);
+    fq_nmod_mpolyv_fit_length(v, u->length, ctx);
     v->length = u->length;
     for (j = 0; j < u->length; j++)
-        nmod_mpoly_swap(v->coeffs + j, u->coeffs + j, ctx);
+        fq_nmod_mpoly_swap(v->coeffs + j, u->coeffs + j, ctx);
 
     for (i = 1; i < num_vars; i++)
     {
         w->length = 0;
         for (k = 0; k < v->length; k++)
         {
-            nmod_mpoly_to_univar(u, v->coeffs + k, vars[i], ctx);
-            nmod_mpolyv_fit_length(w, w->length + u->length, ctx);
+            fq_nmod_mpoly_to_univar(u, v->coeffs + k, vars[i], ctx);
+            fq_nmod_mpolyv_fit_length(w, w->length + u->length, ctx);
             for (j = 0; j < u->length; j++)
             {
-                nmod_mpoly_swap(w->coeffs + w->length, u->coeffs + j, ctx);
+                fq_nmod_mpoly_swap(w->coeffs + w->length, u->coeffs + j, ctx);
                 w->length++;
             }
         }
-        nmod_mpolyv_swap(v, w, ctx);
+        fq_nmod_mpolyv_swap(v, w, ctx);
     }
 
-    nmod_mpoly_univar_clear(u, ctx);
-    nmod_mpolyv_clear(w, ctx);
+    fq_nmod_mpoly_univar_clear(u, ctx);
+    fq_nmod_mpolyv_clear(w, ctx);
 
-    success = _nmod_mpoly_vec_content_mpoly(g, v->coeffs, v->length, ctx);
+    success = _fq_nmod_mpoly_vec_content_mpoly(g, v->coeffs, v->length, ctx);
 
-    nmod_mpolyv_clear(v, ctx);
+    fq_nmod_mpolyv_clear(v, ctx);
 
     return success;
 }

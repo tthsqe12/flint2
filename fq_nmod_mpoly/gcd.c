@@ -10,6 +10,7 @@
 */
 
 #include "fq_nmod_mpoly.h"
+#include "fq_nmod_mpoly_factor.h"
 
 /*
     For each j, set out[j] to the evaluation of A at x_i = alpha[i] (i != j)
@@ -455,14 +456,77 @@ cleanup:
 }
 
 
+/* (Abar, Bbar) = (A, B) */
+static void _parallel_set(
+    fq_nmod_mpoly_t Abar, /* could be NULL */
+    fq_nmod_mpoly_t Bbar, /* could be NULL */
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_t B,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    if (Abar == B && Bbar == A)
+    {
+        FLINT_ASSERT(Abar != NULL && Bbar != NULL);
+        fq_nmod_mpoly_set(Abar, B, ctx);
+        fq_nmod_mpoly_set(Bbar, A, ctx);
+        fq_nmod_mpoly_swap(Abar, Bbar, ctx);
+    }
+    else if (Abar == B && Bbar != A)
+    {
+        FLINT_ASSERT(Abar != NULL);
+        if (Bbar != NULL)
+            fq_nmod_mpoly_set(Bbar, B, ctx);
+        fq_nmod_mpoly_set(Abar, A, ctx);
+    }
+    else
+    {
+        if (Abar != NULL)
+            fq_nmod_mpoly_set(Abar, A, ctx);
+        if (Bbar != NULL)
+            fq_nmod_mpoly_set(Bbar, B, ctx);
+    }
+}
+
+
+/* The variables in ess(A) and ess(B) are disjoint. gcd is trivial to compute */
+static int _do_trivial(
+    fq_nmod_mpoly_t G,
+    fq_nmod_mpoly_t Abar,  /* could be NULL */
+    fq_nmod_mpoly_t Bbar,  /* could be NULL */
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_t B,
+    const mpoly_gcd_info_t I,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    _parallel_set(Abar, Bbar, A, B, ctx);
+
+    if (Abar != NULL)
+        mpoly_monomials_shift_right_ui(Abar->exps, Abar->bits, Abar->length,
+                                                      I->Gmin_exp, ctx->minfo);
+
+    if (Bbar != NULL)
+        mpoly_monomials_shift_right_ui(Bbar->exps, Bbar->bits, Bbar->length,
+                                                      I->Gmin_exp, ctx->minfo);
+
+    fq_nmod_mpoly_fit_length_reset_bits(G, 1, I->Gbits, ctx);
+    mpoly_set_monomial_ui(G->exps, I->Gmin_exp, I->Gbits, ctx->minfo);
+    _n_fq_one(G->coeffs, fq_nmod_ctx_degree(ctx->fqctx));
+    _fq_nmod_mpoly_set_length(G, 1, ctx);
+
+    return 1;
+}
+
 /*********************** Easy when B is a monomial ***************************/
-static int _try_monomial_gcd(
-    fq_nmod_mpoly_t G, flint_bitcnt_t Gbits,
+static int _do_monomial_gcd(
+    fq_nmod_mpoly_t G,
+    fq_nmod_mpoly_t Abar,  /* could be NULL */
+    fq_nmod_mpoly_t Bbar,  /* could be NULL */
     const fq_nmod_mpoly_t A,
     const fq_nmod_mpoly_t B,
     const fq_nmod_mpoly_ctx_t ctx)
 {
     slong i;
+    flint_bitcnt_t Gbits = FLINT_MIN(A->bits, B->bits);
     fmpz * minAfields, * minAdegs, * minBdegs;
     TMP_INIT;
 
@@ -492,10 +556,20 @@ static int _try_monomial_gcd(
     /* compute the degree of each variable in G */
     _fmpz_vec_min_inplace(minBdegs, minAdegs, ctx->minfo->nvars);
 
+    _parallel_set(Abar, Bbar, A, B, ctx);
+
+    if (Abar != NULL)
+        mpoly_monomials_shift_right_ffmpz(Abar->exps, Abar->bits, Abar->length,
+                                                         minBdegs, ctx->minfo);
+
+    if (Bbar != NULL)
+        mpoly_monomials_shift_right_ffmpz(Bbar->exps, Bbar->bits, Bbar->length,
+                                                         minBdegs, ctx->minfo);
+
     fq_nmod_mpoly_fit_length_reset_bits(G, 1, Gbits, ctx);
     mpoly_set_monomial_ffmpz(G->exps, minBdegs, Gbits, ctx->minfo);
     _n_fq_one(G->coeffs + 0, fq_nmod_ctx_degree(ctx->fqctx));
-    G->length = 1;
+    _fq_nmod_mpoly_set_length(G, 1, ctx);
 
     for (i = 0; i < ctx->minfo->nfields; i++)
     {
@@ -515,7 +589,9 @@ static int _try_monomial_gcd(
 
 /********************** See if cofactors are monomials ***********************/
 static int _try_monomial_cofactors(
-    fq_nmod_mpoly_t G, flint_bitcnt_t Gbits,
+    fq_nmod_mpoly_t G,
+    fq_nmod_mpoly_t Abar,  /* could be NULL */
+    fq_nmod_mpoly_t Bbar,  /* could be NULL */
     const fq_nmod_mpoly_t A,
     const fq_nmod_mpoly_t B,
     const fq_nmod_mpoly_ctx_t ctx)
@@ -526,8 +602,11 @@ static int _try_monomial_cofactors(
     slong NA, NG;
     slong nvars = ctx->minfo->nvars;
     fmpz * Abarexps, * Bbarexps, * Texps;
-    mp_limb_t * t1, * t2;
+    mp_limb_t * tmp, * t1, * t2, * a0, * b0;
     fq_nmod_mpoly_t T;
+    flint_bitcnt_t Gbits = FLINT_MIN(A->bits, B->bits);
+    flint_bitcnt_t Abarbits = A->bits;
+    flint_bitcnt_t Bbarbits = B->bits;
     TMP_INIT;
 
     FLINT_ASSERT(A->length > 0);
@@ -538,17 +617,24 @@ static int _try_monomial_cofactors(
 
     TMP_START;
 
-    t1 = (mp_limb_t *) TMP_ALLOC(d*sizeof(mp_limb_t));
-    t2 = (mp_limb_t *) TMP_ALLOC(d*sizeof(mp_limb_t));
+    tmp = (mp_limb_t *) TMP_ALLOC(d*(4 + FLINT_MAX(N_FQ_MUL_ITCH,
+                                            N_FQ_INV_ITCH))*sizeof(mp_limb_t));
+    t1 = tmp + d*FLINT_MAX(N_FQ_MUL_ITCH, N_FQ_INV_ITCH);
+    t2 = t1 + d;
+    a0 = t2 + d;
+    b0 = a0 + d;
 
     for (i = A->length - 1; i > 0; i--)
     {
-        n_fq_mul(t1, A->coeffs + d*0, B->coeffs + d*i, ctx->fqctx);
-        n_fq_mul(t2, B->coeffs + d*0, A->coeffs + d*i, ctx->fqctx);
+        _n_fq_mul(t1, A->coeffs + d*0, B->coeffs + d*i, ctx->fqctx, tmp);
+        _n_fq_mul(t2, B->coeffs + d*0, A->coeffs + d*i, ctx->fqctx, tmp);
         success = _n_fq_equal(t1, t2, d);
         if (!success)
             goto cleanup_less;
     }
+
+    _n_fq_set(a0, A->coeffs + d*0, d);
+    _n_fq_set(b0, B->coeffs + d*0, d);
 
     Abarexps = (fmpz *) TMP_ALLOC(3*nvars*sizeof(fmpz));
     Bbarexps = Abarexps + 1*nvars;
@@ -568,7 +654,7 @@ static int _try_monomial_cofactors(
     fq_nmod_mpoly_init3(T, A->length, Gbits, ctx);
     NG = mpoly_words_per_exp(Gbits, ctx->minfo);
     NA = mpoly_words_per_exp(A->bits, ctx->minfo);
-    n_fq_inv(t1, A->coeffs + d*0, ctx->fqctx);
+    _n_fq_inv(t1, A->coeffs + d*0, ctx->fqctx, tmp);
     T->length = A->length;
     for (i = 0; i < A->length; i++)
     {
@@ -579,6 +665,22 @@ static int _try_monomial_cofactors(
     }
     fq_nmod_mpoly_swap(G, T, ctx);
     fq_nmod_mpoly_clear(T, ctx);
+
+    if (Abar != NULL)
+    {
+        fq_nmod_mpoly_fit_length_reset_bits(Abar, 1, Abarbits, ctx);
+        mpoly_set_monomial_ffmpz(Abar->exps, Abarexps, Abarbits, ctx->minfo);
+        _n_fq_set(Abar->coeffs + d*0, a0, d);
+        _fq_nmod_mpoly_set_length(Abar, 1, ctx);
+    }
+
+    if (Bbar != NULL)
+    {
+        fq_nmod_mpoly_fit_length_reset_bits(Bbar, 1, Bbarbits, ctx);
+        mpoly_set_monomial_ffmpz(Bbar->exps, Bbarexps, Bbarbits, ctx->minfo);
+        _n_fq_set(Bbar->coeffs + d*0, b0, d);
+        _fq_nmod_mpoly_set_length(Bbar, 1, ctx);
+    }
 
     success = 1;
 
@@ -599,92 +701,184 @@ cleanup_less:
 }
 
 
+/***  ess(A) and ess(B) depend on only one variable v_in_both ****************/
+static int _do_univar(
+    fq_nmod_mpoly_t G,
+    fq_nmod_mpoly_t Abar,
+    fq_nmod_mpoly_t Bbar,
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_t B,
+    slong v_in_both,
+    const mpoly_gcd_info_t I,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    fq_nmod_poly_t a, b, g, t, r;
+
+    fq_nmod_poly_init(a, ctx->fqctx);
+    fq_nmod_poly_init(b, ctx->fqctx);
+    fq_nmod_poly_init(g, ctx->fqctx);
+    fq_nmod_poly_init(t, ctx->fqctx);
+    fq_nmod_poly_init(r, ctx->fqctx);
+
+    _fq_nmod_mpoly_to_fq_nmod_poly_deflate(a, A, v_in_both,
+                                                 I->Amin_exp, I->Gstride, ctx);
+    _fq_nmod_mpoly_to_fq_nmod_poly_deflate(b, B, v_in_both,
+                                                 I->Bmin_exp, I->Gstride, ctx);
+
+    fq_nmod_poly_gcd(g, a, b, ctx->fqctx);
+    _fq_nmod_mpoly_from_fq_nmod_poly_inflate(G, I->Gbits, g, v_in_both,
+                                                 I->Gmin_exp, I->Gstride, ctx);
+    if (Abar != NULL)
+    {
+        fq_nmod_poly_divrem(t, r, a, g, ctx->fqctx);
+        FLINT_ASSERT(fq_nmod_poly_is_zero(r, ctx->fqctx));
+        _fq_nmod_mpoly_from_fq_nmod_poly_inflate(Abar, I->Abarbits, t,
+                                   v_in_both, I->Abarmin_exp, I->Gstride, ctx);
+    }
+
+    if (Bbar != NULL)
+    {
+        fq_nmod_poly_divrem(t, r, b, g, ctx->fqctx);
+        FLINT_ASSERT(fq_nmod_poly_is_zero(r, ctx->fqctx));
+        _fq_nmod_mpoly_from_fq_nmod_poly_inflate(Bbar, I->Bbarbits, t, v_in_both,
+                                              I->Bbarmin_exp, I->Gstride, ctx);
+    }
+
+    fq_nmod_poly_clear(a, ctx->fqctx);
+    fq_nmod_poly_clear(b, ctx->fqctx);
+    fq_nmod_poly_clear(g, ctx->fqctx);
+    fq_nmod_poly_clear(t, ctx->fqctx);
+    fq_nmod_poly_clear(r, ctx->fqctx);
+
+    return 1;
+}
+
 /********* Assume B has length one when converted to univar format ***********/
 static int _try_missing_var(
     fq_nmod_mpoly_t G, flint_bitcnt_t Gbits,
+    fq_nmod_mpoly_t Abar,
+    fq_nmod_mpoly_t Bbar,
     slong var,
     const fq_nmod_mpoly_t A, ulong Ashift,
     const fq_nmod_mpoly_t B, ulong Bshift,
     const fq_nmod_mpoly_ctx_t ctx)
 {
     int success;
-    slong i;
-    fq_nmod_mpoly_t tG;
-    fq_nmod_mpoly_univar_t Ax;
+    fq_nmod_mpoly_univar_t Au;
 
-    fq_nmod_mpoly_init(tG, ctx);
-    fq_nmod_mpoly_univar_init(Ax, ctx);
+    fq_nmod_mpoly_univar_init(Au, ctx);
 
-    fq_nmod_mpoly_to_univar(Ax, A, var, ctx);
+#if FLINT_WANT_ASSERT
+    fq_nmod_mpoly_to_univar(Au, B, var, ctx);
+    FLINT_ASSERT(Au->length == 1);
+#endif
+    fq_nmod_mpoly_to_univar(Au, A, var, ctx);
 
-    FLINT_ASSERT(Ax->length > 0);
-    success = _fq_nmod_mpoly_gcd(tG, Gbits, B, Ax->coeffs + 0, ctx);
-    if (!success)
-        goto cleanup;
+    fq_nmod_mpoly_univar_fit_length(Au, Au->length + 1, ctx);
+    fq_nmod_mpoly_set(Au->coeffs + Au->length, B, ctx);
+    Au->length++;
 
-    for (i = 1; i < Ax->length; i++)
+    if (Abar == NULL && Bbar == NULL)
     {
-        success = _fq_nmod_mpoly_gcd(tG, Gbits, tG, Ax->coeffs + i, ctx);
+        success = _fq_nmod_mpoly_vec_content_mpoly(G, Au->coeffs, Au->length, ctx);
         if (!success)
             goto cleanup;
-    }
 
-    fq_nmod_mpoly_swap(G, tG, ctx);
-    _mpoly_gen_shift_left(G->exps, G->bits, G->length,
+        fq_nmod_mpoly_repack_bits_inplace(G, Gbits, ctx);
+        _mpoly_gen_shift_left(G->exps, G->bits, G->length,
+                                   var, FLINT_MIN(Ashift, Bshift), ctx->minfo);
+    }
+    else
+    {
+        fq_nmod_mpoly_t tG, tAbar, tBbar;
+
+        fq_nmod_mpoly_init(tG, ctx);
+        fq_nmod_mpoly_init(tAbar, ctx);
+        fq_nmod_mpoly_init(tBbar, ctx);
+
+        success = _fq_nmod_mpoly_vec_content_mpoly(G, Au->coeffs, Au->length, ctx);
+        if (!success)
+            goto cleanup;
+
+        fq_nmod_mpoly_repack_bits_inplace(tG, Gbits, ctx);
+        _mpoly_gen_shift_left(tG->exps, tG->bits, tG->length,
                                    var, FLINT_MIN(Ashift, Bshift), ctx->minfo);
 
+        if (Abar != NULL)
+        {
+            success = fq_nmod_mpoly_divides(tAbar, A, tG, ctx);
+            FLINT_ASSERT(success);
+        }
+
+        if (Bbar != NULL)
+        {
+            success = fq_nmod_mpoly_divides(tBbar, B, tG, ctx);
+            FLINT_ASSERT(success);
+        }
+
+        fq_nmod_mpoly_swap(G, tG, ctx);
+
+        if (Abar != NULL)
+            fq_nmod_mpoly_swap(Abar, tAbar, ctx);
+
+        if (Bbar != NULL)
+            fq_nmod_mpoly_swap(Bbar, tBbar, ctx);
+
+        fq_nmod_mpoly_clear(tG, ctx);
+        fq_nmod_mpoly_clear(tAbar, ctx);
+        fq_nmod_mpoly_clear(tBbar, ctx);        
+    }
+
+    success = 1;
+
 cleanup:
 
-    fq_nmod_mpoly_clear(tG, ctx);
-    fq_nmod_mpoly_univar_clear(Ax, ctx);
+    fq_nmod_mpoly_univar_clear(Au, ctx);
 
     return success;
 }
 
 
-/******************* Test if B divides A or A divides B **********************/
-/*
-    Test if B divides A or A divides B
-        TODO: incorporate deflation
-*/
+/************************ See if B divides A ********************************/
 static int _try_divides(
     fq_nmod_mpoly_t G,
-    const fq_nmod_mpoly_t A, int try_a,
-    const fq_nmod_mpoly_t B, int try_b,
+    fq_nmod_mpoly_t Abar,
+    fq_nmod_mpoly_t Bbar,
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_t BB,
     const fq_nmod_mpoly_ctx_t ctx)
 {
-    int success;
-    fq_nmod_mpoly_t Q;
+    int success = 0;
+    fq_nmod_mpoly_t Q, B, M;
 
     fq_nmod_mpoly_init(Q, ctx);
+    fq_nmod_mpoly_init(B, ctx);
+    fq_nmod_mpoly_init(M, ctx);
 
-    if (try_b && fq_nmod_mpoly_divides(Q, A, B, ctx))
+    /* BB = M*B */
+    fq_nmod_mpoly_term_content(M, BB, ctx);
+    fq_nmod_mpoly_divides(B, BB, M, ctx);
+
+    if (fq_nmod_mpoly_divides(Q, A, B, ctx))
     {
-        fq_nmod_mpoly_set(G, B, ctx);
+        /* gcd(Q*B, M*B) */
+        _do_monomial_gcd(G, Abar, Bbar, Q, M, ctx);
+        fq_nmod_mpoly_mul(G, G, B, ctx);
         success = 1;
-        goto cleanup;
     }
-
-    if (try_a && fq_nmod_mpoly_divides(Q, B, A, ctx))
-    {
-        fq_nmod_mpoly_set(G, A, ctx);
-        success = 1;
-        goto cleanup;
-    }
-
-    success = 0;
-
-cleanup:
 
     fq_nmod_mpoly_clear(Q, ctx);
+    fq_nmod_mpoly_clear(B, ctx);
+    fq_nmod_mpoly_clear(M, ctx);
 
     return success;
 }
-
 
 /********************** Hit A and B with zippel ******************************/
 static int _try_zippel(
     fq_nmod_mpoly_t G,
+    fq_nmod_mpoly_t Abar,
+    fq_nmod_mpoly_t Bbar,
     const fq_nmod_mpoly_t A,
     const fq_nmod_mpoly_t B,
     const mpoly_gcd_info_t I,
@@ -698,7 +892,7 @@ static int _try_zippel(
     flint_rand_t randstate;
     fq_nmod_mpoly_ctx_t uctx;
     fq_nmod_mpolyu_t Au, Bu, Gu, Abaru, Bbaru;
-    fq_nmod_mpoly_t Ac, Bc, Gc;
+    fq_nmod_mpoly_t Ac, Bc, Gc, Abarc, Bbarc;
 
     FLINT_ASSERT(A->bits <= FLINT_BITS);
     FLINT_ASSERT(B->bits <= FLINT_BITS);
@@ -739,14 +933,16 @@ static int _try_zippel(
     fq_nmod_mpoly_init3(Ac, 0, wbits, uctx);
     fq_nmod_mpoly_init3(Bc, 0, wbits, uctx);
     fq_nmod_mpoly_init3(Gc, 0, wbits, uctx);
+    fq_nmod_mpoly_init3(Abarc, 0, wbits, uctx);
+    fq_nmod_mpoly_init3(Bbarc, 0, wbits, uctx);
 
     fq_nmod_mpoly_to_mpolyu_perm_deflate(Au, uctx, A, ctx, zinfo->perm,
                                                       I->Amin_exp, I->Gstride);
     fq_nmod_mpoly_to_mpolyu_perm_deflate(Bu, uctx, B, ctx, zinfo->perm,
                                                       I->Bmin_exp, I->Gstride);
 
-    success = fq_nmod_mpolyu_content_mpoly(Ac, Au, uctx);
-    success = success && fq_nmod_mpolyu_content_mpoly(Bc, Bu, uctx);
+    success = fq_nmod_mpolyu_content_mpoly(Ac, Au, uctx) &&
+              fq_nmod_mpolyu_content_mpoly(Bc, Bu, uctx);
     if (!success)
         goto cleanup;
 
@@ -759,14 +955,44 @@ static int _try_zippel(
     if (!success)
         goto cleanup;
 
-    success = _fq_nmod_mpoly_gcd(Gc, wbits, Ac, Bc, uctx);
-    if (!success)
-        goto cleanup;
+    if (Abar == NULL && Bbar == NULL)
+    {
+        success = fq_nmod_mpoly_gcd(Gc, Ac, Bc, uctx);
+        if (!success)
+            goto cleanup;
 
-    fq_nmod_mpolyu_mul_mpoly_inplace(Gu, Gc, uctx);
+        fq_nmod_mpoly_repack_bits_inplace(Gc, wbits, uctx);
+        fq_nmod_mpolyu_mul_mpoly_inplace(Gu, Gc, uctx);
 
-    fq_nmod_mpoly_from_mpolyu_perm_inflate(G, I->Gbits, ctx, Gu, uctx,
+        fq_nmod_mpoly_from_mpolyu_perm_inflate(G, I->Gbits, ctx, Gu, uctx,
                                          zinfo->perm, I->Gmin_exp, I->Gstride);
+    }
+    else
+    {
+        success = fq_nmod_mpoly_gcd_cofactors(Gc, Abarc, Bbarc, Ac, Bc, uctx);
+        if (!success)
+            goto cleanup;
+
+        fq_nmod_mpoly_repack_bits_inplace(Gc, wbits, uctx);
+        fq_nmod_mpoly_repack_bits_inplace(Abarc, wbits, uctx);
+        fq_nmod_mpoly_repack_bits_inplace(Bbarc, wbits, uctx);
+
+        fq_nmod_mpolyu_mul_mpoly_inplace(Gu, Gc, uctx);
+        fq_nmod_mpolyu_mul_mpoly_inplace(Abaru, Abarc, uctx);
+        fq_nmod_mpolyu_mul_mpoly_inplace(Bbaru, Bbarc, uctx);
+
+        fq_nmod_mpoly_from_mpolyu_perm_inflate(G, I->Gbits, ctx, Gu, uctx,
+                                        zinfo->perm, I->Gmin_exp, I->Gstride);
+
+        if (Abar != NULL)
+            fq_nmod_mpoly_from_mpolyu_perm_inflate(Abar, I->Abarbits, ctx,
+                         Abaru, uctx, zinfo->perm, I->Abarmin_exp, I->Gstride);
+
+        if (Bbar != NULL)
+            fq_nmod_mpoly_from_mpolyu_perm_inflate(Bbar, I->Bbarbits, ctx,
+                         Bbaru, uctx, zinfo->perm, I->Bbarmin_exp, I->Gstride);
+    }
+
     success = 1;
 
 cleanup:
@@ -779,6 +1005,8 @@ cleanup:
     fq_nmod_mpoly_clear(Ac, uctx);
     fq_nmod_mpoly_clear(Bc, uctx);
     fq_nmod_mpoly_clear(Gc, uctx);
+    fq_nmod_mpoly_clear(Abarc, uctx);
+    fq_nmod_mpoly_clear(Bbarc, uctx);
 
     fq_nmod_mpoly_ctx_clear(uctx);
 
@@ -789,7 +1017,7 @@ cleanup:
     return success;
 }
 
-static int _try_zippel2(
+static int _try_zippel2_old(
     fq_nmod_mpoly_t G,
     const fq_nmod_mpoly_t A,
     const fq_nmod_mpoly_t B,
@@ -862,9 +1090,11 @@ flint_printf("_try_zippel2\n");
 
     success = fq_nmod_mpolyu_content_mpoly(Ac, Auu, uctx) &&
               fq_nmod_mpolyu_content_mpoly(Bc, Buu, uctx) &&
-              _fq_nmod_mpoly_gcd(Gc, wbits, Ac, Bc, uctx);
+              fq_nmod_mpoly_gcd(Gc, Ac, Bc, uctx);
     if (!success)
         goto cleanup;
+
+    fq_nmod_mpoly_repack_bits_inplace(Gc, wbits, uctx);
 
     fq_nmod_mpoly_degrees_si(tmp, Ac, uctx);
     for (i = 0; i < m - 2; i++)
@@ -889,10 +1119,11 @@ flint_printf("_try_zippel2\n");
     FLINT_ASSERT(Ac->bits == wbits);
     FLINT_ASSERT(Bc->bits == wbits);
 
-    success = _fq_nmod_mpoly_gcd(Gamma, wbits, Auu->coeffs + 0,
-                                               Buu->coeffs + 0, uctx);
+    success = fq_nmod_mpoly_gcd(Gamma, Auu->coeffs + 0, Buu->coeffs + 0, uctx);
     if (!success)
         goto cleanup;
+
+    fq_nmod_mpoly_repack_bits_inplace(Gamma, wbits, uctx);
 
     fq_nmod_mpoly_degrees_si(Gamma_degs, Gamma, uctx);
 
@@ -959,11 +1190,295 @@ flint_printf("_try_zippel2 returning %d\n", success);
     return success;
 }
 
+static int _try_zippel2(
+    fq_nmod_mpoly_t G,
+    fq_nmod_mpoly_t Abar,
+    fq_nmod_mpoly_t Bbar,
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_t B,
+    const mpoly_gcd_info_t I,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    slong i, k;
+    slong m = I->mvars;
+    int success;
+    flint_bitcnt_t wbits;
+    fq_nmod_mpoly_ctx_t lctx;
+    fq_nmod_mpoly_t Al, Bl, Gl, Abarl, Bbarl;
+    fq_nmod_mpoly_t Al_lc, Bl_lc, Ac, Bc, Gc, Abarc, Bbarc, Gamma;
+    slong * tmp, * Gl_degs, * Al_degs, * Bl_degs, * Gamma_degs, * Gguess;
+    slong max_degree;
+
+    FLINT_ASSERT(A->bits <= FLINT_BITS);
+    FLINT_ASSERT(B->bits <= FLINT_BITS);
+    FLINT_ASSERT(A->length > 0);
+    FLINT_ASSERT(B->length > 0);
+
+    if (!I->can_use_bma)
+        return 0;
+
+    FLINT_ASSERT(m >= WORD(3));
+
+    tmp = FLINT_ARRAY_ALLOC(5*m, slong);
+    Al_degs   = tmp + 1*m;
+    Bl_degs   = tmp + 2*m;
+    Gl_degs   = tmp + 3*m;
+    Gamma_degs = tmp + 4*m;
+
+    fq_nmod_mpoly_ctx_init(lctx, m, ORD_LEX, ctx->fqctx);
+
+    max_degree = 0;
+    for (i = 0; i < m; i++)
+    {
+        k = I->bma_perm[i];
+
+        Gl_degs[i] = I->Gdeflate_deg_bound[k];
+
+        Al_degs[i] = I->Adeflate_deg[k];
+        max_degree = FLINT_MAX(max_degree, Al_degs[i]);
+
+        Bl_degs[i] = I->Bdeflate_deg[k];
+        max_degree = FLINT_MAX(max_degree, Bl_degs[i]);
+    }
+
+    wbits = 1 + FLINT_BIT_COUNT(max_degree);
+    wbits = mpoly_fix_bits(wbits, lctx->minfo);
+    FLINT_ASSERT(wbits <= FLINT_BITS);
+
+    fq_nmod_mpoly_init3(Al, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Bl, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Gl, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Abarl, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Bbarl, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Ac, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Bc, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Gc, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Abarc, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Bbarc, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Gamma, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Al_lc, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Bl_lc, 0, wbits, lctx);
+
+    fq_nmod_mpoly_to_mpolyl_perm_deflate(Al, lctx, A, ctx, I->bma_perm, I->Amin_exp, I->Gstride);
+    fq_nmod_mpoly_to_mpolyl_perm_deflate(Bl, lctx, B, ctx, I->bma_perm, I->Bmin_exp, I->Gstride);
+
+    success = fq_nmod_mpolyl_content(Ac, Al, 2, lctx) &&
+              fq_nmod_mpolyl_content(Bc, Bl, 2, lctx);
+    if (!success)
+        goto cleanup;
+
+    if (Abar == NULL && Bbar == NULL)
+        success = fq_nmod_mpoly_gcd(Gc, Ac, Bc, lctx);
+    else
+        success = fq_nmod_mpoly_gcd_cofactors(Gc, Abarc, Bbarc, Ac, Bc, lctx);
+    if (!success)
+        goto cleanup;
+
+    fq_nmod_mpoly_degrees_si(tmp, Ac, lctx);
+    for (i = 0; i < m; i++)
+        Al_degs[i] -= tmp[i];
+
+    success = fq_nmod_mpoly_divides(Al, Al, Ac, lctx);
+    FLINT_ASSERT(success);
+
+    fq_nmod_mpoly_degrees_si(tmp, Bc, lctx);
+    for (i = 0; i < m; i++)
+        Bl_degs[i] -= tmp[i];
+
+    success = fq_nmod_mpoly_divides(Bl, Bl, Bc, lctx);
+    FLINT_ASSERT(success);
+
+    fq_nmod_mpoly_degrees_si(tmp, Gc, lctx);
+    for (i = 0; i < m; i++)
+        Gl_degs[i] -= tmp[i];
+
+    fq_nmod_mpoly_repack_bits_inplace(Al, wbits, lctx);
+    fq_nmod_mpoly_repack_bits_inplace(Bl, wbits, lctx);
+    fq_nmod_mpolyl_lead_coeff(Al_lc, Al, 2, lctx);
+    fq_nmod_mpolyl_lead_coeff(Bl_lc, Bl, 2, lctx);
+    success = fq_nmod_mpoly_gcd(Gamma, Al_lc, Bl_lc, lctx);
+    if (!success)
+        goto cleanup;
+    fq_nmod_mpoly_repack_bits_inplace(Gamma, wbits, lctx);
+
+    fq_nmod_mpoly_degrees_si(Gamma_degs, Gamma, lctx);
+
+    Gguess = I->Gdeflate_deg_bounds_are_nice ? Gl_degs : NULL;
+
+    success = fq_nmod_mpolyl_gcd_zippel_smprime(Gl, Gguess, Abarl, Bbarl,
+                            Al, Al_degs, Bl, Bl_degs, Gamma, Gamma_degs, lctx);
+    if (!success)
+    {
+        success = fq_nmod_mpolyl_gcd_zippel_lgprime(Gl, Gguess, Abarl, Bbarl,
+                            Al, Al_degs, Bl, Bl_degs, Gamma, Gamma_degs, lctx);
+        if (!success)
+            goto cleanup;
+    }
+
+    fq_nmod_mpoly_mul(Gl, Gl, Gc, lctx);
+    fq_nmod_mpoly_from_mpolyl_perm_inflate(G, I->Gbits, ctx, Gl, lctx,
+                                         I->bma_perm, I->Gmin_exp, I->Gstride);
+    if (Abar != NULL)
+    {
+        fq_nmod_mpoly_mul(Abarl, Abarl, Abarc, lctx);
+        fq_nmod_mpoly_from_mpolyl_perm_inflate(Abar, I->Abarbits, ctx, Abarl, lctx,
+                                      I->bma_perm, I->Abarmin_exp, I->Gstride);
+    }
+
+    if (Bbar != NULL)
+    {
+        fq_nmod_mpoly_mul(Bbarl, Bbarl, Bbarc, lctx);
+        fq_nmod_mpoly_from_mpolyl_perm_inflate(Bbar, I->Bbarbits, ctx, Bbarl, lctx,
+                                      I->bma_perm, I->Bbarmin_exp, I->Gstride);
+    }
+
+    success = 1;
+
+cleanup:
+
+    fq_nmod_mpoly_clear(Al, lctx);
+    fq_nmod_mpoly_clear(Bl, lctx);
+    fq_nmod_mpoly_clear(Gl, lctx);
+    fq_nmod_mpoly_clear(Abarl, lctx);
+    fq_nmod_mpoly_clear(Bbarl, lctx);
+    fq_nmod_mpoly_clear(Ac, lctx);
+    fq_nmod_mpoly_clear(Bc, lctx);
+    fq_nmod_mpoly_clear(Gc, lctx);
+    fq_nmod_mpoly_clear(Abarc, lctx);
+    fq_nmod_mpoly_clear(Bbarc, lctx);
+    fq_nmod_mpoly_clear(Gamma, lctx);
+    fq_nmod_mpoly_clear(Al_lc, lctx);
+    fq_nmod_mpoly_clear(Bl_lc, lctx);
+
+    fq_nmod_mpoly_ctx_clear(lctx);
+
+    flint_free(tmp);
+
+    return success;
+}
+
+/******************** Hit A and B with hensel lifting ************************/
+static int _try_hensel(
+    fq_nmod_mpoly_t G,
+    fq_nmod_mpoly_t Abar,
+    fq_nmod_mpoly_t Bbar,
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_t B,
+    const mpoly_gcd_info_t I,
+    const fq_nmod_mpoly_ctx_t ctx)
+{
+    slong i, k;
+    slong m = I->mvars;
+    int success;
+    flint_bitcnt_t wbits;
+    fq_nmod_mpoly_ctx_t lctx;
+    fq_nmod_mpoly_t Al, Bl, Gl, Abarl, Bbarl;
+    fq_nmod_mpoly_t Ac, Bc, Gc, Abarc, Bbarc;
+    slong max_degree;
+
+    FLINT_ASSERT(A->bits <= FLINT_BITS);
+    FLINT_ASSERT(B->bits <= FLINT_BITS);
+    FLINT_ASSERT(A->length > 0);
+    FLINT_ASSERT(B->length > 0);
+
+    if (!I->can_use_brown)
+        return 0;
+
+    FLINT_ASSERT(m >= WORD(2));
+
+    fq_nmod_mpoly_ctx_init(lctx, m, ORD_LEX, ctx->fqctx);
+
+    max_degree = 0;
+    for (i = 0; i < m; i++)
+    {
+        k = I->bma_perm[i];
+        max_degree = FLINT_MAX(max_degree, I->Adeflate_deg[k]);
+        max_degree = FLINT_MAX(max_degree, I->Bdeflate_deg[k]);
+    }
+
+    wbits = 1 + FLINT_BIT_COUNT(max_degree);
+    wbits = mpoly_fix_bits(wbits, lctx->minfo);
+    FLINT_ASSERT(wbits <= FLINT_BITS);
+
+    fq_nmod_mpoly_init3(Al, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Bl, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Gl, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Abarl, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Bbarl, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Ac, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Bc, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Gc, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Abarc, 0, wbits, lctx);
+    fq_nmod_mpoly_init3(Bbarc, 0, wbits, lctx);
+
+    fq_nmod_mpoly_to_mpolyl_perm_deflate(Al, lctx, A, ctx, I->bma_perm, I->Amin_exp, I->Gstride);
+    fq_nmod_mpoly_to_mpolyl_perm_deflate(Bl, lctx, B, ctx, I->bma_perm, I->Bmin_exp, I->Gstride);
+
+    success = fq_nmod_mpolyl_content(Ac, Al, 1, lctx) &&
+              fq_nmod_mpolyl_content(Bc, Bl, 1, lctx);
+    if (!success)
+        goto cleanup;
+
+    if (Abar == NULL && Bbar == NULL)
+        success = fq_nmod_mpoly_gcd(Gc, Ac, Bc, lctx);
+    else
+        success = fq_nmod_mpoly_gcd_cofactors(Gc, Abarc, Bbarc, Ac, Bc, lctx);
+    if (!success)
+        goto cleanup;
+
+    success = fq_nmod_mpoly_divides(Al, Al, Ac, lctx);
+    FLINT_ASSERT(success);
+
+    success = fq_nmod_mpoly_divides(Bl, Bl, Bc, lctx);
+    FLINT_ASSERT(success);
+
+    fq_nmod_mpoly_repack_bits_inplace(Al, wbits, lctx);
+    fq_nmod_mpoly_repack_bits_inplace(Bl, wbits, lctx);
+    success = fq_nmod_mpolyl_gcd_hensel_smprime(Gl, Abarl, Bbarl, Al, Bl, lctx);
+    if (!success)
+        goto cleanup;
+
+    fq_nmod_mpoly_mul(Gl, Gl, Gc, lctx);
+    fq_nmod_mpoly_from_mpolyl_perm_inflate(G, I->Gbits, ctx, Gl, lctx,
+                                         I->bma_perm, I->Gmin_exp, I->Gstride);
+    if (Abar != NULL)
+    {
+        fq_nmod_mpoly_mul(Abarl, Abarl, Abarc, lctx);
+        fq_nmod_mpoly_from_mpolyl_perm_inflate(Abar, I->Abarbits, ctx, Abarl, lctx,
+                                      I->bma_perm, I->Abarmin_exp, I->Gstride);
+    }
+
+    if (Bbar != NULL)
+    {
+        fq_nmod_mpoly_mul(Bbarl, Bbarl, Bbarc, lctx);
+        fq_nmod_mpoly_from_mpolyl_perm_inflate(Bbar, I->Bbarbits, ctx, Bbarl, lctx,
+                                      I->bma_perm, I->Bbarmin_exp, I->Gstride);
+    }
+
+    success = 1;
+
+cleanup:
+
+    fq_nmod_mpoly_clear(Al, lctx);
+    fq_nmod_mpoly_clear(Bl, lctx);
+    fq_nmod_mpoly_clear(Gl, lctx);
+    fq_nmod_mpoly_clear(Abarl, lctx);
+    fq_nmod_mpoly_clear(Bbarl, lctx);
+    fq_nmod_mpoly_clear(Ac, lctx);
+    fq_nmod_mpoly_clear(Bc, lctx);
+    fq_nmod_mpoly_clear(Gc, lctx);
+
+    fq_nmod_mpoly_ctx_clear(lctx);
+
+    return success;
+}
 
 
 /*********************** Hit A and B with brown ******************************/
 static int _try_brown(
     fq_nmod_mpoly_t G,
+    fq_nmod_mpoly_t Abar,
+    fq_nmod_mpoly_t Bbar,
     const fq_nmod_mpoly_t A,
     const fq_nmod_mpoly_t B,
     mpoly_gcd_info_t I,
@@ -1020,6 +1535,15 @@ static int _try_brown(
 
     fq_nmod_mpoly_from_mpolyn_perm_inflate(G, I->Gbits, ctx, Gn, nctx,
                                        I->brown_perm, I->Gmin_exp, I->Gstride);
+
+    if (Abar != NULL)
+        fq_nmod_mpoly_from_mpolyn_perm_inflate(Abar, I->Abarbits, ctx, Abarn, nctx,
+                                    I->brown_perm, I->Abarmin_exp, I->Gstride);
+
+    if (Bbar != NULL)
+        fq_nmod_mpoly_from_mpolyn_perm_inflate(Bbar, I->Bbarbits, ctx, Bbarn, nctx,
+                                    I->brown_perm, I->Bbarmin_exp, I->Gstride);
+
     success = 1;
 
 cleanup:
@@ -1036,18 +1560,22 @@ cleanup:
 
 
 /*
-    The function must pack its answer into bits = Gbits <= FLINT_BITS
     Both A and B have to be packed into bits <= FLINT_BITS
-
     return is 1 for success, 0 for failure.
 */
-int _fq_nmod_mpoly_gcd(
-    fq_nmod_mpoly_t G, flint_bitcnt_t Gbits,
+static int _fq_nmod_mpoly_gcd_algo_small(
+    fq_nmod_mpoly_t G,
+    fq_nmod_mpoly_t Abar, /* could be NULL */
+    fq_nmod_mpoly_t Bbar, /* could be NULL */
     const fq_nmod_mpoly_t A,
     const fq_nmod_mpoly_t B,
-    const fq_nmod_mpoly_ctx_t ctx)
+    const fq_nmod_mpoly_ctx_t ctx,
+    unsigned int algo)
 {
     int success;
+    flint_bitcnt_t Gbits = FLINT_MIN(A->bits, B->bits);
+    flint_bitcnt_t Abarbits = A->bits;
+    flint_bitcnt_t Bbarbits = B->bits;
     slong v_in_both;
     slong v_in_either;
     slong v_in_A_only;
@@ -1060,13 +1588,9 @@ int _fq_nmod_mpoly_gcd(
 #endif
 
     if (A->length == 1)
-    {
-        return _try_monomial_gcd(G, Gbits, B, A, ctx);
-    }
+        return _do_monomial_gcd(G, Bbar, Abar, B, A, ctx);
     else if (B->length == 1)
-    {
-        return _try_monomial_gcd(G, Gbits, A, B, ctx);
-    }
+        return _do_monomial_gcd(G, Abar, Bbar, A, B, ctx);
 
 #if FLINT_WANT_ASSERT
     fq_nmod_mpoly_init(T, ctx);
@@ -1081,6 +1605,8 @@ int _fq_nmod_mpoly_gcd(
     /* entries of I are all now invalid */
 
     I->Gbits = Gbits;
+    I->Abarbits = Abarbits;
+    I->Bbarbits = Bbarbits;
 
     mpoly_gcd_info_limits(I->Amax_exp, I->Amin_exp, I->Alead_count,
                       I->Atail_count, A->exps, A->bits, A->length, ctx->minfo);
@@ -1095,7 +1621,8 @@ int _fq_nmod_mpoly_gcd(
         if (I->Amax_exp[j] - I->Amin_exp[j] != I->Bmax_exp[j] - I->Bmin_exp[j])
             goto skip_monomial_cofactors;
     }
-    if (_try_monomial_cofactors(G, I->Gbits, A, B, ctx))
+
+    if (_try_monomial_cofactors(G, Abar, Bbar, A, B, ctx))
     {
         goto successful;
     }
@@ -1112,8 +1639,8 @@ skip_monomial_cofactors:
 
         if (t == 0)
         {
-            FLINT_ASSERT(  I->Amax_exp[j] == I->Amin_exp[j]
-                        || I->Bmax_exp[j] == I->Bmin_exp[j]);
+            FLINT_ASSERT(I->Amax_exp[j] == I->Amin_exp[j] ||
+                         I->Bmax_exp[j] == I->Bmin_exp[j]);
         }
         else
         {
@@ -1123,7 +1650,11 @@ skip_monomial_cofactors:
 
         I->Adeflate_deg[j] = t == 0 ? 0 : (I->Amax_exp[j] - I->Amin_exp[j])/t;
         I->Bdeflate_deg[j] = t == 0 ? 0 : (I->Bmax_exp[j] - I->Bmin_exp[j])/t;
-        I->Gmin_exp[j] = FLINT_MIN(I->Amin_exp[j], I->Bmin_exp[j]);
+
+        t = FLINT_MIN(I->Amin_exp[j], I->Bmin_exp[j]);
+        I->Gmin_exp[j] = t;
+        I->Abarmin_exp[j] = I->Amin_exp[j] - t;
+        I->Bbarmin_exp[j] = I->Bmin_exp[j] - t;
     }
 
     /*
@@ -1148,24 +1679,12 @@ skip_monomial_cofactors:
     }
     if (v_in_both == -WORD(1))
     {
-        /*
-            The variables in ess(A) and ess(B) are disjoint.
-            gcd is trivial to compute.
-        */
-
-calculate_trivial_gcd:
-
-        fq_nmod_mpoly_fit_length_reset_bits(G, 1, Gbits, ctx);
-        mpoly_set_monomial_ui(G->exps, I->Gmin_exp, Gbits, ctx->minfo);
-        _n_fq_one(G->coeffs + 0, fq_nmod_ctx_degree(ctx->fqctx));
-        _fq_nmod_mpoly_set_length(G, 1, ctx);
-
+        _do_trivial(G, Abar, Bbar, A, B, I, ctx);
         goto successful;
     }
 
     /* check if ess(A) and ess(B) depend on another variable v_in_either */
-    FLINT_ASSERT(0 <= v_in_both);
-    FLINT_ASSERT(v_in_both < nvars);
+    FLINT_ASSERT(0 <= v_in_both && v_in_both < nvars);
 
     v_in_either = -WORD(1);
     for (j = 0; j < nvars; j++)
@@ -1182,26 +1701,7 @@ calculate_trivial_gcd:
 
     if (v_in_either == -WORD(1))
     {
-        /*
-            The ess(A) and ess(B) depend on only one variable v_in_both
-            Calculate gcd using univariates
-        */
-        fq_nmod_poly_t a, b, g;
-
-        fq_nmod_poly_init(a, ctx->fqctx);
-        fq_nmod_poly_init(b, ctx->fqctx);
-        fq_nmod_poly_init(g, ctx->fqctx);
-        _fq_nmod_mpoly_to_fq_nmod_poly_deflate(a, A, v_in_both,
-                                                 I->Amin_exp, I->Gstride, ctx);
-        _fq_nmod_mpoly_to_fq_nmod_poly_deflate(b, B, v_in_both,
-                                                 I->Bmin_exp, I->Gstride, ctx);
-        fq_nmod_poly_gcd(g, a, b, ctx->fqctx);
-        _fq_nmod_mpoly_from_fq_nmod_poly_inflate(G, Gbits, g, v_in_both,
-                                                 I->Gmin_exp, I->Gstride, ctx);
-        fq_nmod_poly_clear(a, ctx->fqctx);
-        fq_nmod_poly_clear(b, ctx->fqctx);
-        fq_nmod_poly_clear(g, ctx->fqctx);
-
+        _do_univar(G, Abar, Bbar, A, B, v_in_both, I, ctx);
         goto successful;
     }
 
@@ -1223,8 +1723,7 @@ calculate_trivial_gcd:
     }
     if (v_in_A_only != -WORD(1))
     {
-        success = _try_missing_var(G, I->Gbits,
-                                   v_in_A_only,
+        success = _try_missing_var(G, I->Gbits, Abar, Bbar, v_in_A_only,
                                    A, I->Amin_exp[v_in_A_only],
                                    B, I->Bmin_exp[v_in_A_only],
                                    ctx);
@@ -1232,8 +1731,7 @@ calculate_trivial_gcd:
     }
     if (v_in_B_only != -WORD(1))
     {
-        success = _try_missing_var(G, I->Gbits,
-                                   v_in_B_only,
+        success = _try_missing_var(G, I->Gbits, Bbar, Abar, v_in_B_only,
                                    B, I->Bmin_exp[v_in_B_only],
                                    A, I->Amin_exp[v_in_B_only],
                                    ctx);
@@ -1261,66 +1759,70 @@ calculate_trivial_gcd:
         for (j = 0; j < nvars; j++)
         {
             if (I->Gdeflate_deg_bound[j] != 0)
-            {
                 gcd_is_trivial = 0;
-            }
 
-            if (I->Adeflate_deg[j] != I->Gdeflate_deg_bound[j]
-                || I->Amin_exp[j] > I->Bmin_exp[j])
-            {
+            if (I->Adeflate_deg[j] != I->Gdeflate_deg_bound[j])
                 try_a = 0;
-            }
 
-            if (I->Bdeflate_deg[j] != I->Gdeflate_deg_bound[j]
-                || I->Bmin_exp[j] > I->Amin_exp[j])
-            {
+            if (I->Bdeflate_deg[j] != I->Gdeflate_deg_bound[j])
                 try_b = 0;
-            }
         }
 
         if (gcd_is_trivial)
-            goto calculate_trivial_gcd;
+        {
+            _do_trivial(G, Abar, Bbar, A, B, I, ctx);
+            goto successful;
+        }
 
-        if ((try_a || try_b) && _try_divides(G, A, try_a, B, try_b, ctx))
+        if (try_a && _try_divides(G, Bbar, Abar, B, A, ctx))
+            goto successful;
+
+        if (try_b && _try_divides(G, Abar, Bbar, A, B, ctx))
             goto successful;
     }
 
-    mpoly_gcd_info_measure_brown(I, A->length, B->length, ctx->minfo);
-
-    if (I->mvars == 2)
+    if (I->mvars < 3)
     {
-        if (_try_brown(G, A, B, I, ctx))
+        mpoly_gcd_info_measure_brown(I, A->length, B->length, ctx->minfo);
+
+        if (_try_hensel(G, Abar, Bbar, A, B, I, ctx))
+            goto successful;
+
+        if (_try_brown(G, Abar, Bbar, A, B, I, ctx))
             goto successful;
     }
     else
     {
+        mpoly_gcd_info_measure_brown(I, A->length, B->length, ctx->minfo);
         mpoly_gcd_info_measure_zippel(I, A->length, B->length, ctx->minfo);
         mpoly_gcd_info_measure_zippel2(I, A->length, B->length, ctx->minfo);
 
         if (I->zippel_time_est < I->brown_time_est)
         {
-
-            if (_try_zippel2(G, A, B, I, ctx))
+            if (_try_zippel2(G, Abar, Bbar, A, B, I, ctx))
                 goto successful;
-
-            if (_try_zippel(G, A, B, I, ctx))
+            if (_try_zippel2_old(G, A, B, I, ctx))
                 goto successful;
-
-            if (_try_brown(G, A, B, I, ctx))
+            if (_try_zippel(G, Abar, Bbar, A, B, I, ctx))
+                goto successful;
+            if (_try_brown(G, Abar, Bbar, A, B, I, ctx))
                 goto successful;
         }
         else
         {
-            if (_try_zippel2(G, A, B, I, ctx))
+            if (_try_zippel2(G, Abar, Bbar, A, B, I, ctx))
                 goto successful;
-
-            if (_try_brown(G, A, B, I, ctx))
+            if (_try_zippel2_old(G, A, B, I, ctx))
                 goto successful;
-
-            if (_try_zippel(G, A, B, I, ctx))
+            if (_try_brown(G, Abar, Bbar, A, B, I, ctx))
+                goto successful;
+            if (_try_zippel(G, Abar, Bbar, A, B, I, ctx))
                 goto successful;
         }
     }
+
+    if (_try_hensel(G, Abar, Bbar, A, B, I, ctx))
+        goto successful;
 
     success = 0;
     goto cleanup;
@@ -1335,10 +1837,24 @@ cleanup:
 
     if (success)
     {
-        fq_nmod_mpoly_repack_bits_inplace(G, Gbits, ctx);
-        fq_nmod_mpoly_make_monic(G, G, ctx);
+        FLINT_ASSERT(G->length > 0);
+
+        if (!n_fq_is_one(G->coeffs + 0, ctx->fqctx))
+        {
+            if (Abar != NULL)
+                fq_nmod_mpoly_scalar_mul_n_fq(Abar, Abar, G->coeffs + 0, ctx);
+
+            if (Bbar != NULL)
+                fq_nmod_mpoly_scalar_mul_n_fq(Bbar, Bbar, G->coeffs + 0, ctx);
+
+            fq_nmod_mpoly_make_monic(G, G, ctx);
+        }
+
         FLINT_ASSERT(fq_nmod_mpoly_divides(T, Asave, G, ctx));
+        FLINT_ASSERT(Abar == NULL || fq_nmod_mpoly_equal(T, Abar, ctx));
+            
         FLINT_ASSERT(fq_nmod_mpoly_divides(T, Bsave, G, ctx));
+        FLINT_ASSERT(Bbar == NULL || fq_nmod_mpoly_equal(T, Bbar, ctx));
     }
 
 #if FLINT_WANT_ASSERT
@@ -1351,14 +1867,168 @@ cleanup:
 }
 
 
+/*
+    The gcd calculation is unusual.
+    First see if both inputs fit into FLINT_BITS.
+    Then, try deflation as a last resort.
+*/
+static int _fq_nmod_mpoly_gcd_algo_large(
+    fq_nmod_mpoly_t G,
+    fq_nmod_mpoly_t Abar,
+    fq_nmod_mpoly_t Bbar,
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_t B,
+    const fq_nmod_mpoly_ctx_t ctx,
+    unsigned int algo)
+{
+    int success;
+    slong k;
+    fmpz * Ashift, * Astride;
+    fmpz * Bshift, * Bstride;
+    fmpz * Gshift, * Gstride;
+    fq_nmod_mpoly_t Anew, Bnew;
+    const fq_nmod_mpoly_struct * Ause, * Buse;
+
+    if (A->length == 1)
+        return _do_monomial_gcd(G, Bbar, Abar, B, A, ctx);
+
+    if (B->length == 1)
+        return _do_monomial_gcd(G, Abar, Bbar, A, B, ctx);
+
+    if (_try_monomial_cofactors(G, Abar, Bbar, A, B, ctx))
+        return 1;
+
+    fq_nmod_mpoly_init(Anew, ctx);
+    fq_nmod_mpoly_init(Bnew, ctx);
+
+    Ause = A;
+    if (A->bits > FLINT_BITS)
+    {
+       if (!fq_nmod_mpoly_repack_bits(Anew, A, FLINT_BITS, ctx))
+            goto could_not_repack;
+        Ause = Anew;
+    }
+
+    Buse = B;
+    if (B->bits > FLINT_BITS)
+    {
+        if (!fq_nmod_mpoly_repack_bits(Bnew, B, FLINT_BITS, ctx))
+            goto could_not_repack;
+        Buse = Bnew;
+    }
+
+    success = _fq_nmod_mpoly_gcd_algo_small(G, Abar, Bbar, Ause, Buse, ctx, algo);
+
+    goto cleanup;
+
+could_not_repack:
+
+    /*
+        One of A or B could not be repacked into FLINT_BITS. See if
+        they both fit into FLINT_BITS after deflation.
+    */
+
+    Ashift  = _fmpz_vec_init(ctx->minfo->nvars);
+    Astride = _fmpz_vec_init(ctx->minfo->nvars);
+    Bshift  = _fmpz_vec_init(ctx->minfo->nvars);
+    Bstride = _fmpz_vec_init(ctx->minfo->nvars);
+    Gshift  = _fmpz_vec_init(ctx->minfo->nvars);
+    Gstride = _fmpz_vec_init(ctx->minfo->nvars);
+
+    fq_nmod_mpoly_deflation(Ashift, Astride, A, ctx);
+    fq_nmod_mpoly_deflation(Bshift, Bstride, B, ctx);
+    _fmpz_vec_min(Gshift, Ashift, Bshift, ctx->minfo->nvars);
+    for (k = 0; k < ctx->minfo->nvars; k++)
+    {
+        fmpz_gcd(Gstride + k, Astride + k, Bstride + k);
+    }
+
+    fq_nmod_mpoly_deflate(Anew, A, Ashift, Gstride, ctx);
+    if (Anew->bits > FLINT_BITS)
+    {
+        success = fq_nmod_mpoly_repack_bits(Anew, Anew, FLINT_BITS, ctx);
+        if (!success)
+            goto deflate_cleanup;
+    }
+
+    fq_nmod_mpoly_deflate(Bnew, B, Bshift, Gstride, ctx);
+    if (Bnew->bits > FLINT_BITS)
+    {
+        success = fq_nmod_mpoly_repack_bits(Bnew, Bnew, FLINT_BITS, ctx);
+        if (!success)
+            goto deflate_cleanup;
+    }
+
+    success = _fq_nmod_mpoly_gcd_algo(G, Abar, Bbar, Anew, Bnew, ctx, algo);
+    if (!success)
+        goto deflate_cleanup;
+
+    for (k = 0; k < ctx->minfo->nvars; k++)
+    {
+        fmpz_sub(Ashift + k, Ashift + k, Gshift + k);
+        fmpz_sub(Bshift + k, Bshift + k, Gshift + k);
+        FLINT_ASSERT(fmpz_sgn(Ashift + k) >= 0);
+        FLINT_ASSERT(fmpz_sgn(Bshift + k) >= 0);
+    }
+
+    fq_nmod_mpoly_inflate(G, G, Gshift, Gstride, ctx);
+    if (Abar != NULL)
+        fq_nmod_mpoly_inflate(Abar, Abar, Ashift, Gstride, ctx);
+    if (Bbar != NULL)
+        fq_nmod_mpoly_inflate(Bbar, Bbar, Bshift, Gstride, ctx);
+
+    FLINT_ASSERT(G->length > 0);
+    if (!n_fq_is_one(G->coeffs + 0, ctx->fqctx))
+    {
+        if (Abar != NULL)
+            fq_nmod_mpoly_scalar_mul_n_fq(Abar, Abar, G->coeffs + 0, ctx);
+
+        if (Bbar != NULL)
+            fq_nmod_mpoly_scalar_mul_n_fq(Bbar, Bbar, G->coeffs + 0, ctx);
+
+        fq_nmod_mpoly_make_monic(G, G, ctx);
+    }
+    fq_nmod_mpoly_make_monic(G, G, ctx);
+
+deflate_cleanup:
+
+    _fmpz_vec_clear(Ashift, ctx->minfo->nvars);
+    _fmpz_vec_clear(Astride, ctx->minfo->nvars);
+    _fmpz_vec_clear(Bshift, ctx->minfo->nvars);
+    _fmpz_vec_clear(Bstride, ctx->minfo->nvars);
+    _fmpz_vec_clear(Gshift, ctx->minfo->nvars);
+    _fmpz_vec_clear(Gstride, ctx->minfo->nvars);
+
+cleanup:
+
+    fq_nmod_mpoly_clear(Anew, ctx);
+    fq_nmod_mpoly_clear(Bnew, ctx);
+
+    return success;
+}
+
+int _fq_nmod_mpoly_gcd_algo(
+    fq_nmod_mpoly_t G,
+    fq_nmod_mpoly_t Abar,
+    fq_nmod_mpoly_t Bbar,
+    const fq_nmod_mpoly_t A,
+    const fq_nmod_mpoly_t B,
+    const fq_nmod_mpoly_ctx_t ctx,
+    unsigned int algo)
+{
+    if (A->bits <= FLINT_BITS && B->bits <= FLINT_BITS)
+        return _fq_nmod_mpoly_gcd_algo_small(G, Abar, Bbar, A, B, ctx, algo);
+    else
+        return _fq_nmod_mpoly_gcd_algo_large(G, Abar, Bbar, A, B, ctx, algo);
+}
+
+
 int fq_nmod_mpoly_gcd(
     fq_nmod_mpoly_t G,
     const fq_nmod_mpoly_t A,
     const fq_nmod_mpoly_t B,
     const fq_nmod_mpoly_ctx_t ctx)
 {
-    flint_bitcnt_t Gbits;
-
     if (fq_nmod_mpoly_is_zero(A, ctx))
     {
         if (fq_nmod_mpoly_is_zero(B, ctx))
@@ -1374,125 +2044,6 @@ int fq_nmod_mpoly_gcd(
         return 1;
     }
 
-    Gbits = FLINT_MIN(A->bits, B->bits);
-
-    if (A->bits <= FLINT_BITS && B->bits <= FLINT_BITS)
-    {
-        /* usual gcd's go right down here */
-        return _fq_nmod_mpoly_gcd(G, Gbits, A, B, ctx);
-    }
-
-    if (A->length == 1)
-    {
-        return _try_monomial_gcd(G, Gbits, B, A, ctx);
-    }
-    else if (B->length == 1)
-    {
-        return _try_monomial_gcd(G, Gbits, A, B, ctx);
-    }
-    else if (_try_monomial_cofactors(G, Gbits, A, B, ctx))
-    {
-        return 1;
-    }
-    else
-    {
-        /*
-            The gcd calculation is unusual.
-            First see if both inputs fit into FLINT_BITS.
-            Then, try deflation as a last resort.
-        */
-
-        int success;
-        int useAnew = 0;
-        int useBnew = 0;
-        slong k;
-        fmpz * Ashift, * Astride;
-        fmpz * Bshift, * Bstride;
-        fmpz * Gshift, * Gstride;
-        fq_nmod_mpoly_t Anew;
-        fq_nmod_mpoly_t Bnew;
-
-        fq_nmod_mpoly_init(Anew, ctx);
-        fq_nmod_mpoly_init(Bnew, ctx);
-
-        if (A->bits > FLINT_BITS)
-        {
-            useAnew = fq_nmod_mpoly_repack_bits(Anew, A, FLINT_BITS, ctx);
-            if (!useAnew)
-                goto could_not_repack;
-        }
-
-        if (B->bits > FLINT_BITS)
-        {
-            useBnew = fq_nmod_mpoly_repack_bits(Bnew, B, FLINT_BITS, ctx);
-            if (!useBnew)
-                goto could_not_repack;
-        }
-
-        success = _fq_nmod_mpoly_gcd(G, FLINT_BITS, useAnew ? Anew : A,
-                                                    useBnew ? Bnew : B, ctx);
-        goto cleanup;
-
-could_not_repack:
-
-        /*
-            One of A or B could not be repacked into FLINT_BITS. See if
-            they both fit into FLINT_BITS after deflation.
-        */
-
-        Ashift  = _fmpz_vec_init(ctx->minfo->nvars);
-        Astride = _fmpz_vec_init(ctx->minfo->nvars);
-        Bshift  = _fmpz_vec_init(ctx->minfo->nvars);
-        Bstride = _fmpz_vec_init(ctx->minfo->nvars);
-        Gshift  = _fmpz_vec_init(ctx->minfo->nvars);
-        Gstride = _fmpz_vec_init(ctx->minfo->nvars);
-
-        fq_nmod_mpoly_deflation(Ashift, Astride, A, ctx);
-        fq_nmod_mpoly_deflation(Bshift, Bstride, B, ctx);
-        _fmpz_vec_min(Gshift, Ashift, Bshift, ctx->minfo->nvars);
-        for (k = 0; k < ctx->minfo->nvars; k++)
-        {
-            fmpz_gcd(Gstride + k, Astride + k, Bstride + k);
-        }
-
-        success = 0;
-
-        fq_nmod_mpoly_deflate(Anew, A, Ashift, Gstride, ctx);
-        if (Anew->bits > FLINT_BITS)
-        {
-            if (!fq_nmod_mpoly_repack_bits(Anew, Anew, FLINT_BITS, ctx))
-                goto deflate_cleanup;
-        }
-
-        fq_nmod_mpoly_deflate(Bnew, B, Bshift, Gstride, ctx);
-        if (Bnew->bits > FLINT_BITS)
-        {
-            if (!fq_nmod_mpoly_repack_bits(Bnew, Bnew, FLINT_BITS, ctx))
-                goto deflate_cleanup;
-        }
-
-        success = _fq_nmod_mpoly_gcd(G, FLINT_BITS, Anew, Bnew, ctx);
-
-        if (success)
-        {
-            fq_nmod_mpoly_inflate(G, G, Gshift, Gstride, ctx);
-            fq_nmod_mpoly_make_monic(G, G, ctx);
-        }
-
-deflate_cleanup:
-
-        _fmpz_vec_clear(Ashift, ctx->minfo->nvars);
-        _fmpz_vec_clear(Astride, ctx->minfo->nvars);
-        _fmpz_vec_clear(Bshift, ctx->minfo->nvars);
-        _fmpz_vec_clear(Bstride, ctx->minfo->nvars);
-        _fmpz_vec_clear(Gshift, ctx->minfo->nvars);
-        _fmpz_vec_clear(Gstride, ctx->minfo->nvars);
-
-cleanup:
-
-        fq_nmod_mpoly_clear(Anew, ctx);
-        fq_nmod_mpoly_clear(Bnew, ctx);
-
-        return success;
-    }
+    return _fq_nmod_mpoly_gcd_algo(G, NULL, NULL, A, B, ctx, MPOLY_GCD_USE_ALL);
 }
+

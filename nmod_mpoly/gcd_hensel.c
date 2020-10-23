@@ -103,10 +103,9 @@ int nmod_mpolyl_gcd_hensel_smprime(
 
     alphas_tries_remaining = 10;
 
+    /* try all zeros first */
     for (i = 0; i < n; i++)
-    {
         alphas[i] = 0;
-    }
 
     goto got_alpha;
 
@@ -119,9 +118,7 @@ next_alpha:
 	}
 
     for (i = 0; i < n; i++)
-    {
-        alphas[i] = n_urandint(state, ctx->ffinfo->mod.n - 1) + 1;
-    }
+        alphas[i] = n_urandint(state, ctx->ffinfo->mod.n);
 
 got_alpha:
 
