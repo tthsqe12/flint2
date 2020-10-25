@@ -21,6 +21,7 @@ void fq_nmod_mpolyl_lead_coeff(
     slong num_vars,
     const fq_nmod_mpoly_ctx_t ctx)
 {
+    slong d;
     slong i, j, off, shift;
     ulong old_shift, new_shift;
     slong N = mpoly_words_per_exp_sp(A->bits, ctx->minfo);
@@ -54,7 +55,8 @@ void fq_nmod_mpolyl_lead_coeff(
     c->length = i;
     cexps = c->exps;
 
-    _nmod_vec_set(c->coeffs, A->coeffs, i*fq_nmod_ctx_degree(ctx->fqctx));
+    d = fq_nmod_ctx_degree(ctx->fqctx);
+    _nmod_vec_set(c->coeffs, A->coeffs, d*i);
 
     for (i = 0; i < c->length; i++)
     {

@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2019 Daniel Schultz
+    Copyright (C) 2019-2020 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -11,10 +11,240 @@
 
 #include "fq_nmod_mpoly.h"
 
+
+static int _fq_nmod_mpoly_divides_monagan_pearce1(
+    fq_nmod_mpoly_t Q,
+    const mp_limb_t * Acoeffs, const ulong * Aexps, slong Alen,
+    const mp_limb_t * Bcoeffs, const ulong * Bexps, slong Blen,
+    slong bits,
+    ulong cmpmask,
+    const fq_nmod_ctx_t fqctx)
+{
+    slong d = fq_nmod_ctx_degree(fqctx);
+    int lt_divides;
+    slong i, j, Qlen, s;
+    slong next_loc, heap_len;
+    mpoly_heap1_s * heap;
+    mpoly_heap_t * chain;
+    slong * store, * store_base;
+    mpoly_heap_t * x;
+    mp_limb_t * Qcoeffs = Q->coeffs;
+    ulong * Qexps = Q->exps;
+    slong * hind;
+    ulong mask, exp, maxexp = Aexps[Alen - 1];
+    mp_limb_t * lc_minus_inv, * t;
+    int lazy_size = _n_fq_dot_lazy_size(Blen, fqctx);
+    TMP_INIT;
+
+    TMP_START;
+
+    t = (mp_limb_t *) TMP_ALLOC(6*d*sizeof(mp_limb_t));
+    lc_minus_inv = (mp_limb_t *) TMP_ALLOC(d*sizeof(mp_limb_t));
+
+    /* alloc array of heap nodes which can be chained together */
+    next_loc = Blen + 4;   /* something bigger than heap can ever be */
+    heap = (mpoly_heap1_s *) TMP_ALLOC((Blen + 1)*sizeof(mpoly_heap1_s));
+    chain = (mpoly_heap_t *) TMP_ALLOC(Blen*sizeof(mpoly_heap_t));
+    store = store_base = (slong *) TMP_ALLOC(2*Blen*sizeof(slong));
+
+    /* space for flagged heap indicies */
+    hind = (slong *) TMP_ALLOC(Blen*sizeof(slong));
+    for (i = 0; i < Blen; i++)
+        hind[i] = 1;
+
+    /* mask with high bit set in each field of exponent vector */
+    mask = 0;
+    for (i = 0; i < FLINT_BITS/bits; i++)
+        mask = (mask << bits) + (UWORD(1) << (bits - 1));
+
+    Qlen = 0;
+
+    /* s is the number of terms * (latest quotient) we should put into heap */
+    s = Blen;
+
+    /* insert (-1, 0, Aexps[0]) into heap */
+    heap_len = 2;
+    x = chain + 0;
+    x->i = -WORD(1);
+    x->j = 0;
+    x->next = NULL;
+    HEAP_ASSIGN(heap[1], Aexps[0], x);
+
+    /* precompute leading cofficient info */
+    _n_fq_inv(lc_minus_inv, Bcoeffs + d*0, fqctx, t);
+    _n_fq_neg(lc_minus_inv, lc_minus_inv, d, fqctx->mod);
+
+    while (heap_len > 1)
+    {
+        exp = heap[1].exp;
+
+        if (mpoly_monomial_overflows1(exp, mask))
+            goto not_exact_division;
+
+        _fq_nmod_mpoly_fit_length(&Qcoeffs, &Q->coeffs_alloc, d,
+                                  &Qexps, &Q->exps_alloc, 1, Qlen + 1);
+
+        lt_divides = mpoly_monomial_divides1(Qexps + Qlen, exp, Bexps[0], mask);
+
+        _n_fq_zero(Qcoeffs + d*Qlen, d);
+        _nmod_vec_zero(t, 6*d);
+
+        switch (lazy_size)
+        {
+#define lazycase1(n)                                                          \
+case n:                                                                       \
+    do {                                                                      \
+        x = _mpoly_heap_pop1(heap, &heap_len, cmpmask);                       \
+        do {                                                                  \
+            *store++ = x->i;                                                  \
+            *store++ = x->j;                                                  \
+            if (x->i == -WORD(1))                                             \
+            {                                                                 \
+                _n_fq_sub(Qcoeffs + d*Qlen, Qcoeffs + d*Qlen,                 \
+                                            Acoeffs + d*x->j, d, fqctx->mod); \
+            }                                                                 \
+            else                                                              \
+            {                                                                 \
+                hind[x->i] |= WORD(1);                                        \
+                _n_fq_madd2_lazy##n(t, Bcoeffs + d*x->i, Qcoeffs + d*x->j, d);\
+            }                                                                 \
+        } while ((x = x->next) != NULL);                                      \
+    } while (heap_len > 1 && heap[1].exp == exp);                             \
+    _n_fq_reduce2_lazy##n(t, d, fqctx->mod);                                  \
+    break;                                                                    \
+
+        lazycase1(1)
+        lazycase1(2)
+        lazycase1(3)
+
+        default:
+            do {
+                x = _mpoly_heap_pop1(heap, &heap_len, cmpmask);
+                do {
+                    *store++ = x->i;
+                    *store++ = x->j;
+                    if (x->i == -WORD(1))
+                    {
+                        _n_fq_sub(Qcoeffs + d*Qlen, Qcoeffs + d*Qlen,
+                                              Acoeffs + d*x->j, d, fqctx->mod);
+                    }
+                    else
+                    {
+                        hind[x->i] |= WORD(1);
+                        _n_fq_madd2(t, Bcoeffs + d*x->i,
+                                       Qcoeffs + d*x->j, fqctx, t + 2*d);
+                    }
+                } while ((x = x->next) != NULL);
+            } while (heap_len > 1 && heap[1].exp == exp);
+            break;
+        }
+
+        _nmod_vec_add(t, t, Qcoeffs + d*Qlen, d, fqctx->mod);
+        _n_fq_reduce2(Qcoeffs + d*Qlen, t, fqctx, t + 2*d);
+
+        /* process nodes taken from the heap */
+        while (store > store_base)
+        {
+            j = *--store;
+            i = *--store;
+
+            if (i == -WORD(1))
+            {
+                /* take next dividend term */
+                if (j + 1 < Alen)
+                {
+                    x = chain + 0;
+                    x->i = i;
+                    x->j = j + 1;
+                    x->next = NULL;
+                    _mpoly_heap_insert1(heap, Aexps[x->j], x,
+                                                 &next_loc, &heap_len, cmpmask);
+                }
+            }
+            else
+            {
+                /* should we go right? */
+                if (  (i + 1 < Blen)
+                   && (hind[i + 1] == 2*j + 1)
+                   )
+                {
+                    x = chain + i + 1;
+                    x->i = i + 1;
+                    x->j = j;
+                    x->next = NULL;
+                    hind[x->i] = 2*(x->j + 1) + 0;
+                    _mpoly_heap_insert1(heap, Bexps[x->i] + Qexps[x->j], x,
+                                                 &next_loc, &heap_len, cmpmask);
+                }
+                /* should we go up? */
+                if (j + 1 == Qlen)
+                {
+                    s++;
+                } else if (  ((hind[i] & 1) == 1)
+                          && ((i == 1) || (hind[i - 1] >= 2*(j + 2) + 1))
+                          )
+                {
+                    x = chain + i;
+                    x->i = i;
+                    x->j = j + 1;
+                    x->next = NULL;
+                    hind[x->i] = 2*(x->j + 1) + 0;
+                    _mpoly_heap_insert1(heap, Bexps[x->i] + Qexps[x->j], x,
+                                                 &next_loc, &heap_len, cmpmask);
+                }
+            }
+        }
+
+        if (_n_fq_is_zero(Qcoeffs + d*Qlen, d))
+        {
+            continue;
+        }
+
+        _n_fq_mul(Qcoeffs + d*Qlen, Qcoeffs + d*Qlen, lc_minus_inv, fqctx, t);
+
+        if (!lt_divides || (exp^cmpmask) < (maxexp^cmpmask))
+            goto not_exact_division;
+
+        /* put newly generated quotient term back into the heap if neccesary */
+        if (s > 1)
+        {
+            i = 1;
+            x = chain + i;
+            x->i = i;
+            x->j = Qlen;
+            x->next = NULL;
+            hind[x->i] = 2*(x->j + 1) + 0;
+            _mpoly_heap_insert1(heap, Bexps[x->i] + Qexps[x->j], x,
+                                                 &next_loc, &heap_len, cmpmask);
+        }
+        s = 1;
+        Qlen++;
+    }
+
+    Q->coeffs = Qcoeffs;
+    Q->exps = Qexps;
+    Q->length = Qlen;
+
+    TMP_END;
+
+    return 1;
+
+not_exact_division:
+
+    Q->coeffs = Qcoeffs;
+    Q->exps = Qexps;
+    Q->length = 0;
+
+    TMP_END;
+
+    return 0;
+}
+
+
 int _fq_nmod_mpoly_divides_monagan_pearce(
     fq_nmod_mpoly_t Q,
-    const mp_limb_t * Acoeffs, const ulong * exp2, slong Alen,
-    const mp_limb_t * Bcoeffs, const ulong * exp3, slong Blen,
+    const mp_limb_t * Acoeffs, const ulong * Aexps, slong Alen,
+    const mp_limb_t * Bcoeffs, const ulong * Bexps, slong Blen,
     flint_bitcnt_t bits,
     slong N,
     const ulong * cmpmask,
@@ -39,6 +269,10 @@ int _fq_nmod_mpoly_divides_monagan_pearce(
     ulong mask;
     slong * hind;
     TMP_INIT;
+
+    if (N == 1)
+        return _fq_nmod_mpoly_divides_monagan_pearce1(Q, Acoeffs, Aexps, Alen,
+                                Bcoeffs, Bexps, Blen, bits, cmpmask[0], fqctx);
 
     TMP_START;
 
@@ -69,7 +303,7 @@ int _fq_nmod_mpoly_divides_monagan_pearce(
     /* s is the number of terms * (latest quotient) we should put into heap */
     s = Blen;
 
-    /* insert (-1, 0, exp2[0]) into heap */
+    /* insert (-1, 0, Aexps[0]) into heap */
     heap_len = 2;
     x = chain + 0;
     x->i = -WORD(1);
@@ -77,10 +311,10 @@ int _fq_nmod_mpoly_divides_monagan_pearce(
     x->next = NULL;
     heap[1].next = x;
     heap[1].exp = exp_list[exp_next++];
-    mpoly_monomial_set(heap[1].exp, exp2, N);
+    mpoly_monomial_set(heap[1].exp, Aexps, N);
 
     /* precompute leading cofficient info */
-    n_fq_inv(lc_minus_inv, Bcoeffs + d*0, fqctx);
+    _n_fq_inv(lc_minus_inv, Bcoeffs + d*0, fqctx, t);
     _n_fq_neg(lc_minus_inv, lc_minus_inv, d, fqctx->mod);
 
     while (heap_len > 1)
@@ -102,9 +336,9 @@ int _fq_nmod_mpoly_divides_monagan_pearce(
                                   &Qexps, &Q->exps_alloc, N, Qlen + 1);
 
         if (bits <= FLINT_BITS)
-            lt_divides = mpoly_monomial_divides(Qexps + N*Qlen, exp, exp3, N, mask);
+            lt_divides = mpoly_monomial_divides(Qexps + N*Qlen, exp, Bexps, N, mask);
         else
-            lt_divides = mpoly_monomial_divides_mp(Qexps + N*Qlen, exp, exp3, N, bits);
+            lt_divides = mpoly_monomial_divides_mp(Qexps + N*Qlen, exp, Bexps, N, bits);
 
         _n_fq_zero(Qcoeffs + d*Qlen, d);
         _nmod_vec_zero(t, 6*d);
@@ -180,7 +414,7 @@ case n:                                                                       \
                     x->i = i;
                     x->j = j + 1;
                     x->next = NULL;
-                    mpoly_monomial_set(exp_list[exp_next], exp2 + x->j*N, N);
+                    mpoly_monomial_set(exp_list[exp_next], Aexps + x->j*N, N);
                     exp_next += _mpoly_heap_insert(heap, exp_list[exp_next], x,
                                              &next_loc, &heap_len, N, cmpmask);
                 }
@@ -199,11 +433,11 @@ case n:                                                                       \
                     hind[x->i] = 2*(x->j + 1) + 0;
 
                     if (bits <= FLINT_BITS)
-                        mpoly_monomial_add(exp_list[exp_next], exp3 + N*x->i,
-                                                              Qexps + N*x->j, N);
+                        mpoly_monomial_add(exp_list[exp_next], Bexps + N*x->i,
+                                                            Qexps + N*x->j, N);
                     else
-                        mpoly_monomial_add_mp(exp_list[exp_next], exp3 + N*x->i,
-                                                                 Qexps + N*x->j, N);
+                        mpoly_monomial_add_mp(exp_list[exp_next], Bexps + N*x->i,
+                                                            Qexps + N*x->j, N);
 
                     exp_next += _mpoly_heap_insert(heap, exp_list[exp_next], x,
                                              &next_loc, &heap_len, N, cmpmask);
@@ -223,11 +457,11 @@ case n:                                                                       \
                     hind[x->i] = 2*(x->j + 1) + 0;
 
                     if (bits <= FLINT_BITS)
-                        mpoly_monomial_add(exp_list[exp_next], exp3 + N*x->i,
-                                                              Qexps + N*x->j, N);
+                        mpoly_monomial_add(exp_list[exp_next], Bexps + N*x->i,
+                                                            Qexps + N*x->j, N);
                     else
-                        mpoly_monomial_add_mp(exp_list[exp_next], exp3 + N*x->i,
-                                                                 Qexps + N*x->j, N);
+                        mpoly_monomial_add_mp(exp_list[exp_next], Bexps + N*x->i,
+                                                            Qexps + N*x->j, N);
 
                     exp_next += _mpoly_heap_insert(heap, exp_list[exp_next], x,
                                              &next_loc, &heap_len, N, cmpmask);
@@ -240,10 +474,10 @@ case n:                                                                       \
             continue;
         }
 
-        n_fq_mul(Qcoeffs + d*Qlen, Qcoeffs + d*Qlen, lc_minus_inv, fqctx);
+        _n_fq_mul(Qcoeffs + d*Qlen, Qcoeffs + d*Qlen, lc_minus_inv, fqctx, t);
 
         if (!lt_divides ||
-            mpoly_monomial_gt(exp2 + N*(Alen - 1), exp, N, cmpmask))
+            mpoly_monomial_gt(Aexps + N*(Alen - 1), exp, N, cmpmask))
         {
             goto not_exact_division;
         }
@@ -258,9 +492,11 @@ case n:                                                                       \
             hind[x->i] = 2*(x->j + 1) + 0;
 
             if (bits <= FLINT_BITS)
-                mpoly_monomial_add(exp_list[exp_next], exp3 + x->i*N, Qexps + N*x->j, N);
+                mpoly_monomial_add(exp_list[exp_next], Bexps + N*x->i,
+                                                       Qexps + N*x->j, N);
             else
-                mpoly_monomial_add_mp(exp_list[exp_next], exp3 + x->i*N, Qexps + N*x->j, N);
+                mpoly_monomial_add_mp(exp_list[exp_next], Bexps + N*x->i,
+                                                          Qexps + N*x->j, N);
 
             exp_next += _mpoly_heap_insert(heap, exp_list[exp_next], x,
                                              &next_loc, &heap_len, N, cmpmask);

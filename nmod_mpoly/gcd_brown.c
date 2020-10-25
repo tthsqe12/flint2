@@ -1263,8 +1263,8 @@ cleanup:
 #if WANT_ASSERT
     if (success)
     {
-        success =            nmod_mpolyn_divides(T1, Aorg, G, ctx);
-        success = success && nmod_mpolyn_divides(T2, Borg, G, ctx);
+        success = nmod_mpolyn_divides(T1, Aorg, G, ctx) &&
+                  nmod_mpolyn_divides(T2, Borg, G, ctx);
         FLINT_ASSERT(success);
         FLINT_ASSERT(nmod_mpolyn_equal(T1, Abar, ctx));
         FLINT_ASSERT(nmod_mpolyn_equal(T2, Bbar, ctx));
@@ -1290,189 +1290,16 @@ cleanup:
 }
 
 
-
-
-typedef struct
-{
-    nmod_mpolyn_struct * Pn;
-    const nmod_mpoly_ctx_struct * nctx;
-    const nmod_mpoly_struct * P;
-    const nmod_mpoly_ctx_struct * ctx;
-    const slong * perm;
-    const ulong * shift;
-    const ulong * stride;
-    const thread_pool_handle * handles;
-    slong num_handles;
-}
-_convertn_arg_struct;
-
-typedef _convertn_arg_struct _convertn_arg_t[1];
-
-static void _worker_convertn(void * varg)
-{
-    _convertn_arg_struct * arg = (_convertn_arg_struct *) varg;
-
-    nmod_mpoly_to_mpolyn_perm_deflate_threaded_pool(arg->Pn, arg->nctx,
-                    arg->P, arg->ctx, arg->perm, arg->shift, arg->stride,
-                                               arg->handles, arg->num_handles);
-}
-
-int nmod_mpoly_gcd_brown_threaded(
+/* should find its way back here in interesting cases */
+int nmod_mpoly_gcd_brown(
     nmod_mpoly_t G,
     const nmod_mpoly_t A,
     const nmod_mpoly_t B,
     const nmod_mpoly_ctx_t ctx)
 {
-    int success;
-    slong * perm;
-    ulong * shift, * stride;
-    slong i;
-    flint_bitcnt_t ABbits;
-    nmod_mpoly_ctx_t nctx;
-    nmod_mpolyn_t An, Bn, Gn, Abarn, Bbarn;
-    thread_pool_handle * handles;
-    slong num_handles;
-    slong thread_limit = FLINT_MIN(A->length, B->length)/16;
+    if (nmod_mpoly_is_zero(A, ctx) || nmod_mpoly_is_zero(B, ctx))
+        return nmod_mpoly_gcd(G, A, B, ctx);
 
-    if (nmod_mpoly_is_zero(A, ctx))
-    {
-        if (nmod_mpoly_is_zero(B, ctx))
-        {
-            nmod_mpoly_zero(G, ctx);
-        }
-        else
-        {
-            nmod_mpoly_make_monic(G, B, ctx);
-        }
-        return 1;
-    }
-
-    if (nmod_mpoly_is_zero(B, ctx))
-    {
-        nmod_mpoly_make_monic(G, A, ctx);
-        return 1;
-    }
-
-    if (A->bits > FLINT_BITS || B->bits > FLINT_BITS)
-    {
-        return 0;
-    }
-
-    perm = (slong *) flint_malloc(ctx->minfo->nvars*sizeof(slong));
-    shift = (ulong *) flint_malloc(ctx->minfo->nvars*sizeof(ulong));
-    stride = (ulong *) flint_malloc(ctx->minfo->nvars*sizeof(ulong));
-    for (i = 0; i < ctx->minfo->nvars; i++)
-    {
-        perm[i] = i;
-        shift[i] = 0;
-        stride[i] = 1;
-    }
-
-    if (ctx->minfo->nvars == 1)
-    {
-        nmod_poly_t a, b, g;
-        nmod_poly_init(a, ctx->ffinfo->mod.n);
-        nmod_poly_init(b, ctx->ffinfo->mod.n);
-        nmod_poly_init(g, ctx->ffinfo->mod.n);
-        _nmod_mpoly_to_nmod_poly_deflate(a, A, 0, shift, stride, ctx);
-        _nmod_mpoly_to_nmod_poly_deflate(b, B, 0, shift, stride, ctx);
-        nmod_poly_gcd(g, a, b);
-        _nmod_mpoly_from_nmod_poly_inflate(G, A->bits, g, 0, shift, stride, ctx);
-        nmod_poly_clear(a);
-        nmod_poly_clear(b);
-        nmod_poly_clear(g);
-        success = 1;
-        goto cleanup1;
-    }
-
-    FLINT_ASSERT(ctx->minfo->nvars >= 2);
-    FLINT_ASSERT(A->bits <= FLINT_BITS);
-    FLINT_ASSERT(B->bits <= FLINT_BITS);
-    FLINT_ASSERT(A->length > 0);
-    FLINT_ASSERT(B->length > 0);
-
-    ABbits = FLINT_MAX(A->bits, B->bits);
-
-    nmod_mpoly_ctx_init(nctx, ctx->minfo->nvars, ORD_LEX, ctx->ffinfo->mod.n);
-    nmod_mpolyn_init(An, ABbits, nctx);
-    nmod_mpolyn_init(Bn, ABbits, nctx);
-    nmod_mpolyn_init(Gn, ABbits, nctx);
-    nmod_mpolyn_init(Abarn, ABbits, nctx);
-    nmod_mpolyn_init(Bbarn, ABbits, nctx);
-
-    num_handles = flint_request_threads(&handles, thread_limit);
-
-    /* convert inputs */
-    if (num_handles > 0)
-    {
-        slong m = mpoly_divide_threads(num_handles, A->length, B->length);
-        _convertn_arg_t arg;
-
-        FLINT_ASSERT(m >= 0);
-        FLINT_ASSERT(m < num_handles);
-
-        arg->Pn = Bn;
-        arg->nctx = nctx;
-        arg->P = B;
-        arg->ctx = ctx;
-        arg->perm = perm;
-        arg->shift = shift;
-        arg->stride = stride;
-        arg->handles = handles + (m + 1);
-        arg->num_handles = num_handles - (m + 1);
-
-        thread_pool_wake(global_thread_pool, handles[m], 0, _worker_convertn, arg);
-
-        nmod_mpoly_to_mpolyn_perm_deflate_threaded_pool(An, nctx, A, ctx,
-                                          perm, shift, stride, handles + 0, m);
-
-        thread_pool_wait(global_thread_pool, handles[m]);
-    }
-    else
-    {
-        nmod_mpoly_to_mpolyn_perm_deflate_threaded_pool(An, nctx,
-                                         A, ctx, perm, shift, stride, NULL, 0);
-        nmod_mpoly_to_mpolyn_perm_deflate_threaded_pool(Bn, nctx,
-                                         B, ctx, perm, shift, stride, NULL, 0);
-    }
-
-    /* calculate gcd */
-    success = nmod_mpolyn_gcd_brown_smprime_threaded_pool(
-                          Gn, Abarn, Bbarn, An, Bn, nctx->minfo->nvars - 1,
-                                             nctx, NULL, handles, num_handles);
-
-    flint_give_back_threads(handles, num_handles);
-
-    if (!success)
-    {
-        nmod_mpoly_to_mpolyn_perm_deflate_threaded_pool(An, nctx,
-                                         A, ctx, perm, shift, stride, NULL, 0);
-        nmod_mpoly_to_mpolyn_perm_deflate_threaded_pool(Bn, nctx,
-                                         B, ctx, perm, shift, stride, NULL, 0);
-        success = nmod_mpolyn_gcd_brown_lgprime(Gn, Abarn, Bbarn,
-                                         An, Bn, nctx->minfo->nvars - 1, nctx);
-    }
-
-    if (success)
-    {
-        nmod_mpoly_from_mpolyn_perm_inflate(G, ABbits, ctx,
-                                                Gn, nctx, perm, shift, stride);
-        nmod_mpoly_make_monic(G, G, ctx);
-    }
-
-    nmod_mpolyn_clear(An, nctx);
-    nmod_mpolyn_clear(Bn, nctx);
-    nmod_mpolyn_clear(Gn, nctx);
-    nmod_mpolyn_clear(Abarn, nctx);
-    nmod_mpolyn_clear(Bbarn, nctx);
-    nmod_mpoly_ctx_clear(nctx);
-
-cleanup1:
-
-    flint_free(perm);
-    flint_free(shift);
-    flint_free(stride);
-
-    return success;
+    return _nmod_mpoly_gcd_algo(G, NULL, NULL, A, B, ctx, MPOLY_GCD_USE_BROWN);
 }
 

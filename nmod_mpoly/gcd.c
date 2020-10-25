@@ -243,7 +243,7 @@ void mpoly_gcd_info_set_estimates_nmod_mpoly(
         n_poly_init(Bevals + j);
     }
 
-    ignore_limit = A->length/4096 + B->length/4096;
+    ignore_limit = (A->length + B->length)/4096;
     ignore_limit = FLINT_MAX(WORD(9999), ignore_limit);
     I->Gdeflate_deg_bounds_are_nice = 1;
     for (j = 0; j < nvars; j++)
@@ -861,12 +861,6 @@ static int _try_divides(
 }
 
 
-#define USE_HENSEL  1
-#define USE_BROWN   2
-#define USE_ZIPPEL  4
-#define USE_ZIPPEL2 8
-#define USE_ALL     15
-
 /********************** Hit A and B with zippel ******************************/
 static int _try_zippel(
     nmod_mpoly_t G,
@@ -1454,7 +1448,7 @@ cleanup:
     Both A and B have to be packed into bits <= FLINT_BITS
     return is 1 for success, 0 for failure.
 */
-static int _nmod_mpoly_gcd_algo(
+static int _nmod_mpoly_gcd_algo_small(
     nmod_mpoly_t G,
     nmod_mpoly_t Abar, /* could be NULL */
     nmod_mpoly_t Bbar, /* could be NULL */
@@ -1676,9 +1670,6 @@ skip_monomial_cofactors:
     {
         mpoly_gcd_info_measure_brown(I, A->length, B->length, ctx->minfo);
 
-        if (_try_hensel(G, Abar, Bbar, A, B, I, ctx))
-            goto successful;
-
         if (_try_brown(G, Abar, Bbar, A, B, I, ctx))
             goto successful;
     }
@@ -1806,7 +1797,7 @@ static int _nmod_mpoly_gcd_algo_large(
         Buse = Bnew;
     }
 
-    success = _nmod_mpoly_gcd_algo(G, Abar, Bbar, Ause, Buse, ctx, USE_ALL);
+    success = _nmod_mpoly_gcd_algo(G, Abar, Bbar, Ause, Buse, ctx, algo);
 
     goto cleanup;
 
@@ -1848,7 +1839,7 @@ could_not_repack:
             goto deflate_cleanup;
     }
 
-    success = _nmod_mpoly_gcd_algo(G, Abar, Bbar, Anew, Bnew, ctx, USE_ALL);
+    success = _nmod_mpoly_gcd_algo(G, Abar, Bbar, Anew, Bnew, ctx, algo);
     if (!success)
         goto deflate_cleanup;
 
@@ -1899,57 +1890,23 @@ cleanup:
 }
 
 
-int nmod_mpoly_gcd_cofactors(
+int _nmod_mpoly_gcd_algo(
     nmod_mpoly_t G,
     nmod_mpoly_t Abar,
     nmod_mpoly_t Bbar,
     const nmod_mpoly_t A,
     const nmod_mpoly_t B,
-    const nmod_mpoly_ctx_t ctx)
+    const nmod_mpoly_ctx_t ctx,
+    unsigned int algo)
 {
-    if (A->length == 0)
-    {
-        if (B->length == 0)
-        {
-            nmod_mpoly_zero(G, ctx);
-            nmod_mpoly_zero(Abar, ctx);
-            nmod_mpoly_zero(Bbar, ctx);
-            return 1;
-        }
-        nmod_mpoly_set(G, B, ctx);
-        nmod_mpoly_zero(Abar, ctx);
-        nmod_mpoly_one(Bbar, ctx);
-        if (G->coeffs[0] != 1)
-        {
-            _nmod_vec_scalar_mul_nmod(Bbar->coeffs, Bbar->coeffs,
-                                 Bbar->length, G->coeffs[0], ctx->ffinfo->mod);
-            _nmod_vec_scalar_mul_nmod(G->coeffs, G->coeffs, G->length,
-                   nmod_inv(G->coeffs[0], ctx->ffinfo->mod), ctx->ffinfo->mod);
-        }
-        return 1;
-    }
-
-    if (B->length == 0)
-    {
-        nmod_mpoly_set(G, A, ctx);
-        nmod_mpoly_zero(Bbar, ctx);
-        nmod_mpoly_one(Abar, ctx);
-        if (G->coeffs[0] != 1)
-        {
-            _nmod_vec_scalar_mul_nmod(Abar->coeffs, Abar->coeffs,
-                                 Abar->length, G->coeffs[0], ctx->ffinfo->mod);
-            _nmod_vec_scalar_mul_nmod(G->coeffs, G->coeffs, G->length,
-                   nmod_inv(G->coeffs[0], ctx->ffinfo->mod), ctx->ffinfo->mod);
-        }
-        return 1;
-    }
+    FLINT_ASSERT(!nmod_mpoly_is_zero(A, ctx));
+    FLINT_ASSERT(!nmod_mpoly_is_zero(B, ctx));
 
     if (A->bits <= FLINT_BITS && B->bits <= FLINT_BITS)
-        return _nmod_mpoly_gcd_algo(G, Abar, Bbar, A, B, ctx, USE_ALL);
-
-    return _nmod_mpoly_gcd_algo_large(G, Abar, Bbar, A, B, ctx, USE_ALL);
+        return _nmod_mpoly_gcd_algo_small(G, Abar, Bbar, A, B, ctx, algo);
+    else
+        return _nmod_mpoly_gcd_algo_large(G, Abar, Bbar, A, B, ctx, algo);
 }
-
 
 int nmod_mpoly_gcd(
     nmod_mpoly_t G,
@@ -1972,70 +1929,6 @@ int nmod_mpoly_gcd(
         return 1;
     }
 
-    if (A->bits <= FLINT_BITS && B->bits <= FLINT_BITS)
-        return _nmod_mpoly_gcd_algo(G, NULL, NULL, A, B, ctx, USE_ALL);
-
-    return _nmod_mpoly_gcd_algo_large(G, NULL, NULL, A, B, ctx, USE_ALL);
-}
-
-
-int nmod_mpoly_gcd_hensel(
-    nmod_mpoly_t G,
-    const nmod_mpoly_t A,
-    const nmod_mpoly_t B,
-    const nmod_mpoly_ctx_t ctx)
-{
-    if (nmod_mpoly_is_zero(A, ctx) || nmod_mpoly_is_zero(B, ctx))
-        return nmod_mpoly_gcd(G, A, B, ctx);
-
-    if (A->bits <= FLINT_BITS && B->bits <= FLINT_BITS)
-        return _nmod_mpoly_gcd_algo(G, NULL, NULL, A, B, ctx, USE_HENSEL);
-
-    return _nmod_mpoly_gcd_algo_large(G, NULL, NULL, A, B, ctx, USE_HENSEL);
-}
-
-int nmod_mpoly_gcd_brown(
-    nmod_mpoly_t G,
-    const nmod_mpoly_t A,
-    const nmod_mpoly_t B,
-    const nmod_mpoly_ctx_t ctx)
-{
-    if (nmod_mpoly_is_zero(A, ctx) || nmod_mpoly_is_zero(B, ctx))
-        return nmod_mpoly_gcd(G, A, B, ctx);
-
-    if (A->bits <= FLINT_BITS && B->bits <= FLINT_BITS)
-        return _nmod_mpoly_gcd_algo(G, NULL, NULL, A, B, ctx, USE_BROWN);
-
-    return _nmod_mpoly_gcd_algo_large(G, NULL, NULL, A, B, ctx, USE_BROWN);
-}
-
-int nmod_mpoly_gcd_zippel(
-    nmod_mpoly_t G,
-    const nmod_mpoly_t A,
-    const nmod_mpoly_t B,
-    const nmod_mpoly_ctx_t ctx)
-{
-    if (nmod_mpoly_is_zero(A, ctx) || nmod_mpoly_is_zero(B, ctx))
-        return nmod_mpoly_gcd(G, A, B, ctx);
-
-    if (A->bits <= FLINT_BITS && B->bits <= FLINT_BITS)
-        return _nmod_mpoly_gcd_algo(G, NULL, NULL, A, B, ctx, USE_ZIPPEL);
-
-    return _nmod_mpoly_gcd_algo_large(G, NULL, NULL, A, B, ctx, USE_ZIPPEL);
-}
-
-int nmod_mpoly_gcd_zippel2(
-    nmod_mpoly_t G,
-    const nmod_mpoly_t A,
-    const nmod_mpoly_t B,
-    const nmod_mpoly_ctx_t ctx)
-{
-    if (nmod_mpoly_is_zero(A, ctx) || nmod_mpoly_is_zero(B, ctx))
-        return nmod_mpoly_gcd(G, A, B, ctx);
-
-    if (A->bits <= FLINT_BITS && B->bits <= FLINT_BITS)
-        return _nmod_mpoly_gcd_algo(G, NULL, NULL, A, B, ctx, USE_ZIPPEL2);
-
-    return _nmod_mpoly_gcd_algo_large(G, NULL, NULL, A, B, ctx, USE_ZIPPEL2);
+    return _nmod_mpoly_gcd_algo(G, NULL, NULL, A, B, ctx, MPOLY_GCD_USE_ALL);
 }
 

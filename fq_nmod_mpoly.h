@@ -838,9 +838,11 @@ FLINT_DLL int fq_nmod_mpoly_gcd_cofactors(fq_nmod_mpoly_t G,
           fq_nmod_mpoly_t Abar, fq_nmod_mpoly_t Bbar, const fq_nmod_mpoly_t A,
                        const fq_nmod_mpoly_t B, const fq_nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL int fq_nmod_mpoly_gcd_brown(fq_nmod_mpoly_t G,
-                            const fq_nmod_mpoly_t A, const fq_nmod_mpoly_t B,
-                                                const fq_nmod_mpoly_ctx_t ctx);
+FLINT_DLL int fq_nmod_mpoly_gcd_brown(fq_nmod_mpoly_t G, const fq_nmod_mpoly_t A,
+                       const fq_nmod_mpoly_t B, const fq_nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int fq_nmod_mpoly_gcd_hensel(fq_nmod_mpoly_t G, const fq_nmod_mpoly_t A,
+                       const fq_nmod_mpoly_t B, const fq_nmod_mpoly_ctx_t ctx);
 
 FLINT_DLL int fq_nmod_mpoly_gcd_zippel(fq_nmod_mpoly_t G, const fq_nmod_mpoly_t A,
                        const fq_nmod_mpoly_t B, const fq_nmod_mpoly_ctx_t ctx);
@@ -1138,24 +1140,6 @@ FLINT_DLL int fq_nmod_mpolyu_gcdm_zippel(fq_nmod_mpolyu_t G,
              fq_nmod_mpolyu_t Abar, fq_nmod_mpolyu_t Bbar,  fq_nmod_mpolyu_t A,
             fq_nmod_mpolyu_t B, fq_nmod_mpoly_ctx_t ctx, mpoly_zipinfo_t zinfo,
                                                        flint_rand_t randstate);
-
-FLINT_DLL int fq_nmod_mpolyuu_gcd_zippel_smprime(
-    fq_nmod_mpolyu_t rG, const slong * Gdeg,
-    fq_nmod_mpolyu_t rAbar,
-    fq_nmod_mpolyu_t rBbar,
-    const fq_nmod_mpolyu_t A, const slong * Adegs,
-    const fq_nmod_mpolyu_t B, const slong * Bdegs,
-    const fq_nmod_mpoly_t gamma, const slong * gammadegs,
-    const fq_nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL int fq_nmod_mpolyuu_gcd_zippel_lgprime(
-    fq_nmod_mpolyu_t rG, const slong * Gdeg,
-    fq_nmod_mpolyu_t rAbar,
-    fq_nmod_mpolyu_t rBbar,
-    const fq_nmod_mpolyu_t A, const slong * Adegs,
-    const fq_nmod_mpolyu_t B, const slong * Bdegs,
-    const fq_nmod_mpoly_t gamma, const slong * gammadegs,
-    const fq_nmod_mpoly_ctx_t ctx);
 
 FQ_NMOD_MPOLY_INLINE mp_limb_t * fq_nmod_mpolyu_leadcoeff(
                        const fq_nmod_mpolyu_t A, const fq_nmod_mpoly_ctx_t ctx)
@@ -1492,6 +1476,10 @@ FLINT_DLL void fq_nmod_mpolyn_interp_reduce_lg_mpoly(
 FLINT_DLL void fq_nmod_mpolyun_interp_reduce_lg_mpolyu(fq_nmod_mpolyu_t A,
                         fq_nmod_mpolyun_t B, const fq_nmod_mpoly_ctx_t ectx,
                     const fq_nmod_mpoly_ctx_t ctx, const bad_fq_nmod_embed_t emb);
+
+FLINT_DLL void fq_nmod_mpolyn_interp_lift_lg_mpoly(fq_nmod_mpolyn_t A,
+                            const fq_nmod_mpoly_ctx_t ctx,fq_nmod_mpoly_t B,
+                const fq_nmod_mpoly_ctx_t ectx, const bad_fq_nmod_embed_t emb);
 
 FLINT_DLL void fq_nmod_mpolyun_interp_lift_lg_mpolyu(fq_nmod_mpolyun_t A,
                           const fq_nmod_mpoly_ctx_t ctx, fq_nmod_mpolyu_t B,

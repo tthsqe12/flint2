@@ -493,6 +493,7 @@ finished:
 }
 
 
+/* should find its way back here in interesting cases */
 int fq_nmod_mpoly_gcd_zippel(
     fq_nmod_mpoly_t G,
     const fq_nmod_mpoly_t A,

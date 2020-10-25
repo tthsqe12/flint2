@@ -22,6 +22,7 @@ int fq_nmod_mpolyl_content(
     slong num_vars,
     const fq_nmod_mpoly_ctx_t ctx)
 {
+    slong d = fq_nmod_ctx_degree(ctx->fqctx);
     int success;
     slong i, j, off, shift;
     ulong old_shift, new_shift;
@@ -46,7 +47,7 @@ int fq_nmod_mpolyl_content(
     vlen = 0;
 
     v[vlen].bits = A->bits;
-    v[vlen].coeffs = A->coeffs + i;
+    v[vlen].coeffs = A->coeffs + d*i;
     v[vlen].exps = Aexps + N*i;
     v[vlen].coeffs_alloc = 0;
     v[vlen].exps_alloc = 0;
@@ -78,7 +79,7 @@ new_one:
                                                  sizeof(fq_nmod_mpoly_struct));
         }
         v[vlen].bits = A->bits;
-        v[vlen].coeffs = A->coeffs + i;
+        v[vlen].coeffs = A->coeffs + d*i;
         v[vlen].exps = Aexps + N*i;
         v[vlen].coeffs_alloc = 0;
         v[vlen].exps_alloc = 0;

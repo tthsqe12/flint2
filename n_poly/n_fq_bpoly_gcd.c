@@ -820,13 +820,13 @@ int n_fq_bpoly_gcd_brown_smprime(
     FLINT_ASSERT(n_fq_bpoly_is_canonical(B, ctx));
 
     n_poly_stack_fit_request(Sp->poly_stack, 7);
-    cA          = n_poly_stack_take_top(Sp->poly_stack);
-    cB          = n_poly_stack_take_top(Sp->poly_stack);
-    cG          = n_poly_stack_take_top(Sp->poly_stack);
-    cAbar       = n_poly_stack_take_top(Sp->poly_stack);
-    cBbar       = n_poly_stack_take_top(Sp->poly_stack);
-    gamma       = n_poly_stack_take_top(Sp->poly_stack);
-    r           = n_poly_stack_take_top(Sp->poly_stack);
+    cA      = n_poly_stack_take_top(Sp->poly_stack);
+    cB      = n_poly_stack_take_top(Sp->poly_stack);
+    cG      = n_poly_stack_take_top(Sp->poly_stack);
+    cAbar   = n_poly_stack_take_top(Sp->poly_stack);
+    cBbar   = n_poly_stack_take_top(Sp->poly_stack);
+    gamma   = n_poly_stack_take_top(Sp->poly_stack);
+    r       = n_poly_stack_take_top(Sp->poly_stack);
 
     n_fq_bpoly_content_last(cA, A, ctx);
     n_fq_bpoly_content_last(cB, B, ctx);

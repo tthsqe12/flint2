@@ -998,11 +998,27 @@ FLINT_DLL void nmod_mpoly_term_content(nmod_mpoly_t M, const nmod_mpoly_t A,
 FLINT_DLL int nmod_mpoly_content_vars(nmod_mpoly_t g, const nmod_mpoly_t A,
                   slong * vars, slong vars_length, const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL int nmod_mpoly_gcd(nmod_mpoly_t G,
-       const nmod_mpoly_t A, const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
+FLINT_DLL int nmod_mpoly_gcd(nmod_mpoly_t G, const nmod_mpoly_t A,
+                             const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int _nmod_mpoly_gcd_algo(nmod_mpoly_t G, nmod_mpoly_t Abar,
+                nmod_mpoly_t Bbar, const nmod_mpoly_t A, const nmod_mpoly_t B,
+                                const nmod_mpoly_ctx_t ctx, unsigned int algo);
 
 FLINT_DLL int nmod_mpoly_gcd_cofactors(nmod_mpoly_t G,
                 nmod_mpoly_t Abar, nmod_mpoly_t Bbar, const nmod_mpoly_t A,
+                             const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int nmod_mpoly_gcd_brown(nmod_mpoly_t G, const nmod_mpoly_t A,
+                             const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int nmod_mpoly_gcd_hensel(nmod_mpoly_t G, const nmod_mpoly_t A,
+                             const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int nmod_mpoly_gcd_zippel(nmod_mpoly_t G, const nmod_mpoly_t A,
+                             const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int nmod_mpoly_gcd_zippel2(nmod_mpoly_t G, const nmod_mpoly_t A,
                              const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
 
 FLINT_DLL void nmod_mpoly_deflation(fmpz * shift, fmpz * stride,
@@ -1309,18 +1325,6 @@ FLINT_DLL int nmod_mpolyd_ctx_set_for_gcd(nmod_mpolyd_ctx_t dctx,
 
 FLINT_DLL void nmod_mpolyd_last_content(nmod_poly_t cont, const nmod_mpolyd_t A,
                                                        const nmodf_ctx_t fctx);
-
-FLINT_DLL int nmod_mpoly_gcd_hensel(nmod_mpoly_t G, const nmod_mpoly_t A,
-                             const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL int nmod_mpoly_gcd_brown(nmod_mpoly_t G, const nmod_mpoly_t A,
-                             const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL int nmod_mpoly_gcd_zippel(nmod_mpoly_t G, const nmod_mpoly_t A,
-                             const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL int nmod_mpoly_gcd_zippel2(nmod_mpoly_t G, const nmod_mpoly_t A,
-                             const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
 
 /* mpolyu ********************************************************************/
 

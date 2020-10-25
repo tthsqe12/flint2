@@ -415,7 +415,8 @@ cleanup:
 	return success;
 }
 
-/* should find it's way back here if the gcd is interesting */
+
+/* should find its way back here in interesting cases */
 int fq_nmod_mpoly_gcd_hensel(
     fq_nmod_mpoly_t G,
     const fq_nmod_mpoly_t A,

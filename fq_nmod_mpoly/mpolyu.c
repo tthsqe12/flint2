@@ -581,7 +581,7 @@ void fq_nmod_mpoly_to_mpolyl_perm_deflate(
     FLINT_ASSERT(m <= n);
     TMP_START;
 
-    fq_nmod_mpoly_fit_length(A, B->length, ctx);
+    fq_nmod_mpoly_fit_length(A, B->length, lctx);
     A->length = B->length;
 
     lexps = (ulong *) TMP_ALLOC(m*sizeof(ulong));
@@ -590,6 +590,7 @@ void fq_nmod_mpoly_to_mpolyl_perm_deflate(
     NB = mpoly_words_per_exp(B->bits, ctx->minfo);
 
     d = fq_nmod_ctx_degree(ctx->fqctx);
+    FLINT_ASSERT(d == fq_nmod_ctx_degree(lctx->fqctx));
     _nmod_vec_set(A->coeffs, B->coeffs, B->length*d);
 
     for (j = 0; j < B->length; j++)
@@ -669,6 +670,7 @@ void fq_nmod_mpoly_from_mpolyl_perm_inflate(
     A->length = B->length;
 
     d = fq_nmod_ctx_degree(ctx->fqctx);
+    FLINT_ASSERT(d == fq_nmod_ctx_degree(lctx->fqctx));
     _nmod_vec_set(A->coeffs, B->coeffs, B->length*d);
 
     for (i = 0; i < B->length; i++)

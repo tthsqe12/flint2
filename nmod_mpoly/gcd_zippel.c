@@ -506,3 +506,17 @@ finished:
     return success;
 }
 
+
+/* should find its way back here in interesting cases */
+int nmod_mpoly_gcd_zippel(
+    nmod_mpoly_t G,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_t B,
+    const nmod_mpoly_ctx_t ctx)
+{
+    if (nmod_mpoly_is_zero(A, ctx) || nmod_mpoly_is_zero(B, ctx))
+        return nmod_mpoly_gcd(G, A, B, ctx);
+
+    return _nmod_mpoly_gcd_algo(G, NULL, NULL, A, B, ctx, MPOLY_GCD_USE_ZIPPEL);
+}
+
