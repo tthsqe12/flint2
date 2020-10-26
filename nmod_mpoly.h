@@ -1060,18 +1060,6 @@ FLINT_DLL int nmod_mpoly_repack_bits(nmod_mpoly_t A, const nmod_mpoly_t B,
 FLINT_DLL int nmod_mpoly_repack_bits_inplace(nmod_mpoly_t A,
                              flint_bitcnt_t Abits, const nmod_mpoly_ctx_t ctx);
 
-FLINT_DLL void mpoly_gcd_info_set_estimates_nmod_mpoly(
-    mpoly_gcd_info_t I,
-    const nmod_mpoly_t A,
-    const nmod_mpoly_t B,
-    const nmod_mpoly_ctx_t ctx);
-
-FLINT_DLL void mpoly_gcd_info_set_estimates_nmod_mpoly_lgprime(
-    mpoly_gcd_info_t I,
-    const nmod_mpoly_t A,
-    const nmod_mpoly_t B,
-    const nmod_mpoly_ctx_t ctx);
-
 typedef struct
 {
     slong nvars;

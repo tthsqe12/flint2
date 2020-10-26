@@ -897,7 +897,7 @@ static int _try_zippel(
     FLINT_ASSERT(A->bits <= FLINT_BITS);
     FLINT_ASSERT(B->bits <= FLINT_BITS);
 
-    if (!I->can_use_zippel)
+    if (!(I->can_use & MPOLY_GCD_USE_ZIPPEL))
         return 0;
 
     FLINT_ASSERT(m >= WORD(2));
@@ -1041,7 +1041,7 @@ static int _try_zippel2(
     FLINT_ASSERT(A->length > 0);
     FLINT_ASSERT(B->length > 0);
 
-    if (!I->can_use_bma)
+    if (!(I->can_use & MPOLY_GCD_USE_ZIPPEL2))
         return 0;
 
     FLINT_ASSERT(m >= WORD(3));
@@ -1057,7 +1057,7 @@ static int _try_zippel2(
     max_degree = 0;
     for (i = 0; i < m; i++)
     {
-        k = I->bma_perm[i];
+        k = I->zippel2_perm[i];
 
         Gl_degs[i] = I->Gdeflate_deg_bound[k];
 
@@ -1087,9 +1087,9 @@ static int _try_zippel2(
     fq_nmod_mpoly_init3(Bl_lc, 0, wbits, lctx);
 
     fq_nmod_mpoly_to_mpolyl_perm_deflate(Al, lctx, A, ctx,
-                                         I->bma_perm, I->Amin_exp, I->Gstride);
+                                     I->zippel2_perm, I->Amin_exp, I->Gstride);
     fq_nmod_mpoly_to_mpolyl_perm_deflate(Bl, lctx, B, ctx,
-                                         I->bma_perm, I->Bmin_exp, I->Gstride);
+                                     I->zippel2_perm, I->Bmin_exp, I->Gstride);
 
     success = fq_nmod_mpolyl_content(Ac, Al, 2, lctx) &&
               fq_nmod_mpolyl_content(Bc, Bl, 2, lctx);
@@ -1153,19 +1153,19 @@ static int _try_zippel2(
     if (!fq_nmod_mpoly_is_one(Gc, lctx))
         fq_nmod_mpoly_mul(Gl, Gl, Gc, lctx);
     fq_nmod_mpoly_from_mpolyl_perm_inflate(G, I->Gbits, ctx, Gl, lctx,
-                                         I->bma_perm, I->Gmin_exp, I->Gstride);
+                                     I->zippel2_perm, I->Gmin_exp, I->Gstride);
     if (Abar != NULL)
     {
         fq_nmod_mpoly_mul(Abarl, Abarl, Abarc, lctx);
         fq_nmod_mpoly_from_mpolyl_perm_inflate(Abar, I->Abarbits, ctx, Abarl, lctx,
-                                      I->bma_perm, I->Abarmin_exp, I->Gstride);
+                                  I->zippel2_perm, I->Abarmin_exp, I->Gstride);
     }
 
     if (Bbar != NULL)
     {
         fq_nmod_mpoly_mul(Bbarl, Bbarl, Bbarc, lctx);
         fq_nmod_mpoly_from_mpolyl_perm_inflate(Bbar, I->Bbarbits, ctx, Bbarl, lctx,
-                                      I->bma_perm, I->Bbarmin_exp, I->Gstride);
+                                  I->zippel2_perm, I->Bbarmin_exp, I->Gstride);
     }
 
     success = 1;
@@ -1217,7 +1217,7 @@ static int _try_hensel(
     FLINT_ASSERT(A->length > 0);
     FLINT_ASSERT(B->length > 0);
 
-    if (!I->can_use_brown)
+    if (!(I->can_use & MPOLY_GCD_USE_HENSEL))
         return 0;
 
     FLINT_ASSERT(m >= WORD(2));
@@ -1227,7 +1227,7 @@ static int _try_hensel(
     max_degree = 0;
     for (i = 0; i < m; i++)
     {
-        k = I->bma_perm[i];
+        k = I->hensel_perm[i];
         max_degree = FLINT_MAX(max_degree, I->Adeflate_deg[k]);
         max_degree = FLINT_MAX(max_degree, I->Bdeflate_deg[k]);
     }
@@ -1248,9 +1248,9 @@ static int _try_hensel(
     fq_nmod_mpoly_init3(Bbarc, 0, wbits, lctx);
 
     fq_nmod_mpoly_to_mpolyl_perm_deflate(Al, lctx, A, ctx,
-                                       I->brown_perm, I->Amin_exp, I->Gstride);
+                                      I->hensel_perm, I->Amin_exp, I->Gstride);
     fq_nmod_mpoly_to_mpolyl_perm_deflate(Bl, lctx, B, ctx,
-                                       I->brown_perm, I->Bmin_exp, I->Gstride);
+                                      I->hensel_perm, I->Bmin_exp, I->Gstride);
 
     success = fq_nmod_mpolyl_content(Ac, Al, 1, lctx) &&
               fq_nmod_mpolyl_content(Bc, Bl, 1, lctx);
@@ -1278,19 +1278,19 @@ static int _try_hensel(
 
     fq_nmod_mpoly_mul(Gl, Gl, Gc, lctx);
     fq_nmod_mpoly_from_mpolyl_perm_inflate(G, I->Gbits, ctx, Gl, lctx,
-                                       I->brown_perm, I->Gmin_exp, I->Gstride);
+                                      I->hensel_perm, I->Gmin_exp, I->Gstride);
     if (Abar != NULL)
     {
         fq_nmod_mpoly_mul(Abarl, Abarl, Abarc, lctx);
         fq_nmod_mpoly_from_mpolyl_perm_inflate(Abar, I->Abarbits, ctx, Abarl, lctx,
-                                    I->brown_perm, I->Abarmin_exp, I->Gstride);
+                                   I->hensel_perm, I->Abarmin_exp, I->Gstride);
     }
 
     if (Bbar != NULL)
     {
         fq_nmod_mpoly_mul(Bbarl, Bbarl, Bbarc, lctx);
         fq_nmod_mpoly_from_mpolyl_perm_inflate(Bbar, I->Bbarbits, ctx, Bbarl, lctx,
-                                    I->brown_perm, I->Bbarmin_exp, I->Gstride);
+                                   I->hensel_perm, I->Bbarmin_exp, I->Gstride);
     }
 
     success = 1;
@@ -1328,7 +1328,7 @@ static int _try_brown(
     fq_nmod_mpoly_ctx_t nctx;
     fq_nmod_mpolyn_t An, Bn, Gn, Abarn, Bbarn;
 
-    if (!I->can_use_brown)
+    if (!(I->can_use & MPOLY_GCD_USE_BROWN))
         return 0;
 
     FLINT_ASSERT(m >= 2);
@@ -1634,7 +1634,7 @@ skip_monomial_cofactors:
         mpoly_gcd_info_measure_zippel(I, A->length, B->length, ctx->minfo);
         mpoly_gcd_info_measure_zippel2(I, A->length, B->length, ctx->minfo);
 
-        if (I->zippel_time_est < I->brown_time_est)
+        if (I->zippel_time < I->brown_time)
         {
             if (_try_zippel2(G, Abar, Bbar, A, B, I, ctx))
                 goto successful;

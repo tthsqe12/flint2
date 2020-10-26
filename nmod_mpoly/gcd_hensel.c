@@ -46,7 +46,7 @@ int nmod_mpolyl_gcd_hensel_smprime(
     slong i, k;
     flint_bitcnt_t bits = A->bits;
     mp_limb_t * alphas;
-    mp_limb_t q, mu;
+    mp_limb_t q, mu1, mu2;
     nmod_mpoly_struct * Aevals, * Bevals, * Hevals;
     nmod_mpoly_struct * H; /* points to A, B, or Hevals + n */
     nmod_mpoly_struct * Glcs, * Hlcs;
@@ -127,8 +127,10 @@ got_alpha:
     Bdegx = nmod_mpoly_degree_si(B, 0, ctx);
 	for (i = n - 1; i >= 0; i--)
 	{
-		nmod_mpoly_evaluate_one_ui(Aevals + i, i == n - 1 ? A : Aevals + i + 1, i + 1, alphas[i], ctx);
-		nmod_mpoly_evaluate_one_ui(Bevals + i, i == n - 1 ? B : Bevals + i + 1, i + 1, alphas[i], ctx);
+		nmod_mpoly_evaluate_one_ui(Aevals + i, i == n - 1 ? A :
+                                        Aevals + i + 1, i + 1, alphas[i], ctx);
+		nmod_mpoly_evaluate_one_ui(Bevals + i, i == n - 1 ? B :
+                                        Bevals + i + 1, i + 1, alphas[i], ctx);
 		if (Adegx != nmod_mpoly_degree_si(Aevals + i, 0, ctx) ||
             Bdegx != nmod_mpoly_degree_si(Bevals + i, 0, ctx))
         {
@@ -137,7 +139,8 @@ got_alpha:
 	}
 
     /* univariate gcd */
-    success = nmod_mpoly_gcd_cofactors(g, abar, bbar, Aevals + 0, Bevals + 0, ctx) &&
+    success = nmod_mpoly_gcd_cofactors(g, abar, bbar,
+                                       Aevals + 0, Bevals + 0, ctx) &&
               nmod_mpoly_gcd(t1, g, abar, ctx) &&
               nmod_mpoly_gcd(t2, g, bbar, ctx);
     if (!success)
@@ -183,7 +186,8 @@ got_alpha:
     /* set Hlcs[n], Glcs[n] (gamma), H, and Hevals */
     if (nmod_mpoly_is_one(t1, ctx))
     {
-        mu = 0; /* mu = mu2/mu1 = 0 */
+        mu1 = 1;
+        mu2 = 0;
 
         nmod_mpoly_swap(hbar, abar, ctx);
 
@@ -202,7 +206,8 @@ got_alpha:
     }
     else if (nmod_mpoly_is_one(t2, ctx))
     {
-        mu = ctx->ffinfo->mod.n; /* mu = mu2/mu1 = infinity */
+        mu1 = 0;
+        mu2 = 1;
 
         nmod_mpoly_swap(hbar, bbar, ctx);
 
@@ -231,11 +236,12 @@ got_alpha:
             goto cleanup;
         }
 
-        mu = n_urandint(state, ctx->ffinfo->mod.n - 1) + 1;
-        nmod_mpoly_scalar_addmul_ui(hbar, abar, bbar, mu, ctx);
+        mu1 = 1;
+        mu2 = n_urandint(state, ctx->ffinfo->mod.n - 1) + 1;
+        nmod_mpoly_scalar_addmul_ui(hbar, abar, bbar, mu2, ctx);
 
         /* make sure the linear combo did not drop degree */
-        if (nmod_mpoly_degree_si(hbar, 0, ctx) != FLINT_MAX(Adegx, Bdegx))
+        if (nmod_mpoly_degree_si(hbar, 0, ctx) != FLINT_MAX(Adegx, Bdegx) - gdegx)
             goto next_mu;
 
         /* make sure the linear combo is prime to g */
@@ -253,14 +259,14 @@ got_alpha:
             goto cleanup;
 
         H = Hevals + n;
-        nmod_mpoly_scalar_addmul_ui(H, A, B, mu, ctx);
+        nmod_mpoly_scalar_addmul_ui(H, A, B, mu2, ctx);
         nmod_mpolyl_lead_coeff(Hlcs + n, H, 1, ctx);
 
         gamma_is_one = nmod_mpoly_is_one(Glcs + n, ctx);
         if (gamma_is_one)
             for (i = 0; i < n; i++)
                 nmod_mpoly_scalar_addmul_ui(Hevals + i, Aevals + i,
-                                                        Bevals + i, mu, ctx);
+                                                        Bevals + i, mu2, ctx);
     }
 
     if (!gamma_is_one)
@@ -268,7 +274,8 @@ got_alpha:
         nmod_mpoly_mul(Hevals + n, H, Glcs + n, ctx);
         H = Hevals + n;
         for (i = n - 1; i >= 0; i--)
-            nmod_mpoly_evaluate_one_ui(Hlcs + i, Hevals + i + 1, i + 1, alphas[i], ctx);
+            nmod_mpoly_evaluate_one_ui(Hevals + i, Hevals + i + 1,
+                                                        i + 1, alphas[i], ctx);
     }
 
     success = H->bits <= FLINT_BITS ||
@@ -328,15 +335,17 @@ got_alpha:
     success = nmod_mpoly_divides(G, Hfac + 0, t1, ctx);
     FLINT_ASSERT(success);
 
-    if (mu == 0)
+    if (mu2 == 0)
     {
+        FLINT_ASSERT(mu1 == 1);
         /* the division by t1 should succeed, but let's be careful */
         nmod_mpolyl_lead_coeff(t1, G, 1, ctx);
         success = nmod_mpoly_divides(Abar, Hfac + 1, t1, ctx) &&
                   nmod_mpoly_divides(Bbar, B, G, ctx);
     }
-    else if (mu == ctx->ffinfo->mod.n)
+    else if (mu1 == 0)
     {
+        FLINT_ASSERT(mu2 == 1);
         /* ditto */
         nmod_mpolyl_lead_coeff(t1, G, 1, ctx);
         success = nmod_mpoly_divides(Bbar, Hfac + 1, t1, ctx) &&
@@ -344,6 +353,7 @@ got_alpha:
     }
     else
     {
+        FLINT_ASSERT(mu1 == 1);
         success = nmod_mpoly_divides(Abar, A, G, ctx) &&
                   nmod_mpoly_divides(Bbar, B, G, ctx);
     }
@@ -392,6 +402,10 @@ cleanup:
         nmod_mpoly_repack_bits_inplace(G, bits, ctx);
         nmod_mpoly_repack_bits_inplace(Abar, bits, ctx);
         nmod_mpoly_repack_bits_inplace(Bbar, bits, ctx);
+
+        FLINT_ASSERT(G->length > 0);
+        FLINT_ASSERT(Abar->length > 0);
+        FLINT_ASSERT(Bbar->length > 0);
     }
 
 	return success;
@@ -406,12 +420,12 @@ int nmod_mpolyl_gcd_hensel_medprime(
     const nmod_mpoly_t smB,
     const nmod_mpoly_ctx_t smctx)
 {
-    int success, alphas_tries_remaining, gamma_is_one, proj_mu;
+    int success, alphas_tries_remaining, gamma_is_one;
     const slong n = smctx->minfo->nvars - 1;
     slong i, k;
     flint_bitcnt_t bits = smA->bits;
     fq_zech_struct * alphas;
-    fq_zech_t q, mu;
+    fq_zech_t q, mu1, mu2;
     fq_zech_mpoly_t A, B;
     fq_zech_mpoly_struct * Aevals, * Bevals, * Hevals;
     fq_zech_mpoly_struct * H; /* points to A, B, or Hevals + n */
@@ -424,7 +438,10 @@ int nmod_mpolyl_gcd_hensel_medprime(
     nmod_mpoly_t t;
     flint_rand_t state;
     fq_zech_mpoly_ctx_t ctx;
-    slong edeg/*, max_degree = n_flog(1000000, smctx->ffinfo->mod.n)*/;
+    slong edeg, max_degree = n_flog(1000000, smctx->ffinfo->mod.n);
+
+    if (max_degree < 2)
+        return 0;
 
     FLINT_ASSERT(n > 0);
     FLINT_ASSERT(smA->length > 0);
@@ -434,12 +451,15 @@ int nmod_mpolyl_gcd_hensel_medprime(
     FLINT_ASSERT(smB->bits == bits);
     FLINT_ASSERT(smctx->minfo->ord == ORD_LEX);
 
-    edeg = 1 + n_clog(FLINT_MAX(smA->length + 1, 1000), smctx->ffinfo->mod.n)/2;
+    edeg = 1 + n_clog(500, smctx->ffinfo->mod.n);
     edeg = FLINT_MAX(2, edeg);
-    fq_zech_mpoly_ctx_init_deg(ctx, smctx->minfo->nvars, ORD_LEX, smctx->ffinfo->mod.n, edeg);
+    edeg = FLINT_MIN(edeg, max_degree);
+    fq_zech_mpoly_ctx_init_deg(ctx, smctx->minfo->nvars, ORD_LEX,
+                                                   smctx->ffinfo->mod.n, edeg);
 
     fq_zech_init(q, ctx->fqctx);
-    fq_zech_init(mu, ctx->fqctx);
+    fq_zech_init(mu1, ctx->fqctx);
+    fq_zech_init(mu2, ctx->fqctx);
     fq_zech_mpoly_init(A, ctx);
     fq_zech_mpoly_init(B, ctx);
 
@@ -490,6 +510,20 @@ int nmod_mpolyl_gcd_hensel_medprime(
 
     alphas_tries_remaining = 20;
 
+increase_degree:
+
+    edeg++;
+    if (edeg > max_degree)
+	{
+		success = 0;
+        goto cleanup;
+	}
+
+    fq_zech_mpoly_ctx_change_modulus(ctx, edeg);
+
+    _fq_zech_mpoly_set_nmod_mpoly(A, ctx, smA, smctx);
+    _fq_zech_mpoly_set_nmod_mpoly(B, ctx, smB, smctx);
+
 next_alpha:
 
     if (--alphas_tries_remaining < 0)
@@ -507,17 +541,20 @@ next_alpha:
 
 	for (i = n - 1; i >= 0; i--)
 	{
-		fq_zech_mpoly_evaluate_one_fq_zech(Aevals + i, i == n - 1 ? A : Aevals + i + 1, i + 1, alphas + i, ctx);
-		fq_zech_mpoly_evaluate_one_fq_zech(Bevals + i, i == n - 1 ? B : Bevals + i + 1, i + 1, alphas + i, ctx);
+		fq_zech_mpoly_evaluate_one_fq_zech(Aevals + i, i == n - 1 ? A :
+                                       Aevals + i + 1, i + 1, alphas + i, ctx);
+		fq_zech_mpoly_evaluate_one_fq_zech(Bevals + i, i == n - 1 ? B :
+                                       Bevals + i + 1, i + 1, alphas + i, ctx);
 		if (Adegx != fq_zech_mpoly_degree_si(Aevals + i, 0, ctx) ||
             Bdegx != fq_zech_mpoly_degree_si(Bevals + i, 0, ctx))
         {
-    		goto next_alpha;
+    		goto increase_degree;
         }
 	}
 
     /* univariate gcd */
-	success = fq_zech_mpoly_gcd_cofactors(g, abar, bbar, Aevals + 0, Bevals + 0, ctx) &&
+	success = fq_zech_mpoly_gcd_cofactors(g, abar, bbar,
+                                          Aevals + 0, Bevals + 0, ctx) &&
               fq_zech_mpoly_gcd(t1, g, abar, ctx) &&
               fq_zech_mpoly_gcd(t2, g, bbar, ctx);
     if (!success)
@@ -563,7 +600,8 @@ next_alpha:
     /* set Hlcs[n], Glcs[n] (gamma), H, and Hevals */
     if (fq_zech_mpoly_is_one(t1, ctx))
     {
-        proj_mu = -1; /* mu = mu2/mu1 = 0 */
+        fq_zech_one(mu1, ctx->fqctx);
+        fq_zech_zero(mu2, ctx->fqctx);
 
         fq_zech_mpoly_swap(hbar, abar, ctx);
 
@@ -582,7 +620,8 @@ next_alpha:
     }
     else if (fq_zech_mpoly_is_one(t2, ctx))
     {
-        proj_mu = 1; /* mu = mu2/mu1 = infty */
+        fq_zech_zero(mu1, ctx->fqctx);
+        fq_zech_one(mu2, ctx->fqctx);
 
         fq_zech_mpoly_swap(hbar, bbar, ctx);
 
@@ -602,7 +641,6 @@ next_alpha:
     else
     {
         int mu_tries_remaining = 10;
-        proj_mu = 0;
 
     next_mu:
 
@@ -612,11 +650,12 @@ next_alpha:
             goto cleanup;
         }
 
-        fq_zech_rand_not_zero(mu, state, ctx->fqctx);
-        fq_zech_mpoly_scalar_addmul_fq_zech(hbar, abar, bbar, mu, ctx);
+        fq_zech_one(mu1, ctx->fqctx);
+        fq_zech_rand_not_zero(mu2, state, ctx->fqctx);
+        fq_zech_mpoly_scalar_addmul_fq_zech(hbar, abar, bbar, mu2, ctx);
 
         /* make sure the linear combo did not drop degree */
-        if (fq_zech_mpoly_degree_si(hbar, 0, ctx) != FLINT_MAX(Adegx, Bdegx))
+        if (fq_zech_mpoly_degree_si(hbar, 0, ctx) != FLINT_MAX(Adegx, Bdegx) - gdegx)
             goto next_mu;
 
         /* make sure the linear combo is prime to g */
@@ -634,14 +673,14 @@ next_alpha:
             goto cleanup;
 
         H = Hevals + n;
-        fq_zech_mpoly_scalar_addmul_fq_zech(H, A, B, mu, ctx);
+        fq_zech_mpoly_scalar_addmul_fq_zech(H, A, B, mu2, ctx);
         fq_zech_mpolyl_lead_coeff(Hlcs + n, H, 1, ctx);
 
         gamma_is_one = fq_zech_mpoly_is_one(Glcs + n, ctx);
         if (gamma_is_one)
             for (i = 0; i < n; i++)
                 fq_zech_mpoly_scalar_addmul_fq_zech(Hevals + i, Aevals + i,
-                                                        Bevals + i, mu, ctx);
+                                                         Bevals + i, mu2, ctx);
     }
 
     if (!gamma_is_one)
@@ -649,7 +688,8 @@ next_alpha:
         fq_zech_mpoly_mul(Hevals + n, H, Glcs + n, ctx);
         H = Hevals + n;
         for (i = n - 1; i >= 0; i--)
-            fq_zech_mpoly_evaluate_one_fq_zech(Hlcs + i, Hevals + i + 1, i + 1, alphas + i, ctx);
+            fq_zech_mpoly_evaluate_one_fq_zech(Hevals + i, Hevals + i + 1,
+                                                       i + 1, alphas + i, ctx);
     }
 
     success = H->bits <= FLINT_BITS ||
@@ -666,13 +706,15 @@ next_alpha:
     /* computed evaluated leading coeffs */
     for (i = n - 1; i >= 0; i--)
     {
-        fq_zech_mpoly_evaluate_one_fq_zech(Glcs + i, Glcs + i + 1, i + 1, alphas + i, ctx);
-        fq_zech_mpoly_evaluate_one_fq_zech(Hlcs + i, Hlcs + i + 1, i + 1, alphas + i, ctx);
+        fq_zech_mpoly_evaluate_one_fq_zech(Glcs + i, Glcs + i + 1, i + 1,
+                                                              alphas + i, ctx);
+        fq_zech_mpoly_evaluate_one_fq_zech(Hlcs + i, Hlcs + i + 1, i + 1,
+                                                              alphas + i, ctx);
         /* evaluation could have killed gamma */
         if (fq_zech_mpoly_is_zero(Glcs + i, ctx) ||
             fq_zech_mpoly_is_zero(Hlcs + i, ctx))
         {
-            goto next_alpha;
+            goto increase_degree;
         }
     }
 
@@ -702,10 +744,11 @@ next_alpha:
         fq_zech_mpoly_swap(Hfac + 1, Htfac + 1, ctx);
     }
 
-    if (!_fq_zech_mpoly_get_nmod_mpoly(smHfac + 0, smctx, Hfac + 0, ctx) ||
-        !_fq_zech_mpoly_get_nmod_mpoly(smHfac + 1, smctx, Hfac + 1, ctx))
+    fq_zech_mpoly_scalar_mul_fq_zech(Hfac + 1, Hfac + 1, Hfac[0].coeffs + 0, ctx);
+    fq_zech_mpoly_make_monic(Hfac + 0, Hfac + 0, ctx);
+    if (!_fq_zech_mpoly_get_nmod_mpoly(smHfac + 0, smctx, Hfac + 0, ctx))
     {
-        /* the lifted factors are not in Fp. possible? */
+        /* the lifted gcd is not in Fp. possible? */
         goto next_alpha;
     }
 
@@ -716,15 +759,25 @@ next_alpha:
     success = nmod_mpoly_divides(G, smHfac + 0, t, smctx);
     FLINT_ASSERT(success);
 
-    if (proj_mu < 0)
+    if (fq_zech_is_zero(mu2, ctx->fqctx))
     {
+        FLINT_ASSERT(fq_zech_is_one(mu1, ctx->fqctx));
+
+        if (!_fq_zech_mpoly_get_nmod_mpoly(smHfac + 1, smctx, Hfac + 1, ctx))
+            goto next_alpha;
+
         /* the division by t1 should succeed, but let's be careful */
         nmod_mpolyl_lead_coeff(t, G, 1, smctx);
         success = nmod_mpoly_divides(Abar, smHfac + 1, t, smctx) &&
                   nmod_mpoly_divides(Bbar, smB, G, smctx);
     }
-    else if (proj_mu > 0)
+    else if (fq_zech_is_zero(mu1, ctx->fqctx))
     {
+        FLINT_ASSERT(fq_zech_is_one(mu2, ctx->fqctx));
+
+        if (!_fq_zech_mpoly_get_nmod_mpoly(smHfac + 1, smctx, Hfac + 1, ctx))
+            goto next_alpha;
+
         /* ditto */
         nmod_mpolyl_lead_coeff(t, G, 1, smctx);
         success = nmod_mpoly_divides(Bbar, smHfac + 1, t, smctx) &&
@@ -732,6 +785,8 @@ next_alpha:
     }
     else
     {
+        FLINT_ASSERT(fq_zech_is_one(mu1, ctx->fqctx));
+
         success = nmod_mpoly_divides(Abar, smA, G, smctx) &&
                   nmod_mpoly_divides(Bbar, smB, G, smctx);
     }
@@ -744,7 +799,8 @@ next_alpha:
 cleanup:
 
     fq_zech_clear(q, ctx->fqctx);
-    fq_zech_clear(mu, ctx->fqctx);
+    fq_zech_clear(mu1, ctx->fqctx);
+    fq_zech_clear(mu2, ctx->fqctx);
     fq_zech_mpoly_clear(A, ctx);
     fq_zech_mpoly_clear(B, ctx);
 
@@ -792,12 +848,18 @@ cleanup:
         nmod_mpoly_repack_bits_inplace(G, bits, smctx);
         nmod_mpoly_repack_bits_inplace(Abar, bits, smctx);
         nmod_mpoly_repack_bits_inplace(Bbar, bits, smctx);
+
+        FLINT_ASSERT(G->length > 0);
+        FLINT_ASSERT(Abar->length > 0);
+        FLINT_ASSERT(Bbar->length > 0);
     }
+
+FLINT_ASSERT(success);
 
 	return success;
 }
 
-/* should find its way back here if the gcd is interesting */
+/* should find its way back here in interesting cases */
 int nmod_mpoly_gcd_hensel(
     nmod_mpoly_t G,
     const nmod_mpoly_t A,

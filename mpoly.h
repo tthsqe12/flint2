@@ -1296,13 +1296,15 @@ typedef struct
     flint_bitcnt_t Gbits, Abarbits, Bbarbits;
 
     slong mvars;
+    slong Adeflate_tdeg;
+    slong Bdeflate_tdeg;
 
     double Adensity;
     double Bdensity;
 
-    double brown_time_est, bma_time_est, zippel_time_est;
-    slong * brown_perm, * bma_perm, * zippel_perm;
-    int can_use_brown, can_use_bma, can_use_zippel;
+    double hensel_time, brown_time, zippel_time, zippel2_time;
+    slong * hensel_perm, * brown_perm, * zippel_perm, * zippel2_perm;
+    unsigned int can_use;
     int Gdeflate_deg_bounds_are_nice; /* all of Gdeflate_deg_bound came from real gcd computations */
 
     char * data;
@@ -1330,6 +1332,9 @@ FLINT_DLL void mpoly_gcd_info_set_perm(mpoly_gcd_info_t I,
 
 FLINT_DLL slong mpoly_gcd_info_get_brown_upper_limit(const mpoly_gcd_info_t I,
                                                        slong var, slong bound);
+
+FLINT_DLL void mpoly_gcd_info_measure_hensel(mpoly_gcd_info_t I,
+                         slong Alength, slong Blength, const mpoly_ctx_t mctx);
 
 FLINT_DLL void mpoly_gcd_info_measure_brown(mpoly_gcd_info_t I,
                          slong Alength, slong Blength, const mpoly_ctx_t mctx);

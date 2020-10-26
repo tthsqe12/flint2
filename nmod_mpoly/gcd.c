@@ -13,6 +13,7 @@
 #include "nmod_mpoly.h"
 #include "fq_nmod_mpoly.h"
 #include "nmod_mpoly_factor.h"
+#include "fq_zech_poly.h"
 
 /*
     For each j, set out[j] to the evaluation of A at x_i = alpha[i] (i != j)
@@ -25,6 +26,7 @@
     because we shouldn't calculate it in dense form.
 */
 static void nmod_mpoly_evals(
+    slong * Atdeg,  /* total degree of deflated A, or -1 for overflow */
     n_poly_struct * out,
     const int * ignore,
     const nmod_mpoly_t A,
@@ -40,6 +42,9 @@ static void nmod_mpoly_evals(
     slong * offsets, * shifts;
     slong N = mpoly_words_per_exp_sp(A->bits, ctx->minfo);
     ulong * varexps;
+    ulong varexp;
+    slong total_degree, lo, hi;
+    mp_limb_t meval, t;
     n_poly_struct * caches;
 
     offsets = FLINT_ARRAY_ALLOC(2*nvars, slong);
@@ -57,13 +62,12 @@ static void nmod_mpoly_evals(
                                            caches + 3*j + 1, caches + 3*j + 2);
     }
 
+    total_degree = 0;
     for (i = 0; i < A->length; i++)
     {
-        mp_limb_t meval;
-        mp_limb_t t;
-        ulong varexp;
-
         meval = A->coeffs[i];
+
+        hi = lo = 0;
         for (j = 0; j < nvars; j++)
         {
             varexp = ((A->exps + N*i)[offsets[j]]>>shifts[j])&mask;
@@ -74,6 +78,8 @@ static void nmod_mpoly_evals(
             varexps[j] = Astride[j] < 2 ? varexp - Amin_exp[j] :
                                          (varexp - Amin_exp[j])/Astride[j];
 
+            add_ssaaaa(hi, lo, hi, lo, 0, varexps[j]);
+
             t = nmod_pow_cache_mulpow_ui(meval, varexps[j], caches + 3*j + 0,
                          caches + 3*j + 1, caches + 3*j + 2, ctx->ffinfo->mod);
 
@@ -81,6 +87,11 @@ static void nmod_mpoly_evals(
                                          ctx->ffinfo->mod), ctx->ffinfo->mod));
             meval = t;
         }
+
+        if (hi == 0 && lo >= 0 && total_degree >= 0)
+            total_degree = FLINT_MAX(total_degree, lo);
+        else
+            total_degree = -1;
 
         for (j = 0; j < nvars; j++)
         {
@@ -108,6 +119,8 @@ static void nmod_mpoly_evals(
         }
     }
 
+    *Atdeg = total_degree;
+
     for (j = 0; j < nvars; j++)
         _n_poly_normalise(out + j);
 
@@ -117,10 +130,109 @@ static void nmod_mpoly_evals(
     flint_free(offsets);
     flint_free(varexps);
     flint_free(caches);
+
+}
+
+
+static void nmod_mpoly_evals_medprime(
+    slong * Atdeg,  /* total degree of deflated A, or -1 for overflow */
+    fq_zech_poly_struct * out,
+    const int * ignore,
+    const nmod_mpoly_t A,
+    ulong * Amin_exp,
+    ulong * Amax_exp,
+    ulong * Astride,
+    const nmod_mpoly_ctx_t smctx,
+    const fq_zech_struct * alphas,
+    const fq_zech_ctx_t medctx)
+{
+    slong i, j;
+    slong nvars = smctx->minfo->nvars;
+    ulong mask = (-UWORD(1)) >> (FLINT_BITS - A->bits);
+    slong * offsets, * shifts;
+    slong N = mpoly_words_per_exp_sp(A->bits, smctx->minfo);
+    ulong * varexps;
+    ulong varexp, lo, hi;
+    slong total_degree;
+    fq_zech_t t1, meval;
+
+    fq_zech_init(t1, medctx);
+    fq_zech_init(meval, medctx);
+
+    offsets = FLINT_ARRAY_ALLOC(2*nvars, slong);
+    shifts = offsets + nvars;
+    varexps = FLINT_ARRAY_ALLOC(nvars, ulong);
+    for (j = 0; j < nvars; j++)
+    {
+        fq_zech_poly_zero(out + j, medctx);
+        mpoly_gen_offset_shift_sp(offsets + j, shifts + j, j, A->bits,
+                                                                 smctx->minfo);
+    }
+
+    total_degree = 0;
+    for (i = 0; i < A->length; i++)
+    {
+        fq_zech_set_ui(meval, A->coeffs[i], medctx);
+
+        lo = hi = 0;
+        for (j = 0; j < nvars; j++)
+        {
+            varexp = ((A->exps + N*i)[offsets[j]]>>shifts[j])&mask;
+
+            FLINT_ASSERT((Astride[j] == 0 && varexp == Amin_exp[j]) ||
+                                     (varexp - Amin_exp[j]) % Astride[j] == 0);
+
+            varexps[j] = Astride[j] < 2 ? varexp - Amin_exp[j] :
+                                         (varexp - Amin_exp[j])/Astride[j];
+
+            add_ssaaaa(hi, lo, hi, lo, 0, varexps[j]);
+
+            fq_zech_pow_ui(t1, alphas + j, varexps[j], medctx);
+            fq_zech_mul(meval, meval, t1, medctx);
+        }
+
+        if (hi == 0 && FLINT_SIGN_EXT(lo) == 0 && total_degree >= 0)
+            total_degree = FLINT_MAX(total_degree, lo);
+        else
+            total_degree = -1;
+
+        for (j = 0; j < nvars; j++)
+        {
+            varexp = varexps[j];
+
+            if (ignore[j])
+                continue;
+
+            fq_zech_poly_fit_length(out + j, varexp + 1, medctx);
+
+            while (out[j].length <= varexp)
+            {
+                fq_zech_zero(out[j].coeffs + out[j].length, medctx);
+                out[j].length++;
+            }
+
+            fq_zech_inv(t1, alphas + j, medctx);
+            fq_zech_pow_ui(t1, t1, varexp, medctx);
+            fq_zech_mul(t1, meval, t1, medctx);
+            fq_zech_add(out[j].coeffs + varexp, out[j].coeffs + varexp, t1, medctx);
+        }
+    }
+
+    *Atdeg = total_degree;
+
+    for (j = 0; j < nvars; j++)
+        _fq_zech_poly_normalise(out + j, medctx);
+
+    flint_free(offsets);
+    flint_free(varexps);
+
+    fq_zech_clear(t1, medctx);
+    fq_zech_clear(meval, medctx);
 }
 
 
 static void nmod_mpoly_evals_lgprime(
+    slong * Atdeg,  /* total degree of deflated A, or -1 for overflow */
     n_fq_poly_struct * out,
     const int * ignore,
     const nmod_mpoly_t A,
@@ -138,6 +250,8 @@ static void nmod_mpoly_evals_lgprime(
     slong * offsets, * shifts;
     slong N = mpoly_words_per_exp_sp(A->bits, smctx->minfo);
     ulong * varexps;
+    ulong varexp, lo, hi;
+    slong total_degree;
     n_poly_struct * caches;
     mp_limb_t * t = FLINT_ARRAY_ALLOC(2*d, mp_limb_t);
     mp_limb_t * meval = t + d;
@@ -158,12 +272,12 @@ static void nmod_mpoly_evals_lgprime(
                                     caches + 3*j + 1, caches + 3*j + 2, lgctx);
     }
 
+    total_degree = 0;
     for (i = 0; i < A->length; i++)
     {
-        ulong varexp;
-
         _n_fq_set_nmod(meval, A->coeffs[i], d);
 
+        hi = lo = 0;
         for (j = 0; j < nvars; j++)
         {
             varexp = ((A->exps + N*i)[offsets[j]]>>shifts[j])&mask;
@@ -174,9 +288,16 @@ static void nmod_mpoly_evals_lgprime(
             varexps[j] = Astride[j] < 2 ? varexp - Amin_exp[j] :
                                          (varexp - Amin_exp[j])/Astride[j];
 
+            add_ssaaaa(hi, lo, hi, lo, 0, varexps[j]);
+
             n_fq_pow_cache_mulpow_ui(meval, meval, varexps[j], caches + 3*j + 0,
                                     caches + 3*j + 1, caches + 3*j + 2, lgctx);
         }
+
+        if (hi == 0 && FLINT_SIGN_EXT(lo) == 0 && total_degree >= 0)
+            total_degree = FLINT_MAX(total_degree, lo);
+        else
+            total_degree = -1;
 
         for (j = 0; j < nvars; j++)
         {
@@ -200,6 +321,8 @@ static void nmod_mpoly_evals_lgprime(
         }
     }
 
+    *Atdeg = total_degree;
+
     for (j = 0; j < nvars; j++)
         _n_fq_poly_normalise(out + j, d);
 
@@ -213,7 +336,7 @@ static void nmod_mpoly_evals_lgprime(
 }
 
 
-void mpoly_gcd_info_set_estimates_nmod_mpoly(
+static void _set_estimates(
     mpoly_gcd_info_t I,
     const nmod_mpoly_t A,
     const nmod_mpoly_t B,
@@ -278,8 +401,10 @@ try_again:
     for (j = 0; j < nvars; j++)
         alpha[j] = n_urandint(state, ctx->ffinfo->mod.n - 1) + 1;
 
-    nmod_mpoly_evals(Aevals, ignore, A, I->Amin_exp, I->Amax_exp, I->Gstride, alpha, ctx);
-    nmod_mpoly_evals(Bevals, ignore, B, I->Bmin_exp, I->Bmax_exp, I->Gstride, alpha, ctx);
+    nmod_mpoly_evals(&I->Adeflate_tdeg, Aevals, ignore, A,
+                             I->Amin_exp, I->Amax_exp, I->Gstride, alpha, ctx);
+    nmod_mpoly_evals(&I->Bdeflate_tdeg, Bevals, ignore, B,
+                             I->Bmin_exp, I->Bmax_exp, I->Gstride, alpha, ctx);
 
     for (j = 0; j < nvars; j++)
     {
@@ -325,7 +450,147 @@ cleanup:
     return;
 }
 
-void mpoly_gcd_info_set_estimates_nmod_mpoly_lgprime(
+
+
+static void _set_estimates_medprime(
+    mpoly_gcd_info_t I,
+    const nmod_mpoly_t A,
+    const nmod_mpoly_t B,
+    const nmod_mpoly_ctx_t smctx)
+{
+    slong nvars = smctx->minfo->nvars;
+    int tries_left = 10;
+    slong i, j;
+    fq_zech_poly_t Geval;
+    fq_zech_poly_struct * Aevals, * Bevals;
+    fq_zech_struct * alpha;
+    flint_rand_t state;
+    slong ignore_limit;
+    int * ignore;
+    fq_zech_ctx_t medctx;
+    slong d, max_degree = n_flog(1000000, smctx->ffinfo->mod.n);
+    fmpz_t P;
+
+    if (max_degree < 2)
+        return;
+
+    flint_randinit(state);
+
+    fmpz_init_set_ui(P, smctx->ffinfo->mod.n);
+    fq_zech_ctx_init(medctx, P, 1, "#");
+
+    d = n_clog(500, smctx->ffinfo->mod.n);
+    d = FLINT_MAX(d, 1);
+
+    ignore = FLINT_ARRAY_ALLOC(nvars, int);
+    alpha = FLINT_ARRAY_ALLOC(nvars, fq_zech_struct);
+    Aevals = FLINT_ARRAY_ALLOC(nvars, fq_zech_poly_struct);
+    Bevals = FLINT_ARRAY_ALLOC(nvars, fq_zech_poly_struct);
+    for (j = 0; j < nvars; j++)
+    {
+        fq_zech_poly_init(Aevals + j, medctx);
+        fq_zech_poly_init(Bevals + j, medctx);
+        fq_zech_init(alpha + j, medctx);
+    }
+
+    fq_zech_poly_init(Geval, medctx);
+
+    ignore_limit = (A->length + B->length)/4096;
+    ignore_limit = FLINT_MAX(WORD(9999), ignore_limit);
+    I->Gdeflate_deg_bounds_are_nice = 1;
+    for (j = 0; j < nvars; j++)
+    {
+        if (I->Adeflate_deg[j] > ignore_limit ||
+            I->Bdeflate_deg[j] > ignore_limit)
+        {
+            ignore[j] = 1;
+            I->Gdeflate_deg_bounds_are_nice = 0;
+        }
+        else
+        {
+            ignore[j] = 0;
+        }
+    }
+
+try_again:
+
+    tries_left--;
+    d = FLINT_MIN(d + (tries_left % 2), max_degree);
+    if (tries_left < 0)
+    {
+        I->Gdeflate_deg_bounds_are_nice = 0;
+        for (j = 0; j < nvars; j++)
+        {
+            I->Gdeflate_deg_bound[j] = FLINT_MIN(I->Adeflate_deg[j],
+                                                 I->Bdeflate_deg[j]);
+            I->Gterm_count_est[j] = 1 + I->Gdeflate_deg_bound[j]/2;
+        }
+
+        goto cleanup;
+    }
+
+    fq_zech_ctx_clear(medctx);
+    fq_zech_ctx_init(medctx, P, d, "#");
+
+    for (j = 0; j < nvars; j++)
+        fq_zech_rand_not_zero(alpha + j, state, medctx);
+
+    nmod_mpoly_evals_medprime(&I->Adeflate_tdeg, Aevals, ignore, A,
+                   I->Amin_exp, I->Amax_exp, I->Gstride, smctx, alpha, medctx);
+    nmod_mpoly_evals_medprime(&I->Bdeflate_tdeg, Bevals, ignore, B,
+                   I->Bmin_exp, I->Bmax_exp, I->Gstride, smctx, alpha, medctx);
+
+    for (j = 0; j < nvars; j++)
+    {
+        if (ignore[j])
+        {
+            I->Gdeflate_deg_bound[j] = FLINT_MIN(I->Adeflate_deg[j],
+                                                 I->Bdeflate_deg[j]);
+            I->Gterm_count_est[j] = 1 + I->Gdeflate_deg_bound[j]/2;
+        }
+        else
+        {
+            if (I->Adeflate_deg[j] != fq_zech_poly_degree(Aevals + j, medctx) ||
+                I->Bdeflate_deg[j] != fq_zech_poly_degree(Bevals + j, medctx))
+            {
+                goto try_again;
+            }
+
+            fq_zech_poly_gcd(Geval, Aevals + j, Bevals + j, medctx);
+
+            I->Gterm_count_est[j] = 0;
+            I->Gdeflate_deg_bound[j] = fq_zech_poly_degree(Geval, medctx);
+            for (i = I->Gdeflate_deg_bound[j]; i >= 0; i--)
+                I->Gterm_count_est[j] += !fq_zech_is_zero(Geval->coeffs + i, medctx);
+        }
+    }
+
+cleanup:
+
+    fq_zech_poly_clear(Geval, medctx);
+    for (j = 0; j < nvars; j++)
+    {
+        fq_zech_poly_clear(Aevals + j, medctx);
+        fq_zech_poly_clear(Bevals + j, medctx);
+        fq_zech_clear(alpha + j, medctx);
+    }
+    flint_free(alpha);
+    flint_free(Aevals);
+    flint_free(Bevals);
+    flint_free(ignore);
+
+    fq_zech_ctx_clear(medctx);
+
+    fmpz_clear(P);
+
+    flint_randclear(state);
+
+    return;
+}
+
+
+
+static void _set_estimates_lgprime(
     mpoly_gcd_info_t I,
     const nmod_mpoly_t A,
     const nmod_mpoly_t B,
@@ -341,13 +606,13 @@ void mpoly_gcd_info_set_estimates_nmod_mpoly_lgprime(
     slong ignore_limit;
     int * ignore;
     fq_nmod_mpoly_ctx_t lgctx;
-    slong lgd;
+    slong d;
 
     flint_randinit(state);
 
-    lgd = WORD(20)/(FLINT_BIT_COUNT(smctx->ffinfo->mod.n));
-    lgd = FLINT_MAX(WORD(2), lgd);
-    fq_nmod_mpoly_ctx_init_deg(lgctx, nvars, ORD_LEX, smctx->ffinfo->mod.n, lgd);
+    d = WORD(20)/(FLINT_BIT_COUNT(smctx->ffinfo->mod.n));
+    d = FLINT_MAX(WORD(2), d);
+    fq_nmod_mpoly_ctx_init_deg(lgctx, nvars, ORD_LEX, smctx->ffinfo->mod.n, d);
 
     ignore = FLINT_ARRAY_ALLOC(nvars, int);
     alpha = FLINT_ARRAY_ALLOC(nvars, fq_nmod_struct);
@@ -362,7 +627,7 @@ void mpoly_gcd_info_set_estimates_nmod_mpoly_lgprime(
 
     n_fq_poly_init(Geval);
 
-    ignore_limit = A->length/4096 + B->length/4096;
+    ignore_limit = (A->length + B->length)/4096;
     ignore_limit = FLINT_MAX(WORD(9999), ignore_limit);
     I->Gdeflate_deg_bounds_are_nice = 1;
     for (j = 0; j < nvars; j++)
@@ -395,16 +660,12 @@ try_again:
     }
 
     for (j = 0; j < nvars; j++)
-    {
-        fq_nmod_rand(alpha + j, state, lgctx->fqctx);
-        if (fq_nmod_is_zero(alpha + j, lgctx->fqctx))
-            fq_nmod_one(alpha + j, lgctx->fqctx);
-    }
+        fq_nmod_rand_not_zero(alpha + j, state, lgctx->fqctx);
 
-    nmod_mpoly_evals_lgprime(Aevals, ignore, A, I->Amin_exp, I->Amax_exp,
-                                       I->Gstride, smctx, alpha, lgctx->fqctx);
-    nmod_mpoly_evals_lgprime(Bevals, ignore, B, I->Bmin_exp, I->Bmax_exp,
-                                       I->Gstride, smctx, alpha, lgctx->fqctx);
+    nmod_mpoly_evals_lgprime(&I->Adeflate_tdeg, Aevals, ignore, A,
+             I->Amin_exp, I->Amax_exp, I->Gstride, smctx, alpha, lgctx->fqctx);
+    nmod_mpoly_evals_lgprime(&I->Bdeflate_tdeg, Bevals, ignore, B,
+             I->Bmin_exp, I->Bmax_exp, I->Gstride, smctx, alpha, lgctx->fqctx);
 
     for (j = 0; j < nvars; j++)
     {
@@ -419,8 +680,8 @@ try_again:
             if (I->Adeflate_deg[j] != n_fq_poly_degree(Aevals + j) ||
                 I->Bdeflate_deg[j] != n_fq_poly_degree(Bevals + j))
             {
-                lgd++;
-                fq_nmod_mpoly_ctx_change_modulus(lgctx, lgd);
+                d++;
+                fq_nmod_mpoly_ctx_change_modulus(lgctx, d);
                 goto try_again;
             }
 
@@ -429,9 +690,7 @@ try_again:
             I->Gterm_count_est[j] = 0;
             I->Gdeflate_deg_bound[j] = n_fq_poly_degree(Geval);
             for (i = I->Gdeflate_deg_bound[j]; i >= 0; i--)
-            {
-                I->Gterm_count_est[j] += (Geval->coeffs[i] != 0);
-            }
+                I->Gterm_count_est[j] += !_n_fq_is_zero(Geval->coeffs + d*i, d);
         }
     }
 
@@ -884,7 +1143,7 @@ static int _try_zippel(
     FLINT_ASSERT(A->bits <= FLINT_BITS);
     FLINT_ASSERT(B->bits <= FLINT_BITS);
 
-    if (!I->can_use_zippel)
+    if (!(I->can_use & MPOLY_GCD_USE_ZIPPEL))
         return 0;
 
     FLINT_ASSERT(m >= WORD(2));
@@ -1029,10 +1288,10 @@ static int _try_zippel2(
     FLINT_ASSERT(A->length > 0);
     FLINT_ASSERT(B->length > 0);
 
-    if (!I->can_use_bma)
+    if (!(I->can_use & MPOLY_GCD_USE_ZIPPEL2))
         return 0;
 
-    FLINT_ASSERT(m >= WORD(3));
+    FLINT_ASSERT(m >= 3);
 
     tmp = FLINT_ARRAY_ALLOC(5*m, slong);
     Al_degs   = tmp + 1*m;
@@ -1045,7 +1304,7 @@ static int _try_zippel2(
     max_degree = 0;
     for (i = 0; i < m; i++)
     {
-        k = I->bma_perm[i];
+        k = I->zippel2_perm[i];
 
         Gl_degs[i] = I->Gdeflate_deg_bound[k];
 
@@ -1074,8 +1333,10 @@ static int _try_zippel2(
     nmod_mpoly_init3(Al_lc, 0, wbits, lctx);
     nmod_mpoly_init3(Bl_lc, 0, wbits, lctx);
 
-    nmod_mpoly_to_mpolyl_perm_deflate(Al, lctx, A, ctx, I->bma_perm, I->Amin_exp, I->Gstride);
-    nmod_mpoly_to_mpolyl_perm_deflate(Bl, lctx, B, ctx, I->bma_perm, I->Bmin_exp, I->Gstride);
+    nmod_mpoly_to_mpolyl_perm_deflate(Al, lctx, A, ctx,
+                                     I->zippel2_perm, I->Amin_exp, I->Gstride);
+    nmod_mpoly_to_mpolyl_perm_deflate(Bl, lctx, B, ctx,
+                                     I->zippel2_perm, I->Bmin_exp, I->Gstride);
 
     success = nmod_mpolyl_content(Ac, Al, 2, lctx) &&
               nmod_mpolyl_content(Bc, Bl, 2, lctx);
@@ -1132,19 +1393,19 @@ static int _try_zippel2(
 
     nmod_mpoly_mul(Gl, Gl, Gc, lctx);
     nmod_mpoly_from_mpolyl_perm_inflate(G, I->Gbits, ctx, Gl, lctx,
-                                         I->bma_perm, I->Gmin_exp, I->Gstride);
+                                     I->zippel2_perm, I->Gmin_exp, I->Gstride);
     if (Abar != NULL)
     {
         nmod_mpoly_mul(Abarl, Abarl, Abarc, lctx);
         nmod_mpoly_from_mpolyl_perm_inflate(Abar, I->Abarbits, ctx, Abarl, lctx,
-                                      I->bma_perm, I->Abarmin_exp, I->Gstride);
+                                  I->zippel2_perm, I->Abarmin_exp, I->Gstride);
     }
 
     if (Bbar != NULL)
     {
         nmod_mpoly_mul(Bbarl, Bbarl, Bbarc, lctx);
         nmod_mpoly_from_mpolyl_perm_inflate(Bbar, I->Bbarbits, ctx, Bbarl, lctx,
-                                      I->bma_perm, I->Bbarmin_exp, I->Gstride);
+                                  I->zippel2_perm, I->Bbarmin_exp, I->Gstride);
     }
 
     success = 1;
@@ -1197,7 +1458,7 @@ static int _try_hensel(
     FLINT_ASSERT(A->length > 0);
     FLINT_ASSERT(B->length > 0);
 
-    if (!I->can_use_brown)
+    if (!(I->can_use & MPOLY_GCD_USE_HENSEL))
         return 0;
 
     FLINT_ASSERT(m >= WORD(2));
@@ -1207,7 +1468,7 @@ static int _try_hensel(
     max_degree = 0;
     for (i = 0; i < m; i++)
     {
-        k = I->bma_perm[i];
+        k = I->zippel2_perm[i];
         max_degree = FLINT_MAX(max_degree, I->Adeflate_deg[k]);
         max_degree = FLINT_MAX(max_degree, I->Bdeflate_deg[k]);
     }
@@ -1227,8 +1488,10 @@ static int _try_hensel(
     nmod_mpoly_init3(Abarc, 0, wbits, lctx);
     nmod_mpoly_init3(Bbarc, 0, wbits, lctx);
 
-    nmod_mpoly_to_mpolyl_perm_deflate(Al, lctx, A, ctx, I->bma_perm, I->Amin_exp, I->Gstride);
-    nmod_mpoly_to_mpolyl_perm_deflate(Bl, lctx, B, ctx, I->bma_perm, I->Bmin_exp, I->Gstride);
+    nmod_mpoly_to_mpolyl_perm_deflate(Al, lctx, A, ctx,
+                                      I->hensel_perm, I->Amin_exp, I->Gstride);
+    nmod_mpoly_to_mpolyl_perm_deflate(Bl, lctx, B, ctx,
+                                      I->hensel_perm, I->Bmin_exp, I->Gstride);
 
     success = nmod_mpolyl_content(Ac, Al, 1, lctx) &&
               nmod_mpolyl_content(Bc, Bl, 1, lctx);
@@ -1250,6 +1513,7 @@ static int _try_hensel(
 
     nmod_mpoly_repack_bits_inplace(Al, wbits, lctx);
     nmod_mpoly_repack_bits_inplace(Bl, wbits, lctx);
+
     success = nmod_mpolyl_gcd_hensel_smprime(Gl, Abarl, Bbarl, Al, Bl, lctx);
     if (!success)
     {
@@ -1260,19 +1524,19 @@ static int _try_hensel(
 
     nmod_mpoly_mul(Gl, Gl, Gc, lctx);
     nmod_mpoly_from_mpolyl_perm_inflate(G, I->Gbits, ctx, Gl, lctx,
-                                         I->bma_perm, I->Gmin_exp, I->Gstride);
+                                      I->hensel_perm, I->Gmin_exp, I->Gstride);
     if (Abar != NULL)
     {
         nmod_mpoly_mul(Abarl, Abarl, Abarc, lctx);
         nmod_mpoly_from_mpolyl_perm_inflate(Abar, I->Abarbits, ctx, Abarl, lctx,
-                                      I->bma_perm, I->Abarmin_exp, I->Gstride);
+                                   I->hensel_perm, I->Abarmin_exp, I->Gstride);
     }
 
     if (Bbar != NULL)
     {
         nmod_mpoly_mul(Bbarl, Bbarl, Bbarc, lctx);
         nmod_mpoly_from_mpolyl_perm_inflate(Bbar, I->Bbarbits, ctx, Bbarl, lctx,
-                                      I->bma_perm, I->Bbarmin_exp, I->Gstride);
+                                   I->hensel_perm, I->Bbarmin_exp, I->Gstride);
     }
 
     success = 1;
@@ -1328,16 +1592,16 @@ static int _try_brown(
     const nmod_mpoly_ctx_t ctx)
 {
     int success;
-    slong m = I->mvars;
+    slong k, m = I->mvars;
     flint_bitcnt_t wbits;
     nmod_mpoly_ctx_t nctx;
     nmod_mpolyn_t An, Bn, Gn, Abarn, Bbarn;
     nmod_poly_stack_t Sp;
-    slong thread_limit = FLINT_MIN(A->length, B->length)/1024;
+    slong thread_limit;
     thread_pool_handle * handles;
     slong num_handles;
 
-    if (!I->can_use_brown)
+    if (!(I->can_use & MPOLY_GCD_USE_BROWN))
         return 0;
 
     FLINT_ASSERT(m >= 2);
@@ -1355,6 +1619,11 @@ static int _try_brown(
     nmod_mpolyn_init(Gn, wbits, nctx);
     nmod_mpolyn_init(Abarn, wbits, nctx);
     nmod_mpolyn_init(Bbarn, wbits, nctx);
+
+    /* parallelism only on the outer variable */
+    k = I->brown_perm[m - 1];
+    thread_limit = FLINT_MIN(I->Adeflate_deg[k], I->Bdeflate_deg[k])/8;
+    thread_limit = FLINT_MIN(thread_limit, (A->length + B->length)/1024);
 
     num_handles = flint_request_threads(&handles, thread_limit);
 
@@ -1629,9 +1898,17 @@ skip_monomial_cofactors:
         and there are at least two in the latter case
     */
 
-    mpoly_gcd_info_set_estimates_nmod_mpoly(I, A, B, ctx);
+    /* _set_estimates will probably calculate the correct total degrees */
+    I->Adeflate_tdeg = I->Bdeflate_tdeg = -1;
+
+    _set_estimates(I, A, B, ctx);
+
     if (!I->Gdeflate_deg_bounds_are_nice)
-        mpoly_gcd_info_set_estimates_nmod_mpoly_lgprime(I, A, B, ctx);
+        _set_estimates_medprime(I, A, B, ctx);
+
+    if (!I->Gdeflate_deg_bounds_are_nice)
+        _set_estimates_lgprime(I, A, B, ctx);
+
     mpoly_gcd_info_set_perm(I, A->length, B->length, ctx->minfo);
 
     /* everything in I is valid now */
@@ -1669,23 +1946,123 @@ skip_monomial_cofactors:
     if (I->mvars < 3)
     {
         mpoly_gcd_info_measure_brown(I, A->length, B->length, ctx->minfo);
+        mpoly_gcd_info_measure_hensel(I, A->length, B->length, ctx->minfo);
 
-        if (_try_brown(G, Abar, Bbar, A, B, I, ctx))
-            goto successful;
+        algo &= (MPOLY_GCD_USE_BROWN | MPOLY_GCD_USE_HENSEL);
+
+        if (algo == MPOLY_GCD_USE_BROWN)
+        {
+            success = _try_brown(G, Abar, Bbar, A, B, I, ctx);
+        }
+        else if (algo == MPOLY_GCD_USE_HENSEL)
+        {
+            success = _try_hensel(G, Abar, Bbar, A, B, I, ctx);
+        }
+        else
+        {
+            slong k = I->brown_perm[1];
+            slong d = FLINT_MAX(I->Adeflate_deg[k], I->Bdeflate_deg[k]);
+            int is_small = d < ctx->ffinfo->mod.n/2;
+
+            if ((I->Adensity + I->Bdensity > (is_small ? 0.05 : 0.2)))
+            {
+                success = _try_brown(G, Abar, Bbar, A, B, I, ctx) ||
+                          _try_hensel(G, Abar, Bbar, A, B, I, ctx);
+            }
+            else
+            {
+                success = _try_hensel(G, Abar, Bbar, A, B, I, ctx) ||
+                          _try_brown(G, Abar, Bbar, A, B, I, ctx);
+            }
+        }
+
+        goto cleanup;
+    }
+    else if (algo == MPOLY_GCD_USE_HENSEL)
+    {
+        mpoly_gcd_info_measure_hensel(I, A->length, B->length, ctx->minfo);
+        success = _try_hensel(G, Abar, Bbar, A, B, I, ctx);
+        goto cleanup;
+    }
+    else if (algo == MPOLY_GCD_USE_BROWN)
+    {
+        mpoly_gcd_info_measure_brown(I, A->length, B->length, ctx->minfo);
+        success = _try_brown(G, Abar, Bbar, A, B, I, ctx);
+        goto cleanup;
+    }
+    else if (algo == MPOLY_GCD_USE_ZIPPEL)
+    {
+        mpoly_gcd_info_measure_zippel(I, A->length, B->length, ctx->minfo);
+        success = _try_zippel(G, Abar, Bbar, A, B, I, ctx);
+        goto cleanup;
+    }
+    else if (algo == MPOLY_GCD_USE_ZIPPEL2)
+    {
+        mpoly_gcd_info_measure_zippel2(I, A->length, B->length, ctx->minfo);
+        success = _try_zippel2(G, Abar, Bbar, A, B, I, ctx);
+        goto cleanup;
     }
     else
     {
+        slong k, d;
+        double hensel_cutoff = 0.05;
+        double density = I->Adensity + I->Bdensity;
+
+        /*
+            mpoly gcd case.
+            Only rule is that measure_X must be called before
+                try_X is called or I->X_perm is accessed.
+        */
+
+        mpoly_gcd_info_measure_hensel(I, A->length, B->length, ctx->minfo);
         mpoly_gcd_info_measure_brown(I, A->length, B->length, ctx->minfo);
         mpoly_gcd_info_measure_zippel(I, A->length, B->length, ctx->minfo);
         mpoly_gcd_info_measure_zippel2(I, A->length, B->length, ctx->minfo);
 
-        if (I->zippel_time_est < I->brown_time_est)
+        for (j = 0; j < I->mvars; j++)
         {
-            if (_try_zippel2(G, Abar, Bbar, A, B, I, ctx))
-                goto successful;
+            k = I->brown_perm[j];
+            d = FLINT_MAX(I->Adeflate_deg[k], I->Bdeflate_deg[k]);
+            if (d > ctx->ffinfo->mod.n/2)
+            {
+                hensel_cutoff *= 0.25;
+                break;
+            }
+        }
+
+        if (density > 0.08)
+        {
+            if (_try_brown(G, Abar, Bbar, A, B, I, ctx))
+                goto successful;                
+        }
+
+        k = I->brown_perm[0];
+        d = FLINT_MIN(I->Adeflate_deg[k], I->Bdeflate_deg[k]);
+
+        if (I->Adeflate_tdeg > 0 && I->Bdeflate_tdeg > 0)
+        {
+            fmpz_t x;
+            fmpz_init(x);
+            fmpz_bin_uiui(x, (ulong)I->Adeflate_tdeg + I->mvars, I->mvars);
+            density = A->length/fmpz_get_d(x);
+            fmpz_bin_uiui(x, (ulong)I->Bdeflate_tdeg + I->mvars, I->mvars);
+            density += B->length/fmpz_get_d(x);
+            fmpz_clear(x);
+
+            if (density > hensel_cutoff)
+            {
+                if (_try_hensel(G, Abar, Bbar, A, B, I, ctx))
+                    goto successful;                
+            }
+        }
+
+        k = I->zippel2_perm[1];
+        k = FLINT_MAX(I->Adeflate_deg[k], I->Bdeflate_deg[k]);
+        if ((A->length + B->length)/64 < k)
+        {
             if (_try_zippel(G, Abar, Bbar, A, B, I, ctx))
                 goto successful;
-            if (_try_brown(G, Abar, Bbar, A, B, I, ctx))
+            if (_try_zippel2(G, Abar, Bbar, A, B, I, ctx))
                 goto successful;
         }
         else
@@ -1694,13 +2071,12 @@ skip_monomial_cofactors:
                 goto successful;
             if (_try_zippel(G, Abar, Bbar, A, B, I, ctx))
                 goto successful;
-            if (_try_brown(G, Abar, Bbar, A, B, I, ctx))
-                goto successful;
         }
-    }
 
-    if (_try_hensel(G, Abar, Bbar, A, B, I, ctx))
-        goto successful;
+        success = _try_hensel(G, Abar, Bbar, A, B, I, ctx) ||
+                  _try_brown(G, Abar, Bbar, A, B, I, ctx);
+        goto cleanup;
+    }
 
     success = 0;
     goto cleanup;
@@ -1819,9 +2195,7 @@ could_not_repack:
     nmod_mpoly_deflation(Bshift, Bstride, B, ctx);
     _fmpz_vec_min(Gshift, Ashift, Bshift, ctx->minfo->nvars);
     for (k = 0; k < ctx->minfo->nvars; k++)
-    {
         fmpz_gcd(Gstride + k, Astride + k, Bstride + k);
-    }
 
     nmod_mpoly_deflate(Anew, A, Ashift, Gstride, ctx);
     if (Anew->bits > FLINT_BITS)
