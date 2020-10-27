@@ -14,8 +14,6 @@
 #include "fq_nmod_mpoly.h"
 #include "fq_nmod_mpoly_factor.h"
 
-void usleep(ulong);
-
 void nmod_mpolyn_interp_lift_lg_mpoly(
     nmod_mpolyn_t A,
     const nmod_mpoly_ctx_t ctx,
@@ -161,22 +159,6 @@ static void nmod_mpolyn_interp_lift_lg_bpoly(
     *lastdeg_ = lastdeg;
 }
 
-
-ulong _mpoly_bidegree(
-    const ulong * Aexps,
-    flint_bitcnt_t Abits,
-    const mpoly_ctx_t mctx)
-{
-    slong off0, shift0, off1, shift1;
-    ulong mask = (-UWORD(1)) >> (FLINT_BITS - Abits);
-
-    mpoly_gen_offset_shift_sp(&off0, &shift0, 0, Abits, mctx);
-    mpoly_gen_offset_shift_sp(&off1, &shift1, 1, Abits, mctx);
-
-    return pack_exp2((Aexps[off0] >> shift0) & mask,
-                     (Aexps[off1] >> shift1) & mask);
-}
-
 static ulong _nmod_mpoly_bidegree(
     const nmod_mpoly_t A,
     const nmod_mpoly_ctx_t ctx)
@@ -184,15 +166,7 @@ static ulong _nmod_mpoly_bidegree(
     FLINT_ASSERT(A->length > 0);
     return _mpoly_bidegree(A->exps, A->bits, ctx->minfo);
 }
-/*
-static ulong _nmod_mpolyn_bidegree(
-    const nmod_mpolyn_t A,
-    const nmod_mpoly_ctx_t ctx)
-{
-    FLINT_ASSERT(A->length > 0);
-    return _mpoly_bidegree(A->exps, A->bits, ctx->minfo);
-}
-*/
+
 static ulong _fq_nmod_mpoly_bidegree(
     const fq_nmod_mpoly_t A,
     const fq_nmod_mpoly_ctx_t ctx)
@@ -1479,9 +1453,6 @@ int nmod_mpolyl_gcd_zippel_smprime(
     mp_limb_t c, start_alpha;
     ulong GdegboundXY, newdegXY, Abideg, Bbideg;
     slong degxAB, degyAB;
-/*
-flint_printf("nmod_mpolyl_gcd_zippel_smprime called mod.n = %wu\n", ctx->ffinfo->mod.n);
-*/
 
     FLINT_ASSERT(bits <= FLINT_BITS);
     FLINT_ASSERT(bits == A->bits);
@@ -1650,7 +1621,6 @@ choose_alphas:
     choose_alpha_2:
 
         alphas[m] = (alphas[m] < 2) ? mod.n - 1 : alphas[m] - 1;
-
         if (alphas[m] == start_alpha)
             goto choose_alphas;
 
@@ -2504,19 +2474,6 @@ int fq_nmod_mpolyun_interp_mcrt_sm_mpolyu(
     const n_fq_poly_t modulus,
     n_fq_poly_t alphapow,
     const fq_nmod_mpoly_ctx_t ctx);
-
-
-void n_fq_polyun_set(n_fq_polyun_t A, const n_fq_polyun_t B, const fq_nmod_ctx_t ctx)
-{
-    slong i;
-    n_polyun_fit_length(A, B->length);
-    for (i = 0; i < B->length; i++)
-    {
-        A->terms[i].exp = B->terms[i].exp;
-        n_fq_poly_set(A->terms[i].coeff, B->terms[i].coeff, ctx);
-    }
-    A->length = B->length;
-}
 
 
 void n_fq_polyu2n_print_pretty(

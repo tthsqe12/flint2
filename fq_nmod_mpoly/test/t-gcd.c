@@ -24,9 +24,6 @@ void gcd_check(
     int res;
     fq_nmod_mpoly_t ca, cb, cg;
 
-if (j == 0)
-flint_printf("i = %wd j = %wd %s\n", i, j, name);
-
     fq_nmod_mpoly_init(ca, ctx);
     fq_nmod_mpoly_init(cb, ctx);
     fq_nmod_mpoly_init(cg, ctx);
@@ -112,7 +109,7 @@ cleanup:
 int
 main(void)
 {
-    slong i, j, k, tmul = 43;
+    slong i, j, k, tmul = 7;
     FLINT_TEST_INIT(state);
 
     flint_printf("gcd....");

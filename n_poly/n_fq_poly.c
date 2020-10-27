@@ -157,6 +157,9 @@ void n_fq_poly_set_coeff_n_fq(
 {
     slong d = fq_nmod_ctx_degree(ctx);
 
+    FLINT_ASSERT(n_fq_is_canonical(c, ctx));
+    FLINT_ASSERT(n_fq_poly_is_canonical(A, ctx));
+
     n_poly_fit_length(A, d*(j + 1));
 
     if (j + 1 <= A->length)
@@ -167,10 +170,12 @@ void n_fq_poly_set_coeff_n_fq(
     }
     else if (!_n_fq_is_zero(c, d)) /* extend polynomial */
     {
-        flint_mpn_zero(A->coeffs + A->length, d*(j - A->length));
+        flint_mpn_zero(A->coeffs + d*A->length, d*(j - A->length));
         _n_fq_set(A->coeffs + d*j, c, d);
         A->length = j + 1;
     }
+
+    FLINT_ASSERT(n_fq_poly_is_canonical(A, ctx));
 }
 
 void n_fq_poly_set_coeff_fq_nmod(
@@ -180,6 +185,8 @@ void n_fq_poly_set_coeff_fq_nmod(
     const fq_nmod_ctx_t ctx)
 {
     slong d = fq_nmod_ctx_degree(ctx);
+
+    FLINT_ASSERT(n_fq_poly_is_canonical(A, ctx));
 
     n_poly_fit_length(A, d*(j + 1));
 
@@ -191,10 +198,12 @@ void n_fq_poly_set_coeff_fq_nmod(
     }
     else if (!fq_nmod_is_zero(c, ctx))
     {
-        flint_mpn_zero(A->coeffs + A->length, d*(j - A->length));
+        flint_mpn_zero(A->coeffs + d*A->length, d*(j - A->length));
         n_fq_set_fq_nmod(A->coeffs + d*j, c, ctx);
         A->length = j + 1;
     }
+
+    FLINT_ASSERT(n_fq_poly_is_canonical(A, ctx));
 }
 
 

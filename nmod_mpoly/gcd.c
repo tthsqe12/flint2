@@ -88,7 +88,7 @@ static void nmod_mpoly_evals(
             meval = t;
         }
 
-        if (hi == 0 && lo >= 0 && total_degree >= 0)
+        if (hi == 0 && FLINT_SIGN_EXT(lo) == 0 && total_degree >= 0)
             total_degree = FLINT_MAX(total_degree, lo);
         else
             total_degree = -1;
@@ -1551,6 +1551,8 @@ cleanup:
     nmod_mpoly_clear(Ac, lctx);
     nmod_mpoly_clear(Bc, lctx);
     nmod_mpoly_clear(Gc, lctx);
+    nmod_mpoly_clear(Abarc, lctx);
+    nmod_mpoly_clear(Bbarc, lctx);
 
     nmod_mpoly_ctx_clear(lctx);
 
@@ -1964,7 +1966,7 @@ skip_monomial_cofactors:
             slong d = FLINT_MAX(I->Adeflate_deg[k], I->Bdeflate_deg[k]);
             int is_small = d < ctx->ffinfo->mod.n/2;
 
-            if ((I->Adensity + I->Bdensity > (is_small ? 0.05 : 0.2)))
+            if (I->Adensity + I->Bdensity > (is_small ? 0.05 : 0.2))
             {
                 success = _try_brown(G, Abar, Bbar, A, B, I, ctx) ||
                           _try_hensel(G, Abar, Bbar, A, B, I, ctx);
@@ -2036,24 +2038,23 @@ skip_monomial_cofactors:
                 goto successful;                
         }
 
-        k = I->brown_perm[0];
-        d = FLINT_MIN(I->Adeflate_deg[k], I->Bdeflate_deg[k]);
-
         if (I->Adeflate_tdeg > 0 && I->Bdeflate_tdeg > 0)
         {
             fmpz_t x;
+            double tdensity;
             fmpz_init(x);
             fmpz_bin_uiui(x, (ulong)I->Adeflate_tdeg + I->mvars, I->mvars);
-            density = A->length/fmpz_get_d(x);
+            tdensity = A->length/fmpz_get_d(x);
             fmpz_bin_uiui(x, (ulong)I->Bdeflate_tdeg + I->mvars, I->mvars);
-            density += B->length/fmpz_get_d(x);
+            tdensity += B->length/fmpz_get_d(x);
+            density = FLINT_MAX(density, tdensity);
             fmpz_clear(x);
+        }
 
-            if (density > hensel_cutoff)
-            {
-                if (_try_hensel(G, Abar, Bbar, A, B, I, ctx))
-                    goto successful;                
-            }
+        if (density > hensel_cutoff)
+        {
+            if (_try_hensel(G, Abar, Bbar, A, B, I, ctx))
+                goto successful;                
         }
 
         k = I->zippel2_perm[1];

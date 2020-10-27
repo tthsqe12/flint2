@@ -11,16 +11,6 @@
 
 #include "fq_nmod_mpoly.h"
 #include "fq_nmod_mpoly_factor.h"
-#include "profiler.h"
-
-void usleep(ulong);
-
-void n_fq_polyun_set(n_fq_polyun_t A, const n_fq_polyun_t B, const fq_nmod_ctx_t ctx);
-
-ulong _mpoly_bidegree(
-    const ulong * Aexps,
-    flint_bitcnt_t Abits,
-    const mpoly_ctx_t mctx);
 
 void nmod_mpoly_monomial_evals2_new(
     n_polyun_t E,
@@ -1858,9 +1848,6 @@ int fq_nmod_mpolyun_interp_mcrt_sm_mpolyu(
         changed |= fq_nmod_mpolyn_interp_mcrt_sm_mpoly(lastdeg,
                              Fcoeffs + i, Acoeffs + i, modulus, alphapow, ctx);
     }
-/*
-flint_printf("fq_nmod_mpolyun_interp_mcrt_sm_mpolyu returning %d\n", changed);
-*/
 
     return changed;
 }
@@ -2033,20 +2020,6 @@ int fq_nmod_mpolyl_gcd_zippel_smprime(
     ulong GdegboundXY, newdegXY, Abideg, Bbideg;
     slong degxAB, degyAB;
 
-flint_printf("fq_nmod_mpolyl_gcd_zippel_smprime called nvars = %wd\n", nvars);
-
-
-/*
-fq_nmod_ctx_print(ctx->fqctx);
-
-flint_printf("A: ");
-fq_nmod_mpoly_print_pretty(A, NULL, ctx);
-flint_printf("\n");
-flint_printf("B: ");
-fq_nmod_mpoly_print_pretty(B, NULL, ctx);
-flint_printf("\n");
-*/
-
     FLINT_ASSERT(bits <= FLINT_BITS);
     FLINT_ASSERT(bits == A->bits);
     FLINT_ASSERT(bits == B->bits);
@@ -2154,9 +2127,7 @@ flint_printf("\n");
     main_tries_left = 3;
 
 choose_main:
-/*
-flint_printf("-------- choose_main ----------\n");
-*/
+
     if (--main_tries_left < 0)
     {
         success = 0;
@@ -2164,14 +2135,7 @@ flint_printf("-------- choose_main ----------\n");
     }
 
     for (i = 2; i < nvars; i++)
-{
         fq_nmod_rand_not_zero(alphas + i, state, ctx->fqctx);
-/*
-flint_printf("alphas[%wd]: ", i);
-fq_nmod_print_pretty(alphas + i, ctx->fqctx);
-flint_printf("\n");
-*/
-}
 
     for (i = nvars - 1; i >= 2; i--)
     {
@@ -2197,28 +2161,9 @@ flint_printf("\n");
 
     fq_nmod_mpoly_get_n_fq_bpoly(Aev, Aevals + m, 0, 1, ctx);
     fq_nmod_mpoly_get_n_fq_bpoly(Bev, Bevals + m, 0, 1, ctx);
-/*
-flint_printf("Aev: ");
-n_fq_bpoly_print_pretty(Aev, "x1", "x2", ctx->fqctx);
-flint_printf("\n");
-flint_printf("Bev: ");
-n_fq_bpoly_print_pretty(Bev, "x1", "x2", ctx->fqctx);
-flint_printf("\n");
-*/
+
     success = n_fq_bpoly_gcd_brown_smprime(Gev, Abarev, Bbarev,
                                                      Aev, Bev, ctx->fqctx, St);
-/*
-flint_printf("Gev: ");
-n_fq_bpoly_print_pretty(Gev, "x1", "x2", ctx->fqctx);
-flint_printf("\n");
-flint_printf("Abarev: ");
-n_fq_bpoly_print_pretty(Abarev, "x1", "x2", ctx->fqctx);
-flint_printf("\n");
-flint_printf("Bbarev: ");
-n_fq_bpoly_print_pretty(Bbarev, "x1", "x2", ctx->fqctx);
-flint_printf("\n");
-*/
-
     if (!success)
         goto cleanup;
 
@@ -2249,11 +2194,6 @@ flint_printf("\n");
     choose_alpha_2:
 
         fq_nmod_next_not_zero(alphas + m, ctx->fqctx);
-/*
-flint_printf("choosing alphas[%wd]: ", m);
-fq_nmod_print_pretty(alphas + m, ctx->fqctx);
-flint_printf("\n");
-*/
 
         if (fq_nmod_equal(alphas + m, start_alpha, ctx->fqctx))
             goto choose_main;
@@ -2298,20 +2238,6 @@ flint_printf("\n");
         gammaev = fq_nmod_mpoly_get_nonzero_n_fq(gammaevals + m, ctx);
         n_fq_bpoly_scalar_mul_n_fq(Gev, gammaev, ctx->fqctx);
 
-/*
-flint_printf("Gev: ");
-n_fq_bpoly_print_pretty(Gev, "x1", "x2", ctx->fqctx);
-flint_printf("\n");
-flint_printf("Abarev: ");
-n_fq_bpoly_print_pretty(Abarev, "x1", "x2", ctx->fqctx);
-flint_printf("\n");
-flint_printf("Bbarev: ");
-n_fq_bpoly_print_pretty(Bbarev, "x1", "x2", ctx->fqctx);
-flint_printf("\n");
-
-
-flint_printf("addind interpolant\n");
-*/
         n_fq_poly_eval_pow(c, modulus, alphapow, ctx->fqctx);
         n_fq_inv(c, c, ctx->fqctx);
         n_fq_poly_scalar_mul_n_fq(modulus, modulus, c, ctx->fqctx);
@@ -2319,9 +2245,6 @@ flint_printf("addind interpolant\n");
         if ((use & USE_G) && !fq_nmod_mpolyn_interp_crt_sm_bpoly(
                                 &lastdeg, Gn, Tn, Gev, modulus, alphapow, ctx))
         {
-/*
-flint_printf("G stabilized\n");
-*/
             if (m == nvars - 1)
             {
                 fq_nmod_mpoly_cvtfrom_mpolyn(rG, Gn, m, ctx);
@@ -2358,9 +2281,6 @@ flint_printf("G stabilized\n");
         if ((use & USE_ABAR) && !fq_nmod_mpolyn_interp_crt_sm_bpoly(
                           &lastdeg, Abarn, Tn, Abarev, modulus, alphapow, ctx))
         {
-/*
-flint_printf("Abar stabilized\n");
-*/
             if (m == nvars - 1)
             {
                 fq_nmod_mpoly_cvtfrom_mpolyn(rAbar, Abarn, m, ctx);
@@ -2397,9 +2317,6 @@ flint_printf("Abar stabilized\n");
         if ((use & USE_BBAR) && !fq_nmod_mpolyn_interp_crt_sm_bpoly(
                           &lastdeg, Bbarn, Tn, Bbarev, modulus, alphapow, ctx))
         {
-/*
-flint_printf("Bbar stabilized\n");
-*/
             if (m == nvars - 1)
             {
                 fq_nmod_mpoly_cvtfrom_mpolyn(rBbar, Bbarn, m, ctx);
@@ -2432,11 +2349,7 @@ flint_printf("Bbar stabilized\n");
                 }
             }
         }
-/*
-flint_printf("modulus: ");
-n_fq_poly_print_pretty(modulus, "v", ctx->fqctx);
-flint_printf("\n");
-*/
+
         if (n_fq_poly_degree(modulus) > gammadegs[m] + Adegs[m] &&
             n_fq_poly_degree(modulus) > gammadegs[m] + Bdegs[m])
         {
@@ -2449,9 +2362,6 @@ flint_printf("\n");
 
     for (m = 3; m < nvars; m++)
     {
-/*
-flint_printf("m = %wd\n", m);
-*/
         /* G, Abar, Bbar are in Fq[gen(0), ..., gen(m - 1)] */
         fq_nmod_mpolyn_interp_lift_sm_mpoly(Gn, G, ctx);
         fq_nmod_mpolyn_interp_lift_sm_mpoly(Abarn, Abar, ctx);
@@ -2532,11 +2442,7 @@ flint_printf("m = %wd\n", m);
         choose_alpha_m:
 
             fq_nmod_next_not_zero(alphas + m, ctx->fqctx);
-/*
-flint_printf("choosing alphas[%wd]: ", m);
-fq_nmod_print_pretty(alphas + m, ctx->fqctx);
-flint_printf("\n");
-*/
+
             if (fq_nmod_equal(alphas + m, start_alpha, ctx->fqctx))
                 goto choose_main;
 
@@ -2645,9 +2551,7 @@ flint_printf("\n");
                 if ((use & USE_BBAR) && qzip_solvel(Bbar, ZBbar, HBbar, MBbar, ctx) < 1)
                     goto choose_main;
             }
-/*
-flint_printf("adding interpolant\n");
-*/
+
             n_fq_poly_eval_pow(c, modulus, alphapow, ctx->fqctx);
             n_fq_inv(c, c, ctx->fqctx);
             n_fq_poly_scalar_mul_n_fq(modulus, modulus, c, ctx->fqctx);
@@ -2655,9 +2559,6 @@ flint_printf("adding interpolant\n");
             if ((use & USE_G) && !fq_nmod_mpolyn_interp_mcrt_sm_mpoly(
                                       &lastdeg, Gn, G, modulus, alphapow, ctx))
             {
-/*
-flint_printf("G stabilized\n");
-*/
                 fq_nmod_mpoly_cvtfrom_mpolyn(rG, Gn, m, ctx);
                 if (m == nvars - 1)
                 {
@@ -2695,9 +2596,6 @@ flint_printf("G stabilized\n");
             if ((use & USE_ABAR) && !fq_nmod_mpolyn_interp_mcrt_sm_mpoly(
                                 &lastdeg, Abarn, Abar, modulus, alphapow, ctx))
             {
-/*
-flint_printf("Abar stabilized\n");
-*/
                 fq_nmod_mpoly_cvtfrom_mpolyn(rAbar, Abarn, m, ctx);
                 if (m == nvars - 1)
                 {
@@ -2736,9 +2634,6 @@ flint_printf("Abar stabilized\n");
             if ((use & USE_BBAR) && !fq_nmod_mpolyn_interp_mcrt_sm_mpoly(
                                 &lastdeg, Bbarn, Bbar, modulus, alphapow, ctx))
             {
-/*
-flint_printf("Bbar stabilized\n");
-*/
                 fq_nmod_mpoly_cvtfrom_mpolyn(rBbar, Bbarn, m, ctx);
                 if (m == nvars - 1)
                 {
@@ -2850,22 +2745,6 @@ cleanup:
     FLINT_ASSERT(!success || rG->bits == bits);
     FLINT_ASSERT(!success || rAbar->bits == bits);
     FLINT_ASSERT(!success || rBbar->bits == bits);
-
-flint_printf("fq_nmod_mpolyl_gcd_zippel_smprime returning %d\n", success);
-/*
-flint_printf("rG: ");
-fq_nmod_mpoly_print_pretty(rG, NULL, ctx);
-flint_printf("\n");
-
-flint_printf("rAbar: ");
-fq_nmod_mpoly_print_pretty(rAbar, NULL, ctx);
-flint_printf("\n");
-
-flint_printf("rBbar: ");
-fq_nmod_mpoly_print_pretty(rBbar, NULL, ctx);
-flint_printf("\n");
-*/
-FLINT_ASSERT(ctx->fqctx->mod.n < 1000 || success);
 
     return success;
 
@@ -3004,8 +2883,6 @@ int fq_nmod_mpolyl_gcd_zippel_lgprime(
     fq_nmod_mpoly_ctx_t lgctx;
     fq_nmod_mpolyn_t gamman;
     fq_nmod_mpolyn_t An, Bn;
-
-flint_printf("fq_nmod_mpolyl_gcd_zippel_lgprime called nvars = %wd\n", nvars);
 
     FLINT_ASSERT(bits <= FLINT_BITS);
     FLINT_ASSERT(bits == A->bits);
@@ -3231,11 +3108,6 @@ got_alpha_m:
             lgd = fq_nmod_ctx_degree(lgctx->fqctx);
             n_poly_fit_length(tmp, lgd);
             n_poly_fit_length(alphapow, 2*lgd);
-/*
-flint_printf("choosing alpha[%wd]:\n", m);
-fq_nmod_ctx_print(lgctx->fqctx);
-flint_printf("\n");
-*/
 
             fq_nmod_mpolyn_interp_reduce_lg_mpoly(Aevals + m, An, lgctx, smctx, cur_emb);
             fq_nmod_mpolyn_interp_reduce_lg_mpoly(Bevals + m, Bn, lgctx, smctx, cur_emb);
@@ -3358,11 +3230,6 @@ flint_printf("\n");
     choose_alpha_2:
 
         fq_nmod_next_not_zero(alphas + m, lgctx->fqctx);
-/*
-flint_printf("choosing alpha[%wd]: ", m);
-fq_nmod_print_pretty(alphas + m, lgctx->fqctx);
-flint_printf("\n");
-*/
         if (fq_nmod_equal(alphas + m, start_alpha, lgctx->fqctx))
             goto increase_degree;
 
@@ -3535,12 +3402,6 @@ flint_printf("\n");
         choose_alpha_m:
 
             fq_nmod_next_not_zero(alphas + m, lgctx->fqctx);
-/*
-flint_printf("choosing alpha[%wd]: ", m);
-fq_nmod_print_pretty(alphas + m, lgctx->fqctx);
-flint_printf("\n");
-*/
-
             if (fq_nmod_equal(alphas + m, start_alpha, lgctx->fqctx))
                 goto choose_main;
 
@@ -3722,11 +3583,7 @@ flint_printf("\n");
                 success = 0;
                 goto cleanup;
             }
-/*
-flint_printf("choosing alpha[%wd]:\n", m);
-fq_nmod_ctx_print(lgctx->fqctx);
-flint_printf("\n");
-*/
+
             lgd = fq_nmod_ctx_degree(lgctx->fqctx);
             n_poly_fit_length(tmp, lgd);
             n_poly_fit_length(alphapow, 2*lgd);
@@ -3975,9 +3832,9 @@ cleanup:
     flint_free(Bevals);
     flint_free(gammaevals);
 
-flint_printf("fq_nmod_mpolyl_gcd_zippel_lgprime returning %d\n", success);
-FLINT_ASSERT(success);
-
+    FLINT_ASSERT(!success || rG->bits == bits);
+    FLINT_ASSERT(!success || rAbar->bits == bits);
+    FLINT_ASSERT(!success || rBbar->bits == bits);
 
     return success;
 

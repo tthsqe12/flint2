@@ -11,7 +11,6 @@
 
 #include "nmod_mpoly_factor.h"
 #include "fq_nmod_mpoly_factor.h"
-#include "profiler.h"
 
 
 static void fq_nmod_mpoly_delete_duplicate_terms(
@@ -1497,9 +1496,6 @@ int fq_nmod_mpoly_factor_irred_smprime_zippel(
     n_tpoly_t Abfp;
     fq_nmod_mpoly_t m, mpow;
     fq_nmod_mpolyv_t new_lcs, lc_divs;
-timeit_t timer0, timer1, timer2;
-
-timeit_start(timer0);
 
     FLINT_ASSERT(n > 1);
     FLINT_ASSERT(A->length > 1);
@@ -1596,19 +1592,13 @@ next_alphabetas:
         _n_fq_poly_normalise(alphabetas + i, d);
     }
 
-timeit_start(timer1);
     _fq_nmod_mpoly_eval_rest_to_n_fq_bpoly(Ab, A, alphabetas, ctx);
-timeit_stop(timer1);
-flint_printf("bivariat eval: %wd\n", timer1->wall);
-timeit_start(timer1);
     success = n_fq_bpoly_factor_smprime(Abfc, Abfp, Ab, 0, ctx->fqctx);
     if (!success)
     {
         FLINT_ASSERT(0 && "this should not happen");
         goto next_alpha;
     }
-timeit_stop(timer1);
-flint_printf("bivariate fac: %wd\n", timer1->wall);
 
     r = Abfp->length;
 
@@ -1715,13 +1705,10 @@ flint_printf("bivariate fac: %wd\n", timer1->wall);
         fq_nmod_clear(qt, ctx->fqctx);
     }
 
-timeit_start(timer1);
-
     fq_nmod_mpolyv_fit_length(tfac, r, ctx);
     tfac->length = r;
     for (k = 1; k <= n; k++)
     {
-timeit_start(timer2);
         for (i = 0; i < r; i++)
         {
             _fq_nmod_mpoly_set_lead0(tfac->coeffs + i, fac->coeffs + i,
@@ -1743,11 +1730,7 @@ timeit_start(timer2);
             goto next_alphabetas;
 
         fq_nmod_mpolyv_swap(tfac, fac, ctx);
-timeit_stop(timer2);
-flint_printf("k = %wd lifting: %wd\n", k, timer2->wall);
     }
-timeit_stop(timer1);
-flint_printf("total lifting: %wd\n", timer1->wall);
 
     if (!fq_nmod_mpoly_is_fq_nmod(m, ctx))
     {
@@ -1816,7 +1799,5 @@ cleanup:
     }
 #endif
 
-timeit_stop(timer0);
-flint_printf("total mainfxn: %wd\n", timer0->wall);
 	return success;
 }

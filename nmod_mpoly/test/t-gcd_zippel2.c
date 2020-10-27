@@ -102,7 +102,7 @@ main(void)
     flint_printf("gcd_zippel2....");
     fflush(stdout);
 
-    for (i = 0; i < 10 * flint_test_multiplier(); i++)
+    for (i = 0; i < 20 * flint_test_multiplier(); i++)
     {
         nmod_mpoly_ctx_t ctx;
         nmod_mpoly_t a, b, g, ca, cb, cg, t;

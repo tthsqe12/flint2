@@ -169,7 +169,7 @@ main(void)
         nmod_mpoly_ctx_clear(ctx);
     }
 
-    printf("PASS\n");
+    flint_printf("PASS\n");
     FLINT_TEST_CLEANUP(state);
 
     return 0;

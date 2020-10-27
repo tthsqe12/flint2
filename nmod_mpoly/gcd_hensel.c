@@ -719,7 +719,6 @@ next_alpha:
     }
 
     /* make the leading coefficients match Glcs[0], Hlcs[0] */
-
     FLINT_ASSERT(fq_zech_mpoly_is_fq_zech(Glcs + 0, ctx) && Glcs[0].length == 1);
     FLINT_ASSERT(fq_zech_mpoly_is_fq_zech(Hlcs + 0, ctx) && Hlcs[0].length == 1);
 

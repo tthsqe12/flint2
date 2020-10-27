@@ -977,6 +977,33 @@ MPOLY_INLINE slong mpoly_geobucket_clog4(slong x)
     return (slong)((FLINT_BIT_COUNT(x - 1) - UWORD(1))/(UWORD(2)));
 }
 
+/* single-limb packings ******************************************************/
+
+MPOLY_INLINE
+ulong pack_exp2(ulong e0, ulong e1)
+{
+    return (e0 << (1*(FLINT_BITS/2))) +
+           (e1 << (0*(FLINT_BITS/2)));
+}
+
+MPOLY_INLINE
+ulong pack_exp3(ulong e0, ulong e1, ulong e2)
+{
+    return (e0 << (2*(FLINT_BITS/3))) +
+           (e1 << (1*(FLINT_BITS/3))) +
+           (e2 << (0*(FLINT_BITS/3)));
+}
+
+MPOLY_INLINE
+ulong extract_exp(ulong e, int idx, int nvars)
+{
+    return (e >> (idx*(FLINT_BITS/nvars))) &
+            ((-UWORD(1)) >> (FLINT_BITS - FLINT_BITS/nvars));
+}
+
+FLINT_DLL ulong _mpoly_bidegree(const ulong * Aexps, flint_bitcnt_t Abits,
+                                                       const mpoly_ctx_t mctx);
+
 /* generators ****************************************************************/
 
 FLINT_DLL void mpoly_gen_fields_ui(ulong * exp, slong var,

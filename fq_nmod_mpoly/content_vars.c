@@ -49,9 +49,9 @@ int fq_nmod_mpolyl_content(
     v[vlen].bits = A->bits;
     v[vlen].coeffs = A->coeffs + d*i;
     v[vlen].exps = Aexps + N*i;
-    v[vlen].coeffs_alloc = 0;
-    v[vlen].exps_alloc = 0;
     v[vlen].length = i;
+    v[vlen].coeffs_alloc = d*v[vlen].length;
+    v[vlen].exps_alloc = N*v[vlen].length;
     vlen++;
 
     for (i = 1; i < Alen; old_shift = new_shift, i++)
@@ -71,6 +71,8 @@ new_one:
 
         v[vlen - 1].length = i - v[vlen - 1].length;
         FLINT_ASSERT(v[vlen - 1].length > 0);
+        v[vlen - 1].coeffs_alloc = d*v[vlen - 1].length;
+        v[vlen - 1].exps_alloc   = N*v[vlen - 1].length;
 
         if (vlen + 1 > valloc)
         {
@@ -81,14 +83,14 @@ new_one:
         v[vlen].bits = A->bits;
         v[vlen].coeffs = A->coeffs + d*i;
         v[vlen].exps = Aexps + N*i;
-        v[vlen].coeffs_alloc = 0;
-        v[vlen].exps_alloc = 0;
         v[vlen].length = i;
         vlen++;
     }
 
     v[vlen - 1].length = i - v[vlen - 1].length;
     FLINT_ASSERT(v[vlen - 1].length > 0);
+    v[vlen - 1].coeffs_alloc = d*v[vlen - 1].length;
+    v[vlen - 1].exps_alloc   = N*v[vlen - 1].length;
 
     success = _fq_nmod_mpoly_vec_content_mpoly(g, v, vlen, ctx);
 

@@ -138,7 +138,10 @@ void n_fq_bpoly_set_coeff_n_fq(
     }
 
     n_fq_poly_set_coeff_n_fq(A->coeffs + e0, e1, c, ctx);
+
     n_fq_bpoly_normalise(A);
+
+    FLINT_ASSERT(n_fq_bpoly_is_canonical(A, ctx));
 }
 
 

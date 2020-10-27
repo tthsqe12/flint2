@@ -42,11 +42,12 @@ int fq_nmod_mpolyl_gcd_hensel_smprime(
     const fq_nmod_mpoly_ctx_t ctx)
 {
     slong d = fq_nmod_ctx_degree(ctx->fqctx);
-    int success, alphas_tries_remaining, gamma_is_one, proj_mu;
+    int success, alphas_tries_remaining, gamma_is_one;
     const slong n = ctx->minfo->nvars - 1;
     slong i, k;
     flint_bitcnt_t bits = A->bits;
-    fq_nmod_struct mu[1], * alphas;
+    fq_nmod_struct * alphas;
+    fq_nmod_t mu1, mu2;
     fq_nmod_mpoly_struct * Aevals, * Bevals, * Hevals;
     fq_nmod_mpoly_struct * H; /* points to A, B, or Hevals + n */
     fq_nmod_mpoly_struct * Glcs, * Hlcs;
@@ -70,7 +71,8 @@ int fq_nmod_mpolyl_gcd_hensel_smprime(
     tmp = FLINT_ARRAY_ALLOC(d*(N_FQ_MUL_INV_ITCH + 1), mp_limb_t);
     q = tmp + d*N_FQ_MUL_INV_ITCH;
 
-    fq_nmod_init(mu, ctx->fqctx);
+    fq_nmod_init(mu1, ctx->fqctx);
+    fq_nmod_init(mu2, ctx->fqctx);
 
     Hdegs  = FLINT_ARRAY_ALLOC(n + 1, slong);
 
@@ -132,6 +134,7 @@ got_alpha:
     /* ensure deg_X do not drop under evaluation */
     Adegx = fq_nmod_mpoly_degree_si(A, 0, ctx);
     Bdegx = fq_nmod_mpoly_degree_si(B, 0, ctx);
+
 	for (i = n - 1; i >= 0; i--)
 	{
 		fq_nmod_mpoly_evaluate_one_fq_nmod(Aevals + i, i == n - 1 ? A :
@@ -146,7 +149,8 @@ got_alpha:
 	}
 
     /* univariate gcd */
-    success = fq_nmod_mpoly_gcd_cofactors(g, abar, bbar, Aevals + 0, Bevals + 0, ctx) &&
+    success = fq_nmod_mpoly_gcd_cofactors(g, abar, bbar,
+                                                Aevals + 0, Bevals + 0, ctx) &&
               fq_nmod_mpoly_gcd(t1, g, abar, ctx) &&
               fq_nmod_mpoly_gcd(t2, g, bbar, ctx);
     if (!success)
@@ -192,7 +196,8 @@ got_alpha:
     /* set Hlcs[n], Glcs[n] (gamma), H, and Hevals */
     if (fq_nmod_mpoly_is_one(t1, ctx))
     {
-        proj_mu = -1; /* mu = mu2/mu1 = 0 */
+        fq_nmod_one(mu1, ctx->fqctx);
+        fq_nmod_zero(mu2, ctx->fqctx);
 
         fq_nmod_mpoly_swap(hbar, abar, ctx);
 
@@ -211,7 +216,8 @@ got_alpha:
     }
     else if (fq_nmod_mpoly_is_one(t2, ctx))
     {
-        proj_mu = 1; /* mu = mu2/mu1 = infinity */
+        fq_nmod_zero(mu1, ctx->fqctx);
+        fq_nmod_one(mu2, ctx->fqctx);
 
         fq_nmod_mpoly_swap(hbar, bbar, ctx);
 
@@ -232,8 +238,6 @@ got_alpha:
     {
         int mu_tries_remaining = 10;
 
-        proj_mu = 0; /* mu = mu2/mu1 is nonzero and finite */
-
     next_mu:
 
         if (--mu_tries_remaining < 0)
@@ -242,11 +246,12 @@ got_alpha:
             goto cleanup;
         }
 
-        fq_nmod_rand_not_zero(mu, state, ctx->fqctx);
-        fq_nmod_mpoly_scalar_addmul_fq_nmod(hbar, abar, bbar, mu, ctx);
+        fq_nmod_one(mu1, ctx->fqctx);
+        fq_nmod_rand_not_zero(mu2, state, ctx->fqctx);
+        fq_nmod_mpoly_scalar_addmul_fq_nmod(hbar, abar, bbar, mu2, ctx);
 
         /* make sure the linear combo did not drop degree */
-        if (fq_nmod_mpoly_degree_si(hbar, 0, ctx) != FLINT_MAX(Adegx, Bdegx))
+        if (fq_nmod_mpoly_degree_si(hbar, 0, ctx) != FLINT_MAX(Adegx, Bdegx) - gdegx)
             goto next_mu;
 
         /* make sure the linear combo is prime to g */
@@ -264,14 +269,14 @@ got_alpha:
             goto cleanup;
 
         H = Hevals + n;
-        fq_nmod_mpoly_scalar_addmul_fq_nmod(H, A, B, mu, ctx);
+        fq_nmod_mpoly_scalar_addmul_fq_nmod(H, A, B, mu2, ctx);
         fq_nmod_mpolyl_lead_coeff(Hlcs + n, H, 1, ctx);
 
         gamma_is_one = fq_nmod_mpoly_is_one(Glcs + n, ctx);
         if (gamma_is_one)
             for (i = 0; i < n; i++)
                 fq_nmod_mpoly_scalar_addmul_fq_nmod(Hevals + i, Aevals + i,
-                                                          Bevals + i, mu, ctx);
+                                                         Bevals + i, mu2, ctx);
     }
 
     if (!gamma_is_one)
@@ -279,7 +284,7 @@ got_alpha:
         fq_nmod_mpoly_mul(Hevals + n, H, Glcs + n, ctx);
         H = Hevals + n;
         for (i = n - 1; i >= 0; i--)
-            fq_nmod_mpoly_evaluate_one_fq_nmod(Hlcs + i, Hevals + i + 1,
+            fq_nmod_mpoly_evaluate_one_fq_nmod(Hevals + i, Hevals + i + 1,
                                                        i + 1, alphas + i, ctx);
     }
 
@@ -341,15 +346,17 @@ got_alpha:
     success = fq_nmod_mpoly_divides(G, Hfac + 0, t1, ctx);
     FLINT_ASSERT(success);
 
-    if (proj_mu < 0)
+    if (fq_nmod_is_zero(mu2, ctx->fqctx))
     {
+        FLINT_ASSERT(fq_nmod_is_one(mu1, ctx->fqctx));
         /* the division by t1 should succeed, but let's be careful */
         fq_nmod_mpolyl_lead_coeff(t1, G, 1, ctx);
         success = fq_nmod_mpoly_divides(Abar, Hfac + 1, t1, ctx) &&
                   fq_nmod_mpoly_divides(Bbar, B, G, ctx);
     }
-    else if (proj_mu > 0)
+    else if (fq_nmod_is_zero(mu1, ctx->fqctx))
     {
+        FLINT_ASSERT(fq_nmod_is_one(mu2, ctx->fqctx));
         /* ditto */
         fq_nmod_mpolyl_lead_coeff(t1, G, 1, ctx);
         success = fq_nmod_mpoly_divides(Bbar, Hfac + 1, t1, ctx) &&
@@ -357,6 +364,7 @@ got_alpha:
     }
     else
     {
+        FLINT_ASSERT(fq_nmod_is_one(mu1, ctx->fqctx));
         success = fq_nmod_mpoly_divides(Abar, A, G, ctx) &&
                   fq_nmod_mpoly_divides(Bbar, B, G, ctx);
     }
@@ -372,7 +380,8 @@ cleanup:
 
     flint_free(tmp);
 
-    fq_nmod_clear(mu, ctx->fqctx);
+    fq_nmod_clear(mu1, ctx->fqctx);
+    fq_nmod_clear(mu2, ctx->fqctx);
 
     flint_free(Hdegs);
 

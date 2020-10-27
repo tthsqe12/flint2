@@ -9,22 +9,14 @@
     (at your option) any later version.  See <https://www.gnu.org/licenses/>.
 */
 
-/* usage
-likwid-setFrequencies -g performance
-make profile MOD=nmod_mpoly && ./build/nmod_mpoly/profile/p-gcd 4 sparse 7 5 4 8
-
-p-gcd nthreads sparse m1 n1 m2 n2:
-    run the sparse benchmark on nthreads with powers (m1, n1) and (m2, n2)
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
-#include "profiler.h"
 #include "nmod_mpoly.h"
+#include "profiler.h"
+
 
 slong count = 0;
 slong total_super = 0;
-
 
 void profile_gcd(
     const nmod_mpoly_t realG,
@@ -343,5 +335,4 @@ flint_printf("--------------------\ntotal time: %wd\n", total_super);
     flint_cleanup_master();
     return 0;
 }
-
 

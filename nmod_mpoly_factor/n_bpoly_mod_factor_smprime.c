@@ -942,6 +942,8 @@ static void _lattice(
     {
         slong nrows = nmod_mat_nrows(N);
 
+        FLINT_ASSERT(nrows > 0);
+
         if (lift_order <= CLD[k])
             continue;
 

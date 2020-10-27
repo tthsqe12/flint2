@@ -20,16 +20,10 @@ int fq_nmod_mpoly_is_canonical(
     slong i;
 
     if (d*A->length > A->coeffs_alloc)
-    {
-flint_printf("bad coeff alloc\n");
         return 0;
-    }
 
     if (N*A->length > A->exps_alloc)
-{
-flint_printf("bad exp alloc\n");
         return 0;
-}
 
     if (!mpoly_monomials_valid_test(A->exps, A->length, A->bits, ctx->minfo))
         return 0;

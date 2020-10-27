@@ -23,6 +23,7 @@
     because we shouldn't calculate it in dense form.
 */
 void fq_nmod_mpoly_evals(
+    slong * Atdeg,  /* total degree of deflated A, or -1 for overflow */
     n_fq_poly_struct * out,
     const int * ignore,
     const fq_nmod_mpoly_t A,
@@ -40,6 +41,8 @@ void fq_nmod_mpoly_evals(
     slong * offsets = FLINT_ARRAY_ALLOC(2*nvars, slong);
     slong * shifts = offsets + nvars;
     ulong * varexps = FLINT_ARRAY_ALLOC(nvars, ulong);
+    ulong varexp;
+    slong total_degree, lo, hi;
     n_poly_struct * caches = FLINT_ARRAY_ALLOC(3*nvars, n_poly_struct);
     mp_limb_t * t = FLINT_ARRAY_ALLOC(2*d, mp_limb_t);
     mp_limb_t * meval = t + d;
@@ -65,11 +68,12 @@ void fq_nmod_mpoly_evals(
         out[j].length = i + 1;
     }
 
+    total_degree = 0;
     for (i = 0; i < A->length; i++)
     {
-        ulong varexp;
         mp_limb_t * s = A->coeffs + d*i; /* source */
 
+        lo = hi = 0;
         for (j = 0; j < nvars; j++)
         {
             varexp = ((A->exps + N*i)[offsets[j]]>>shifts[j])&mask;
@@ -80,10 +84,17 @@ void fq_nmod_mpoly_evals(
             varexps[j] = Astride[j] < 2 ? varexp - Amin_exp[j] :
                                          (varexp - Amin_exp[j])/Astride[j];
 
+            add_ssaaaa(hi, lo, hi, lo, 0, varexps[j]);
+
             n_fq_pow_cache_mulpow_ui(meval, s, varexps[j], caches + 3*j + 0,
                                caches + 3*j + 1, caches + 3*j + 2, ctx->fqctx);
             s = meval;
         }
+
+        if (hi == 0 && FLINT_SIGN_EXT(lo) == 0 && total_degree >= 0)
+            total_degree = FLINT_MAX(total_degree, lo);
+        else
+            total_degree = -1;
 
         for (j = 0; j < nvars; j++)
         {
@@ -102,6 +113,8 @@ void fq_nmod_mpoly_evals(
         }
     }
 
+    *Atdeg = total_degree;
+
     for (j = 0; j < nvars; j++)
         _n_fq_poly_normalise(out + j, d);
 
@@ -115,6 +128,7 @@ void fq_nmod_mpoly_evals(
 }
 
 void fq_nmod_mpoly_evals_lgprime(
+    slong * Atdeg,  /* total degree of deflated A, or -1 for overflow */
     n_fq_poly_struct * out,
     const int * ignore,
     const fq_nmod_mpoly_t A,
@@ -135,6 +149,8 @@ void fq_nmod_mpoly_evals_lgprime(
     slong * offsets = FLINT_ARRAY_ALLOC(2*nvars, slong);
     slong * shifts = offsets + nvars;
     ulong * varexps = FLINT_ARRAY_ALLOC(nvars, ulong);
+    ulong varexp, lo, hi;
+    slong total_degree;
     n_poly_struct * caches = FLINT_ARRAY_ALLOC(3*nvars, n_poly_struct);
     mp_limb_t * t = FLINT_ARRAY_ALLOC(2*lgd, mp_limb_t);
     mp_limb_t * meval = t + lgd;
@@ -159,12 +175,12 @@ void fq_nmod_mpoly_evals_lgprime(
         out[j].length = i + 1;
     }
 
+    total_degree = 0;
     for (i = 0; i < A->length; i++)
     {
-        ulong varexp;
-
         bad_n_fq_embed_sm_elem_to_lg(meval, A->coeffs + smd*i, emb);
 
+        hi = lo = 0;
         for (j = 0; j < nvars; j++)
         {
             varexp = ((A->exps + N*i)[offsets[j]]>>shifts[j])&mask;
@@ -175,9 +191,16 @@ void fq_nmod_mpoly_evals_lgprime(
             varexps[j] = Astride[j] < 2 ? varexp - Amin_exp[j] :
                                          (varexp - Amin_exp[j])/Astride[j];
 
+            add_ssaaaa(hi, lo, hi, lo, 0, varexps[j]);
+
             n_fq_pow_cache_mulpow_ui(meval, meval, varexps[j], caches + 3*j + 0,
                              caches + 3*j + 1, caches + 3*j + 2, lgctx->fqctx);
         }
+
+        if (hi == 0 && FLINT_SIGN_EXT(lo) == 0 && total_degree >= 0)
+            total_degree = FLINT_MAX(total_degree, lo);
+        else
+            total_degree = -1;
 
         for (j = 0; j < nvars; j++)
         {
@@ -195,6 +218,8 @@ void fq_nmod_mpoly_evals_lgprime(
                                                               t, lgctx->fqctx);
         }
     }
+
+    *Atdeg = total_degree;
 
     for (j = 0; j < nvars; j++)
         _n_fq_poly_normalise(out + j, lgd);
@@ -279,8 +304,10 @@ try_again:
             fq_nmod_one(alpha + j, ctx->fqctx);
     }
 
-    fq_nmod_mpoly_evals(Aevals, ignore, A, I->Amin_exp, I->Amax_exp, I->Gstride, alpha, ctx);
-    fq_nmod_mpoly_evals(Bevals, ignore, B, I->Bmin_exp, I->Bmax_exp, I->Gstride, alpha, ctx);
+    fq_nmod_mpoly_evals(&I->Adeflate_tdeg, Aevals, ignore, A,
+                             I->Amin_exp, I->Amax_exp, I->Gstride, alpha, ctx);
+    fq_nmod_mpoly_evals(&I->Bdeflate_tdeg, Bevals, ignore, B,
+                             I->Bmin_exp, I->Bmax_exp, I->Gstride, alpha, ctx);
 
     for (j = 0; j < nvars; j++)
     {
@@ -401,10 +428,10 @@ try_again:
             fq_nmod_one(alpha + j, lgctx->fqctx);
     }
 
-    fq_nmod_mpoly_evals_lgprime(Aevals, ignore, A, I->Amin_exp, I->Amax_exp,
-                                     I->Gstride, smctx, alpha, lgctx, cur_emb);
-    fq_nmod_mpoly_evals_lgprime(Bevals, ignore, B, I->Bmin_exp, I->Bmax_exp,
-                                     I->Gstride, smctx, alpha, lgctx, cur_emb);
+    fq_nmod_mpoly_evals_lgprime(&I->Adeflate_tdeg, Aevals, ignore, A,
+           I->Amin_exp, I->Amax_exp, I->Gstride, smctx, alpha, lgctx, cur_emb);
+    fq_nmod_mpoly_evals_lgprime(&I->Bdeflate_tdeg, Bevals, ignore, B,
+           I->Bmin_exp, I->Bmax_exp, I->Gstride, smctx, alpha, lgctx, cur_emb);
 
     for (j = 0; j < nvars; j++)
     {
@@ -796,7 +823,7 @@ static int _try_missing_var(
         fq_nmod_mpoly_init(tAbar, ctx);
         fq_nmod_mpoly_init(tBbar, ctx);
 
-        success = _fq_nmod_mpoly_vec_content_mpoly(G, Au->coeffs, Au->length, ctx);
+        success = _fq_nmod_mpoly_vec_content_mpoly(tG, Au->coeffs, Au->length, ctx);
         if (!success)
             goto cleanup;
 
@@ -1305,6 +1332,8 @@ cleanup:
     fq_nmod_mpoly_clear(Ac, lctx);
     fq_nmod_mpoly_clear(Bc, lctx);
     fq_nmod_mpoly_clear(Gc, lctx);
+    fq_nmod_mpoly_clear(Abarc, lctx);
+    fq_nmod_mpoly_clear(Bbarc, lctx);
 
     fq_nmod_mpoly_ctx_clear(lctx);
 
@@ -1622,40 +1651,120 @@ skip_monomial_cofactors:
     if (I->mvars < 3)
     {
         mpoly_gcd_info_measure_brown(I, A->length, B->length, ctx->minfo);
+        mpoly_gcd_info_measure_hensel(I, A->length, B->length, ctx->minfo);
 
-        if (_try_brown(G, Abar, Bbar, A, B, I, ctx))
-            goto successful;
-        if (_try_hensel(G, Abar, Bbar, A, B, I, ctx))
-            goto successful;
+        algo &= (MPOLY_GCD_USE_BROWN | MPOLY_GCD_USE_HENSEL);
+
+        if (algo == MPOLY_GCD_USE_BROWN)
+        {
+            success = _try_brown(G, Abar, Bbar, A, B, I, ctx);
+        }
+        else if (algo == MPOLY_GCD_USE_HENSEL)
+        {
+            success = _try_hensel(G, Abar, Bbar, A, B, I, ctx);
+        }
+        else
+        {
+            if (I->Adensity + I->Bdensity > 0.05)
+            {
+                success = _try_brown(G, Abar, Bbar, A, B, I, ctx) ||
+                          _try_hensel(G, Abar, Bbar, A, B, I, ctx);
+            }
+            else
+            {
+                success = _try_hensel(G, Abar, Bbar, A, B, I, ctx) ||
+                          _try_brown(G, Abar, Bbar, A, B, I, ctx);
+            }
+        }
+
+        goto cleanup;
+    }
+    else if (algo == MPOLY_GCD_USE_HENSEL)
+    {
+        mpoly_gcd_info_measure_hensel(I, A->length, B->length, ctx->minfo);
+        success = _try_hensel(G, Abar, Bbar, A, B, I, ctx);
+        goto cleanup;
+    }
+    else if (algo == MPOLY_GCD_USE_BROWN)
+    {
+        mpoly_gcd_info_measure_brown(I, A->length, B->length, ctx->minfo);
+        success = _try_brown(G, Abar, Bbar, A, B, I, ctx);
+        goto cleanup;
+    }
+    else if (algo == MPOLY_GCD_USE_ZIPPEL)
+    {
+        mpoly_gcd_info_measure_zippel(I, A->length, B->length, ctx->minfo);
+        success = _try_zippel(G, Abar, Bbar, A, B, I, ctx);
+        goto cleanup;
+    }
+    else if (algo == MPOLY_GCD_USE_ZIPPEL2)
+    {
+        mpoly_gcd_info_measure_zippel2(I, A->length, B->length, ctx->minfo);
+        success = _try_zippel2(G, Abar, Bbar, A, B, I, ctx);
+        goto cleanup;
     }
     else
     {
+        slong k;
+        double density = I->Adensity + I->Bdensity;
+
+        /*
+            mpoly gcd case.
+            Only rule is that measure_X must be called before
+                try_X is called or I->X_perm is accessed.
+        */
+
+        mpoly_gcd_info_measure_hensel(I, A->length, B->length, ctx->minfo);
         mpoly_gcd_info_measure_brown(I, A->length, B->length, ctx->minfo);
         mpoly_gcd_info_measure_zippel(I, A->length, B->length, ctx->minfo);
         mpoly_gcd_info_measure_zippel2(I, A->length, B->length, ctx->minfo);
 
-        if (I->zippel_time < I->brown_time)
+        if (density > 0.08)
         {
-            if (_try_zippel2(G, Abar, Bbar, A, B, I, ctx))
-                goto successful;
+            if (_try_brown(G, Abar, Bbar, A, B, I, ctx))
+                goto successful;                
+        }
+
+        if (I->Adeflate_tdeg > 0 && I->Bdeflate_tdeg > 0)
+        {
+            fmpz_t x;
+            double tdensity;
+            fmpz_init(x);
+            fmpz_bin_uiui(x, (ulong)I->Adeflate_tdeg + I->mvars, I->mvars);
+            tdensity = A->length/fmpz_get_d(x);
+            fmpz_bin_uiui(x, (ulong)I->Bdeflate_tdeg + I->mvars, I->mvars);
+            tdensity += B->length/fmpz_get_d(x);
+            density = FLINT_MAX(density, tdensity);
+            fmpz_clear(x);
+        }
+
+        if (density > 0.05)
+        {
+            if (_try_hensel(G, Abar, Bbar, A, B, I, ctx))
+                goto successful;                
+        }
+
+        k = I->zippel2_perm[1];
+        k = FLINT_MAX(I->Adeflate_deg[k], I->Bdeflate_deg[k]);
+        if ((A->length + B->length)/64 < k)
+        {
             if (_try_zippel(G, Abar, Bbar, A, B, I, ctx))
                 goto successful;
-            if (_try_brown(G, Abar, Bbar, A, B, I, ctx))
+            if (_try_zippel2(G, Abar, Bbar, A, B, I, ctx))
                 goto successful;
         }
         else
         {
             if (_try_zippel2(G, Abar, Bbar, A, B, I, ctx))
                 goto successful;
-            if (_try_brown(G, Abar, Bbar, A, B, I, ctx))
-                goto successful;
             if (_try_zippel(G, Abar, Bbar, A, B, I, ctx))
                 goto successful;
         }
-    }
 
-    if (_try_hensel(G, Abar, Bbar, A, B, I, ctx))
-        goto successful;
+        success = _try_hensel(G, Abar, Bbar, A, B, I, ctx) ||
+                  _try_brown(G, Abar, Bbar, A, B, I, ctx);
+        goto cleanup;
+    }
 
     success = 0;
     goto cleanup;

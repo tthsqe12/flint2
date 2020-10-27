@@ -115,6 +115,9 @@ typedef n_polyun_struct n_fq_polyun_struct;
 
 typedef n_polyun_t n_fq_polyun_t;
 
+FLINT_DLL void n_fq_polyun_set(n_fq_polyun_t A, const n_fq_polyun_t B,
+                                                      const fq_nmod_ctx_t ctx);
+
 
 typedef struct
 {
@@ -142,30 +145,6 @@ typedef struct {
 } n_poly_bpoly_stack_struct;
 
 typedef n_poly_bpoly_stack_struct n_poly_bpoly_stack_t[1];
-
-/*****************************************************************************/
-
-N_POLY_INLINE
-ulong pack_exp2(ulong e0, ulong e1)
-{
-    return (e0 << (1*(FLINT_BITS/2))) +
-           (e1 << (0*(FLINT_BITS/2)));
-}
-
-N_POLY_INLINE
-ulong pack_exp3(ulong e0, ulong e1, ulong e2)
-{
-    return (e0 << (2*(FLINT_BITS/3))) +
-           (e1 << (1*(FLINT_BITS/3))) +
-           (e2 << (0*(FLINT_BITS/3)));
-}
-
-N_POLY_INLINE
-ulong extract_exp(ulong e, int idx, int nvars)
-{
-    return (e >> (idx*(FLINT_BITS/nvars))) &
-            ((-UWORD(1)) >> (FLINT_BITS - FLINT_BITS/nvars));
-}
 
 /*****************************************************************************/
 

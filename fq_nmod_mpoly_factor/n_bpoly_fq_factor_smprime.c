@@ -492,6 +492,7 @@ static void n_fq_bpoly_lift_clear(n_fq_bpoly_lift_t L)
     flint_free(L->link);
     flint_free(L->lifted_fac);
     n_tpoly_clear(L->tmp);
+    n_bpoly_clear(L->bmp);
     nmod_eval_interp_clear(L->E);
     n_poly_stack_clear(L->St);
 }
@@ -1389,6 +1390,7 @@ cleanup:
     fq_nmod_clear(alpha, ctx);
     fq_nmod_clear(Alc, ctx);
     fq_nmod_poly_clear(Aeval, ctx);
+    fq_nmod_poly_factor_clear(local_fac, ctx);
     n_fq_bpoly_clear(monicA);
 
     zassenhaus_prune_clear(zas);

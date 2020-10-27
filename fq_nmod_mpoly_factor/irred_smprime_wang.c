@@ -10,7 +10,7 @@
 */
 
 #include "fq_nmod_mpoly_factor.h"
-#include "profiler.h"
+
 
 int fq_nmod_mpoly_factor_irred_smprime_wang(
     fq_nmod_mpolyv_t fac,
@@ -37,9 +37,6 @@ int fq_nmod_mpoly_factor_irred_smprime_wang(
     n_tpoly_t Abfp;
     fq_nmod_mpoly_t m, mpow;
     fq_nmod_mpolyv_t new_lcs, lc_divs;
-timeit_t timer;
-
-flint_printf("fq_nmod_mpoly_factor_irred_smprime_wang called\n");
 
     FLINT_ASSERT(n > 1);
     FLINT_ASSERT(A->length > 1);
@@ -129,21 +126,14 @@ next_alphabetas:
         _n_fq_poly_normalise(alphabetas + i, d);
     }
 
-timeit_start(timer);
     _fq_nmod_mpoly_eval_rest_to_n_fq_bpoly(Ab, A, alphabetas, ctx);
-timeit_stop(timer);
-flint_printf("bivar eval: %wd\n", timer->wall);
 
-timeit_start(timer);
     success = n_fq_bpoly_factor_smprime(Abfc, Abfp, Ab, 0, ctx->fqctx);
     if (!success)
     {
         FLINT_ASSERT(0 && "this should not happen");
         goto next_alpha;
     }
-timeit_stop(timer);
-flint_printf("bivar fac: %wd\n", timer->wall);
-
 
     r = Abfp->length;
 
@@ -255,8 +245,6 @@ flint_printf("bivar fac: %wd\n", timer->wall);
                                          k < n ? Aevals + k : newA, degs, ctx);
         if (!success)
             goto next_alphabetas;
-
-flint_printf("k = %wd wang lift success\n", k);
 
         fq_nmod_mpolyv_swap(tfac, fac, ctx);
     }
