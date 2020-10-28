@@ -115,10 +115,6 @@ typedef n_polyun_struct n_fq_polyun_struct;
 
 typedef n_polyun_t n_fq_polyun_t;
 
-FLINT_DLL void n_fq_polyun_set(n_fq_polyun_t A, const n_fq_polyun_t B,
-                                                      const fq_nmod_ctx_t ctx);
-
-
 typedef struct
 {
     n_poly_struct ** array;
@@ -1827,6 +1823,52 @@ FLINT_DLL void n_polyu2n_print_pretty(const n_polyun_t A, const char * gen0,
 
 FLINT_DLL void n_polyu3n_print_pretty(const n_polyun_t A, const char * gen0,
                    const char * gen1, const char * var2, const char * varlast);
+
+FLINT_DLL void n_fq_polyun_set(n_fq_polyun_t A, const n_fq_polyun_t B,
+                                                      const fq_nmod_ctx_t ctx);
+
+FLINT_DLL slong n_fq_polyun_product_roots(n_fq_polyun_t M,
+            const n_fq_polyun_t H, const fq_nmod_ctx_t ctx, n_poly_stack_t St);
+
+/*****************************************************************************/
+
+FLINT_DLL void n_fq_poly_product_roots_n_fq(n_poly_t M, const mp_limb_t * H,
+                     slong length, const fq_nmod_ctx_t ctx, n_poly_stack_t St);
+
+FLINT_DLL slong n_polyun_product_roots(n_polyun_t M, const n_polyun_t H,
+                                                                   nmod_t ctx);
+
+FLINT_DLL slong n_fq_polyun_product_roots(n_fq_polyun_t M,
+            const n_fq_polyun_t H, const fq_nmod_ctx_t ctx, n_poly_stack_t St);
+
+FLINT_DLL mp_limb_t _nmod_zip_eval_step(mp_limb_t * cur,
+                              const mp_limb_t * inc, const mp_limb_t * coeffs,
+                                                     slong length, nmod_t ctx);
+
+FLINT_DLL void _n_fq_zip_eval_step(mp_limb_t * res, mp_limb_t * cur,
+                              const mp_limb_t * inc, const mp_limb_t * coeffs,
+                                        slong length, const fq_nmod_ctx_t ctx);
+
+FLINT_DLL void _n_fqp_zip_eval_step(mp_limb_t * res, mp_limb_t * cur,
+                              const mp_limb_t * inc, const mp_limb_t * coeffs,
+                                            slong length, slong d, nmod_t mod);
+
+FLINT_DLL int _nmod_zip_vand_solve(mp_limb_t * coeffs,
+                    const mp_limb_t * monomials, slong mlength,
+                    const mp_limb_t * evals, slong elength,
+                    const mp_limb_t * master, mp_limb_t * scratch, nmod_t ctx);
+
+FLINT_DLL int _n_fq_zip_vand_solve(mp_limb_t * coeffs,
+                    const mp_limb_t * monomials, slong mlength,
+                    const mp_limb_t * evals, slong elength,
+                    const mp_limb_t * master, mp_limb_t * scratch,
+                                                      const fq_nmod_ctx_t ctx);
+
+FLINT_DLL int _n_fqp_zip_vand_solve(mp_limb_t * coeffs,
+                    const mp_limb_t * monomials, slong mlength,
+                    const mp_limb_t * evals, slong elength,
+                    const mp_limb_t * master, mp_limb_t * scratch,
+                                                      const fq_nmod_ctx_t ctx);
 
 /*****************************************************************************/
 

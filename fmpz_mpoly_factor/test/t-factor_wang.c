@@ -107,6 +107,9 @@ main(void)
         slong nfacs, len;
         ulong expbound, powbound, pow;
 
+flint_printf("i = %wd\n", i);
+
+
         fmpz_mpoly_ctx_init_rand(ctx, state, 6);
 
         fmpz_mpoly_init(a, ctx);

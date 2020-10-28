@@ -30,7 +30,7 @@ flint_printf("---------------------------\n");
     fq_nmod_mpoly_init(q, ctx);
 
     timeit_start(timer);
-    fq_nmod_mpoly_factor_wang(g, p, ctx);
+    fq_nmod_mpoly_factor(g, p, ctx);
     timeit_stop(timer);
 
     fmpz_zero(omega);
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
         fq_nmod_mpoly_init(b, ctx);
         fq_nmod_mpoly_init(c, ctx);
 
-        for (i = 1; i <= 30; i++)
+        for (i = 1; i <= 10; i++)
         {
             fq_nmod_mpoly_set_str_pretty(a, "x", vars, ctx);
             fq_nmod_mpoly_set_str_pretty(b, "y", vars, ctx);

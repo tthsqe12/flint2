@@ -408,14 +408,15 @@ int fq_nmod_polyu3n_interp_crt_sm_bpoly(
 
 
 
-int n_polyu3_fq_hlift(
+int n_fq_polyu3_hlift(
     slong r,
     n_polyun_struct * BB,
     n_polyu_t A,
     n_polyu_struct * B,
     const fq_nmod_t beta,
     slong degree_inner, /* required degree in X (var 1) */
-    const fq_nmod_ctx_t ctx)
+    const fq_nmod_ctx_t ctx,
+    n_poly_bpoly_stack_t St)
 {
     slong d = fq_nmod_ctx_degree(ctx);
     int success, Eok;
@@ -429,7 +430,6 @@ int n_polyu3_fq_hlift(
     slong AdegY, AdegX, AdegZ;
     slong bad_primes_left;
     mp_limb_t * c = FLINT_ARRAY_ALLOC(d, mp_limb_t);
-    n_poly_bpoly_stack_t St;
     nmod_eval_interp_t E;
 
     fq_nmod_init(alpha, ctx);
@@ -447,8 +447,6 @@ int n_polyu3_fq_hlift(
     n_fq_poly_init(modulus);
     n_poly_init2(alphapow, 2*d);
     n_bpoly_init(Ap);
-    n_poly_stack_init(St->poly_stack);
-    n_bpoly_stack_init(St->bpoly_stack);
     nmod_eval_interp_init(E);
 
     Eok = nmod_eval_interp_set_degree_modulus(E, degree_inner, ctx->mod);
@@ -578,8 +576,7 @@ cleanup:
     n_fq_poly_clear(modulus);
     fq_nmod_clear(alpha, ctx);
     flint_free(c);
-    n_poly_stack_clear(St->poly_stack);
-    n_bpoly_stack_clear(St->bpoly_stack);
+
     nmod_eval_interp_clear(E);
 
     return success;

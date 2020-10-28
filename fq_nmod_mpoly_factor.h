@@ -570,30 +570,15 @@ FLINT_DLL int n_fq_bpoly_hlift(
     const fq_nmod_ctx_t ctx,
     n_poly_bpoly_stack_t St);
 
-FLINT_DLL int n_polyu3_fq_hlift(
+FLINT_DLL int n_fq_polyu3_hlift(
     slong r,
     n_polyun_struct * BB,
     n_polyu_t A,
     n_polyu_struct * B,
     const fq_nmod_t beta,
     slong degree_inner, /* required degree in x */
-    const fq_nmod_ctx_t ctx);
-
-FLINT_DLL void n_fq_poly_product_roots_n_fq(
-    n_poly_t master,
-    const mp_limb_t * monomials,
-    slong mlength,
-    const fq_nmod_ctx_t ctx);
-
-FLINT_DLL void _fq_nmod_mpoly_monomial_evals(
-    mp_limb_t * E,
-    const ulong * Aexps,
-    flint_bitcnt_t Abits,
-    slong Alen,
-    const fq_nmod_struct * alpha,
-    slong vstart,
-    slong vstop,
-    const fq_nmod_mpoly_ctx_t ctx);
+    const fq_nmod_ctx_t ctx,
+    n_poly_bpoly_stack_t St);
 
 FLINT_DLL int fq_nmod_mpoly_factor_wang(fq_nmod_mpoly_factor_t f,
                        const fq_nmod_mpoly_t A, const fq_nmod_mpoly_ctx_t ctx);
