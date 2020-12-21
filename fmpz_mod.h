@@ -71,6 +71,22 @@ FMPZ_MOD_INLINE const fmpz * fmpz_mod_ctx_modulus(const fmpz_mod_ctx_t ctx)
     return ctx->n;
 }
 
+FMPZ_MOD_INLINE
+void fmpz_mod_ctx_get_modulus_mpz_read_only(mpz_t m, const fmpz_mod_ctx_t ctx)
+{
+    const fmpz * p = fmpz_mod_ctx_modulus(ctx);
+    if (COEFF_IS_MPZ(*p))
+    {
+        *m = *COEFF_TO_PTR(*p);
+    }
+    else
+    {
+        m->_mp_size = 1;
+        m->_mp_alloc = 1;
+        m->_mp_d = (mp_ptr) p;
+    }
+}
+
 FLINT_DLL void fmpz_mod_ctx_set_modulus(fmpz_mod_ctx_t ctx, const fmpz_t n);
 
 FLINT_DLL void fmpz_mod_ctx_set_modulus_ui(fmpz_mod_ctx_t ctx, ulong n);
@@ -84,6 +100,11 @@ FMPZ_MOD_INLINE int fmpz_mod_is_one(const fmpz_t a, const fmpz_mod_ctx_t ctx)
 {
     return fmpz_is_one(a) || fmpz_is_one(ctx->n);
 }
+
+FLINT_DLL void fmpz_mod_set_si(fmpz_t a, slong b, const fmpz_mod_ctx_t ctx);
+
+FLINT_DLL void fmpz_mod_set_fmpz(fmpz_t a, const fmpz_t b,
+                                                     const fmpz_mod_ctx_t ctx);
 
 FLINT_DLL void _fmpz_mod_add1(fmpz_t a, const fmpz_t b, const fmpz_t c,
                                                      const fmpz_mod_ctx_t ctx);
@@ -103,6 +124,15 @@ FMPZ_MOD_INLINE void fmpz_mod_add(fmpz_t a, const fmpz_t b, const fmpz_t c,
     (ctx->add_fxn)(a, b, c, ctx);
 }
 
+FLINT_DLL void fmpz_mod_add_fmpz(fmpz_t a, const fmpz_t b, const fmpz_t c,
+                                                     const fmpz_mod_ctx_t ctx);
+
+FLINT_DLL void fmpz_mod_add_ui(fmpz_t a, const fmpz_t b, ulong c,
+                                                     const fmpz_mod_ctx_t ctx);
+
+FLINT_DLL void fmpz_mod_add_si(fmpz_t a, const fmpz_t b, slong c,
+                                                     const fmpz_mod_ctx_t ctx);
+
 FLINT_DLL void _fmpz_mod_sub1(fmpz_t a, const fmpz_t b, const fmpz_t c,
                                                      const fmpz_mod_ctx_t ctx);
 
@@ -120,6 +150,15 @@ FMPZ_MOD_INLINE void fmpz_mod_sub(fmpz_t a, const fmpz_t b, const fmpz_t c,
 {
     (ctx->sub_fxn)(a, b, c, ctx);
 }
+
+FLINT_DLL void fmpz_mod_sub_fmpz(fmpz_t a, const fmpz_t b, const fmpz_t c,
+                                                     const fmpz_mod_ctx_t ctx);
+
+FLINT_DLL void fmpz_mod_sub_ui(fmpz_t a, const fmpz_t b, ulong c,
+                                                     const fmpz_mod_ctx_t ctx);
+
+FLINT_DLL void fmpz_mod_sub_si(fmpz_t a, const fmpz_t b, slong c,
+                                                     const fmpz_mod_ctx_t ctx);
 
 FLINT_DLL void fmpz_mod_neg(fmpz_t a, const fmpz_t b,
                                                      const fmpz_mod_ctx_t ctx);
@@ -143,6 +182,14 @@ FMPZ_MOD_INLINE void fmpz_mod_mul(fmpz_t a, const fmpz_t b, const fmpz_t c,
     (ctx->mul_fxn)(a, b, c, ctx);
 }
 
+FLINT_DLL void fmpz_mod_mul_fmpz(fmpz_t a, const fmpz_t b, const fmpz_t c,
+                                                     const fmpz_mod_ctx_t ctx);
+
+FLINT_DLL void fmpz_mod_mul_ui(fmpz_t a, const fmpz_t b, ulong c,
+                                                     const fmpz_mod_ctx_t ctx);
+
+FLINT_DLL void fmpz_mod_mul_si(fmpz_t a, const fmpz_t b, slong c,
+                                                     const fmpz_mod_ctx_t ctx);
 
 FLINT_DLL void fmpz_mod_inv(fmpz_t a, const fmpz_t b,
                                                      const fmpz_mod_ctx_t ctx);

@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2017 Daniel Schultz
+    Copyright (C) 2020 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -11,7 +11,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "nmod_mpoly.h"
+#include "fmpz_mod_mpoly.h"
 
 int
 main(void)
@@ -19,53 +19,48 @@ main(void)
     slong i;
     FLINT_TEST_INIT(state);
 
-    flint_printf("print_parse....");
+    flint_printf("get_set_str_pretty....");
     fflush(stdout);
 
     {
         slong len1;
         flint_bitcnt_t exp_bits1;
-        mp_limb_t modulus;
-        nmod_mpoly_ctx_t ctx;
-        nmod_mpoly_t f, f1;
+        fmpz_mod_mpoly_ctx_t ctx;
+        fmpz_mod_mpoly_t f, f1;
         char * str;
         const char * vars[] = {"x","y","z","w","u","v"};
 
         for (i = 0; i < flint_test_multiplier(); i++)
         {
-            modulus = n_randint(state, FLINT_BITS - 1) + 1;
-            modulus = n_randbits(state, modulus);
-            modulus = n_nextprime(modulus, 1);
-            nmod_mpoly_ctx_init_rand(ctx, state, 6, modulus);
+            fmpz_mod_mpoly_ctx_init_rand_bits(ctx, state, 6, 200);
 
-            nmod_mpoly_init(f, ctx);
-            nmod_mpoly_init(f1, ctx);
+            fmpz_mod_mpoly_init(f, ctx);
+            fmpz_mod_mpoly_init(f1, ctx);
 
             for (len1 = 3; len1 < 1000; len1 += len1/2)
             {
                 exp_bits1 = 200;
-                nmod_mpoly_randtest_bits(f, state, len1, exp_bits1, ctx);
+                fmpz_mod_mpoly_randtest_bits(f, state, len1, exp_bits1, ctx);
 
-                str = nmod_mpoly_get_str_pretty(f, vars, ctx);
-                nmod_mpoly_set_str_pretty(f1, str, vars, ctx);
+                str = fmpz_mod_mpoly_get_str_pretty(f, vars, ctx);
+                fmpz_mod_mpoly_set_str_pretty(f1, str, vars, ctx);
                 flint_free(str);
 
-                if (!nmod_mpoly_equal(f, f1, ctx))
+                if (!fmpz_mod_mpoly_equal(f, f1, ctx))
                 {
                     flint_printf("FAIL\n");
                     flint_abort();
                 }
-
             }
 
-            nmod_mpoly_clear(f, ctx);
-            nmod_mpoly_clear(f1, ctx);
+            fmpz_mod_mpoly_clear(f, ctx);
+            fmpz_mod_mpoly_clear(f1, ctx);
 
-            nmod_mpoly_ctx_clear(ctx);
+            fmpz_mod_mpoly_ctx_clear(ctx);
         }
     }
 
-    printf("PASS\n");
+    flint_printf("PASS\n");
     FLINT_TEST_CLEANUP(state);
 
     return 0;
