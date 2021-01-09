@@ -55,9 +55,9 @@
 /* flint version number */
 
 #define __FLINT_VERSION 2
-#define __FLINT_VERSION_MINOR 8
+#define __FLINT_VERSION_MINOR 7
 #define __FLINT_VERSION_PATCHLEVEL 0
-#define FLINT_VERSION "2.8.0"
+#define FLINT_VERSION "2.7.0"
 #define __FLINT_RELEASE (__FLINT_VERSION * 10000 + \
                          __FLINT_VERSION_MINOR * 100 + \
                          __FLINT_VERSION_PATCHLEVEL)
@@ -377,6 +377,7 @@ mp_limb_t FLINT_BIT_COUNT(mp_limb_t x)
 
 /* common usage of flint_malloc */
 #define FLINT_ARRAY_ALLOC(n, T) (T *) flint_malloc((n)*sizeof(T))
+#define FLINT_ARRAY_REALLOC(p, n, T) (T *) flint_realloc(p, (n)*sizeof(T))
 
 /* temporary allocation */
 #define TMP_INIT \
@@ -412,6 +413,9 @@ mp_limb_t FLINT_BIT_COUNT(mp_limb_t x)
       flint_free(__tmp_root->block); \
       __tmp_root = __tmp_root->next; \
    }
+
+#define TMP_ARRAY_ALLOC(n, T) (T *) TMP_ALLOC(n*sizeof(T))
+
 
 /* compatibility between gmp and mpir */
 #ifndef mpn_com_n

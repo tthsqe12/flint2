@@ -11,6 +11,8 @@
 
 #include "fmpz_mod_mpoly.h"
 
+#if 0
+
 
 int fmpz_mod_mpolyn_gcd_brown_bivar(
     fmpz_mod_mpolyn_t G,
@@ -82,8 +84,8 @@ int fmpz_mod_mpolyn_gcd_brown_bivar(
     fmpz_mod_poly_divrem(cBbar, r, cB, cG, ctx->ffinfo);
     FLINT_ASSERT(fmpz_mod_poly_is_zero(r, ctx->ffinfo));
 
-    fmpz_mod_poly_gcd(gamma, fmpz_mod_mpolyn_leadcoeff_poly(A, ctx),
-                             fmpz_mod_mpolyn_leadcoeff_poly(B, ctx), ctx->ffinfo);
+    fmpz_mod_poly_gcd(gamma, fmpz_mod_mpolyn_leadcoeff_poly(A),
+                             fmpz_mod_mpolyn_leadcoeff_poly(B), ctx->ffinfo);
 
     ldegA = fmpz_mod_mpolyn_lastdeg(A, ctx);
     ldegB = fmpz_mod_mpolyn_lastdeg(B, ctx);
@@ -195,8 +197,8 @@ successful:
 
     fmpz_mod_mpolyn_content_poly(modulus, G, ctx);
     fmpz_mod_mpolyn_divexact_poly(G, modulus, ctx);
-    fmpz_mod_mpolyn_divexact_poly(Abar, fmpz_mod_mpolyn_leadcoeff_poly(G, ctx), ctx);
-    fmpz_mod_mpolyn_divexact_poly(Bbar, fmpz_mod_mpolyn_leadcoeff_poly(G, ctx), ctx);
+    fmpz_mod_mpolyn_divexact_poly(Abar, fmpz_mod_mpolyn_leadcoeff_poly(G), ctx);
+    fmpz_mod_mpolyn_divexact_poly(Bbar, fmpz_mod_mpolyn_leadcoeff_poly(G), ctx);
 
 successful_put_content:
 
@@ -250,3 +252,4 @@ cleanup:
     return success;
 }
 
+#endif

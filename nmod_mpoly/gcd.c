@@ -1700,7 +1700,7 @@ cleanup:
     Both A and B have to be packed into bits <= FLINT_BITS
     return is 1 for success, 0 for failure.
 */
-static int _nmod_mpoly_gcd_algo_small(
+int _nmod_mpoly_gcd_algo_small(
     nmod_mpoly_t G,
     nmod_mpoly_t Abar, /* could be NULL */
     nmod_mpoly_t Bbar, /* could be NULL */

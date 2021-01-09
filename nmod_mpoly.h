@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2017 - 2019 Daniel Schultz
+    Copyright (C) 2017 - 2020 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -989,6 +989,15 @@ FLINT_DLL int nmod_mpoly_content_vars(nmod_mpoly_t g, const nmod_mpoly_t A,
 
 FLINT_DLL int nmod_mpoly_gcd(nmod_mpoly_t G, const nmod_mpoly_t A,
                              const nmod_mpoly_t B, const nmod_mpoly_ctx_t ctx);
+
+FLINT_DLL int _nmod_mpoly_gcd_algo_small(
+    nmod_mpoly_t G,
+    nmod_mpoly_t Abar, /* could be NULL */
+    nmod_mpoly_t Bbar, /* could be NULL */
+    const nmod_mpoly_t A,
+    const nmod_mpoly_t B,
+    const nmod_mpoly_ctx_t ctx,
+    unsigned int algo);
 
 FLINT_DLL int _nmod_mpoly_gcd_algo(nmod_mpoly_t G, nmod_mpoly_t Abar,
                 nmod_mpoly_t Bbar, const nmod_mpoly_t A, const nmod_mpoly_t B,

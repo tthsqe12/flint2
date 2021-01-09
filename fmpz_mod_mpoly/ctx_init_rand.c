@@ -11,6 +11,28 @@
 
 #include "fmpz_mod_mpoly.h"
 
+void fmpz_mod_ctx_init_rand_bits(fmpz_mod_ctx_t ctx,
+                                   flint_rand_t state, flint_bitcnt_t max_bits)
+{
+    fmpz_t m;
+    fmpz_init(m);
+    fmpz_randtest_unsigned(m, state, max_bits);
+    fmpz_add_ui(m, m, 2);
+    fmpz_mod_ctx_init(ctx, m);
+    fmpz_clear(m);
+}
+
+void fmpz_mod_ctx_init_rand_bits_prime(fmpz_mod_ctx_t ctx,
+                                   flint_rand_t state, flint_bitcnt_t max_bits)
+{
+    fmpz_t m;
+    fmpz_init(m);
+    fmpz_randtest_unsigned(m, state, max_bits);
+    fmpz_nextprime(m, m, 0);
+    fmpz_mod_ctx_init(ctx, m);
+    fmpz_clear(m);
+}
+
 void fmpz_mod_mpoly_ctx_init_rand(fmpz_mod_mpoly_ctx_t ctx,
                     flint_rand_t state, slong max_nvars, const fmpz_t modulus)
 {
@@ -18,24 +40,16 @@ void fmpz_mod_mpoly_ctx_init_rand(fmpz_mod_mpoly_ctx_t ctx,
     fmpz_mod_ctx_init(ctx->ffinfo, modulus);
 }
 
-void fmpz_mod_mpoly_ctx_init_rand_bits_prime(fmpz_mod_mpoly_ctx_t ctx,
-                  flint_rand_t state, slong max_nvars, flint_bitcnt_t max_bits)
-{
-    fmpz_t m;
-    fmpz_init(m);
-    fmpz_randtest_unsigned(m, state, max_bits);
-    fmpz_nextprime(m, m, 0);
-    fmpz_mod_mpoly_ctx_init_rand(ctx, state, max_nvars, m);
-    fmpz_clear(m);
-}
-
 void fmpz_mod_mpoly_ctx_init_rand_bits(fmpz_mod_mpoly_ctx_t ctx,
                   flint_rand_t state, slong max_nvars, flint_bitcnt_t max_bits)
 {
-    fmpz_t m;
-    fmpz_init(m);
-    fmpz_randtest_unsigned(m, state, max_bits);
-    fmpz_add_ui(m, m, 2);
-    fmpz_mod_mpoly_ctx_init_rand(ctx, state, max_nvars, m);
-    fmpz_clear(m);
+    mpoly_ctx_init_rand(ctx->minfo, state, max_nvars);
+    fmpz_mod_ctx_init_rand_bits(ctx->ffinfo, state, max_bits);
+}
+
+void fmpz_mod_mpoly_ctx_init_rand_bits_prime(fmpz_mod_mpoly_ctx_t ctx,
+                  flint_rand_t state, slong max_nvars, flint_bitcnt_t max_bits)
+{
+    mpoly_ctx_init_rand(ctx->minfo, state, max_nvars);
+    fmpz_mod_ctx_init_rand_bits_prime(ctx->ffinfo, state, max_bits);
 }

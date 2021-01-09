@@ -1340,6 +1340,31 @@ FLINT_DLL int nmod_poly_find_distinct_nonzero_roots(mp_limb_t * roots,
 
 /* CRT ***********************************************************************/
 
+#if 0
+/* instructions do A = B*c_modulus + C*b_modulus */
+typedef struct
+{
+    slong a_idx; /* index of A */
+    slong b_idx; /* index of B */
+    slong c_idx; /* index of C */
+    nmod_poly_t b_modulus;
+    nmod_poly_t c_modulus;
+} _nmod_poly_multi_crt_prog_instr;
+
+typedef struct
+{
+    _nmod_poly_multi_crt_prog_instr * prog; /* straight line program */
+    nmod_poly_struct * moduli, * invmoduli, * fracmoduli;
+    slong length; /* length of prog */
+    slong alloc;  /* alloc of prog */
+    slong localsize; /* length of outputs required in nmod_poly_multi_crt_run */
+    slong temp1loc, temp2loc, temp3loc, temp4loc;
+    int good;   /* the moduli are good for CRT, essentially relatively prime */
+    nmod_t mod;
+} nmod_poly_multi_crt_struct;
+
+#else
+
 /* instructions do A = B + I*(C - B) mod M */
 typedef struct
 {
@@ -1360,6 +1385,7 @@ typedef struct
     slong temp2loc; /* index of another tempory used in run */
     int good;   /* the moduli are good for CRT, essentially relatively prime */
 } nmod_poly_multi_crt_struct;
+#endif
 
 typedef nmod_poly_multi_crt_struct nmod_poly_multi_crt_t[1];
 
@@ -1411,7 +1437,20 @@ FLINT_DLL void nmod_mat_charpoly_danilevsky(nmod_poly_t p, const nmod_mat_t M);
 NMOD_POLY_INLINE
 void nmod_mat_charpoly(nmod_poly_t p, const nmod_mat_t M)
 {
-   nmod_mat_charpoly_danilevsky(p, M);
+   nmod_mat_t A;
+
+   nmod_mat_init(A, M->r, M->c, p->mod.n);
+   nmod_mat_set(A, M);
+
+   if (A->r != A->c)
+   {
+       flint_printf("Exception (nmod_mat_charpoly).  Non-square matrix.\n");
+       flint_abort();
+   }
+
+   nmod_mat_charpoly_danilevsky(p, A);
+
+   nmod_mat_clear(A);
 }
 
 FLINT_DLL void nmod_mat_minpoly_with_gens(nmod_poly_t p, 

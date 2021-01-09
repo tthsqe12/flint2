@@ -2742,8 +2742,7 @@ pick_bma_prime:
         GevaldegXY = fmpz_mod_mpolyn_bidegree(Geval_mp);
         fmpz_mod_mpolyn_scalar_mul_fmpz_mod(Geval_mp, Gammaeval_mp, ctx_mp);
 
-        FLINT_ASSERT(fmpz_equal(Gammaeval_mp,
-                        fmpz_mod_mpolyn_leadcoeff_last_ref(Geval_mp, ctx_mp)));
+        FLINT_ASSERT(fmpz_equal(Gammaeval_mp, fmpz_mod_mpolyn_leadcoeff(Geval_mp)));
 
         if (GdegboundXY < GevaldegXY)
         {
