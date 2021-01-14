@@ -2075,8 +2075,9 @@ cleanup:
     fmpz_mod_poly_stack_clear(St->poly_stack);
     fmpz_mod_polyun_stack_clear(St->polyun_stack);
 
-    flint_free(betas);
-    flint_free(alphas);
+    _fmpz_vec_clear(betas, nvars);
+    _fmpz_vec_clear(alphas, nvars);
+
     flint_randclear(state);
 
     for (i = 0; i < nvars; i++)
