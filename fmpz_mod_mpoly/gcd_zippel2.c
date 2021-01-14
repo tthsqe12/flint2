@@ -645,6 +645,8 @@ int fmpz_mod_mpolyn_interp_crt_sm_polyu1n(
     if (changed)
         fmpz_mod_mpolyn_swap(T, F, ctx);
 
+    fmpz_clear(v);
+
     return changed;
 }
 

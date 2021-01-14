@@ -66,6 +66,10 @@ int fmpz_mod_mpolyl_gcd_hensel_smprime(
 		fmpz_mod_mpoly_init(Bevals + i, ctx);
     }
 
+    fmpz_init(q);
+    fmpz_init(mu1);
+    fmpz_init(mu2);
+
     fmpz_mod_mpoly_init(t1, ctx);
     fmpz_mod_mpoly_init(t2, ctx);
     fmpz_mod_mpoly_init(g, ctx);
@@ -95,10 +99,10 @@ int fmpz_mod_mpolyl_gcd_hensel_smprime(
 next_alpha:
 
     if (--alphas_tries_remaining < 0)
-	{
+    {
 		success = 0;
         goto cleanup;
-	}
+    }
 
     for (i = 0; i < n; i++)
     {
@@ -388,6 +392,10 @@ cleanup:
 		fmpz_mod_mpoly_clear(Bevals + i, ctx);
     }
     flint_free(Aevals);
+
+    fmpz_clear(q);
+    fmpz_clear(mu1);
+    fmpz_clear(mu2);
 
     fmpz_mod_mpoly_clear(t1, ctx);
     fmpz_mod_mpoly_clear(t2, ctx);

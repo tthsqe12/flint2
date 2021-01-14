@@ -23,6 +23,8 @@ void gcd_check(
 {
     fmpz_mod_mpoly_t ca, cb, cg;
 
+flint_printf("%s, i = %wd, j = %wd\n", name, i, j);
+
     fmpz_mod_mpoly_init(ca, ctx);
     fmpz_mod_mpoly_init(cb, ctx);
     fmpz_mod_mpoly_init(cg, ctx);
