@@ -316,31 +316,6 @@ void fmpz_mod_mpolyn_content_poly(
     fmpz_mod_poly_clear(t, ctx->ffinfo);
 }
 
-void fmpz_mod_mpolyun_content_last(
-    fmpz_mod_poly_t a,
-    const fmpz_mod_mpolyun_t B,
-    const fmpz_mod_mpoly_ctx_t ctx)
-{
-    slong i, j;
-    fmpz_mod_poly_t t;
-
-    fmpz_mod_poly_init(t, ctx->ffinfo);
-
-    fmpz_mod_poly_zero(a, ctx->ffinfo);
-    for (i = 0; i < B->length; i++)
-    {
-        for (j = 0; j < (B->coeffs + i)->length; j++)
-        {
-            fmpz_mod_poly_gcd(t, a, (B->coeffs + i)->coeffs + j, ctx->ffinfo);
-            fmpz_mod_poly_swap(t, a, ctx->ffinfo);
-            if (fmpz_mod_poly_degree(a, ctx->ffinfo) == 0)
-                break;
-        }
-    }
-
-    fmpz_mod_poly_clear(t, ctx->ffinfo);
-}
-
 
 void fmpz_mod_mpolyn_divexact_poly(
     fmpz_mod_mpolyn_t A,
@@ -365,33 +340,6 @@ void fmpz_mod_mpolyn_divexact_poly(
     fmpz_mod_poly_clear(t, ctx->ffinfo);
 }
 
-void fmpz_mod_mpolyun_divexact_last(
-    fmpz_mod_mpolyun_t A,
-    const fmpz_mod_poly_t b,
-    const fmpz_mod_mpoly_ctx_t ctx)
-{
-    slong i, j;
-    fmpz_mod_poly_t r, t;
-
-    fmpz_mod_poly_init(r, ctx->ffinfo);
-    fmpz_mod_poly_init(t, ctx->ffinfo);
-
-    for (i = 0; i < A->length; i++)
-    {
-        fmpz_mod_poly_struct * Ac = (A->coeffs + i)->coeffs;
-        for (j = 0; j < (A->coeffs + i)->length; j++)
-        {
-            fmpz_mod_poly_divrem(t, r, Ac + j, b, ctx->ffinfo);
-            FLINT_ASSERT(fmpz_mod_poly_is_zero(r, ctx->ffinfo));
-            FLINT_ASSERT(!fmpz_mod_poly_is_zero(t, ctx->ffinfo));
-            fmpz_mod_poly_swap(t, Ac + j, ctx->ffinfo);
-        }
-    }
-    fmpz_mod_poly_clear(r, ctx->ffinfo);
-    fmpz_mod_poly_clear(t, ctx->ffinfo);
-}
-
-
 void fmpz_mod_mpolyn_mul_poly(
     fmpz_mod_mpolyn_t A,
     fmpz_mod_poly_t b,
@@ -406,28 +354,6 @@ void fmpz_mod_mpolyn_mul_poly(
     {
         fmpz_mod_poly_mul(t, A->coeffs + i, b, ctx->ffinfo);
         fmpz_mod_poly_swap(t, A->coeffs + i, ctx->ffinfo);
-    }
-
-    fmpz_mod_poly_clear(t, ctx->ffinfo);
-}
-
-void fmpz_mod_mpolyun_mul_last(
-    fmpz_mod_mpolyun_t A,
-    fmpz_mod_poly_t b,
-    const fmpz_mod_mpoly_ctx_t ctx)
-{
-    slong i, j;
-    fmpz_mod_poly_t t;
-
-    fmpz_mod_poly_init(t, ctx->ffinfo);
-
-    for (i = 0; i < A->length; i++)
-    {
-        for (j = 0; j < (A->coeffs + i)->length; j++)
-        {
-            fmpz_mod_poly_mul(t, (A->coeffs + i)->coeffs + j, b, ctx->ffinfo);
-            fmpz_mod_poly_swap(t, (A->coeffs + i)->coeffs + j, ctx->ffinfo);
-        }
     }
 
     fmpz_mod_poly_clear(t, ctx->ffinfo);
