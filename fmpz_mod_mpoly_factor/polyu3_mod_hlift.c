@@ -96,16 +96,18 @@ void fmpz_mod_poly_addmul_linear(
 
     for (i = 0; i < Alen; i++)
     {
-        fmpz_zero(Acoeffs + i);
-
         if (i < Blen)
             fmpz_set(Acoeffs + i, Bcoeffs + i);
+        else
+            fmpz_zero(Acoeffs + i);
 
         if (i < Clen)
-            fmpz_mod_addmul(Acoeffs + i, Acoeffs + i, Ccoeffs + i, d0, ctx);
+            fmpz_addmul(Acoeffs + i, Ccoeffs + i, d0);
 
         if (0 < i && i - 1 < Clen)
-            fmpz_mod_addmul(Acoeffs + i, Acoeffs + i, Ccoeffs + i - 1, d1, ctx);
+            fmpz_addmul(Acoeffs + i, Ccoeffs + i - 1, d1);
+
+        fmpz_mod_set_fmpz(Acoeffs + i, Acoeffs + i, ctx);
     }
 
     A->length = Alen;
@@ -557,17 +559,20 @@ void fmpz_mod_poly_eval2_pow(
 
     for (k = 0; k + 2 <= Plen; k += 2)
     {
-        fmpz_mod_addmul(a, a, Pcoeffs + k + 0, alpha_powers + k + 0, ctx);
-        fmpz_mod_addmul(b, b, Pcoeffs + k + 1, alpha_powers + k + 1, ctx);
+        fmpz_addmul(a, Pcoeffs + k + 0, alpha_powers + k + 0);
+        fmpz_addmul(b, Pcoeffs + k + 1, alpha_powers + k + 1);
     }
 
     if (k < Plen)
     {
-        fmpz_mod_addmul(a, a, Pcoeffs + k + 0, alpha_powers + k + 0, ctx);
+        fmpz_addmul(a, Pcoeffs + k + 0, alpha_powers + k + 0);
         k++;
     }
 
     FLINT_ASSERT(k == Plen);
+
+    fmpz_mod_set_fmpz(a, a, ctx);
+    fmpz_mod_set_fmpz(b, b, ctx);
 
     fmpz_mod_add(vp, a, b, ctx);
     fmpz_mod_sub(vm, a, b, ctx);

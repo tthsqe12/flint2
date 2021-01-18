@@ -414,7 +414,7 @@ mp_limb_t FLINT_BIT_COUNT(mp_limb_t x)
       __tmp_root = __tmp_root->next; \
    }
 
-#define TMP_ARRAY_ALLOC(n, T) (T *) TMP_ALLOC(n*sizeof(T))
+#define TMP_ARRAY_ALLOC(n, T) (T *) TMP_ALLOC((n)*sizeof(T))
 
 
 /* compatibility between gmp and mpir */

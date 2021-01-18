@@ -1545,6 +1545,9 @@ FLINT_DLL int fmpz_mod_mpolyn_intp_crt_sm_poly(slong * lastdeg_,
                             const fmpz_mod_poly_t modulus, const fmpz_t alpha,
                                                const fmpz_mod_mpoly_ctx_t ctx);
 
+
+
+
 /* helpers *******************************************************************/
 
 typedef struct {
@@ -1742,7 +1745,8 @@ FLINT_DLL int fmpz_mod_polyu1n_gcd_brown_smprime(
     fmpz_mod_polyun_t A,
     fmpz_mod_polyun_t B,
     const fmpz_mod_ctx_t ctx,
-    fmpz_mod_poly_polyun_stack_t St);
+    fmpz_mod_poly_stack_t St_poly,
+    fmpz_mod_polyun_stack_t St_polyun);
 
 FLINT_DLL int fmpz_mod_mpolyn_gcd_brown_smprime(
     fmpz_mod_mpolyn_t G,

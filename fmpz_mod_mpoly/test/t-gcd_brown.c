@@ -116,7 +116,7 @@ main(void)
         slong len, len1, len2;
         slong degbound;
 
-        fmpz_mod_mpoly_ctx_init_rand_bits_prime(ctx, state, 4, 150);
+        fmpz_mod_mpoly_ctx_init_rand_bits_prime(ctx, state, 4, 250);
 
         fmpz_mod_mpoly_init(g, ctx);
         fmpz_mod_mpoly_init(a, ctx);
@@ -159,7 +159,7 @@ main(void)
         slong len, len1, len2;
         slong degbound;
 
-        fmpz_mod_mpoly_ctx_init_rand_bits_prime(ctx, state, 4, 150);
+        fmpz_mod_mpoly_ctx_init_rand_bits_prime(ctx, state, 4, 250);
 
         fmpz_mod_mpoly_init(g, ctx);
         fmpz_mod_mpoly_init(a, ctx);
