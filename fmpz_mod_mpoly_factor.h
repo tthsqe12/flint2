@@ -700,6 +700,67 @@ FLINT_DLL void fmpz_mod_mpolyu3_print_pretty(const fmpz_mod_mpolyu_t A,
 /*****************************************************************************/
 
 typedef struct {
+    fmpz * M;
+    fmpz * T;
+    fmpz * Q;
+    fmpz * array;
+    slong alloc;
+    slong d;
+    slong radix;
+    fmpz_t w;
+} fmpz_mod_eval_interp_struct;
+
+typedef fmpz_mod_eval_interp_struct fmpz_mod_eval_interp_t[1];
+
+
+FLINT_DLL void fmpz_mod_eval_interp_init(fmpz_mod_eval_interp_t E);
+
+FLINT_DLL void fmpz_mod_eval_interp_clear(fmpz_mod_eval_interp_t E);
+
+FLINT_DLL int fmpz_mod_eval_interp_set_degree_modulus(
+    fmpz_mod_eval_interp_t E,
+    slong deg,
+    const fmpz_mod_ctx_t ctx);
+
+FMPZ_MOD_MPOLY_FACTOR_INLINE
+slong fmpz_mod_eval_interp_eval_length(fmpz_mod_eval_interp_t E)
+{
+    return 1 + E->radix*E->d;
+}
+
+FLINT_DLL void fmpz_mod_eval_interp_to_coeffs_poly(
+    fmpz_mod_poly_t a,
+    const fmpz_mod_poly_t v,
+    fmpz_mod_eval_interp_t E,
+    const fmpz_mod_ctx_t ctx);
+
+FLINT_DLL void fmpz_mod_eval_interp_from_coeffs_poly(
+    fmpz_mod_poly_t v,
+    const fmpz_mod_poly_t a,
+    fmpz_mod_eval_interp_t E,
+    const fmpz_mod_ctx_t ctx);
+
+FMPZ_MOD_MPOLY_FACTOR_INLINE void
+fmpz_mod_evals_zero(fmpz_mod_poly_t a)
+{
+    a->length = 0;
+}
+
+FLINT_DLL void fmpz_mod_evals_add_inplace(fmpz_mod_poly_t a, fmpz_mod_poly_t b, slong len,
+                                                                   const fmpz_mod_ctx_t ctx);
+
+FLINT_DLL void fmpz_mod_evals_mul(fmpz_mod_poly_t a, fmpz_mod_poly_t b, fmpz_mod_poly_t c, slong len,
+                                                                   const fmpz_mod_ctx_t ctx);
+
+FLINT_DLL void fmpz_mod_evals_addmul(fmpz_mod_poly_t a, fmpz_mod_poly_t b, fmpz_mod_poly_t c, slong len,
+                                                                   const fmpz_mod_ctx_t ctx);
+
+FLINT_DLL void fmpz_mod_evals_fmma(fmpz_mod_poly_t a, fmpz_mod_poly_t b, fmpz_mod_poly_t c,
+                                fmpz_mod_poly_t d, fmpz_mod_poly_t e, slong len, const fmpz_mod_ctx_t ctx);
+
+/*****************************************************************************/
+
+typedef struct {
     flint_bitcnt_t bits;
     slong w;
     slong r;
@@ -742,6 +803,16 @@ FLINT_DLL int fmpz_mod_mpoly_hlift(slong m, fmpz_mod_mpoly_struct * f, slong r,
 FLINT_DLL int fmpz_mod_bpoly_pfrac(slong r, fmpz_mod_bpoly_struct * C,
           slong * C_deg1_bound, fmpz_mod_bpoly_t A, fmpz_mod_bpoly_struct * B,
                                                      const fmpz_mod_ctx_t ctx);
+
+FLINT_DLL int fmpz_mod_bpoly_hlift2_cubic(
+    fmpz_mod_bpoly_t A, /* clobbered (shifted by alpha) */
+    fmpz_mod_bpoly_t B0,
+    fmpz_mod_bpoly_t B1,
+    const fmpz_t alpha,
+    slong degree_inner, /* required degree in x */
+    const fmpz_mod_ctx_t ctx,
+    fmpz_mod_eval_interp_t E,
+    fmpz_mod_poly_bpoly_stack_t St);
 
 FLINT_DLL int fmpz_mod_bpoly_hlift2(fmpz_mod_bpoly_t A, fmpz_mod_bpoly_t B0,
                   fmpz_mod_bpoly_t B1, const fmpz_t alpha, slong degree_inner,

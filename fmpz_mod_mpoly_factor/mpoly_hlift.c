@@ -79,6 +79,7 @@ static int _hlift_quartic2(
         for (i = 0; i <= j; i++)
         {
             fmpz_mod_mpoly_mul(t, B[0].coeffs + i, B[1].coeffs + j - i, ctx);
+            fmpz_mod_mpoly_mul(t, B[0].coeffs + i, B[1].coeffs + j - i, ctx);
             fmpz_mod_mpoly_geobucket_sub(G, t, ctx);
         }
         fmpz_mod_mpoly_geobucket_empty(t, G, ctx);
@@ -419,6 +420,66 @@ cleanup:
     return success;
 }
 
+
+/*
+    1 ok
+    0 lift failed
+   -1 inclusive, not tried
+*/
+static int _try_dense(
+    slong m,
+    fmpz_mod_mpoly_struct * f, /* length r */
+    slong r,
+    const fmpz_t alpha,
+    const fmpz_mod_mpoly_t A,
+    const slong * degs,
+    const fmpz_mod_mpoly_ctx_t ctx)
+{
+    int success;
+    slong i, degx, degy;
+    fmpz_mod_bpoly_t Ab;
+    fmpz_mod_bpoly_struct * fb;
+    fmpz_mod_poly_bpoly_stack_t St;
+
+    if (m != 1)
+        return -1;
+
+    degx = fmpz_mod_mpoly_degree_si(A, 0, ctx);
+    degy = fmpz_mod_mpoly_degree_si(A, 1, ctx);
+
+    if (degx < 1 || A->length/degx < degy/16)
+        return -1;
+
+    fmpz_mod_bpoly_init(Ab, ctx->ffinfo);
+    fmpz_mod_mpoly_get_fmpz_mod_bpoly(Ab, A, 1, 0, ctx);
+
+    fb = FLINT_ARRAY_ALLOC(r, fmpz_mod_bpoly_struct);
+    for (i = 0; i < r; i++)
+    {
+        fmpz_mod_bpoly_init(fb + i, ctx->ffinfo);
+        fmpz_mod_mpoly_get_fmpz_mod_bpoly(fb + i, f + i, 1, 0, ctx);
+    }
+
+    fmpz_mod_poly_stack_init(St->poly_stack);
+    fmpz_mod_bpoly_stack_init(St->bpoly_stack);
+
+    success = fmpz_mod_bpoly_hlift(r, Ab, fb, alpha, degx, ctx->ffinfo, St);
+
+    for (i = 0; i < r; i++)
+    {
+        fmpz_mod_mpoly_set_fmpz_mod_bpoly(f + i, A->bits, fb + i, 1, 0, ctx);
+        fmpz_mod_bpoly_clear(fb + i, ctx->ffinfo);
+    }
+
+    fmpz_mod_bpoly_clear(Ab, ctx->ffinfo);
+
+    fmpz_mod_poly_stack_clear(St->poly_stack);
+    fmpz_mod_bpoly_stack_clear(St->bpoly_stack);
+
+    return success;
+}
+
+
 /* should have A = prod_i f[i] mod (gen(m) - alpha[m-1]) */
 int fmpz_mod_mpoly_hlift(
     slong m,
@@ -429,9 +490,15 @@ int fmpz_mod_mpoly_hlift(
     const slong * degs,
     const fmpz_mod_mpoly_ctx_t ctx)
 {
+    int success;
+
     FLINT_ASSERT(r >= 2);
     FLINT_ASSERT(A->bits <= FLINT_BITS);
     FLINT_ASSERT(ctx->minfo->ord == ORD_LEX);
+
+    success = _try_dense(m, f, r, alpha, A, degs, ctx);
+    if (success >= 0)
+        return success;
 
     if (r == 2)
         return _hlift_quartic2(m, f, r, alpha, A, degs, ctx);

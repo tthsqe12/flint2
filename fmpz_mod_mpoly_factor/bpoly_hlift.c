@@ -11,6 +11,207 @@
 
 #include "fmpz_mod_mpoly_factor.h"
 
+
+
+int fmpz_mod_bpoly_hlift2_cubic(
+    fmpz_mod_bpoly_t A, /* clobbered (shifted by alpha) */
+    fmpz_mod_bpoly_t B0,
+    fmpz_mod_bpoly_t B1,
+    const fmpz_t alpha,
+    slong degree_inner, /* required degree in x */
+    const fmpz_mod_ctx_t ctx,
+    fmpz_mod_eval_interp_t E,
+    fmpz_mod_poly_bpoly_stack_t St)
+{
+    int success;
+    slong len = fmpz_mod_eval_interp_eval_length(E);
+    slong i, j;
+    fmpz_mod_poly_struct * c, * s, * t, * u, * v, * ce, * tmp;
+    fmpz_mod_bpoly_struct * B0e, * B1e;
+
+    FLINT_ASSERT(fmpz_mod_bpoly_is_canonical(A, ctx));
+    FLINT_ASSERT(fmpz_mod_bpoly_is_canonical(B0, ctx));
+    FLINT_ASSERT(fmpz_mod_bpoly_is_canonical(B1, ctx));
+
+    if (A->length < 1 || B0->length < 1 || B1->length < 1)
+        return -1;
+
+    fmpz_mod_poly_stack_fit_request(St->poly_stack, 7);
+    c  = fmpz_mod_poly_stack_take_top(St->poly_stack);
+    s  = fmpz_mod_poly_stack_take_top(St->poly_stack);
+    t  = fmpz_mod_poly_stack_take_top(St->poly_stack);
+    u  = fmpz_mod_poly_stack_take_top(St->poly_stack);
+    v  = fmpz_mod_poly_stack_take_top(St->poly_stack);
+    ce = fmpz_mod_poly_stack_take_top(St->poly_stack);
+    tmp = fmpz_mod_poly_stack_take_top(St->poly_stack);
+
+    fmpz_mod_bpoly_stack_fit_request(St->bpoly_stack, 2);
+    B0e  = fmpz_mod_bpoly_stack_take_top(St->bpoly_stack);
+    B1e  = fmpz_mod_bpoly_stack_take_top(St->bpoly_stack);
+
+    fmpz_mod_bpoly_taylor_shift_gen0(A, alpha, ctx);
+    fmpz_mod_bpoly_taylor_shift_gen0(B0, alpha, ctx);
+    fmpz_mod_bpoly_taylor_shift_gen0(B1, alpha, ctx);
+
+    /* check that A(alpha,x) = B0(alpha,x) * B1(alpha,x) */
+#if FLINT_WANT_ASSERT
+    {
+        fmpz_mod_poly_t T;
+        fmpz_mod_poly_init(T, ctx);
+        fmpz_mod_poly_mul(T, B0->coeffs + 0, B1->coeffs + 0, ctx);
+        FLINT_ASSERT(fmpz_mod_poly_equal(A->coeffs + 0, T, ctx));
+        fmpz_mod_poly_clear(T, ctx);
+    }
+#endif
+
+    if (fmpz_mod_poly_degree(A->coeffs + 0, ctx) != degree_inner)
+    {
+        success = -1;
+        goto cleanup;
+    }
+
+    /* the required degree in x is supposed to be deg_x(A) */
+    FLINT_ASSERT(fmpz_mod_bpoly_degree1(A, ctx) == fmpz_mod_poly_degree(A->coeffs + 0, ctx));
+
+    if (!fmpz_mod_poly_invmod(s, B1->coeffs + 0, B0->coeffs + 0, ctx))
+    {
+        success = -2;
+        goto cleanup;
+    }
+
+    fmpz_mod_bpoly_fit_length(B0, A->length, ctx);
+    fmpz_mod_bpoly_fit_length(B0e, A->length, ctx);
+    for (i = 0; i < B0->length; i++)
+        fmpz_mod_eval_interp_from_coeffs_poly(B0e->coeffs + i, B0->coeffs + i, E, ctx);
+    for (i = B0->length; i < A->length; i++)
+    {
+        fmpz_mod_poly_zero(B0->coeffs + i, ctx);
+        fmpz_mod_evals_zero(B0e->coeffs + i);
+    }
+
+    fmpz_mod_bpoly_fit_length(B1, A->length, ctx);
+    fmpz_mod_bpoly_fit_length(B1e, A->length, ctx);
+    for (i = 0; i < B1->length; i++)
+        fmpz_mod_eval_interp_from_coeffs_poly(B1e->coeffs + i, B1->coeffs + i, E, ctx);
+    for (i = B1->length; i < A->length; i++)
+    {
+        fmpz_mod_poly_zero(B1->coeffs + i, ctx);
+        fmpz_mod_evals_zero(B1e->coeffs + i);
+    }
+
+    for (j = 1; j < A->length; j++)
+    {
+        fmpz_mod_evals_zero(ce);
+        for (i = 0; i <= j; i++)
+        {
+            if (i < B0->length && j - i < B1->length)
+            {
+                fmpz_mod_evals_addmul(ce, B0e->coeffs + i,
+                                          B1e->coeffs + j - i, len, ctx);
+            }
+        }
+
+        fmpz_mod_eval_interp_to_coeffs_poly(c, ce, E, ctx);
+        fmpz_mod_eval_interp_to_coeffs_poly(c, ce, E, ctx);
+        fmpz_mod_poly_sub(c, A->coeffs + j, c, ctx);
+
+#if FLINT_WANT_ASSERT
+        {
+            fmpz_mod_poly_t c_check;
+            fmpz_mod_poly_init(c_check, ctx);
+            fmpz_mod_poly_set(c_check, A->coeffs + j, ctx);
+            for (i = 0; i <= j; i++)
+            {
+                if (i < B0->length && j - i < B1->length)
+                {
+                    fmpz_mod_poly_mul(t, B0->coeffs + i, B1->coeffs + j - i, ctx);
+                    fmpz_mod_poly_sub(c_check, c_check, t, ctx);
+                }
+            }
+
+            FLINT_ASSERT(fmpz_mod_poly_equal(c, c_check, ctx));
+
+            fmpz_mod_poly_clear(c_check, ctx);
+        }
+#endif
+
+        if (fmpz_mod_poly_is_zero(c, ctx))
+            continue;
+
+        fmpz_mod_poly_mul(t, s, c, ctx);
+        fmpz_mod_poly_divrem(tmp, u, t, B0->coeffs + 0, ctx);
+        fmpz_mod_poly_mul(t, u, B1->coeffs + 0, ctx);
+        fmpz_mod_poly_sub(c, c, t, ctx);
+        fmpz_mod_poly_divrem(v, tmp, c, B0->coeffs + 0, ctx);
+
+        if (!fmpz_mod_poly_is_zero(u, ctx))
+        {
+            fmpz_mod_poly_add(B0->coeffs + j, B0->coeffs + j, u, ctx);
+            fmpz_mod_eval_interp_from_coeffs_poly(B0e->coeffs + j, B0->coeffs + j, E, ctx);
+            fmpz_mod_eval_interp_from_coeffs_poly(B0e->coeffs + j, B0->coeffs + j, E, ctx);
+        }
+
+        if (!fmpz_mod_poly_is_zero(v, ctx))
+        {
+            fmpz_mod_poly_add(B1->coeffs + j, B1->coeffs + j, v, ctx);
+            fmpz_mod_eval_interp_from_coeffs_poly(B1e->coeffs + j, B1->coeffs + j, E, ctx);
+            fmpz_mod_eval_interp_from_coeffs_poly(B1e->coeffs + j, B1->coeffs + j, E, ctx);
+        }
+
+        if (!fmpz_mod_poly_is_zero(B0->coeffs + j, ctx))
+            B0->length = FLINT_MAX(B0->length, j + 1);
+
+        if (!fmpz_mod_poly_is_zero(B1->coeffs + j, ctx))
+            B1->length = FLINT_MAX(B1->length, j + 1);
+
+        if (B0->length - 1 + B1->length - 1 > A->length - 1)
+        {
+            success = 0;
+            goto cleanup;
+        }
+    }
+
+    {fmpz_t malpha;
+    fmpz_init(malpha);
+    fmpz_mod_neg(malpha, alpha, ctx);
+    fmpz_mod_bpoly_taylor_shift_gen0(B0, malpha, ctx);
+    fmpz_mod_bpoly_taylor_shift_gen0(B1, malpha, ctx);
+    fmpz_clear(malpha);}
+
+    success = 1;
+
+cleanup:
+
+#if FLINT_WANT_ASSERT
+    if (success > 0)
+    {
+        fmpz_mod_bpoly_t tp1, tp2;
+        fmpz_mod_bpoly_init(tp1, ctx);
+        fmpz_mod_bpoly_init(tp2, ctx);
+
+        {fmpz_t malpha;
+        fmpz_init(malpha);
+        fmpz_mod_neg(malpha, alpha, ctx);
+        fmpz_mod_bpoly_taylor_shift_gen0(A, malpha, ctx);
+        fmpz_clear(malpha);}
+
+        fmpz_mod_bpoly_mul(tp1, B0, B1, ctx);
+        FLINT_ASSERT(fmpz_mod_bpoly_equal(tp1, A, ctx));
+
+        fmpz_mod_bpoly_clear(tp1, ctx);
+        fmpz_mod_bpoly_clear(tp2, ctx);
+    }
+#endif
+
+    fmpz_mod_poly_stack_give_back(St->poly_stack, 7);
+    fmpz_mod_bpoly_stack_give_back(St->bpoly_stack, 2);
+
+    return success;
+}
+
+
+
+
 int fmpz_mod_bpoly_hlift2(
     fmpz_mod_bpoly_t A, /* clobbered (shifted by alpha) */
     fmpz_mod_bpoly_t B0,

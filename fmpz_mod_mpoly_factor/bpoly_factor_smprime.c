@@ -809,6 +809,11 @@ void fmpz_mod_bpoly_lift_combine(
     }
     else
     {
+        for (k = 0; k < r; k++)
+        {
+flint_printf("not implemented\n");
+flint_abort();
+}
 flint_printf("not implemented\n");
 flint_abort();
 #if 0
