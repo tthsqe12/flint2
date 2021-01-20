@@ -10,7 +10,6 @@
 */
 
 #include "fmpz_mod_mpoly_factor.h"
-#include "profiler.h"
 
 /* check total number of factors with multiplicity is between lower and upper */
 void check_omega(slong lower, slong upper, const fmpz_mod_mpoly_t p, const fmpz_mod_mpoly_ctx_t ctx)
@@ -104,7 +103,6 @@ main(void)
         fmpz_mod_mpoly_t a, t;
         slong nfacs, len;
         ulong expbound, powbound, pow;
-timeit_t timer;
 
         fmpz_mod_mpoly_ctx_init_rand_bits_prime(ctx, state, 10, 200);
 
@@ -131,11 +129,7 @@ timeit_t timer;
             fmpz_mod_mpoly_mul(a, a, t, ctx);
         }
 
-timeit_start(timer);
         check_omega(lower, WORD_MAX, a, ctx);
-timeit_stop(timer);
-
-flint_printf("zip i = %wd: %wd ms\n", i, timer->cpu);
 
         fmpz_mod_mpoly_clear(t, ctx);
         fmpz_mod_mpoly_clear(a, ctx);

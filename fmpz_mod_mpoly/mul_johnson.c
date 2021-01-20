@@ -417,50 +417,30 @@ void _fmpz_mod_mpoly_mul_johnson(
     TMP_END;
 }
 
-void fmpz_mod_mpoly_mul_johnson(
+void _fmpz_mod_mpoly_mul_johnson_maxfields(
     fmpz_mod_mpoly_t A,
-    const fmpz_mod_mpoly_t B,
-    const fmpz_mod_mpoly_t C,
+    const fmpz_mod_mpoly_t B, fmpz * maxBfields,
+    const fmpz_mod_mpoly_t C, fmpz * maxCfields,
     const fmpz_mod_mpoly_ctx_t ctx)
 {
-    slong i, N;
+    slong N;
     flint_bitcnt_t Abits;
-    fmpz * Bmaxfields, * Cmaxfields;
     ulong * cmpmask;
     ulong * Bexps = B->exps, * Cexps = C->exps;
     int freeBexps = 0, freeCexps = 0;
     fmpz_mod_mpoly_struct * P, T[1];
     TMP_INIT;
 
-    if (B->length < 1 || C->length < 1)
-    {
-        fmpz_mod_mpoly_zero(A, ctx);
-        return;
-    }
+    FLINT_ASSERT(B->length > 0 && C->length > 0);
 
     TMP_START;
 
-    Bmaxfields = (fmpz *) TMP_ALLOC(ctx->minfo->nfields*sizeof(fmpz));
-    Cmaxfields = (fmpz *) TMP_ALLOC(ctx->minfo->nfields*sizeof(fmpz));
-    for (i = 0; i < ctx->minfo->nfields; i++)
-    {
-        fmpz_init(Bmaxfields + i);
-        fmpz_init(Cmaxfields + i);
-    }
-    mpoly_max_fields_fmpz(Bmaxfields, Bexps, B->length, B->bits, ctx->minfo);
-    mpoly_max_fields_fmpz(Cmaxfields, Cexps, C->length, C->bits, ctx->minfo);
-    _fmpz_vec_add(Bmaxfields, Bmaxfields, Cmaxfields, ctx->minfo->nfields);
+    _fmpz_vec_add(maxBfields, maxBfields, maxCfields, ctx->minfo->nfields);
 
-    Abits = 1 + _fmpz_vec_max_bits(Bmaxfields, ctx->minfo->nfields);
+    Abits = 1 + _fmpz_vec_max_bits(maxBfields, ctx->minfo->nfields);
     Abits = FLINT_MAX(Abits, B->bits);
     Abits = FLINT_MAX(Abits, C->bits);
     Abits = mpoly_fix_bits(Abits, ctx->minfo);
-
-    for (i = 0; i < ctx->minfo->nfields; i++)
-    {
-        fmpz_clear(Bmaxfields + i);
-        fmpz_clear(Cmaxfields + i);
-    }
 
     N = mpoly_words_per_exp(Abits, ctx->minfo);
     cmpmask = (ulong *) TMP_ALLOC(N*sizeof(ulong));
@@ -515,6 +495,40 @@ void fmpz_mod_mpoly_mul_johnson(
 
     if (freeCexps)
         flint_free(Cexps);
+
+    TMP_END;
+}
+
+void fmpz_mod_mpoly_mul_johnson(
+    fmpz_mod_mpoly_t A,
+    const fmpz_mod_mpoly_t B,
+    const fmpz_mod_mpoly_t C,
+    const fmpz_mod_mpoly_ctx_t ctx)
+{
+    slong i;
+    fmpz * maxBfields, * maxCfields;
+    TMP_INIT;
+
+    if (B->length < 1 || C->length < 1)
+    {
+        fmpz_mod_mpoly_zero(A, ctx);
+        return;
+    }
+
+    TMP_START;
+
+    maxBfields = TMP_ARRAY_ALLOC(2*ctx->minfo->nfields, fmpz);
+    maxCfields = maxBfields + ctx->minfo->nfields;
+    for (i = 0; i < 2*ctx->minfo->nfields; i++)
+        fmpz_init(maxBfields + i);
+
+    mpoly_max_fields_fmpz(maxBfields, B->exps, B->length, B->bits, ctx->minfo);
+    mpoly_max_fields_fmpz(maxCfields, C->exps, C->length, C->bits, ctx->minfo);
+
+    _fmpz_mod_mpoly_mul_johnson_maxfields(A, B, maxBfields, C, maxCfields, ctx);
+
+    for (i = 0; i < 2*ctx->minfo->nfields; i++)
+        fmpz_clear(maxBfields + i);
 
     TMP_END;
 }

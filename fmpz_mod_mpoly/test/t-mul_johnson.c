@@ -21,7 +21,7 @@ main(void)
 
     FLINT_TEST_INIT(state);
 
-    flint_printf("mul....");
+    flint_printf("mul_johnson....");
     fflush(stdout);
 
     for (i = 0; i < tmul * flint_test_multiplier(); i++)
@@ -60,11 +60,11 @@ main(void)
 
             fmpz_mod_mpoly_add(t1, g, h, ctx);
             fmpz_mod_mpoly_assert_canonical(t1, ctx);
-            fmpz_mod_mpoly_mul(k1, f, t1, ctx);
+            fmpz_mod_mpoly_mul_johnson(k1, f, t1, ctx);
             fmpz_mod_mpoly_assert_canonical(k1, ctx);
-            fmpz_mod_mpoly_mul(t1, f, g, ctx);
+            fmpz_mod_mpoly_mul_johnson(t1, f, g, ctx);
             fmpz_mod_mpoly_assert_canonical(t1, ctx);
-            fmpz_mod_mpoly_mul(t2, f, h, ctx);
+            fmpz_mod_mpoly_mul_johnson(t2, f, h, ctx);
             fmpz_mod_mpoly_assert_canonical(t2, ctx);
             fmpz_mod_mpoly_add(k2, t1, t2, ctx);
             fmpz_mod_mpoly_assert_canonical(k2, ctx);
@@ -126,9 +126,9 @@ main(void)
 
             flint_set_num_threads(n_randint(state, max_threads) + 1);
 
-            fmpz_mod_mpoly_mul(h, f, g, ctx);
+            fmpz_mod_mpoly_mul_johnson(h, f, g, ctx);
             fmpz_mod_mpoly_assert_canonical(h, ctx);
-            fmpz_mod_mpoly_mul(f, f, g, ctx);
+            fmpz_mod_mpoly_mul_johnson(f, f, g, ctx);
             fmpz_mod_mpoly_assert_canonical(f, ctx);
             if (!fmpz_mod_mpoly_equal(h, f, ctx))
             {
@@ -143,9 +143,9 @@ main(void)
 
             flint_set_num_threads(n_randint(state, max_threads) + 1);
 
-            fmpz_mod_mpoly_mul(h, f, g, ctx);
+            fmpz_mod_mpoly_mul_johnson(h, f, g, ctx);
             fmpz_mod_mpoly_assert_canonical(h, ctx);
-            fmpz_mod_mpoly_mul(g, f, g, ctx);
+            fmpz_mod_mpoly_mul_johnson(g, f, g, ctx);
             fmpz_mod_mpoly_assert_canonical(g, ctx);
             if (!fmpz_mod_mpoly_equal(h, g, ctx))
             {

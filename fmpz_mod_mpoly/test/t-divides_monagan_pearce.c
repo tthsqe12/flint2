@@ -19,7 +19,7 @@ main(void)
     slong i, j, result, ret, max_threads = 5, tmul = 25;
     FLINT_TEST_INIT(state);
 
-    flint_printf("divides....");
+    flint_printf("divides_monagan_pearce....");
     fflush(stdout);
 
     /* Check f*g/g = f sparse */
@@ -60,7 +60,7 @@ main(void)
             fmpz_mod_mpoly_assert_canonical(h, ctx);
             fmpz_mod_mpoly_set(hsave, h, ctx);
             fmpz_mod_mpoly_set(gsave, g, ctx);
-            ret = fmpz_mod_mpoly_divides(k, h, g, ctx);
+            ret = fmpz_mod_mpoly_divides_monagan_pearce(k, h, g, ctx);
             FLINT_ASSERT(ret == 0 || ret == 1);
             fmpz_mod_mpoly_assert_canonical(k, ctx);
             result = (ret == 1) && fmpz_mod_mpoly_equal(k, f, ctx);
@@ -135,7 +135,7 @@ main(void)
 
             fmpz_mod_mpoly_mul(h, f, g, ctx);
             fmpz_mod_mpoly_assert_canonical(h, ctx);
-            ret = fmpz_mod_mpoly_divides(k, h, g, ctx);
+            ret = fmpz_mod_mpoly_divides_monagan_pearce(k, h, g, ctx);
             FLINT_ASSERT(ret == 0 || ret == 1);
             fmpz_mod_mpoly_assert_canonical(k, ctx);
             result = (ret == 1) && fmpz_mod_mpoly_equal(k, f, ctx);
@@ -209,7 +209,7 @@ main(void)
             fmpz_mod_mpoly_inflate(f, f, shifts, strides, ctx);
             fmpz_mod_mpoly_inflate(g, g, shifts, strides, ctx);
 
-            ret = fmpz_mod_mpoly_divides(h, f, g, ctx);
+            ret = fmpz_mod_mpoly_divides_monagan_pearce(h, f, g, ctx);
             FLINT_ASSERT(ret == 0 || ret == 1);
             if (ret == 0)
                 continue;
@@ -288,7 +288,7 @@ main(void)
             fmpz_mod_mpoly_set(h, f, ctx);
             fmpz_mod_mpoly_mul(h, h, g, ctx);
             fmpz_mod_mpoly_assert_canonical(h, ctx);
-            ret = fmpz_mod_mpoly_divides(k, h, g, ctx);
+            ret = fmpz_mod_mpoly_divides_monagan_pearce(k, h, g, ctx);
             FLINT_ASSERT(ret == 0 || ret == 1);
             fmpz_mod_mpoly_assert_canonical(k, ctx);
             result = (ret == 1) && fmpz_mod_mpoly_equal(k, f, ctx);
@@ -354,7 +354,7 @@ main(void)
             fmpz_mod_mpoly_set(h, g, ctx);
             fmpz_mod_mpoly_mul(h, f, h, ctx);
             fmpz_mod_mpoly_assert_canonical(h, ctx);
-            ret = fmpz_mod_mpoly_divides(k, h, g, ctx);
+            ret = fmpz_mod_mpoly_divides_monagan_pearce(k, h, g, ctx);
             FLINT_ASSERT(ret == 0 || ret == 1);
             fmpz_mod_mpoly_assert_canonical(k, ctx);
             result = (ret == 1) && fmpz_mod_mpoly_equal(k, f, ctx);

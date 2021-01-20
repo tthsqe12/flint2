@@ -12,7 +12,7 @@
 #include "fmpz_mod.h"
 #include "nmod_mpoly.h"
 #include "fmpz_mpoly.h"
-#include "fmpz_mod_mpoly.h"
+#include "fmpz_mod_mpoly_factor.h"
 #include "thread_pool.h"
 #include "n_poly.h"
 

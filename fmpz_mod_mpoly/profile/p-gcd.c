@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
     fmpz_nextprime(p, p, 1);
 
     print_banner();
-    for (i = 3; i <= 0*10; i++)
+    for (i = 3; i <= 10; i++)
     {
         fmpz_mod_mpoly_ctx_t ctx;
         fmpz_mod_mpoly_t g, a, b, t;
@@ -222,7 +222,7 @@ int main(int argc, char *argv[])
     }
 
     print_banner();
-    for (i = 5; i < 0*15; i += 1)
+    for (i = 5; i < 15; i += 1)
     {
         fmpz_mod_mpoly_ctx_t ctx;
         fmpz_mod_mpoly_t a, b, t, m;
@@ -262,7 +262,7 @@ int main(int argc, char *argv[])
     }
 
     print_banner();
-    for (i = 15; i < 0*30; i++)
+    for (i = 15; i < 30; i++)
     {
         fmpz_mod_mpoly_ctx_t ctx;
         fmpz_mod_mpoly_t a, b, t, m;
@@ -302,7 +302,7 @@ int main(int argc, char *argv[])
     }
 
     print_banner();
-    for (i = 1; i < 0*7; i++)
+    for (i = 1; i < 7; i++)
     {
         fmpz_mod_mpoly_ctx_t ctx;
         fmpz_mod_mpoly_t a, b, t, m;
@@ -342,7 +342,7 @@ int main(int argc, char *argv[])
     }
 
     print_banner();
-    for (i = 1; i < 0*5; i++)
+    for (i = 1; i < 5; i++)
     {
         fmpz_mod_mpoly_ctx_t ctx;
         fmpz_mod_mpoly_t a, b, t, m;

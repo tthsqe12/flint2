@@ -122,8 +122,6 @@ main(void)
             fmpz_mod_mpoly_mul(a, a, t, ctx);
         }
 
-flint_printf("bivar i = %wd\n", i);
-
         check_omega(lower, WORD_MAX, a, ctx, "bivariate");
 
         fmpz_mod_mpoly_clear(t, ctx);
@@ -163,8 +161,6 @@ flint_printf("bivar i = %wd\n", i);
             fmpz_mod_mpoly_pow_ui(t, t, pow, ctx);
             fmpz_mod_mpoly_mul(a, a, t, ctx);
         }
-
-flint_printf("mvars i = %wd\n", i);
 
         check_omega(lower, WORD_MAX, a, ctx, "multivariate");
 

@@ -10,7 +10,6 @@
 */
 
 #include "fmpz_mod_mpoly.h"
-#include "profiler.h"
 
 int
 main(void)
@@ -18,7 +17,7 @@ main(void)
     slong i, j, k;
     FLINT_TEST_INIT(state);
 
-    flint_printf("crt....");
+    flint_printf("multi_crt....");
     fflush(stdout);
 
     /* test internal interface */
@@ -28,7 +27,6 @@ main(void)
         slong moduli_count = 3000;
         fmpz_mod_ctx_t ctx;
         fmpz_t modulus;
-timeit_t timer;
 
         fmpz_init_set_ui(modulus, 3);
         fmpz_pow_ui(modulus, modulus, 8);
@@ -60,13 +58,10 @@ timeit_t timer;
         }
 
         FLINT_ASSERT(_fmpz_mod_poly_multi_crt_local_size(P) <= moduli_count);
-timeit_start(timer);
         for (k = 0; k < 100; k++)
         {
             _fmpz_mod_poly_multi_crt_run(outputs, P, inputs, ctx);
         }
-timeit_stop(timer);
-flint_printf("time: %wd\n");
 
         for (k = 0; k < moduli_count; k++)
         {

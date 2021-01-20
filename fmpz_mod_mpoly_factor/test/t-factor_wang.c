@@ -105,8 +105,6 @@ main(void)
         slong nfacs, len;
         ulong expbound, powbound, pow;
 
-flint_printf("wang i = %wd\n", i);
-
         fmpz_mod_mpoly_ctx_init_rand_bits_prime(ctx, state, 7, 100);
 
         fmpz_mod_mpoly_init(a, ctx);

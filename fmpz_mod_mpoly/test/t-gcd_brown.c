@@ -23,8 +23,6 @@ void gcd_check(
 {
     fmpz_mod_mpoly_t ca, cb, cg;
 
-flint_printf("%s, i = %wd, j = %wd\n", name, i, j);
-
     fmpz_mod_mpoly_init(ca, ctx);
     fmpz_mod_mpoly_init(cb, ctx);
     fmpz_mod_mpoly_init(cg, ctx);
@@ -99,12 +97,9 @@ int
 main(void)
 {
     slong i, j;
-    slong tmul = 10;
+    slong tmul = 5;
     slong max_threads = 6;
     FLINT_TEST_INIT(state);
-#ifdef _WIN32
-    tmul = 1;
-#endif
 
     flint_printf("gcd_brown....");
     fflush(stdout);
