@@ -738,13 +738,24 @@ FLINT_DLL void fmpz_mod_mpoly_divrem_ideal(fmpz_mod_mpoly_struct ** Q,
                             fmpz_mod_mpoly_struct * const * B, slong len,
                                                const fmpz_mod_mpoly_ctx_t ctx);
 
+FLINT_DLL int _fmpz_mod_mpoly_divides_dense_maxfields(fmpz_mod_mpoly_t Q,
+                                const fmpz_mod_mpoly_t A, fmpz * maxAfields,
+                                const fmpz_mod_mpoly_t B, fmpz * maxBfields,
+                                               const fmpz_mod_mpoly_ctx_t ctx);
+
 FLINT_DLL int fmpz_mod_mpoly_divides_dense(fmpz_mod_mpoly_t Q,
                         const fmpz_mod_mpoly_t A, const fmpz_mod_mpoly_t B,
+                                               const fmpz_mod_mpoly_ctx_t ctx);
+
+FLINT_DLL int _fmpz_mod_mpoly_divides_monagan_pearce_maxfields(
+            fmpz_mod_mpoly_t Q, const fmpz_mod_mpoly_t A, fmpz * maxAfields,
+                                const fmpz_mod_mpoly_t B, fmpz * maxBfields,
                                                const fmpz_mod_mpoly_ctx_t ctx);
 
 FLINT_DLL int fmpz_mod_mpoly_divides_monagan_pearce(fmpz_mod_mpoly_t Q,
                         const fmpz_mod_mpoly_t A, const fmpz_mod_mpoly_t B,
                                                const fmpz_mod_mpoly_ctx_t ctx);
+
 FLINT_DLL void fmpz_mod_mpoly_div_monagan_pearce(fmpz_mod_mpoly_t Q,
                           const fmpz_mod_mpoly_t A, const fmpz_mod_mpoly_t B,
                                                const fmpz_mod_mpoly_ctx_t ctx);
@@ -877,11 +888,6 @@ FLINT_DLL void fmpz_mod_mpoly_geobucket_add(fmpz_mod_mpoly_geobucket_t B,
 
 FLINT_DLL void fmpz_mod_mpoly_geobucket_sub(fmpz_mod_mpoly_geobucket_t B,
                            fmpz_mod_mpoly_t p, const fmpz_mod_mpoly_ctx_t ctx);
-
-FLINT_DLL int _fmpz_mod_mpoly_gcd_algo(fmpz_mod_mpoly_t G,
-                            fmpz_mod_mpoly_t Abar, fmpz_mod_mpoly_t Bbar,
-                            const fmpz_mod_mpoly_t A, const fmpz_mod_mpoly_t B,
-                            const fmpz_mod_mpoly_ctx_t ctx, unsigned int algo);
 
 FLINT_DLL void fmpz_mod_mpolyl_lead_coeff(fmpz_mod_mpoly_t c,
      const fmpz_mod_mpoly_t A, slong num_vars, const fmpz_mod_mpoly_ctx_t ctx);

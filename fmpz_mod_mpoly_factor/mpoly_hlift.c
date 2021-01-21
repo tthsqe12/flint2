@@ -470,6 +470,7 @@ static int _try_dense(
         fmpz_mod_mpoly_set_fmpz_mod_bpoly(f + i, A->bits, fb + i, 1, 0, ctx);
         fmpz_mod_bpoly_clear(fb + i, ctx->ffinfo);
     }
+    flint_free(fb);
 
     fmpz_mod_bpoly_clear(Ab, ctx->ffinfo);
 

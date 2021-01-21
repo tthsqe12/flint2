@@ -12,21 +12,6 @@
 #include "fmpz_mod_mpoly.h"
 #include "long_extras.h"
 
-
-/*
-    Copyright (C) 2018 Daniel Schultz
-
-    This file is part of FLINT.
-
-    FLINT is free software: you can redistribute it and/or modify it under
-    the terms of the GNU Lesser General Public License (LGPL) as published
-    by the Free Software Foundation; either version 2.1 of the License, or
-    (at your option) any later version.  See <https://www.gnu.org/licenses/>.
-*/
-
-#include "nmod_poly.h"
-#include "nmod_mpoly.h"
-
 /*
     Convert D to A if the degrees of A are <= expected_deg
     If not, return 0 and set A to 0.
@@ -156,15 +141,10 @@ cleanup:
     return ret;
 }
 
-/*
-    return  -1 : function failed
-             0 : B does not divide A
-             1 : B divides A and quotient is in Q
-*/
-int fmpz_mod_mpoly_divides_dense(
+int _fmpz_mod_mpoly_divides_dense_maxfields(
     fmpz_mod_mpoly_t Q,
-    const fmpz_mod_mpoly_t A,
-    const fmpz_mod_mpoly_t B,
+    const fmpz_mod_mpoly_t A, fmpz * maxAfields,
+    const fmpz_mod_mpoly_t B, fmpz * maxBfields,
     const fmpz_mod_mpoly_ctx_t ctx)
 {
     int success;
@@ -175,28 +155,11 @@ int fmpz_mod_mpoly_divides_dense(
     slong prod_deg;
     TMP_INIT;
 
-    if (fmpz_mod_mpoly_is_zero(B, ctx))
-    {
-        if (!fmpz_mod_mpoly_is_zero(A, ctx) ||
-            !fmpz_is_one(fmpz_mod_mpoly_ctx_modulus(ctx)))
-        {
-            flint_throw(FLINT_DIVZERO, "fmpz_mod_mpoly_divides_dense: divide by zero");
-        }
-
-        fmpz_mod_mpoly_zero(Q, ctx);
-        return 1;
-    }
-
-    if (fmpz_mod_mpoly_is_zero(A, ctx))
-    {
-        fmpz_mod_mpoly_zero(Q, ctx);
-        return 1;
-    }
-
-    if (A->bits > FLINT_BITS || B->bits > FLINT_BITS || ctx->minfo->nvars > FLINT_BITS)
-    {
-        return -1;
-    }
+    FLINT_ASSERT(A->length > 0);
+    FLINT_ASSERT(B->length > 0);
+    FLINT_ASSERT(A->bits <= FLINT_BITS);
+    FLINT_ASSERT(B->bits <= FLINT_BITS);
+    FLINT_ASSERT(ctx->minfo->nvars <= FLINT_BITS);
 
     TMP_START;
 
@@ -209,8 +172,8 @@ int fmpz_mod_mpoly_divides_dense(
     Qbounds = Bbounds + nvars;
     Edegs   = Qbounds + nvars;
 
-    mpoly_degrees_si(Abounds, A->exps, A->length, A->bits, ctx->minfo);
-    mpoly_degrees_si(Bbounds, B->exps, B->length, B->bits, ctx->minfo);
+    mpoly_get_monomial_ui_unpacked_ffmpz((ulong *)Abounds, maxAfields, ctx->minfo);
+    mpoly_get_monomial_ui_unpacked_ffmpz((ulong *)Bbounds, maxBfields, ctx->minfo);
 
     prod_deg = 1;
     for (i = 0; i < ctx->minfo->nvars; i++)
@@ -260,6 +223,65 @@ int fmpz_mod_mpoly_divides_dense(
     _fmpz_mod_mpoly_clear_dense_mock(Bd);
 
 cleanup:
+
+    TMP_END;
+    return success;
+}
+
+/*
+    return  -1 : function failed
+             0 : B does not divide A
+             1 : B divides A and quotient is in Q
+*/
+int fmpz_mod_mpoly_divides_dense(
+    fmpz_mod_mpoly_t Q,
+    const fmpz_mod_mpoly_t A,
+    const fmpz_mod_mpoly_t B,
+    const fmpz_mod_mpoly_ctx_t ctx)
+{
+    int success;
+    slong i;
+    fmpz * maxAfields, * maxBfields;
+    TMP_INIT;
+
+    if (fmpz_mod_mpoly_is_zero(B, ctx))
+    {
+        if (!fmpz_mod_mpoly_is_zero(A, ctx) &&
+            !fmpz_is_one(fmpz_mod_mpoly_ctx_modulus(ctx)))
+        {
+            flint_throw(FLINT_DIVZERO, "fmpz_mod_mpoly_divides_dense: divide by zero");
+        }
+
+        fmpz_mod_mpoly_zero(Q, ctx);
+        return 1;
+    }
+
+    if (fmpz_mod_mpoly_is_zero(A, ctx))
+    {
+        fmpz_mod_mpoly_zero(Q, ctx);
+        return 1;
+    }
+
+    if (A->bits > FLINT_BITS || B->bits > FLINT_BITS || ctx->minfo->nvars > FLINT_BITS)
+    {
+        return -1;
+    }
+
+    TMP_START;
+
+    maxAfields = TMP_ARRAY_ALLOC(2*ctx->minfo->nfields, fmpz);
+    maxBfields = maxAfields + ctx->minfo->nfields;
+    for (i = 0; i < 2*ctx->minfo->nfields; i++)
+        fmpz_init(maxAfields + i);
+
+    mpoly_max_fields_fmpz(maxAfields, A->exps, A->length, A->bits, ctx->minfo);
+    mpoly_max_fields_fmpz(maxBfields, B->exps, B->length, B->bits, ctx->minfo);
+
+    success = _fmpz_mod_mpoly_divides_dense_maxfields(Q,
+                                            A, maxAfields, B, maxBfields, ctx);
+
+    for (i = 0; i < 2*ctx->minfo->nfields; i++)
+        fmpz_clear(maxAfields + i);
 
     TMP_END;
     return success;

@@ -10,40 +10,63 @@
 */
 
 #include "fmpz_mod_mpoly.h"
+#include "ulong_extras.h"
 #include "long_extras.h"
 
 
 static int _try_dense(
-    slong * Bdegs,
-    slong * Cdegs,
+    const fmpz * maxBfields,
+    const fmpz * maxCfields,
     slong Blen,
     slong Clen,
-    slong nvars)
+    const mpoly_ctx_t mctx)
 {
+    int ret;
     const int max_bit_size = FLINT_MIN(FLINT_BITS/3 + 16, FLINT_BITS - 4);
-    slong i, t, product_count, dense_size;
+    slong i, product_count;
+    ulong * Bdegs, * Cdegs;
+    ulong t, dense_size;
+    TMP_INIT;
+
+    TMP_START;
+
+    Bdegs = TMP_ARRAY_ALLOC(2*mctx->nvars, ulong);
+    Cdegs = Bdegs + mctx->nvars;
+    mpoly_get_monomial_ui_unpacked_ffmpz(Bdegs, maxBfields, mctx);
+    mpoly_get_monomial_ui_unpacked_ffmpz(Cdegs, maxCfields, mctx);
 
     FLINT_ASSERT(Blen > 0);
     FLINT_ASSERT(Clen > 0);
 
     dense_size = 1;
-    for (i = 0; i < nvars; i++)
+    for (i = 0; i < mctx->nvars; i++)
     {
-        if (z_add_checked(&t, Bdegs[i], Cdegs[i]) ||
-            z_add_checked(&t, t, 1) ||
-            z_mul_checked(&dense_size, dense_size, t))
+        if (n_add_checked(&t, Bdegs[i], Cdegs[i] + 1) || 
+            n_mul_checked(&dense_size, dense_size, t))
         {
-            return 0;
+            ret = 0;
+            goto cleanup;
         }
     }
 
-    if (dense_size >= WORD(1) << max_bit_size)
-        return 0;
+    if (dense_size >= (UWORD(1) << max_bit_size))
+    {
+        ret = 0;
+        goto cleanup;
+    }
 
     if (z_mul_checked(&product_count, Blen, Clen))
-        return 1;
+    {
+        ret = 1;
+        goto cleanup;
+    }
 
-    return dense_size < product_count/32;
+    ret = dense_size < product_count/32;
+
+cleanup:
+
+    TMP_END;
+    return ret;
 }
 
 void fmpz_mod_mpoly_mul(
@@ -53,8 +76,6 @@ void fmpz_mod_mpoly_mul(
     const fmpz_mod_mpoly_ctx_t ctx)
 {
     slong i;
-    slong nvars = ctx->minfo->nvars;
-    slong * Bdegs, * Cdegs;
     fmpz * maxBfields, * maxCfields;
     slong min_length, max_length;
     TMP_INIT;
@@ -84,16 +105,7 @@ void fmpz_mod_mpoly_mul(
         goto do_heap;
     }
 
-    /*
-        The multiplication is not trivial and each packed field fits
-        into one word. In particular, the degrees must fit an slong.
-    */
-    Bdegs = TMP_ARRAY_ALLOC(2*nvars, slong);
-    Cdegs = Bdegs + nvars;
-    mpoly_get_monomial_ui_unpacked_ffmpz((ulong *)Bdegs, maxBfields, ctx->minfo);
-    mpoly_get_monomial_ui_unpacked_ffmpz((ulong *)Cdegs, maxCfields, ctx->minfo);
-
-    if (_try_dense(Bdegs, Cdegs, B->length, C->length, nvars))
+    if (_try_dense(maxBfields, maxCfields, B->length, C->length, ctx->minfo))
     {
         if (_fmpz_mod_mpoly_mul_dense_maxfields(A, B, maxBfields, C, maxCfields, ctx))
             goto cleanup;

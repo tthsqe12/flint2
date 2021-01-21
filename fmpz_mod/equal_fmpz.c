@@ -16,6 +16,7 @@ int fmpz_mod_equal_fmpz(const fmpz_t a, const fmpz_t b, const fmpz_mod_ctx_t ctx
     int res;
     fmpz_t t;
     FLINT_ASSERT(fmpz_mod_is_canonical(a, ctx));
+    fmpz_init(t);
     fmpz_mod_set_fmpz(t, b, ctx);
     res = fmpz_equal(a, t);
     fmpz_clear(t);

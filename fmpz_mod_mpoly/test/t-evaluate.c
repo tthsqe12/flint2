@@ -88,6 +88,12 @@ main(void)
             }
         }
 
+        for (v = 0; v < nvars; v++)
+        {
+            fmpz_clear(vals[v]);
+            flint_free(vals[v]);
+        }
+        flint_free(perm);
         flint_free(vals);
 
         fmpz_clear(fe);
@@ -95,7 +101,6 @@ main(void)
         fmpz_mod_mpoly_clear(g, ctx);
         fmpz_mod_mpoly_ctx_clear(ctx);
 
-        flint_free(perm);
     }
 
     for (i = 0; i < tmul * flint_test_multiplier(); i++)
@@ -110,6 +115,9 @@ main(void)
         fmpz_mod_mpoly_ctx_init_rand_bits(ctx, state, 20, 200);
         nvars = ctx->minfo->nvars;
 
+        fmpz_init(fe);
+        fmpz_init(ge);
+        fmpz_init(fge);
         fmpz_mod_mpoly_init(f, ctx);
         fmpz_mod_mpoly_init(g, ctx);
         fmpz_mod_mpoly_init(fg, ctx);
@@ -146,8 +154,17 @@ main(void)
             }
         }
 
+        for (v = 0; v < nvars; v++)
+        {
+            fmpz_clear(vals[v]);
+            flint_free(vals[v]);
+        }
+
         flint_free(vals);
 
+        fmpz_clear(fe);
+        fmpz_clear(ge);
+        fmpz_clear(fge);
         fmpz_mod_mpoly_clear(f, ctx);
         fmpz_mod_mpoly_clear(g, ctx);
         fmpz_mod_mpoly_clear(fg, ctx);
@@ -166,6 +183,9 @@ main(void)
         fmpz_mod_mpoly_ctx_init_rand_bits(ctx, state, 20, 200);
         nvars = ctx->minfo->nvars;
 
+        fmpz_init(fe);
+        fmpz_init(ge);
+        fmpz_init(fge);
         fmpz_mod_mpoly_init(f, ctx);
         fmpz_mod_mpoly_init(g, ctx);
         fmpz_mod_mpoly_init(fg, ctx);
@@ -202,8 +222,16 @@ main(void)
             }
         }
 
+        for (v = 0; v < nvars; v++)
+        {
+            fmpz_clear(vals[v]);
+            flint_free(vals[v]);
+        }
         flint_free(vals);
 
+        fmpz_clear(fe);
+        fmpz_clear(ge);
+        fmpz_clear(fge);
         fmpz_mod_mpoly_clear(f, ctx);
         fmpz_mod_mpoly_clear(g, ctx);
         fmpz_mod_mpoly_clear(fg, ctx);

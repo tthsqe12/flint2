@@ -511,88 +511,43 @@ not_exact_division:
 }
 
 
-/* return 1 if quotient is exact */
-int fmpz_mod_mpoly_divides_monagan_pearce(
+int _fmpz_mod_mpoly_divides_monagan_pearce_maxfields(
     fmpz_mod_mpoly_t Q,
-    const fmpz_mod_mpoly_t A,
-    const fmpz_mod_mpoly_t B,
+    const fmpz_mod_mpoly_t A, fmpz * maxAfields,
+    const fmpz_mod_mpoly_t B, fmpz * maxBfields,
     const fmpz_mod_mpoly_ctx_t ctx)
 {
     slong i, N;
     flint_bitcnt_t Qbits;
-    fmpz * Amaxfields, * Bmaxfields;
     ulong * cmpmask;
     ulong * Aexps = A->exps, * Bexps = B->exps, * expq;
-    int divides, easy_exit, freeAexps = 0, freeBexps = 0;
+    int divides, freeAexps = 0, freeBexps = 0;
     TMP_INIT;
 
-    if (fmpz_mod_mpoly_is_zero(B, ctx))
-    {
-        if (fmpz_mod_mpoly_is_zero(A, ctx) ||
-            fmpz_is_one(fmpz_mod_ctx_modulus(ctx->ffinfo)))
-        {
-            fmpz_mod_mpoly_zero(Q, ctx);
-            return 1;
-        }
-
-        flint_throw(FLINT_DIVZERO, "fmpz_mod_mpoly_divides_monagan_pearce: divide by zero");
-    }
-
-    if (fmpz_mod_mpoly_is_zero(A, ctx))
-    {
-        fmpz_mod_mpoly_zero(Q, ctx);
-        return 1;
-    }
-
-    TMP_START;
-
-    Amaxfields = (fmpz *) TMP_ALLOC(ctx->minfo->nfields*sizeof(fmpz));
-    Bmaxfields = (fmpz *) TMP_ALLOC(ctx->minfo->nfields*sizeof(fmpz));
-    for (i = 0; i < ctx->minfo->nfields; i++)
-    {
-        fmpz_init(Amaxfields + i);
-        fmpz_init(Bmaxfields + i);
-    }
-
-    mpoly_max_fields_fmpz(Amaxfields, A->exps, A->length,
-                                                      A->bits, ctx->minfo);
-    mpoly_max_fields_fmpz(Bmaxfields, B->exps, B->length,
-                                                      B->bits, ctx->minfo);
-    easy_exit = 0;
     for (i = 0; i < ctx->minfo->nfields; i++)
     {
         /*
             cannot be exact division if any max field from A
             is less than corresponding max field from B
         */
-        if (fmpz_cmp(Amaxfields + i, Bmaxfields + i) < 0)
-            easy_exit = 1;
+        if (fmpz_cmp(maxAfields + i, maxBfields + i) < 0)
+        {
+            fmpz_mod_mpoly_zero(Q, ctx);
+            return 0;
+        }
     }
 
-    Qbits = 1 + _fmpz_vec_max_bits(Amaxfields, ctx->minfo->nfields);
+    Qbits = 1 + _fmpz_vec_max_bits(maxAfields, ctx->minfo->nfields);
     Qbits = FLINT_MAX(Qbits, A->bits);
     Qbits = FLINT_MAX(Qbits, B->bits);
     Qbits = mpoly_fix_bits(Qbits, ctx->minfo);
 
-    for (i = 0; i < ctx->minfo->nfields; i++)
-    {
-        fmpz_clear(Amaxfields + i);
-        fmpz_clear(Bmaxfields + i);
-    }
-
-    if (easy_exit)
-    {
-        fmpz_mod_mpoly_zero(Q, ctx);
-        divides = 0;
-        goto cleanup;
-    }
+    TMP_START;
 
     N = mpoly_words_per_exp(Qbits, ctx->minfo);
-    cmpmask = (ulong*) TMP_ALLOC(N*sizeof(ulong));
+    cmpmask = TMP_ARRAY_ALLOC(2*N, ulong);
+    expq = cmpmask + N; /* temp space to check leading monomials divide */
     mpoly_get_cmpmask(cmpmask, N, Qbits, ctx->minfo);
-
-    /* temporary space to check leading monomials divide */
-    expq = (ulong *) TMP_ALLOC(N*sizeof(ulong));
 
     /* quick check for easy case of inexact division of leading monomials */
     if (Qbits == A->bits && Qbits == B->bits && A->exps[N - 1] < B->exps[N - 1])
@@ -603,7 +558,7 @@ int fmpz_mod_mpoly_divides_monagan_pearce(
     }
 
     /* ensure input exponents packed to same size as output exponents */
-    if (Qbits > A->bits)
+    if (Qbits != A->bits)
     {
         freeAexps = 1;
         Aexps = (ulong *) flint_malloc(N*A->length*sizeof(ulong));
@@ -611,7 +566,7 @@ int fmpz_mod_mpoly_divides_monagan_pearce(
                                                     A->length, ctx->minfo);
     }
 
-    if (Qbits > B->bits)
+    if (Qbits != B->bits)
     {
         freeBexps = 1;
         Bexps = (ulong *) flint_malloc(N*B->length*sizeof(ulong));
@@ -663,5 +618,55 @@ cleanup:
 
     TMP_END;
 
+    return divides;
+}
+
+/* return 1 if quotient is exact */
+int fmpz_mod_mpoly_divides_monagan_pearce(
+    fmpz_mod_mpoly_t Q,
+    const fmpz_mod_mpoly_t A,
+    const fmpz_mod_mpoly_t B,
+    const fmpz_mod_mpoly_ctx_t ctx)
+{
+    int divides;
+    slong i;
+    fmpz * maxAfields, * maxBfields;
+    TMP_INIT;
+
+    if (fmpz_mod_mpoly_is_zero(B, ctx))
+    {
+        if (!fmpz_mod_mpoly_is_zero(A, ctx) &&
+            !fmpz_is_one(fmpz_mod_ctx_modulus(ctx->ffinfo)))
+        {
+            flint_throw(FLINT_DIVZERO, "fmpz_mod_mpoly_divides_monagan_pearce: divide by zero");
+        }
+
+        fmpz_mod_mpoly_zero(Q, ctx);
+        return 1;
+    }
+
+    if (fmpz_mod_mpoly_is_zero(A, ctx))
+    {
+        fmpz_mod_mpoly_zero(Q, ctx);
+        return 1;
+    }
+
+    TMP_START;
+
+    maxAfields = TMP_ARRAY_ALLOC(2*ctx->minfo->nfields, fmpz);
+    maxBfields = maxAfields + ctx->minfo->nfields;
+    for (i = 0; i < 2*ctx->minfo->nfields; i++)
+        fmpz_init(maxAfields + i);
+
+    mpoly_max_fields_fmpz(maxAfields, A->exps, A->length, A->bits, ctx->minfo);
+    mpoly_max_fields_fmpz(maxBfields, B->exps, B->length, B->bits, ctx->minfo);
+
+    divides = _fmpz_mod_mpoly_divides_monagan_pearce_maxfields(Q,
+                                            A, maxAfields, B, maxBfields, ctx);
+
+    for (i = 0; i < 2*ctx->minfo->nfields; i++)
+        fmpz_clear(maxAfields + i);
+
+    TMP_END;
     return divides;
 }

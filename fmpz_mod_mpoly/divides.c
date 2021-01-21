@@ -13,25 +13,40 @@
 #include "ulong_extras.h"
 
 static int _fmpz_mod_mpoly_divides_try_dense(
-    slong * Adegs,
-    slong * Bdegs,
-    slong nvars,
+    const fmpz * maxAfields,
+    const fmpz * maxBfields,
     slong Alen,
-    slong Blen)
+    slong Blen,
+    const mpoly_ctx_t mctx)
 {
     const int max_bit_size = FLINT_MIN(FLINT_BITS/3 + 16, FLINT_BITS - 4);
     slong i;
+    ulong * Adegs;
     ulong total_dense_size;
+    TMP_INIT;
 
     FLINT_ASSERT(Alen > 0);
     FLINT_ASSERT(Blen > 0);
 
+    if (mctx->nvars > FLINT_BITS)
+        return 0;
+
+    TMP_START;
+
+    Adegs = TMP_ARRAY_ALLOC(mctx->nvars, ulong);
+    mpoly_get_monomial_ui_unpacked_ffmpz(Adegs, maxAfields, mctx);
+
     total_dense_size = 1;
-    for (i = 0; i < nvars; i++)
+    for (i = 0; i < mctx->nvars; i++)
     {
         if (n_mul_checked(&total_dense_size, total_dense_size, Adegs[i] + 1))
+        {
+            TMP_END;
             return 0;
+        }
     }
+
+    TMP_END;
 
     return total_dense_size < (UWORD(1) << max_bit_size) &&
            total_dense_size/16 < Alen;
@@ -45,12 +60,13 @@ int fmpz_mod_mpoly_divides(
     const fmpz_mod_mpoly_ctx_t ctx)
 {
     int success;
-    slong i, * Adegs, * Bdegs;
+    slong i;
+    fmpz * maxAfields, * maxBfields;
     TMP_INIT;
 
     if (fmpz_mod_mpoly_is_zero(B, ctx))
     {
-        if (!fmpz_mod_mpoly_is_zero(A, ctx) ||
+        if (!fmpz_mod_mpoly_is_zero(A, ctx) &&
             !fmpz_is_one(fmpz_mod_mpoly_ctx_modulus(ctx)))
         {
             flint_throw(FLINT_DIVZERO, "fmpz_mod_mpoly_divides: divide by zero");
@@ -66,47 +82,47 @@ int fmpz_mod_mpoly_divides(
         return 1;
     }
 
-    if (A->length < 30)
-    {
-        return fmpz_mod_mpoly_divides_monagan_pearce(Q, A, B, ctx);
-    }
-
     TMP_START;
 
-    success = -1;
+    maxAfields = TMP_ARRAY_ALLOC(2*ctx->minfo->nfields, fmpz);
+    maxBfields = maxAfields + ctx->minfo->nfields;
+    for (i = 0; i < 2*ctx->minfo->nfields; i++)
+        fmpz_init(maxAfields + i);
 
-    if (A->bits <= FLINT_BITS &&
-        B->bits <= FLINT_BITS &&
-        A->length > 50)
+    mpoly_max_fields_fmpz(maxAfields, A->exps, A->length, A->bits, ctx->minfo);
+    mpoly_max_fields_fmpz(maxBfields, B->exps, B->length, B->bits, ctx->minfo);
+
+    /* quick degree check */
+    for (i = 0; i < ctx->minfo->nfields; i++)
     {
-        Adegs = (slong *) TMP_ALLOC(ctx->minfo->nvars*sizeof(slong));
-        Bdegs = (slong *) TMP_ALLOC(ctx->minfo->nvars*sizeof(slong));
-
-        mpoly_degrees_si(Adegs, A->exps, A->length, A->bits, ctx->minfo);
-        mpoly_degrees_si(Bdegs, B->exps, B->length, B->bits, ctx->minfo);
-
-        /* quick degree check */
-        for (i = 0; i < ctx->minfo->nvars; i++)
+        if (fmpz_cmp(maxAfields + i, maxBfields + i) < 0)
         {
-            if (Adegs[i] < Bdegs[i])
-            {
-                fmpz_mod_mpoly_zero(Q, ctx);
-                success = 0;
-                goto cleanup;
-            }
-        }
-
-        if (_fmpz_mod_mpoly_divides_try_dense(Adegs, Bdegs, ctx->minfo->nvars,
-                                                         A->length, B->length))
-        {
-            success = fmpz_mod_mpoly_divides_dense(Q, A, B, ctx);
+            fmpz_mod_mpoly_zero(Q, ctx);
+            success = 0;
+            goto cleanup;
         }
     }
 
-    if (success < 0)
-        success = fmpz_mod_mpoly_divides_monagan_pearce(Q, A, B, ctx);
+    if (A->length < 30 || A->bits > FLINT_BITS || B->bits > FLINT_BITS)
+        goto do_heap;
 
+    if (_fmpz_mod_mpoly_divides_try_dense(maxAfields, maxBfields,
+                                             A->length, B->length, ctx->minfo))
+    {
+        success = _fmpz_mod_mpoly_divides_dense_maxfields(Q,
+                                            A, maxAfields, B, maxBfields, ctx);
+        if (success >= 0)
+            goto cleanup;
+    }
+
+do_heap:
+
+    success = _fmpz_mod_mpoly_divides_monagan_pearce_maxfields(Q,
+                                            A, maxAfields, B, maxBfields, ctx);
 cleanup:
+
+    for (i = 0; i < 2*ctx->minfo->nfields; i++)
+        fmpz_clear(maxAfields + i);
 
     TMP_END;
     return success;

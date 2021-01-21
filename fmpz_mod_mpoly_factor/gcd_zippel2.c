@@ -1672,17 +1672,3 @@ gcd_is_trivial:
     goto cleanup;
 }
 
-
-/* should find its way back here in interesting cases */
-int fmpz_mod_mpoly_gcd_zippel2(
-    fmpz_mod_mpoly_t G,
-    const fmpz_mod_mpoly_t A,
-    const fmpz_mod_mpoly_t B,
-    const fmpz_mod_mpoly_ctx_t ctx)
-{
-    if (fmpz_mod_mpoly_is_zero(A, ctx) || fmpz_mod_mpoly_is_zero(B, ctx))
-        return fmpz_mod_mpoly_gcd(G, A, B, ctx);
-
-    return _fmpz_mod_mpoly_gcd_algo(G, NULL, NULL, A, B, ctx, MPOLY_GCD_USE_ZIPPEL2);
-}
-

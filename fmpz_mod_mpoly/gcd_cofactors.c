@@ -10,7 +10,7 @@
 */
 
 #include "fmpz_mod_mpoly.h"
-
+#include "fmpz_mod_mpoly_factor.h"
 
 int fmpz_mod_mpoly_gcd_cofactors(
     fmpz_mod_mpoly_t G,
@@ -51,7 +51,7 @@ int fmpz_mod_mpoly_gcd_cofactors(
         {
             _fmpz_mod_vec_scalar_mul_fmpz_mod(Abar->coeffs, Abar->coeffs,
                                      Abar->length, G->coeffs + 0, ctx->ffinfo);
-            _fmpz_mod_vec_scalar_mul_fmpz_mod(G->coeffs, G->coeffs,
+            _fmpz_mod_vec_scalar_div_fmpz_mod(G->coeffs, G->coeffs,
                                         G->length, G->coeffs + 0, ctx->ffinfo);
         }
         return 1;

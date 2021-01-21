@@ -19,10 +19,9 @@ int fmpz_mod_mpoly_factor_expand(
 {
     int success = 1;
     slong i;
-    fmpz_mod_mpoly_t t1, t2;
+    fmpz_mod_mpoly_t t1;
 
     fmpz_mod_mpoly_init(t1, ctx);
-    fmpz_mod_mpoly_init(t2, ctx);
 
     fmpz_mod_mpoly_set_fmpz_mod(A, f->constant, ctx);
 
@@ -34,14 +33,13 @@ int fmpz_mod_mpoly_factor_expand(
             success = 0;
             goto cleanup;
         }
-        fmpz_mod_mpoly_mul(t2, A, t1, ctx);
-        fmpz_mod_mpoly_swap(A, t2, ctx);
+
+        fmpz_mod_mpoly_mul(A, A, t1, ctx);
     }
 
 cleanup:
 
     fmpz_mod_mpoly_clear(t1, ctx);
-    fmpz_mod_mpoly_clear(t2, ctx);
 
     return success;
 }

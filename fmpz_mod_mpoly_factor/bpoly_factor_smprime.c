@@ -399,10 +399,6 @@ typedef struct {
     slong r;
     slong fac_lift_order;
     slong inv_lift_order;
-#if 0
-    nmod_eval_interp_t E;
-#endif
-    int Eok;
     int use_linear;
 } fmpz_mod_bpoly_lift_struct;
 
@@ -419,9 +415,6 @@ static void fmpz_mod_bpoly_lift_init(
     L->r = 0;
     L->fac_lift_order = 0;
     L->inv_lift_order = 0;
-#if 0
-    nmod_eval_interp_init(L->E);
-#endif
 }
 
 static void fmpz_mod_bpoly_lift_clear(
@@ -432,9 +425,6 @@ static void fmpz_mod_bpoly_lift_clear(
     flint_free(L->lifted_fac);
     fmpz_mod_tpoly_clear(L->tmp, ctx);
     fmpz_mod_bpoly_clear(L->bmp, ctx);
-#if 0
-    nmod_eval_interp_clear(L->E);
-#endif
 }
 
 
@@ -508,10 +498,9 @@ static void _fmpz_mod_bpoly_lift_build_tree(
         link[i] = j;
     }
 
-{
-fmpz zero = 0;
     for (j = 0; j < 2*r - 2; j += 2)
     {
+        fmpz zero = 0;
         fmpz_mod_bpoly_eval(g, v + j, &zero, ctx);
         fmpz_mod_bpoly_eval(h, v + j + 1, &zero, ctx);
         fmpz_mod_poly_xgcd(d, a, b, g, h, ctx);
@@ -520,7 +509,7 @@ fmpz zero = 0;
         fmpz_mod_bpoly_set_poly_gen0(w + j, a, ctx);
         fmpz_mod_bpoly_set_poly_gen0(w + j + 1, b, ctx);
     }
-}
+
     fmpz_mod_poly_clear(d, ctx);
     fmpz_mod_poly_clear(g, ctx);
     fmpz_mod_poly_clear(h, ctx);
@@ -539,22 +528,22 @@ fmpz zero = 0;
         _hensel_lift_tree(-1, L->link, v, w, monicA, 2*r-4, e[i+1], e[i]-e[i+1], ctx);
 }
 
-#if 0
-static void _fmpz_mod_bpoly_lift_build_steps(fmpz_mod_bpoly_lift_t L, nmod_t ctx)
+static void _fmpz_mod_bpoly_lift_build_steps(
+    fmpz_mod_bpoly_lift_t L,
+    const fmpz_mod_ctx_t ctx)
 {
     slong i, j, k;
     slong r = L->r;
     slong order = L->fac_lift_order;
-    n_bpoly_struct * A, * Bfinal, * U, * Ue, * Be, * B;
-    n_poly_struct * s, * Binv;
-    n_poly_struct * c, * t;
+    fmpz_mod_bpoly_struct * A, * Bfinal, * U, * B;
+    fmpz_mod_poly_struct * s, * Binv;
+    fmpz_mod_poly_struct * c, * t;
 
     FLINT_ASSERT(L->tmp->alloc >= 4*r + 1);
     A = L->tmp->coeffs;
     Bfinal = A + 1;
-    U = Ue = Bfinal + r;
+    U = Bfinal + r;
     B = U + r;
-    Be = B + r;
 
     FLINT_ASSERT(L->bmp->alloc >= 2*r + 5);
     s = L->bmp->coeffs;
@@ -570,53 +559,25 @@ static void _fmpz_mod_bpoly_lift_build_steps(fmpz_mod_bpoly_lift_t L, nmod_t ctx
             flint_throw(FLINT_IMPINV, "fmpz_mod_bpoly_lift: bad inverse");
 
         /* set up mul (mod B[k].coeffs[0]) */
-        n_poly_reverse(t, B[k].coeffs + 0, B[k].coeffs[0].length);
+        fmpz_mod_poly_reverse(t, B[k].coeffs + 0, B[k].coeffs[0].length, ctx);
         fmpz_mod_poly_inv_series(Binv + k, t, B[k].coeffs[0].length, ctx);
-
-        if (L->Eok)
-        {
-            n_bpoly_fit_length(Be + k, order);
-            for (i = 0; i < order; i++)
-                nmod_eval_interp_from_coeffs_poly(Be[k].coeffs + i,
-                                               B[k].coeffs + i, L->E, ctx);
-        }
     }
 
     /* U[0], U[r-1] are not used, zero out both U and Ue */
     for (k = 1; k < r - 1; k++)
     {
-        n_bpoly_fit_length(U + k, order);
+        fmpz_mod_bpoly_fit_length(U + k, order, ctx);
         for (i = U[k].length; i < order; i++)
             U[k].coeffs[i].length = 0;
         U[k].length = order;
     }
 
-    if (r > 2 && L->Eok)
-    {
-        slong len = nmod_eval_interp_eval_length(L->E);
-
-        for (j = 0; j < order; j++)
-        {
-            k = r - 2;
-            nmod_evals_zero(Ue[k].coeffs + j);
-            for (i = 0; i <= j; i++)
-                nmod_evals_addmul(Ue[k].coeffs + j, Be[k].coeffs + i,
-                                       Be[k + 1].coeffs + j - i, len, ctx);
-            for (k--; k > 0; k--)
-            {
-                nmod_evals_zero(Ue[k].coeffs + j);
-                for (i = 0; i <= j; i++)
-                    nmod_evals_addmul(Ue[k].coeffs + j, Be[k].coeffs + i,
-                                       Ue[k + 1].coeffs + j - i, len, ctx);
-            }
-        }
-    }
-    else if (r > 2)
+    if (r > 2)
     {
         for (j = 0; j < order; j++)
         {
             k = r - 2;
-            n_poly_zero(U[k].coeffs + j);
+            fmpz_mod_poly_zero(U[k].coeffs + j, ctx);
             for (i = 0; i <= j; i++)
             {
                 if (i < B[k].length && j - i < B[k + 1].length)
@@ -627,7 +588,7 @@ static void _fmpz_mod_bpoly_lift_build_steps(fmpz_mod_bpoly_lift_t L, nmod_t ctx
             }
             for (k--; k > 0; k--)
             {
-                n_poly_zero(U[k].coeffs + j);
+                fmpz_mod_poly_zero(U[k].coeffs + j, ctx);
                 for (i = 0; i <= j; i++)
                 {
                     if (i < B[k].length)
@@ -640,23 +601,12 @@ static void _fmpz_mod_bpoly_lift_build_steps(fmpz_mod_bpoly_lift_t L, nmod_t ctx
         }
     }
 }
-#endif
 
 /* linear lifting has large memory requirements wrt r */
 static int _use_linear_cutoff(slong r, slong degx)
 {
-    return 0;
     return r < 30 + 5*FLINT_BIT_COUNT(degx);
 }
-
-/* evaluation has even large memory requirements wrt r */
-/*
-static int _try_eval_cutoff(slong r, slong degx)
-{
-    return 0;
-    return r < 20 + 2*FLINT_BIT_COUNT(degx);
-}
-*/
 
 static void fmpz_mod_bpoly_lift_start(
     fmpz_mod_bpoly_lift_t L,
@@ -665,9 +615,9 @@ static void fmpz_mod_bpoly_lift_start(
     const fmpz_mod_bpoly_t monicA,
     const fmpz_mod_ctx_t ctx)
 {
-    slong i/*, k*/;
+    slong i, k;
     slong degx = fmpz_mod_bpoly_degree0(monicA, ctx);
-/*    fmpz_mod_bpoly_struct * A, * Bfinal, * U, * Ue, * B;*/
+    fmpz_mod_bpoly_struct * A, * Bfinal, * U, * B;
 
     FLINT_ASSERT(r > 1);
 
@@ -694,38 +644,31 @@ static void fmpz_mod_bpoly_lift_start(
     }
     else
     {
-flint_printf("not implemented");
-flint_abort();
-#if 0
-        n_tpoly_fit_length(L->tmp, 4*r + 1);
+        fmpz_mod_tpoly_fit_length(L->tmp, 4*r + 1, ctx);
         A = L->tmp->coeffs;
         Bfinal = A + 1;
-        U = Ue = Bfinal + r;
+        U = Bfinal + r;
         B = U + r;
 
-        n_bpoly_fit_length(L->bmp, 2*r + 5);
+        fmpz_mod_bpoly_fit_length(L->bmp, 2*r + 5, ctx);
 
-        n_bpoly_fit_length(A, 1);
+        fmpz_mod_bpoly_fit_length(A, 1, ctx);
         A->length = 1;
-        n_poly_one(A->coeffs + 0);
+        fmpz_mod_poly_one(A->coeffs + 0, ctx);
         for (k = 0; k < r; k++)
         {
-            n_bpoly_fit_length(B + k, 1);
+            fmpz_mod_bpoly_fit_length(B + k, 1, ctx);
             B[k].length = 1;
-            n_poly_set_nmod_poly(B[k].coeffs + 0, local_facs + k);
+            fmpz_mod_poly_set(B[k].coeffs + 0, local_facs + k, ctx);
             fmpz_mod_poly_mul(A->coeffs + 0, A->coeffs + 0, B[k].coeffs + 0, ctx);
 
             L->lifted_fac[k] = Bfinal + k;
-            n_bpoly_reverse_gens(L->lifted_fac[k], B + k);
+            fmpz_mod_bpoly_reverse_vars(L->lifted_fac[k], B + k, ctx);
 
             U[k].length = 0;
         }
 
-        L->Eok = _try_eval_cutoff(r, degx) &&
-                 nmod_eval_interp_set_degree_modulus(L->E, degx, ctx);
-
         _fmpz_mod_bpoly_lift_build_steps(L, ctx);
-#endif
     }
 }
 
@@ -741,7 +684,7 @@ void fmpz_mod_bpoly_lift_combine(
     const fmpz_mod_ctx_t ctx)
 {
     slong i, j, k, r, degx;
-/*    fmpz_mod_bpoly_struct * A, * Bfinal, * U, * Ue, * B;*/
+    fmpz_mod_bpoly_struct * A, * Bfinal, * U, * B;
     slong oldr = L->r;
     slong newr = fmpz_mod_mat_nrows(N);
     slong order = L->fac_lift_order;
@@ -809,54 +752,42 @@ void fmpz_mod_bpoly_lift_combine(
     }
     else
     {
-        for (k = 0; k < r; k++)
-        {
-flint_printf("not implemented\n");
-flint_abort();
-}
-flint_printf("not implemented\n");
-flint_abort();
-#if 0
-        if (!L->Eok && r < 20 + 2*FLINT_BIT_COUNT(degx))
-            L->Eok = nmod_eval_interp_set_degree_modulus(L->E, degx, ctx);
-
         A = L->tmp->coeffs;
         Bfinal = A + 1;
 
-        n_bpoly_swap(T, A);
-        n_tpoly_clear(L->tmp);
-        n_tpoly_init(L->tmp);
-        n_tpoly_fit_length(L->tmp, 4*r + 1);
+        fmpz_mod_bpoly_swap(T, A, ctx);
+        fmpz_mod_tpoly_clear(L->tmp, ctx);
+        fmpz_mod_tpoly_init(L->tmp, ctx);
+        fmpz_mod_tpoly_fit_length(L->tmp, 4*r + 1, ctx);
         A = L->tmp->coeffs;
-        n_bpoly_swap(A, T);
-        n_bpoly_clear(T);
+        fmpz_mod_bpoly_swap(A, T, ctx);
+        fmpz_mod_bpoly_clear(T, ctx);
         Bfinal = A + 1;
-        U = Ue = Bfinal + r;
+        U = Bfinal + r;
         B = U + r;
 
-        n_bpoly_clear(L->bmp);
-        n_bpoly_init(L->bmp);
-        n_bpoly_fit_length(L->bmp, 2*r + 5);
+        fmpz_mod_bpoly_clear(L->bmp, ctx);
+        fmpz_mod_bpoly_init(L->bmp, ctx);
+        fmpz_mod_bpoly_fit_length(L->bmp, 2*r + 5, ctx);
 
         for (i = 0; i < newr; i++)
         {
             L->lifted_fac[i] = Bfinal + i;
-            n_bpoly_swap(Bfinal + i, new_facs + i);
-            n_bpoly_clear(new_facs + i);
+            fmpz_mod_bpoly_swap(Bfinal + i, new_facs + i, ctx);
+            fmpz_mod_bpoly_clear(new_facs + i, ctx);
         }
         flint_free(new_facs);
 
         for (k = 0; k < r; k++)
         {
-            n_bpoly_reverse_gens(B + k, L->lifted_fac[k]);
+            fmpz_mod_bpoly_reverse_vars(B + k, L->lifted_fac[k], ctx);
             FLINT_ASSERT(B[k].length <= order);
-            n_bpoly_fit_length(B + k, order);
+            fmpz_mod_bpoly_fit_length(B + k, order, ctx);
             for (i = B[k].length; i < order; i++)
-                n_poly_zero(B[k].coeffs + i);
+                fmpz_mod_poly_zero(B[k].coeffs + i, ctx);
         }
 
         _fmpz_mod_bpoly_lift_build_steps(L, ctx);
-#endif
     }
 
     fmpz_mod_mat_clear(N);
@@ -893,13 +824,12 @@ static void fmpz_mod_bpoly_lift_continue(
     slong order,
     const fmpz_mod_ctx_t ctx)
 {
-    slong i/*, j, k*/;
+    slong i, j, k;
     slong r = L->r;
-/*
-    fmpz_mod_bpoly_struct * A, * Bfinal, * U, * Ue, * Be, * B;
+    fmpz_mod_bpoly_struct * A, * Bfinal, * U, * Ue, * B;
     fmpz_mod_poly_struct * s, * Binv;
-    fmpz_mod_poly_struct * c, * t, * ce, * vk, * vek;
-*/
+    fmpz_mod_poly_struct * c, * t, * ce, * vk;
+
     if (order <= L->fac_lift_order)
         return;
 
@@ -930,15 +860,10 @@ static void fmpz_mod_bpoly_lift_continue(
         return;
     }
 
-flint_printf("not implemented");
-flint_abort();
-
-#if 0
     A = L->tmp->coeffs;
     Bfinal = A + 1;
     U = Ue = Bfinal + r;
     B = U + r;
-    Be = B + r;
 
     s = L->bmp->coeffs;
     Binv = s + r;
@@ -946,147 +871,42 @@ flint_abort();
     t = c + 1;
     ce = t + 1;
     vk = ce + 1;
-    vek = vk + 1;
 
     /* tack on reversal of monicA */
     for (i = 0; i < monicA->length; i++)
     {
-        n_poly_struct * Bi = monicA->coeffs + i;
+        fmpz_mod_poly_struct * Bi = monicA->coeffs + i;
         j = FLINT_MIN(Bi->length, order);
         for (j--; j >= L->fac_lift_order; j--)
-            n_bpoly_set_coeff(A, j, i, Bi->coeffs[j]);
+            fmpz_mod_bpoly_set_coeff(A, j, i, Bi->coeffs + j, ctx);
     }
 
     /* tack on zeros to the B[k] */
     for (k = 0; k < r; k++)
     {
-        n_bpoly_fit_length(B + k, order);
-        if (L->Eok)
-            n_bpoly_fit_length(Be + k, order);
+        fmpz_mod_bpoly_fit_length(B + k, order, ctx);
 
         for (i = B[k].length; i < order; i++)
         {
-            n_poly_zero(B[k].coeffs + i);
-            if (L->Eok)
-                nmod_evals_zero(Be[k].coeffs + i);
+            fmpz_mod_poly_zero(B[k].coeffs + i, ctx);
         }
 
         /* U[0] is not used, zero out both U and Ue */
         if (k > 0)
         {
-            n_bpoly_fit_length(U + k, order);
+            fmpz_mod_bpoly_fit_length(U + k, order, ctx);
             for (i = U[k].length; i < order; i++)
                 U[k].coeffs[i].length = 0;
             U[k].length = order;
         }
     }
 
-    if (L->Eok && r > 2)
-    {
-        slong len = nmod_eval_interp_eval_length(L->E);
-
-        for (j = L->fac_lift_order; j < order; j++)
-        {
-            k = r - 2;
-            nmod_evals_zero(Ue[k].coeffs + j);
-            for (i = 0; i <= j; i++)
-                nmod_evals_addmul(Ue[k].coeffs + j, Be[k].coeffs + i,
-                                              Be[k + 1].coeffs + j - i, len, ctx);
-            for (k--; k > 0; k--)
-            {
-                nmod_evals_zero(Ue[k].coeffs + j);
-                for (i = 0; i <= j; i++)
-                    nmod_evals_addmul(Ue[k].coeffs + j, Be[k].coeffs + i,
-                                              Ue[k + 1].coeffs + j - i, len, ctx);
-            }
-
-            nmod_evals_zero(ce);
-            for (i = 0; i <= j; i++)
-                nmod_evals_addmul(ce, Be[0].coeffs + i,
-                                      Ue[1].coeffs + j - i, len, ctx);
-
-            nmod_eval_interp_to_coeffs_poly(c, ce, L->E, ctx);
-
-            if (j < A->length)
-                fmpz_mod_poly_sub(c, A->coeffs + j, c, ctx);
-            else
-                fmpz_mod_poly_neg(c, c, ctx);
-
-            if (n_poly_is_zero(c))
-                continue;
-
-            for (k = r - 1; k >= 0; k--)
-            {
-                fmpz_mod_poly_rem(t, c, B[k].coeffs + 0, ctx);
-                fmpz_mod_poly_mulmod_preinv(vk, s + k, t, B[k].coeffs + 0, Binv + k, ctx);
-                nmod_eval_interp_from_coeffs_poly(vek, vk, L->E, ctx);
-                if (!n_poly_is_zero(vk))
-                {
-                    nmod_evals_add_inplace(Be[k].coeffs + j, vek, len, ctx);
-                    fmpz_mod_poly_add(B[k].coeffs + j, B[k].coeffs + j, vk, ctx);
-                    if (!n_poly_is_zero(B[k].coeffs + j))
-                        B[k].length = FLINT_MAX(B[k].length, j + 1);
-                }
-
-                /* correct the U's */
-                if (k > r - 2)
-                {
-                    n_poly_swap(ce, vek);
-                }
-                else if (k > 0)
-                {
-                    n_poly_struct * p;
-                    p = (k == r - 2) ? Be[k + 1].coeffs : Ue[k + 1].coeffs;
-                    nmod_evals_fmma(ce, Be[k].coeffs + 0, ce, p, vek, len, ctx);
-                    nmod_evals_add_inplace(Ue[k].coeffs + j, ce, len, ctx);
-                }
-            }
-        }
-    }
-    else if (L->Eok)
-    {
-        slong len = nmod_eval_interp_eval_length(L->E);
-
-        FLINT_ASSERT(r == 2);
-
-        for (j = L->fac_lift_order; j < order; j++)
-        {
-            nmod_evals_zero(ce);
-            for (i = 0; i <= j; i++)
-                nmod_evals_addmul(ce, Be[0].coeffs + i,
-                                      Be[1].coeffs + j - i, len, ctx);
-
-            nmod_eval_interp_to_coeffs_poly(c, ce, L->E, ctx);
-
-            if (j < A->length)
-                fmpz_mod_poly_sub(c, A->coeffs + j, c, ctx);
-            else
-                fmpz_mod_poly_neg(c, c, ctx);
-
-            if (n_poly_is_zero(c))
-                continue;
-
-            for (k = 0; k < r; k++)
-            {
-                fmpz_mod_poly_rem(t, c, B[k].coeffs + 0, ctx);
-                fmpz_mod_poly_mulmod_preinv(vk, s + k, t, B[k].coeffs + 0, Binv + k, ctx);
-                nmod_eval_interp_from_coeffs_poly(vek, vk, L->E, ctx);
-                if (!n_poly_is_zero(vk))
-                {
-                    nmod_evals_add_inplace(Be[k].coeffs + j, vek, len, ctx);
-                    fmpz_mod_poly_add(B[k].coeffs + j, B[k].coeffs + j, vk, ctx);
-                    if (!n_poly_is_zero(B[k].coeffs + j))
-                        B[k].length = FLINT_MAX(B[k].length, j + 1);
-                }
-            }
-        }
-    }
-    else if (r > 2)
+    if (r > 2)
     {
         for (j = L->fac_lift_order; j < order; j++)
         {
             k = r - 2;
-            n_poly_zero(U[k].coeffs + j);
+            fmpz_mod_poly_zero(U[k].coeffs + j, ctx);
             for (i = 0; i <= j; i++)
             {
                 if (i < B[k].length && j - i < B[k + 1].length)
@@ -1097,7 +917,7 @@ flint_abort();
             }
             for (k--; k > 0; k--)
             {
-                n_poly_zero(U[k].coeffs + j);
+                fmpz_mod_poly_zero(U[k].coeffs + j, ctx);
                 for (i = 0; i <= j; i++)
                 {
                     if (i < B[k].length)
@@ -1109,9 +929,9 @@ flint_abort();
             }
 
             if (j < A->length)
-                n_poly_set(c, A->coeffs + j);
+                fmpz_mod_poly_set(c, A->coeffs + j, ctx);
             else
-                n_poly_zero(c);
+                fmpz_mod_poly_zero(c, ctx);
 
             for (i = 0; i <= j; i++)
             {
@@ -1122,28 +942,28 @@ flint_abort();
                 }
             }
 
-            if (n_poly_is_zero(c))
+            if (fmpz_mod_poly_is_zero(c, ctx))
                 continue;
 
             for (k = r - 1; k >= 0; k--)
             {
                 fmpz_mod_poly_rem(t, c, B[k].coeffs + 0, ctx);
                 fmpz_mod_poly_mulmod_preinv(vk, s + k, t, B[k].coeffs + 0, Binv + k, ctx);
-                if (!n_poly_is_zero(vk))
+                if (!fmpz_mod_poly_is_zero(vk, ctx))
                 {
                     fmpz_mod_poly_add(B[k].coeffs + j, B[k].coeffs + j, vk, ctx);
-                    if (!n_poly_is_zero(B[k].coeffs + j))
+                    if (!fmpz_mod_poly_is_zero(B[k].coeffs + j, ctx))
                         B[k].length = FLINT_MAX(B[k].length, j + 1);
                 }
 
                 /* correct the U's */
                 if (k > r - 2)
                 {
-                    n_poly_swap(ce, vk);
+                    fmpz_mod_poly_swap(ce, vk, ctx);
                 }
                 else if (k > 0)
                 {
-                    n_poly_struct * p;
+                    fmpz_mod_poly_struct * p;
                     fmpz_mod_poly_mul(t, B[k].coeffs + 0, ce, ctx);
                     p = (k == r - 2) ? B[k + 1].coeffs : U[k + 1].coeffs;
                     fmpz_mod_poly_mul(ce, p, vk, ctx);
@@ -1160,9 +980,9 @@ flint_abort();
         for (j = L->fac_lift_order; j < order; j++)
         {
             if (j < A->length)
-                n_poly_set(c, A->coeffs + j);
+                fmpz_mod_poly_set(c, A->coeffs + j, ctx);
             else
-                n_poly_zero(c);
+                fmpz_mod_poly_zero(c, ctx);
 
             for (i = FLINT_MIN(j, B[0].length - 1); i >= 0; i--)
             {
@@ -1170,17 +990,17 @@ flint_abort();
                 fmpz_mod_poly_sub(c, c, t, ctx);
             }
 
-            if (n_poly_is_zero(c))
+            if (fmpz_mod_poly_is_zero(c, ctx))
                 continue;
 
             for (k = 0; k < r; k++)
             {
                 fmpz_mod_poly_rem(t, c, B[k].coeffs + 0, ctx);
                 fmpz_mod_poly_mulmod_preinv(vk, s + k, t, B[k].coeffs + 0, Binv + k, ctx);
-                if (!n_poly_is_zero(vk))
+                if (!fmpz_mod_poly_is_zero(vk, ctx))
                 {
                     fmpz_mod_poly_add(B[k].coeffs + j, B[k].coeffs + j, vk, ctx);
-                    if (!n_poly_is_zero(B[k].coeffs + j))
+                    if (!fmpz_mod_poly_is_zero(B[k].coeffs + j, ctx))
                         B[k].length = FLINT_MAX(B[k].length, j + 1);
                 }
             }
@@ -1190,18 +1010,18 @@ flint_abort();
     L->fac_lift_order = order;
 
     for (k = 0; k < r; k++)
-        n_bpoly_reverse_gens(Bfinal + k, B + k);
+        fmpz_mod_bpoly_reverse_vars(Bfinal + k, B + k, ctx);
 
 #if FLINT_WANT_ASSERT
     {
-        n_bpoly_t t1, t2;
-        n_bpoly_init(t1);
-        n_bpoly_init(t2);
-        n_bpoly_set(t1, Bfinal + 0);
+        fmpz_mod_bpoly_t t1, t2;
+        fmpz_mod_bpoly_init(t1, ctx);
+        fmpz_mod_bpoly_init(t2, ctx);
+        fmpz_mod_bpoly_set(t1, Bfinal + 0, ctx);
         for (k = 1; k < r; k++)
         {
             fmpz_mod_bpoly_mul_series(t2, t1, Bfinal + k, order, ctx);
-            n_bpoly_swap(t1, t2);
+            fmpz_mod_bpoly_swap(t1, t2, ctx);
         }
         fmpz_mod_bpoly_sub(t2, monicA, t1, ctx);
 
@@ -1209,13 +1029,12 @@ flint_abort();
         {
             for (j = 0; j < FLINT_MIN(order, t2->coeffs[i].length); j++)
             {
-                FLINT_ASSERT(0 == t2->coeffs[i].coeffs[j]);
+                FLINT_ASSERT(fmpz_is_zero(t2->coeffs[i].coeffs + j));
             }
         }
-        n_bpoly_clear(t1);
-        n_bpoly_clear(t2);
+        fmpz_mod_bpoly_clear(t1, ctx);
+        fmpz_mod_bpoly_clear(t2, ctx);
     }
-#endif
 #endif
 }
 
