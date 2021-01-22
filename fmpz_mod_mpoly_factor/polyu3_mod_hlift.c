@@ -22,13 +22,13 @@ static void fmpz_mod_polyu_get_fmpz_mod_polyun(
     A->length = 0;
     for (i = 0; i < B->length; i++)
     {
-        for (j = B->terms[i].coeff->length - 1; j >= 0; j--)
+        for (j = B->coeffs[i].length - 1; j >= 0; j--)
         {
-            if (fmpz_is_zero(B->terms[i].coeff->coeffs + j))
+            if (fmpz_is_zero(B->coeffs[i].coeffs + j))
                 continue;
             fmpz_mod_polyu_fit_length(A, A->length + 1, ctx);
-            fmpz_set(A->coeffs + A->length, B->terms[i].coeff->coeffs + j);
-            A->exps[A->length] = B->terms[i].exp + j;
+            fmpz_set(A->coeffs + A->length, B->coeffs[i].coeffs + j);
+            A->exps[A->length] = B->exps[i] + j;
             A->length++;
         }
     }
@@ -61,27 +61,6 @@ int fmpz_mod_polyu_is_canonical(
             fmpz_is_zero(A->coeffs + i))
             return 0;
         if (i > 0 && A->exps[i] >= A->exps[i - 1])
-            return 0;
-    }
-    return 1;
-}
-
-
-int fmpz_mod_polyun_is_canonical(
-    const fmpz_mod_polyun_t A,
-    const fmpz_mod_ctx_t ctx)
-{
-    slong i;
-    if (A->length < 0)
-        return 0;
-    for (i = 0; i < A->length; i++)
-    {
-        if (!fmpz_mod_poly_is_canonical(A->terms[i].coeff, ctx) ||
-            fmpz_mod_poly_is_zero(A->terms[i].coeff, ctx))
-        {
-            return 0;
-        }
-        if (i > 0 && A->terms[i].exp >= A->terms[i - 1].exp)
             return 0;
     }
     return 1;
@@ -293,7 +272,8 @@ void fmpz_mod_polyu3n_interp_lift_2sm_bpoly(
     const fmpz_mod_ctx_t ctx)
 {
     slong lastlength = 0;
-    fmpz_mod_polyun_term_struct * Tterms;
+    fmpz_mod_poly_struct * Tcoeffs;
+    ulong * Texps;
     slong Ti;
     fmpz_mod_poly_struct * Acoeffs = A->coeffs;
     slong Ai, ai;
@@ -314,7 +294,8 @@ void fmpz_mod_polyu3n_interp_lift_2sm_bpoly(
     fmpz_mod_inv(d1, d1, ctx);
 
     fmpz_mod_polyun_fit_length(T, FLINT_MAX(A->length, B->length), ctx);
-    Tterms = T->terms;
+    Tcoeffs = T->coeffs;
+    Texps = T->exps;
 
     Ti = 0;
     Ai = A->length - 1;
@@ -327,7 +308,8 @@ void fmpz_mod_polyu3n_interp_lift_2sm_bpoly(
         if (Ti >= T->alloc)
         {
             fmpz_mod_polyun_fit_length(T, Ti + FLINT_MAX(Ai, Bi) + 1, ctx);
-            Tterms = T->terms;
+            Tcoeffs = T->coeffs;
+            Texps = T->exps;
         }
 
         FLINT_ASSERT(Ai < 0 || !fmpz_is_zero(Acoeffs[Ai].coeffs + ai));
@@ -337,7 +319,7 @@ void fmpz_mod_polyu3n_interp_lift_2sm_bpoly(
         if (Ai >= 0)
         {
             fmpz_set(Avalue, Acoeffs[Ai].coeffs + ai);
-            Tterms[Ti].exp = pack_exp3(Ai, ai, 0);
+            Texps[Ti] = pack_exp3(Ai, ai, 0);
         }
 
         fmpz_zero(Bvalue);
@@ -347,18 +329,18 @@ void fmpz_mod_polyu3n_interp_lift_2sm_bpoly(
             if (fmpz_is_zero(Avalue))
             {
                 fmpz_set(Bvalue, Bcoeffs[Bi].coeffs + bi);
-                Tterms[Ti].exp = Bexp;
+                Texps[Ti] = Bexp;
             }
             else
             {
-                if (Tterms[Ti].exp <= Bexp)
+                if (Texps[Ti] <= Bexp)
                 {
                     fmpz_set(Bvalue, Bcoeffs[Bi].coeffs + bi);
                 }
-                if (Tterms[Ti].exp < Bexp)
+                if (Texps[Ti] < Bexp)
                 {
                     fmpz_zero(Avalue);
-                    Tterms[Ti].exp = Bexp;
+                    Texps[Ti] = Bexp;
                 }
             }
         }
@@ -370,11 +352,11 @@ void fmpz_mod_polyu3n_interp_lift_2sm_bpoly(
 
         FLINT_ASSERT(!fmpz_is_zero(u) || !fmpz_is_zero(v));
 
-        fmpz_mod_poly_fit_length(Tterms[Ti].coeff, 2, ctx);
-        fmpz_set(Tterms[Ti].coeff->coeffs + 0, v);
-        fmpz_set(Tterms[Ti].coeff->coeffs + 1, u);
-        Tterms[Ti].coeff->length = 1 + !fmpz_is_zero(u);
-        lastlength = FLINT_MAX(lastlength, Tterms[Ti].coeff->length);
+        fmpz_mod_poly_fit_length(Tcoeffs + Ti, 2, ctx);
+        fmpz_set(Tcoeffs[Ti].coeffs + 0, v);
+        fmpz_set(Tcoeffs[Ti].coeffs + 1, u);
+        Tcoeffs[Ti].length = 1 + !fmpz_is_zero(u);
+        lastlength = FLINT_MAX(lastlength, Tcoeffs[Ti].length);
         Ti++;
 
         if (!fmpz_is_zero(Avalue))
@@ -490,9 +472,11 @@ int fmpz_mod_polyu3n_interp_crt_2sm_bpoly(
     int changed = 0;
     slong lastlength = 0;
     fmpz_mod_poly_t zero;
-    fmpz_mod_polyun_term_struct * Tterms;
+    fmpz_mod_poly_struct * Tcoeffs;
+    ulong * Texps;
     slong Ti;
-    fmpz_mod_polyun_term_struct * Fterms = F->terms;
+    fmpz_mod_poly_struct * Fcoeffs = F->coeffs;
+    ulong * Fexps = F->exps;
     slong Flen = F->length;
     slong Fi;
     fmpz_mod_poly_struct * Acoeffs = A->coeffs;
@@ -502,7 +486,6 @@ int fmpz_mod_polyu3n_interp_crt_2sm_bpoly(
     fmpz_mod_poly_struct * Fvalue;
     fmpz_t u, v, Avalue, Bvalue, FvalueA, FvalueB;
     int texp_set, cmp;
-    fmpz_t alpha;
 
     fmpz_init(u);
     fmpz_init(v);
@@ -510,16 +493,15 @@ int fmpz_mod_polyu3n_interp_crt_2sm_bpoly(
     fmpz_init(Bvalue);
     fmpz_init(FvalueA);
     fmpz_init(FvalueB);
-    fmpz_init_set(alpha, alphapow->coeffs + 1);
 
 #if FLINT_WANT_ASSERT
-    fmpz_mod_poly_evaluate_fmpz(u, modulus, alpha, ctx);
-    fmpz_mod_mul(u, u, alpha, ctx);
+    fmpz_mod_poly_evaluate_fmpz(u, modulus, alphapow->coeffs + 1, ctx);
+    fmpz_mod_mul(u, u, alphapow->coeffs + 1, ctx);
     fmpz_mod_add(u, u, u, ctx);
     FLINT_ASSERT(fmpz_is_one(u));
-    fmpz_mod_neg(u, alpha, ctx);
+    fmpz_mod_neg(u, alphapow->coeffs + 1, ctx);
     fmpz_mod_poly_evaluate_fmpz(u, modulus, u, ctx);
-    fmpz_mod_mul(u, u, alpha, ctx);
+    fmpz_mod_mul(u, u, alphapow->coeffs + 1, ctx);
     fmpz_mod_add(u, u, u, ctx);
     FLINT_ASSERT(fmpz_is_one(u));
 #endif
@@ -529,7 +511,8 @@ int fmpz_mod_polyu3n_interp_crt_2sm_bpoly(
     FLINT_ASSERT(fmpz_mod_polyun_is_canonical(F, ctx));
 
     fmpz_mod_polyun_fit_length(T, FLINT_MAX(Flen, A->length), ctx);
-    Tterms = T->terms;
+    Tcoeffs = T->coeffs;
+    Texps = T->exps;
 
     zero->alloc = 0;
     zero->length = 0;
@@ -549,10 +532,11 @@ int fmpz_mod_polyu3n_interp_crt_2sm_bpoly(
             extra = FLINT_MAX(extra, Ai);
             extra = FLINT_MAX(extra, Bi);
             fmpz_mod_polyun_fit_length(T, Ti + extra + 1, ctx);
-            Tterms = T->terms;
+            Tcoeffs = T->coeffs;
+            Texps = T->exps;
         }
 
-        FLINT_ASSERT(Fi >= Flen || Fterms[Fi].coeff->length > 0);
+        FLINT_ASSERT(Fi >= Flen || Fcoeffs[Fi].length > 0);
         FLINT_ASSERT(Ai < 0 ||!fmpz_is_zero(Acoeffs[Ai].coeffs + ai));
         FLINT_ASSERT(Bi < 0 ||!fmpz_is_zero(Bcoeffs[Bi].coeffs + bi));
 
@@ -560,9 +544,9 @@ int fmpz_mod_polyu3n_interp_crt_2sm_bpoly(
         texp_set = 0;
         if (Fi < Flen)
         {
-            Fvalue = Fterms[Fi].coeff;
+            Fvalue = Fcoeffs + Fi;
             texp_set = 1;
-            Tterms[Ti].exp = Fterms[Fi].exp;
+            Texps[Ti] = Fexps[Fi];
         }
 
         fmpz_zero(Avalue);
@@ -570,8 +554,8 @@ int fmpz_mod_polyu3n_interp_crt_2sm_bpoly(
         {
             ulong Aexp = pack_exp3(Ai, ai, 0);
             cmp = (!texp_set) ? -1 :
-                  Tterms[Ti].exp < Aexp ? -1 :
-                  Tterms[Ti].exp > Aexp ? 1 : 0;
+                  Texps[Ti] < Aexp ? -1 :
+                  Texps[Ti] > Aexp ? 1 : 0;
             if (cmp <= 0)
             {
                 fmpz_set(Avalue, Acoeffs[Ai].coeffs + ai);
@@ -580,7 +564,7 @@ int fmpz_mod_polyu3n_interp_crt_2sm_bpoly(
             {
                 Fvalue = zero;
                 texp_set = 1;
-                Tterms[Ti].exp = Aexp;
+                Texps[Ti] = Aexp;
             }
         }
 
@@ -589,8 +573,8 @@ int fmpz_mod_polyu3n_interp_crt_2sm_bpoly(
         {
             ulong Bexp = pack_exp3(Bi, bi, 0);
             cmp = (!texp_set) ? -1 :
-                  Tterms[Ti].exp < Bexp ? -1 :
-                  Tterms[Ti].exp > Bexp ? 1 : 0;
+                  Texps[Ti] < Bexp ? -1 :
+                  Texps[Ti] > Bexp ? 1 : 0;
             if (cmp <= 0)
             {
                 fmpz_set(Bvalue, Bcoeffs[Bi].coeffs + bi);
@@ -600,7 +584,7 @@ int fmpz_mod_polyu3n_interp_crt_2sm_bpoly(
                 Fvalue = zero;
                 fmpz_zero(Avalue);
                 texp_set = 1;
-                Tterms[Ti].exp = Bexp;
+                Texps[Ti] = Bexp;
             }
         }
 
@@ -611,21 +595,12 @@ int fmpz_mod_polyu3n_interp_crt_2sm_bpoly(
         fmpz_mod_sub(FvalueB, FvalueB, Bvalue, ctx);
         fmpz_mod_sub(u, FvalueB, FvalueA, ctx);
         fmpz_mod_add(v, FvalueB, FvalueA, ctx);
-        fmpz_mod_mul(v, v, alpha, ctx);
+        fmpz_mod_mul(v, v, alphapow->coeffs + 1, ctx);
         fmpz_mod_neg(v, v, ctx);
-        if (!fmpz_is_zero(u) || !fmpz_is_zero(v))
-        {
-            changed = 1;
-            fmpz_mod_poly_addmul_linear(Tterms[Ti].coeff, Fvalue, modulus,
-                                                                    u, v, ctx);
-        }
-        else
-        {
-            FLINT_ASSERT(!fmpz_mod_poly_is_zero(Fvalue, ctx));
-            fmpz_mod_poly_set(Tterms[Ti].coeff, Fvalue, ctx);
-        }
+        changed |= !fmpz_is_zero(u) || !fmpz_is_zero(v);
+        fmpz_mod_poly_addmul_linear(Tcoeffs + Ti, Fvalue, modulus, u, v, ctx);
 
-        FLINT_ASSERT(Tterms[Ti].coeff->length >= Fvalue->length);
+        FLINT_ASSERT(Tcoeffs[Ti].length >= Fvalue->length);
 
         Fi += (Fvalue != zero);
         if (Avalue != 0)
@@ -657,8 +632,8 @@ int fmpz_mod_polyu3n_interp_crt_2sm_bpoly(
             }
         }
 
-        FLINT_ASSERT(!fmpz_mod_poly_is_zero(Tterms[Ti].coeff, ctx));
-        lastlength = FLINT_MAX(lastlength, Tterms[Ti].coeff->length);
+        FLINT_ASSERT(!fmpz_mod_poly_is_zero(Tcoeffs + Ti, ctx));
+        lastlength = FLINT_MAX(lastlength, Tcoeffs[Ti].length);
         Ti++;
     }
     T->length = Ti;
@@ -674,7 +649,6 @@ int fmpz_mod_polyu3n_interp_crt_2sm_bpoly(
     fmpz_clear(Bvalue);
     fmpz_clear(FvalueA);
     fmpz_clear(FvalueB);
-    fmpz_clear(alpha);
 
     *lastdeg = lastlength - 1;
     return changed;

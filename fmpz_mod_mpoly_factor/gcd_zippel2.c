@@ -50,19 +50,19 @@ void fmpz_mod_mpolyn_interp_lift_sm_polyu1n(
     Fi = 0;
     for (i = 0; i < A->length; i++)
     {
-        fmpz_mod_poly_struct * Ai = A->terms[i].coeff;
-        ulong e0 = A->terms[i].exp << shift0;
+        fmpz * Aicoeffs = A->coeffs[i].coeffs;
+        ulong e0 = A->exps[i] << shift0;
 
-        for (j = Ai->length - 1; j >= 0; j--)
+        for (j = A->coeffs[i].length - 1; j >= 0; j--)
         {
-            if (fmpz_is_zero(Ai->coeffs + j))
+            if (fmpz_is_zero(Aicoeffs + j))
                 continue;
 
             fmpz_mod_mpolyn_fit_length(F, Fi + 1, ctx);
             mpoly_monomial_zero(F->exps + N*Fi, N);
             (F->exps + N*Fi)[off0] = e0;
             (F->exps + N*Fi)[off1] += (j << shift1);
-            fmpz_mod_poly_set_fmpz(F->coeffs + Fi, Ai->coeffs + j, ctx->ffinfo);
+            fmpz_mod_poly_set_fmpz(F->coeffs + Fi, Aicoeffs + j, ctx->ffinfo);
             Fi++;
         }
     }
@@ -82,7 +82,8 @@ int fmpz_mod_mpolyn_interp_crt_sm_polyu1n(
     int changed = 0;
     slong N = mpoly_words_per_exp(F->bits, ctx->minfo);
     slong off0, shift0, off1, shift1;
-    fmpz_mod_polyun_term_struct * Aterms = A->terms;
+    fmpz_mod_poly_struct * Acoeffs = A->coeffs;
+    ulong * Aexps = A->exps;
     slong Fi, Ti, Ai, ai;
     slong Alen = A->length;
     slong Flen = F->length;
@@ -107,7 +108,7 @@ int fmpz_mod_mpolyn_interp_crt_sm_polyu1n(
     Ai = 0;
     ai = 0;
     if (Ai < Alen)
-        ai = fmpz_mod_poly_degree(Aterms[Ai].coeff, ctx->ffinfo);
+        ai = fmpz_mod_poly_degree(Acoeffs + Ai, ctx->ffinfo);
 
     while (Fi < Flen || Ai < Alen)
     {
@@ -125,28 +126,28 @@ int fmpz_mod_mpolyn_interp_crt_sm_polyu1n(
         else
             Fexpi = 0;
 
-        if (Fi < Flen && Ai < Alen && Fexpi == pack_exp2(Aterms[Ai].exp, ai))
+        if (Fi < Flen && Ai < Alen && Fexpi == pack_exp2(Aexps[Ai], ai))
         {
             /* F term ok, A term ok */
             mpoly_monomial_set(Texps + N*Ti, Fexps + N*Fi, N);
 
             fmpz_mod_poly_eval_pow(v, Fcoeffs + Fi, alphapow, ctx->ffinfo);
-            fmpz_mod_sub(v, Aterms[Ai].coeff->coeffs + ai, v, ctx->ffinfo);
+            fmpz_mod_sub(v, Acoeffs[Ai].coeffs + ai, v, ctx->ffinfo);
             changed |= !fmpz_is_zero(v);
             fmpz_mod_poly_scalar_addmul_fmpz_mod(Tcoeffs + Ti,
                                         Fcoeffs + Fi, modulus, v, ctx->ffinfo);
             Fi++;
             do {
                 ai--;
-            } while (ai >= 0 && fmpz_is_zero(Aterms[Ai].coeff->coeffs + ai));
+            } while (ai >= 0 && fmpz_is_zero(Acoeffs[Ai].coeffs + ai));
             if (ai < 0)
             {
                 Ai++;
                 if (Ai < Alen)
-                    ai = fmpz_mod_poly_degree(Aterms[Ai].coeff, ctx->ffinfo);
+                    ai = fmpz_mod_poly_degree(Acoeffs + Ai, ctx->ffinfo);
             }
         }
-        else if (Ai < Alen && (Fi >= Flen || Fexpi < pack_exp2(Aterms[Ai].exp, ai)))
+        else if (Ai < Alen && (Fi >= Flen || Fexpi < pack_exp2(Aexps[Ai], ai)))
         {
             /* F term missing, A term ok */
             mpoly_monomial_zero(Texps + N*Ti, N);
@@ -155,21 +156,21 @@ int fmpz_mod_mpolyn_interp_crt_sm_polyu1n(
 
             changed = 1;
             fmpz_mod_poly_scalar_mul_fmpz(Tcoeffs + Ti, modulus,
-                                   Aterms[Ai].coeff->coeffs + ai, ctx->ffinfo);
+                                         Acoeffs[Ai].coeffs + ai, ctx->ffinfo);
 
             do {
                 ai--;
-            } while (ai >= 0 && fmpz_is_zero(Aterms[Ai].coeff->coeffs + ai));
+            } while (ai >= 0 && fmpz_is_zero(Acoeffs[Ai].coeffs + ai));
             if (ai < 0)
             {
                 Ai++;
                 if (Ai < Alen)
-                    ai = fmpz_mod_poly_degree(Aterms[Ai].coeff, ctx->ffinfo);
+                    ai = fmpz_mod_poly_degree(Acoeffs + Ai, ctx->ffinfo);
             }
         }
         else
         {
-            FLINT_ASSERT(Fi < Flen && (Ai >= Alen || Fexpi > pack_exp2(Aterms[Ai].exp, ai)));
+            FLINT_ASSERT(Fi < Flen && (Ai >= Alen || Fexpi > pack_exp2(Aexps[Ai], ai)));
             /* F term ok, Aterm missing */
             mpoly_monomial_set(Texps + N*Ti, Fexps + N*Fi, N);
 
@@ -304,10 +305,10 @@ void _fmpz_mod_mpoly_monomial_evals2_cache(
     e1 = (Aexps[N*Ai + off[1]] >> shift[1]) & mask;
     e01 = pack_exp2(e0, e1);
     fmpz_mod_polyun_fit_length(E, Ei + 1, fctx);
-    E->terms[Ei].exp = e01;
-    fmpz_mod_poly_fit_length(E->terms[Ei].coeff, 1, fctx);
-    c = E->terms[Ei].coeff->coeffs + 0;
-    E->terms[Ei].coeff->length = 1;
+    E->exps[Ei] = e01;
+    fmpz_mod_poly_fit_length(E->coeffs + Ei, 1, fctx);
+    c = E->coeffs[Ei].coeffs + 0;
+    E->coeffs[Ei].length = 1;
     Ei++;
     fmpz_one(c);
     for (i = 2; i < m; i++)
@@ -322,20 +323,20 @@ void _fmpz_mod_mpoly_monomial_evals2_cache(
         e0 = (Aexps[N*Ai + off[0]] >> shift[0]) & mask;
         e1 = (Aexps[N*Ai + off[1]] >> shift[1]) & mask;
         e01 = pack_exp2(e0, e1);
-        if (e01 == E->terms[Ei-1].exp)
+        if (e01 == E->exps[Ei-1])
         {
-            slong len = E->terms[Ei-1].coeff->length;
-            fmpz_mod_poly_fit_length(E->terms[Ei-1].coeff, len + 1, fctx);
-            c = E->terms[Ei-1].coeff->coeffs + len;
-            E->terms[Ei-1].coeff->length = len + 1;
+            slong len = E->coeffs[Ei-1].length;
+            fmpz_mod_poly_fit_length(E->coeffs + Ei-1, len + 1, fctx);
+            c = E->coeffs[Ei-1].coeffs + len;
+            E->coeffs[Ei-1].length = len + 1;
         }
         else
         {
             fmpz_mod_polyun_fit_length(E, Ei + 1, fctx);
-            E->terms[Ei].exp = e01;
-            fmpz_mod_poly_fit_length(E->terms[Ei].coeff, 1, fctx);
-            c = E->terms[Ei].coeff->coeffs + 0;
-            E->terms[Ei].coeff->length = 1;
+            E->exps[Ei] = e01;
+            fmpz_mod_poly_fit_length(E->coeffs + Ei, 1, fctx);
+            c = E->coeffs[Ei].coeffs + 0;
+            E->coeffs[Ei].length = 1;
             Ei++;
         }
 
@@ -356,7 +357,7 @@ void _fmpz_mod_mpoly_monomial_evals2_cache(
 #if FLINT_WANT_ASSERT
     Ai = 0;
     for (i = 0; i < E->length; i++)
-        Ai += E->terms[i].coeff->length;
+        Ai += E->coeffs[i].length;
     FLINT_ASSERT(Ai == Alen);
 #endif
 }
@@ -380,9 +381,9 @@ static void fmpz_mod_polyun_zip_start(
     Z->length = H->length;
     for (j = 0; j < H->length; j++)
     {
-        Z->terms[j].exp = H->terms[j].exp;
-        fmpz_mod_poly_fit_length(Z->terms[j].coeff, req_images, fctx);
-        Z->terms[j].coeff->length = 0;
+        Z->exps[j] = H->exps[j];
+        fmpz_mod_poly_fit_length(Z->coeffs + j, req_images, fctx);
+        Z->coeffs[j].length = 0;
     }
 }
 
@@ -406,17 +407,17 @@ static int fmpz_mod_polyun_zip_solve(
     Ai = 0;
     for (i = 0; i < H->length; i++)
     {
-        n = H->terms[i].coeff->length;
-        FLINT_ASSERT(M->terms[i].coeff->length == n + 1);
-        FLINT_ASSERT(Z->terms[i].coeff->length >= n);
+        n = H->coeffs[i].length;
+        FLINT_ASSERT(M->coeffs[i].length == n + 1);
+        FLINT_ASSERT(Z->coeffs[i].length >= n);
         FLINT_ASSERT(Ai + n <= A->length);
 
         fmpz_mod_poly_fit_length(t, n, ctx->ffinfo);
 
         success = _fmpz_mod_zip_vand_solve(Acoeffs + Ai,
-                         H->terms[i].coeff->coeffs, n,
-                         Z->terms[i].coeff->coeffs, Z->terms[i].coeff->length,
-                         M->terms[i].coeff->coeffs, t->coeffs, ctx->ffinfo);
+                         H->coeffs[i].coeffs, n,
+                         Z->coeffs[i].coeffs, Z->coeffs[i].length,
+                         M->coeffs[i].coeffs, t->coeffs, ctx->ffinfo);
         if (success < 1)
         {
             fmpz_mod_poly_clear(t, ctx->ffinfo);
@@ -475,8 +476,8 @@ int fmpz_mod_mpoly_gcd_get_use_new(
         maxnumci = totnumci = 0;
         for (i = 0; i < G->length; i++)
         {
-            maxnumci = FLINT_MAX(maxnumci, G->terms[i].coeff->length);
-            totnumci += G->terms[i].coeff->length;
+            maxnumci = FLINT_MAX(maxnumci, G->coeffs[i].length);
+            totnumci += G->coeffs[i].length;
         }
         FLINT_ASSERT(Gdeg >= 0);
         Gcost = interp_cost(Gdeg,
@@ -485,8 +486,8 @@ int fmpz_mod_mpoly_gcd_get_use_new(
         maxnumci = totnumci = 0;
         for (i = 0; i < Abar->length; i++)
         {
-            maxnumci = FLINT_MAX(maxnumci, Abar->terms[i].coeff->length);
-            totnumci += Abar->terms[i].coeff->length;
+            maxnumci = FLINT_MAX(maxnumci, Abar->coeffs[i].length);
+            totnumci += Abar->coeffs[i].length;
         }
         FLINT_ASSERT(gammadeg + Adeg - Gdeg >= 0);
         Abarcost = interp_cost(gammadeg + Adeg - Gdeg,
@@ -495,8 +496,8 @@ int fmpz_mod_mpoly_gcd_get_use_new(
         maxnumci = totnumci = 0;
         for (i = 0; i < Bbar->length; i++)
         {
-            maxnumci = FLINT_MAX(maxnumci, Bbar->terms[i].coeff->length);
-            totnumci += Bbar->terms[i].coeff->length;
+            maxnumci = FLINT_MAX(maxnumci, Bbar->coeffs[i].length);
+            totnumci += Bbar->coeffs[i].length;
         }
         FLINT_ASSERT(gammadeg + Bdeg - Gdeg >= 0);
         Bbarcost = interp_cost(gammadeg + Bdeg - Gdeg,
@@ -542,16 +543,6 @@ void fmpz_mod_poly_eval_step_sep(
     _fmpz_mod_zip_eval_step(eval, cur->coeffs, inc->coeffs, A->coeffs, A->length, ctx->ffinfo);
 }
 
-void fmpz_mod_polyun_scalar_mul_fmpz(
-    fmpz_mod_polyun_t A,
-    const fmpz_t c,
-    const fmpz_mod_ctx_t ctx)
-{
-    slong i;
-    for (i = 0; i < A->length; i++)
-        fmpz_mod_poly_scalar_mul_fmpz(A->terms[i].coeff, A->terms[i].coeff, c, ctx);
-}
-
 void static fmpz_mod_polyu2n_eval_step_sep(
     fmpz_mod_polyun_t E,
     fmpz_mod_polyun_t cur,
@@ -568,31 +559,31 @@ void static fmpz_mod_polyu2n_eval_step_sep(
 
     fmpz_init(eval);
 
-    e0 = extract_exp(cur->terms[0].exp, 1, 2);
-    e1 = extract_exp(cur->terms[0].exp, 0, 2);
+    e0 = extract_exp(cur->exps[0], 1, 2);
+    e1 = extract_exp(cur->exps[0], 0, 2);
 
     fmpz_mod_polyun_fit_length(E, 4, ctx->ffinfo);
     Ei = 0;
-    E->terms[Ei].exp = e1;
-    Ec = E->terms[Ei].coeff;
+    E->exps[Ei] = e1;
+    Ec = E->coeffs + Ei;
     fmpz_mod_poly_zero(Ec, ctx->ffinfo);
 
     Ai = 0;
     for (i = 0; i < cur->length; i++)
     {
-        this_len = cur->terms[i].coeff->length;
-        _fmpz_mod_zip_eval_step(eval, cur->terms[i].coeff->coeffs,
-                                  inc->terms[i].coeff->coeffs,
+        this_len = cur->coeffs[i].length;
+        _fmpz_mod_zip_eval_step(eval, cur->coeffs[i].coeffs,
+                                  inc->coeffs[i].coeffs,
                                   A->coeffs + Ai, this_len, ctx->ffinfo);
-        e0 = extract_exp(cur->terms[i].exp, 1, 2);
-        e1 = extract_exp(cur->terms[i].exp, 0, 2);
+        e0 = extract_exp(cur->exps[i], 1, 2);
+        e1 = extract_exp(cur->exps[i], 0, 2);
 
-        if (E->terms[Ei].exp != e0)
+        if (E->exps[Ei] != e0)
         {
             fmpz_mod_polyun_fit_length(E, Ei + 2, ctx->ffinfo);
-            Ei += !fmpz_mod_poly_is_zero(E->terms[Ei].coeff, ctx->ffinfo);
-            E->terms[Ei].exp = e0;
-            Ec = E->terms[Ei].coeff;
+            Ei += !fmpz_mod_poly_is_zero(E->coeffs + Ei, ctx->ffinfo);
+            E->exps[Ei] = e0;
+            Ec = E->coeffs + Ei;
             fmpz_mod_poly_zero(Ec, ctx->ffinfo);
         }
 
@@ -602,7 +593,7 @@ void static fmpz_mod_polyu2n_eval_step_sep(
 
     FLINT_ASSERT(Ai == A->length);
 
-    Ei += !fmpz_mod_poly_is_zero(E->terms[Ei].coeff, ctx->ffinfo);
+    Ei += !fmpz_mod_poly_is_zero(E->coeffs + Ei, ctx->ffinfo);
     E->length = Ei;
 
     FLINT_ASSERT(fmpz_mod_polyun_is_canonical(E, ctx->ffinfo));
@@ -633,16 +624,16 @@ void fmpz_mod_mpoly_get_polyu1n(
         Bexpx = ((B->exps + NB*j)[Boffx] >> Bshiftx) & mask;
         Bexpy = ((B->exps + NB*j)[Boffy] >> Bshifty) & mask;
 
-        if (Ai < 0 || A->terms[Ai].exp != Bexpx)
+        if (Ai < 0 || A->exps[Ai] != Bexpx)
         {
             Ai++;
             fmpz_mod_polyun_fit_length(A, Ai + 1, ctx->ffinfo);
-            A->terms[Ai].exp = Bexpx;
-            fmpz_mod_poly_zero(A->terms[Ai].coeff, ctx->ffinfo);
+            A->exps[Ai] = Bexpx;
+            fmpz_mod_poly_zero(A->coeffs + Ai, ctx->ffinfo);
         }
 
-        fmpz_mod_poly_set_coeff_fmpz(A->terms[Ai].coeff, Bexpy, B->coeffs + j, ctx->ffinfo);
-        if (fmpz_mod_poly_is_zero(A->terms[Ai].coeff, ctx->ffinfo))
+        fmpz_mod_poly_set_coeff_fmpz(A->coeffs + Ai, Bexpy, B->coeffs + j, ctx->ffinfo);
+        if (fmpz_mod_poly_is_zero(A->coeffs + Ai, ctx->ffinfo))
             Ai--;
     }
 
@@ -838,11 +829,11 @@ slong fmpz_mod_polyun_product_roots(
     M->length = H->length;
     for (i = 0; i < H->length; i++)
     {
-        slong len = H->terms[i].coeff->length;
-        M->terms[i].exp = H->terms[i].exp;
+        slong len = H->coeffs[i].length;
+        M->exps[i] = H->exps[i];
         max_length = FLINT_MAX(max_length, len);
-        fmpz_mod_poly_product_roots_fmpz_vec(M->terms[i].coeff,
-                                          H->terms[i].coeff->coeffs, len, ctx);
+        fmpz_mod_poly_product_roots_fmpz_vec(M->coeffs + i,
+                                             H->coeffs[i].coeffs, len, ctx);
     }
 
     return max_length;
@@ -856,37 +847,39 @@ int fmpz_mod_polyun_add_zip_must_match(
 {
     slong i, Ai, ai;
     slong Alen = A->length;
-    fmpz_mod_polyun_term_struct * Zterms = Z->terms;
-    const fmpz_mod_polyun_term_struct * Aterms = A->terms;
+    ulong * Zexps = Z->exps;
+    fmpz_mod_poly_struct * Zcoeffs = Z->coeffs;
+    ulong * Aexps = A->exps;
+    fmpz_mod_poly_struct * Acoeffs = A->coeffs;
 
     Ai = 0;
     ai = 0;
     if (Ai < Alen)
-        ai = Aterms[Ai].coeff->length - 1;
+        ai = Acoeffs[Ai].length - 1;
 
     for (i = 0; i < Z->length; i++)
     {
-        if (Ai < Alen && Zterms[i].exp == pack_exp2(Aterms[Ai].exp, ai))
+        if (Ai < Alen && Zexps[i] == pack_exp2(Aexps[Ai], ai))
         {
             /* Z present, A present */
-            fmpz_set(Zterms[i].coeff->coeffs + cur_length,
-                     Aterms[Ai].coeff->coeffs + ai);
-            Zterms[i].coeff->length = cur_length + 1;
+            fmpz_set(Zcoeffs[i].coeffs + cur_length,
+                     Acoeffs[Ai].coeffs + ai);
+            Zcoeffs[i].length = cur_length + 1;
             do {
                 ai--;
-            } while (ai >= 0 && fmpz_is_zero(Aterms[Ai].coeff->coeffs + ai));
+            } while (ai >= 0 && fmpz_is_zero(Acoeffs[Ai].coeffs + ai));
             if (ai < 0)
             {
                 Ai++;
                 if (Ai < Alen)
-                    ai = Aterms[Ai].coeff->length - 1;
+                    ai = Acoeffs[Ai].length - 1;
             }
         }
-        else if (Ai < 0 || Zterms[i].exp > pack_exp2(Aterms[Ai].exp, ai))
+        else if (Ai < 0 || Zexps[i] > pack_exp2(Aexps[Ai], ai))
         {
             /* Z present, A missing */
-            fmpz_zero(Zterms[i].coeff->coeffs + cur_length);
-            Zterms[i].coeff->length = cur_length + 1;
+            fmpz_zero(Zcoeffs[i].coeffs + cur_length);
+            Zcoeffs[i].length = cur_length + 1;
         }
         else
         {

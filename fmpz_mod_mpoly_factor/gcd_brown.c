@@ -59,8 +59,8 @@ int fmpz_mod_polyu1n_gcd_brown_smprime(
 #if FLINT_WANT_ASSERT
     fmpz_mod_poly_init(leadA, ctx);
     fmpz_mod_poly_init(leadB, ctx);
-    fmpz_mod_poly_set(leadA, A->terms[0].coeff, ctx);
-    fmpz_mod_poly_set(leadB, B->terms[0].coeff, ctx);
+    fmpz_mod_poly_set(leadA, A->coeffs + 0, ctx);
+    fmpz_mod_poly_set(leadB, B->coeffs + 0, ctx);
 #endif
 
     fmpz_mod_poly_stack_fit_request(St_poly, 19);
@@ -94,7 +94,7 @@ int fmpz_mod_polyu1n_gcd_brown_smprime(
 
     _fmpz_mod_poly_gcd_cofactors(cG, cAbar, cBbar, cA, cB, ctx, r);
 
-    fmpz_mod_poly_gcd(gamma, A->terms[0].coeff, B->terms[0].coeff, ctx);
+    fmpz_mod_poly_gcd(gamma, A->coeffs + 0, B->coeffs + 0, ctx);
 
     ldegA = fmpz_mod_polyun_lastdeg(A, ctx);
     ldegB = fmpz_mod_polyun_lastdeg(B, ctx);
@@ -142,7 +142,7 @@ choose_prime:
     {
         slong Gdeg;
         fmpz_mod_polyu1n_interp_reduce_2sm_poly(Gevalp, Gevalm, G, alphapow, ctx);
-        Gdeg = G->terms[0].exp;
+        Gdeg = G->exps[0];
         success = 1;
         success = success && _fmpz_mod_poly_degree(Gevalp) == Gdeg;
         success = success && _fmpz_mod_poly_degree(Gevalm) == Gdeg;
@@ -200,11 +200,11 @@ choose_prime:
     if (_fmpz_mod_poly_degree(modulus) > 0)
     {
         FLINT_ASSERT(G->length > 0);
-        if (_fmpz_mod_poly_degree(Gevalp) > G->terms[0].exp)
+        if (_fmpz_mod_poly_degree(Gevalp) > G->exps[0])
         {
             goto choose_prime;
         }
-        else if (_fmpz_mod_poly_degree(Gevalp) < G->terms[0].exp)
+        else if (_fmpz_mod_poly_degree(Gevalp) < G->exps[0])
         {
             fmpz_mod_poly_one(modulus, ctx);
         }
@@ -254,10 +254,10 @@ choose_prime:
 
 successful:
 
-    fmpz_mod_polyun_content_poly(modulus, G, ctx);
-    fmpz_mod_polyun_divexact_poly(G, modulus, ctx);
-    fmpz_mod_polyun_divexact_poly(Abar, G->terms[0].coeff, ctx);
-    fmpz_mod_polyun_divexact_poly(Bbar, G->terms[0].coeff, ctx);
+    fmpz_mod_polyun_content_poly(r, G, ctx);
+    fmpz_mod_polyun_divexact_poly(G, r, ctx);
+    fmpz_mod_polyun_divexact_poly(Abar, G->coeffs + 0, ctx);
+    fmpz_mod_polyun_divexact_poly(Bbar, G->coeffs + 0, ctx);
 
 successful_put_content:
 
@@ -272,10 +272,10 @@ cleanup:
 #if FLINT_WANT_ASSERT
     if (success)
     {
-        FLINT_ASSERT(fmpz_is_one(fmpz_mod_poly_lead(G->terms[0].coeff, ctx)));
-        fmpz_mod_poly_mul(modulus, G->terms[0].coeff, Abar->terms[0].coeff, ctx);
+        FLINT_ASSERT(fmpz_is_one(fmpz_mod_poly_lead(G->coeffs + 0, ctx)));
+        fmpz_mod_poly_mul(modulus, G->coeffs + 0, Abar->coeffs + 0, ctx);
         FLINT_ASSERT(fmpz_mod_poly_equal(modulus, leadA, ctx));
-        fmpz_mod_poly_mul(modulus, G->terms[0].coeff, Bbar->terms[0].coeff, ctx);
+        fmpz_mod_poly_mul(modulus, G->coeffs + 0, Bbar->coeffs + 0, ctx);
         FLINT_ASSERT(fmpz_mod_poly_equal(modulus, leadB, ctx));
     }
     fmpz_mod_poly_clear(leadA, ctx);
@@ -294,27 +294,6 @@ cleanup:
 }
 
 
-static void fmpz_mod_mpolyn_set_polyun(
-    fmpz_mod_mpolyn_t A,
-    fmpz_mod_polyun_t B,
-    const fmpz_mod_mpoly_ctx_t ctx)
-{
-    slong i, N, off, shift;
-    flint_bitcnt_t bits = A->bits;
-    N = mpoly_words_per_exp_sp(bits, ctx->minfo);
-    mpoly_gen_offset_shift_sp(&off, &shift, 0, bits, ctx->minfo);
-
-    fmpz_mod_mpolyn_fit_length(A, B->length, ctx);
-    for (i = 0; i < B->length; i++)
-    {
-        mpoly_monomial_zero(A->exps + N*i, N);
-        (A->exps + N*i)[off] = B->terms[i].exp << shift;
-        fmpz_mod_poly_set(A->coeffs + i, B->terms[i].coeff, ctx->ffinfo);
-    }
-
-    A->length = B->length;
-}
-
 static void fmpz_mod_mpolyn_set_polyun_swap(
     fmpz_mod_mpolyn_t A,
     fmpz_mod_polyun_t B,
@@ -329,31 +308,11 @@ static void fmpz_mod_mpolyn_set_polyun_swap(
     for (i = 0; i < B->length; i++)
     {
         mpoly_monomial_zero(A->exps + N*i, N);
-        (A->exps + N*i)[off] = B->terms[i].exp << shift;
-        fmpz_mod_poly_swap(A->coeffs + i, B->terms[i].coeff, ctx->ffinfo);
+        (A->exps + N*i)[off] = B->exps[i] << shift;
+        fmpz_mod_poly_swap(A->coeffs + i, B->coeffs + i, ctx->ffinfo);
     }
 
     A->length = B->length;
-}
-
-static void fmpz_mod_mpolyn_get_polyun(
-    fmpz_mod_polyun_t B,
-    fmpz_mod_mpolyn_t A,
-    const fmpz_mod_mpoly_ctx_t ctx)
-{
-    slong i, N, off, shift;
-    flint_bitcnt_t bits = A->bits;
-    N = mpoly_words_per_exp_sp(bits, ctx->minfo);
-    mpoly_gen_offset_shift_sp(&off, &shift, 0, bits, ctx->minfo);
-
-    fmpz_mod_polyun_fit_length(B, A->length, ctx->ffinfo);
-    for (i = 0; i < A->length; i++)
-    {
-        B->terms[i].exp = (A->exps + N*i)[off] >> shift;
-        fmpz_mod_poly_set(B->terms[i].coeff, A->coeffs + i, ctx->ffinfo);
-    }
-
-    B->length = A->length;
 }
 
 static void fmpz_mod_mpolyn_get_polyun_swap(
@@ -369,53 +328,11 @@ static void fmpz_mod_mpolyn_get_polyun_swap(
     fmpz_mod_polyun_fit_length(B, A->length, ctx->ffinfo);
     for (i = 0; i < A->length; i++)
     {
-        B->terms[i].exp = (A->exps + N*i)[off] >> shift;
-        fmpz_mod_poly_swap(B->terms[i].coeff, A->coeffs + i, ctx->ffinfo);
+        B->exps[i] = (A->exps + N*i)[off] >> shift;
+        fmpz_mod_poly_swap(B->coeffs + i, A->coeffs + i, ctx->ffinfo);
     }
 
     B->length = A->length;
-}
-
-
-
-int fmpz_mod_mpolyn_gcd_brown_bivar(
-    fmpz_mod_mpolyn_t mG,
-    fmpz_mod_mpolyn_t mAbar,
-    fmpz_mod_mpolyn_t mBbar,
-    fmpz_mod_mpolyn_t mA,
-    fmpz_mod_mpolyn_t mB,
-    const fmpz_mod_mpoly_ctx_t ctx)
-{
-    int success;
-    fmpz_mod_poly_polyun_stack_t St;
-    fmpz_mod_polyun_t A, B, G, Abar, Bbar;
-
-    fmpz_mod_poly_stack_init(St->poly_stack);
-    fmpz_mod_polyun_stack_init(St->polyun_stack);
-    fmpz_mod_polyun_init(A, ctx->ffinfo);
-    fmpz_mod_polyun_init(B, ctx->ffinfo);
-    fmpz_mod_polyun_init(G, ctx->ffinfo);
-    fmpz_mod_polyun_init(Abar, ctx->ffinfo);
-    fmpz_mod_polyun_init(Bbar, ctx->ffinfo);
-
-    fmpz_mod_mpolyn_get_polyun(A, mA, ctx);
-    fmpz_mod_mpolyn_get_polyun(B, mB, ctx);
-
-    success = fmpz_mod_polyu1n_gcd_brown_smprime(G, Abar, Bbar, A, B,
-                                ctx->ffinfo, St->poly_stack, St->polyun_stack);
-    fmpz_mod_mpolyn_set_polyun(mG, G, ctx);
-    fmpz_mod_mpolyn_set_polyun(mAbar, Abar, ctx);
-    fmpz_mod_mpolyn_set_polyun(mBbar, Bbar, ctx);
-
-    fmpz_mod_polyun_clear(A, ctx->ffinfo);
-    fmpz_mod_polyun_clear(B, ctx->ffinfo);
-    fmpz_mod_polyun_clear(G, ctx->ffinfo);
-    fmpz_mod_polyun_clear(Abar, ctx->ffinfo);
-    fmpz_mod_polyun_clear(Bbar, ctx->ffinfo);
-    fmpz_mod_poly_stack_clear(St->poly_stack);
-    fmpz_mod_polyun_stack_clear(St->polyun_stack);
-
-    return success;
 }
 
 
