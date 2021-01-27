@@ -1286,6 +1286,30 @@ FLINT_DLL void mpoly_monomials_shift_right_ui(ulong * Aexps, flint_bitcnt_t Abit
 FLINT_DLL void mpoly_monomials_shift_right_ffmpz(ulong * Aexps, flint_bitcnt_t Abits,
                 slong Alength, const fmpz * user_exps, const mpoly_ctx_t mctx);
 
+FLINT_DLL void mpoly_to_mpolyl_perm_deflate(
+    ulong * Aexps,
+    flint_bitcnt_t Abits,
+    const mpoly_ctx_t Actx,
+    ulong * Bexps,
+    flint_bitcnt_t Bbits,
+    const mpoly_ctx_t Bctx,
+    slong length,
+    const slong * perm,
+    const ulong * shift,
+    const ulong * stride);
+
+FLINT_DLL void mpoly_from_mpolyl_perm_inflate(
+    ulong * Bexps,
+    flint_bitcnt_t Bbits,
+    const mpoly_ctx_t Bctx,
+    ulong * Aexps,
+    flint_bitcnt_t Abits,
+    const mpoly_ctx_t Actx,
+    slong length,
+    const slong * perm,
+    const ulong * shift,
+    const ulong * stride);
+
 /* gcd ***********************************************************************/
 
 #define MPOLY_GCD_USE_HENSEL  1

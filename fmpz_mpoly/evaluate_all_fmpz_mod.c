@@ -10,17 +10,16 @@
 */
 
 #include "fmpz_mpoly.h"
-#include "fmpz_mpoly_factor.h"
+#include "fmpz_mod_mpoly.h"
 
-int fmpz_mpoly_gcd_zippel(
-    fmpz_mpoly_t G,
+void fmpz_mpoly_evaluate_all_fmpz_mod(
+    fmpz_t ev,
     const fmpz_mpoly_t A,
-    const fmpz_mpoly_t B,
-    const fmpz_mpoly_ctx_t ctx)
+    const fmpz * alphas,
+    const fmpz_mpoly_ctx_t ctx,
+    const fmpz_mod_ctx_t fpctx)
 {
-    if (fmpz_mpoly_is_zero(A, ctx) || fmpz_mpoly_is_zero(B, ctx))
-        return fmpz_mpoly_gcd(G, A, B, ctx);
-
-    return _fmpz_mpoly_gcd_algo(G, NULL, NULL, A, B, ctx, MPOLY_GCD_USE_ZIPPEL);
+    _fmpz_mod_mpoly_eval_all_fmpz_mod(ev, A->coeffs, A->exps, A->length,
+                 A->bits, alphas, ctx->minfo, fpctx);
 }
 

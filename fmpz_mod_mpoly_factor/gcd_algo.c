@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2018 - 2020 Daniel Schultz
+    Copyright (C) 2020 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -269,7 +269,7 @@ static void _parallel_set(
 
 
 /* The variables in ess(A) and ess(B) are disjoint. gcd is trivial to compute */
-static int _do_trivial(
+static void _do_trivial(
     fmpz_mod_mpoly_t G,
     fmpz_mod_mpoly_t Abar,  /* could be NULL */
     fmpz_mod_mpoly_t Bbar,  /* could be NULL */
@@ -292,8 +292,6 @@ static int _do_trivial(
     mpoly_set_monomial_ui(G->exps, I->Gmin_exp, I->Gbits, ctx->minfo);
     fmpz_one(G->coeffs + 0);
     _fmpz_mod_mpoly_set_length(G, 1, ctx);
-
-    return 1;
 }
 
 /*********************** Easy when B is a monomial ***************************/
@@ -550,6 +548,7 @@ static int _try_missing_var(
     fmpz_mod_mpoly_to_univar(Au, B, var, ctx);
     FLINT_ASSERT(Au->length == 1);
 #endif
+
     fmpz_mod_mpoly_to_univar(Au, A, var, ctx);
 
     fmpz_mod_mpoly_univar_fit_length(Au, Au->length + 1, ctx);
@@ -637,12 +636,11 @@ static int _try_divides(
     fmpz_mod_mpoly_term_content(M, BB, ctx);
     fmpz_mod_mpoly_divides(B, BB, M, ctx);
 
-    if (fmpz_mod_mpoly_divides(Q, A, B, ctx))
+    success = fmpz_mod_mpoly_divides(Q, A, B, ctx);
+    if (success)
     {
-        /* gcd(Q*B, M*B) */
         _do_monomial_gcd(G, Abar, Bbar, Q, M, ctx);
         fmpz_mod_mpoly_mul(G, G, B, ctx);
-        success = 1;
     }
 
     fmpz_mod_mpoly_clear(Q, ctx);
@@ -1096,9 +1094,6 @@ static int _fmpz_mod_mpoly_gcd_algo_small(
     unsigned int algo)
 {
     int success;
-    flint_bitcnt_t Gbits = FLINT_MIN(A->bits, B->bits);
-    flint_bitcnt_t Abarbits = A->bits;
-    flint_bitcnt_t Bbarbits = B->bits;
     slong v_in_both;
     slong v_in_either;
     slong v_in_A_only;
@@ -1110,9 +1105,15 @@ static int _fmpz_mod_mpoly_gcd_algo_small(
     fmpz_mod_mpoly_t T, Asave, Bsave;
 #endif
 
+    FLINT_ASSERT(A->length > 0);
+    FLINT_ASSERT(B->length > 0);
+    FLINT_ASSERT(A->bits <= FLINT_BITS);
+    FLINT_ASSERT(B->bits <= FLINT_BITS);
+
     if (A->length == 1)
         return _do_monomial_gcd(G, Bbar, Abar, B, A, ctx);
-    else if (B->length == 1)
+
+    if (B->length == 1)
         return _do_monomial_gcd(G, Abar, Bbar, A, B, ctx);
 
 #if FLINT_WANT_ASSERT
@@ -1127,9 +1128,9 @@ static int _fmpz_mod_mpoly_gcd_algo_small(
 
     /* entries of I are all now invalid */
 
-    I->Gbits = Gbits;
-    I->Abarbits = Abarbits;
-    I->Bbarbits = Bbarbits;
+    I->Gbits = FLINT_MIN(A->bits, B->bits);
+    I->Abarbits = A->bits;
+    I->Bbarbits = B->bits;
 
     mpoly_gcd_info_limits(I->Amax_exp, I->Amin_exp, I->Alead_count,
                       I->Atail_count, A->exps, A->bits, A->length, ctx->minfo);
@@ -1265,7 +1266,8 @@ skip_monomial_cofactors:
         goto cleanup;
     }
 
-    /* all variable are now either
+    /*
+        all variable are now either
             missing from both ess(A) and ess(B), or
             present in both ess(A) and ess(B)
         and there are at least two in the latter case
@@ -1285,6 +1287,7 @@ skip_monomial_cofactors:
         int gcd_is_trivial = 1;
         int try_a = I->Gdeflate_deg_bounds_are_nice;
         int try_b = I->Gdeflate_deg_bounds_are_nice;
+
         for (j = 0; j < nvars; j++)
         {
             if (I->Gdeflate_deg_bound[j] != 0)
@@ -1527,8 +1530,7 @@ static int _fmpz_mod_mpoly_gcd_algo_large(
         Buse = Bnew;
     }
 
-    success = _fmpz_mod_mpoly_gcd_algo(G, Abar, Bbar, Ause, Buse, ctx, algo);
-
+    success = _fmpz_mod_mpoly_gcd_algo_small(G, Abar, Bbar, Ause, Buse, ctx, algo);
     goto cleanup;
 
 could_not_repack:
@@ -1567,7 +1569,7 @@ could_not_repack:
             goto deflate_cleanup;
     }
 
-    success = _fmpz_mod_mpoly_gcd_algo(G, Abar, Bbar, Anew, Bnew, ctx, algo);
+    success = _fmpz_mod_mpoly_gcd_algo_small(G, Abar, Bbar, Anew, Bnew, ctx, algo);
     if (!success)
         goto deflate_cleanup;
 
@@ -1596,7 +1598,7 @@ could_not_repack:
             _fmpz_mod_vec_scalar_mul_fmpz_mod(Bbar->coeffs, Bbar->coeffs,
                                      Bbar->length, G->coeffs + 0, ctx->ffinfo);
 
-        _fmpz_mod_vec_scalar_mul_fmpz_mod(G->coeffs, G->coeffs, G->length,
+        _fmpz_mod_vec_scalar_div_fmpz_mod(G->coeffs, G->coeffs, G->length,
                                                    G->coeffs + 0, ctx->ffinfo);
     }
 
@@ -1634,29 +1636,5 @@ int _fmpz_mod_mpoly_gcd_algo(
         return _fmpz_mod_mpoly_gcd_algo_small(G, Abar, Bbar, A, B, ctx, algo);
     else
         return _fmpz_mod_mpoly_gcd_algo_large(G, Abar, Bbar, A, B, ctx, algo);
-}
-
-int fmpz_mod_mpoly_gcd(
-    fmpz_mod_mpoly_t G,
-    const fmpz_mod_mpoly_t A,
-    const fmpz_mod_mpoly_t B,
-    const fmpz_mod_mpoly_ctx_t ctx)
-{
-    if (fmpz_mod_mpoly_is_zero(A, ctx))
-    {
-        if (fmpz_mod_mpoly_is_zero(B, ctx))
-            fmpz_mod_mpoly_zero(G, ctx);
-        else
-            fmpz_mod_mpoly_make_monic(G, B, ctx);
-        return 1;
-    }
-
-    if (fmpz_mod_mpoly_is_zero(B, ctx))
-    {
-        fmpz_mod_mpoly_make_monic(G, A, ctx);
-        return 1;
-    }
-
-    return _fmpz_mod_mpoly_gcd_algo(G, NULL, NULL, A, B, ctx, MPOLY_GCD_USE_ALL);
 }
 

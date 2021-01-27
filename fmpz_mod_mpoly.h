@@ -44,6 +44,9 @@ FLINT_DLL void fmpz_mod_ctx_init_rand_bits(fmpz_mod_ctx_t ctx,
 FLINT_DLL void fmpz_mod_ctx_init_rand_bits_prime(fmpz_mod_ctx_t ctx,
                                   flint_rand_t state, flint_bitcnt_t max_bits);
 
+FLINT_DLL void _fmpz_mod_vec_set_fmpz_vec(fmpz * A, const fmpz * B, slong len,
+                                                     const fmpz_mod_ctx_t ctx);
+
 FLINT_DLL void _fmpz_mod_vec_neg(fmpz * A, const fmpz * B, slong len,
                                                      const fmpz_mod_ctx_t ctx);
 
@@ -55,44 +58,6 @@ FLINT_DLL void _fmpz_mod_vec_scalar_div_fmpz_mod(fmpz * A, const fmpz * B,
 
 FLINT_DLL void _fmpz_mod_vec_dot(fmpz_t d, const fmpz * a, const fmpz * b,
                                           slong len, const fmpz_mod_ctx_t ctx);
-
-FMPZ_MOD_MPOLY_INLINE
-void flint_mpz_add_uiui(mpz_ptr a, mpz_srcptr b, ulong c1, ulong c0)
-{
-    ulong d[2];
-    mpz_t c;
-
-    c->_mp_d = d;
-    c->_mp_alloc = 2;
-
-    d[1] = c1;
-    d[0] = c0;
-
-    c->_mp_size = d[1] != 0 ? 2 :
-                  d[0] != 0;
-
-    mpz_add(a, b, c);
-}
-
-FMPZ_MOD_MPOLY_INLINE
-void flint_mpz_add_uiuiui(mpz_ptr a, mpz_srcptr b, ulong c2, ulong c1, ulong c0)
-{
-    ulong d[3];
-    mpz_t c;
-
-    c->_mp_d = d;
-    c->_mp_alloc = 3;
-
-    d[2] = c2;
-    d[1] = c1;
-    d[0] = c0;
-
-    c->_mp_size = d[2] != 0 ? 3 :
-                  d[1] != 0 ? 2 :
-                  d[0] != 0;
-
-    mpz_add(a, b, c);
-}
 
 /* type definitions **********************************************************/
 

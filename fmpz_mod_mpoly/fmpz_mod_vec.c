@@ -12,6 +12,14 @@
 #include "fmpz_vec.h"
 #include "fmpz_mod_mpoly.h"
 
+void _fmpz_mod_vec_set_fmpz_vec(fmpz * A, const fmpz * B, slong len,
+                                                      const fmpz_mod_ctx_t ctx)
+{
+    for (len--; len >= 0; len--)
+        fmpz_mod_set_fmpz(A + len, B + len, ctx);
+}
+
+
 void _fmpz_mod_vec_neg(fmpz * A, const fmpz * B, slong len,
                                                       const fmpz_mod_ctx_t ctx)
 {

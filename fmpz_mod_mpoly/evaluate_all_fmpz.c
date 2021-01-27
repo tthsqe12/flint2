@@ -13,7 +13,7 @@
 
 void _fmpz_mod_mpoly_eval_all_fmpz_mod(
     fmpz_t eval,
-    const fmpz * Acoeffs,
+    const fmpz * Acoeffs,   /* need not be reduced mod fctx */
     const ulong * Aexps,
     slong Alen,
     flint_bitcnt_t Abits,
@@ -27,7 +27,6 @@ void _fmpz_mod_mpoly_eval_all_fmpz_mod(
     slong N = mpoly_words_per_exp(Abits, mctx);
     ulong varexp_sp;
     fmpz_t varexp_mp, m, p;
-    const fmpz * s;
     slong * offsets, * shifts;
     TMP_INIT;
 
@@ -50,15 +49,14 @@ void _fmpz_mod_mpoly_eval_all_fmpz_mod(
     fmpz_zero(eval);
     for (i = 0; i < Alen; i++)
     {
-        s = Acoeffs + i;
+        fmpz_one(m);
         if (Abits <= FLINT_BITS)
         {
             for (j = 0; j < nvars; j++)
             {
                 varexp_sp = ((Aexps + N*i)[offsets[j]]>>shifts[j])&mask;
                 fmpz_mod_pow_ui(p, alphas + j, varexp_sp, fctx);
-                fmpz_mod_mul(m, s, p, fctx);
-                s = m;
+                fmpz_mod_mul(m, m, p, fctx);
             }
         }
         else
@@ -67,12 +65,11 @@ void _fmpz_mod_mpoly_eval_all_fmpz_mod(
             {
                 fmpz_set_ui_array(varexp_mp, Aexps + N*i + offsets[j], Abits/FLINT_BITS);
                 fmpz_mod_pow_fmpz(p, alphas + j, varexp_mp, fctx);
-                fmpz_mod_mul(m, s, p, fctx);
-                s = m;
+                fmpz_mod_mul(m, m, p, fctx);
             }
         }
 
-        fmpz_mod_add(eval, eval, s, fctx);
+        fmpz_addmul(eval, Acoeffs + i, m);
     }
 
     fmpz_clear(varexp_mp);
@@ -80,6 +77,8 @@ void _fmpz_mod_mpoly_eval_all_fmpz_mod(
     fmpz_clear(p);
 
     TMP_END;
+
+    fmpz_mod_set_fmpz(eval, eval, fctx);
 }
 
 

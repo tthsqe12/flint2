@@ -164,7 +164,6 @@ void fmpz_mod_bpoly_make_monic_series(
     slong i;
     fmpz_mod_poly_t lcinv;
 
-    FLINT_ASSERT(A != B);
     FLINT_ASSERT(B->length > 0);
     FLINT_ASSERT(fmpz_mod_bpoly_is_canonical(B, ctx));
 
@@ -179,6 +178,8 @@ void fmpz_mod_bpoly_make_monic_series(
     fmpz_mod_bpoly_normalise(A, ctx);
 
     fmpz_mod_poly_clear(lcinv, ctx);
+
+    FLINT_ASSERT(fmpz_mod_bpoly_is_canonical(A, ctx));
 }
 
 static void fmpz_mod_bpoly_eval(

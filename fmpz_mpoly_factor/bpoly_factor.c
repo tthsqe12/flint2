@@ -13,6 +13,7 @@
 #include "nmod_mpoly_factor.h"
 #include "fmpz_mod_mpoly_factor.h"
 
+
 void fmpz_tpoly_print(fmpz_tpoly_t A, const char * xvar, const char * yvar, const char * zvar)
 {
     slong i;
@@ -78,30 +79,6 @@ void fmpz_mod_bpoly_set_polyy(
     A->length = !fmpz_mod_poly_is_zero(A->coeffs + 0, ctx);
 }
 
-
-void fmpz_mod_bpoly_make_monic(
-    fmpz_mod_bpoly_t A,
-    slong order,
-    const fmpz_mod_ctx_t ctx)
-{
-    slong i;
-    fmpz_mod_poly_t t, lcinv;
-
-    FLINT_ASSERT(A->length > 0);
-
-    fmpz_mod_poly_init(t, ctx);
-    fmpz_mod_poly_init(lcinv, ctx);
-    fmpz_mod_poly_inv_series(lcinv, A->coeffs + A->length - 1, order, ctx);
-
-    for (i = 0; i < A->length; i++)
-    {
-        fmpz_mod_poly_mullow(t, A->coeffs + i, lcinv, order, ctx);
-        fmpz_mod_poly_swap(A->coeffs + i, t, ctx);
-    }
-
-    fmpz_mod_poly_clear(t, ctx);
-    fmpz_mod_poly_clear(lcinv, ctx);
-}
 
 void fmpz_mod_bpoly_add_poly_shift(
     fmpz_mod_bpoly_t A,
@@ -550,6 +527,7 @@ static void _bivar_lift_quintic(bpoly_info_t I)
     fmpz_mod_bpoly_clear(error, I->ctxpk);
 }
 
+
 static void _bivar_lift_quartic2(bpoly_info_t I)
 {
     slong i, j, k;
@@ -907,7 +885,7 @@ next_prime:
     I->lifting_prec = Blengthy + (B->coeffs + B->length - 1)->length;
 
     fmpz_mod_bpoly_set_fmpz_bpoly(I->Btilde, B, I->ctxpk);
-    fmpz_mod_bpoly_make_monic(I->Btilde, I->lifting_prec, I->ctxpk);
+    fmpz_mod_bpoly_make_monic_series(I->Btilde, I->Btilde, I->lifting_prec, I->ctxpk);
     for (i = 0; i < I->r; i++)
     {
         fmpz_mod_poly_set_fmpz_poly(I->Bitilde1 + i, Bevalfac->p + i, I->ctxpk);
@@ -1024,7 +1002,7 @@ next_prime:
     I->lifting_prec = Blengthy + (B->coeffs + B->length - 1)->length;
 
     fmpz_mod_bpoly_set_fmpz_bpoly(I->Btilde, B, I->ctxpk);
-    fmpz_mod_bpoly_make_monic(I->Btilde, I->lifting_prec, I->ctxpk);
+    fmpz_mod_bpoly_make_monic_series(I->Btilde, I->Btilde, I->lifting_prec, I->ctxpk);
     for (i = 0; i < I->r; i++)
     {
         fmpz_mod_poly_set_fmpz_poly(I->Bitilde1 + i, Bevalf->p + i, I->ctxpk);
