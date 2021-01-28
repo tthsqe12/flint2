@@ -604,10 +604,6 @@ FLINT_DLL void fmpz_mod_mpoly_scalar_mul_fmpz(fmpz_mod_mpoly_t A,
 FLINT_DLL void fmpz_mod_mpoly_make_monic(fmpz_mod_mpoly_t A,
                      const fmpz_mod_mpoly_t B, const fmpz_mod_mpoly_ctx_t ctx);
 
-FLINT_DLL void fmpz_mod_mpoly_scalar_mul_fmpz_mod_invertible(fmpz_mod_mpoly_t A,
-                                      const fmpz_mod_mpoly_t B, const fmpz_t c,
-                                               const fmpz_mod_mpoly_ctx_t ctx);
-
 FLINT_DLL void fmpz_mod_mpoly_scalar_addmul_fmpz(fmpz_mod_mpoly_t A,
                         const fmpz_mod_mpoly_t B, const fmpz_mod_mpoly_t C,
                                const fmpz_t d, const fmpz_mod_mpoly_ctx_t ctx);

@@ -13,28 +13,6 @@
 #include "fmpz_mod_mpoly_factor.h"
 
 
-void fmpz_mod_poly_eval_pow(
-    fmpz_t eval,
-    const fmpz_mod_poly_t P,
-    fmpz_mod_poly_t alphapow,
-    const fmpz_mod_ctx_t ctx)
-{
-    slong Plen = P->length;
-    if (Plen > alphapow->length)
-    {
-        slong i = alphapow->length;
-        FLINT_ASSERT(2 <= i);
-        fmpz_mod_poly_fit_length(alphapow, Plen, ctx);
-        alphapow->length = Plen;
-        for ( ; i < Plen; i++)
-            fmpz_mod_mul(alphapow->coeffs + i, alphapow->coeffs + i - 1,
-                                                    alphapow->coeffs + 1, ctx);
-    }
-
-    _fmpz_mod_vec_dot(eval, P->coeffs, alphapow->coeffs, Plen, ctx);
-}
-
-
 void fmpz_mod_mpolyn_interp_lift_sm_polyu1n(
     fmpz_mod_mpolyn_t F,
     fmpz_mod_polyun_t A,
@@ -198,170 +176,6 @@ int fmpz_mod_mpolyn_interp_crt_sm_polyu1n(
 }
 
 
-
-/*
-    evaluation at
-        gen(start) -> betas[0]
-        gen(start+1) -> betas[1]
-        ...
-        gen(stop-1) -> betas[stop-start-1]
-
-    the other gen are assumed to not appear in A
-*/
-void _fmpz_mod_mpoly_monomial_evals_cache(
-    fmpz_mod_poly_t E,
-    const ulong * Aexps,
-    flint_bitcnt_t Abits,
-    slong Alen,
-    const fmpz * betas,
-    slong start,
-    slong stop,
-    const mpoly_ctx_t mctx,
-    const fmpz_mod_ctx_t fctx)
-{
-    slong i, Ai;
-    ulong mask = (-UWORD(1)) >> (FLINT_BITS - Abits);
-    slong N = mpoly_words_per_exp_sp(Abits, mctx);
-    slong * off, * shift;
-    fmpz * c;
-    fmpz_t tt;
-    slong num = stop - start;
-
-    FLINT_ASSERT(Abits <= FLINT_BITS);
-    FLINT_ASSERT(Alen > 0);
-    FLINT_ASSERT(num > 0);
-
-    fmpz_init(tt);
-    off = FLINT_ARRAY_ALLOC(2*num, slong);
-    shift = off + num;
-    for (i = 0; i < num; i++)
-    {
-        mpoly_gen_offset_shift_sp(&off[i], &shift[i], i + start, Abits, mctx);
-    }
-
-    fmpz_mod_poly_fit_length(E, Alen, fctx);
-    E->length = Alen;
-
-    for (Ai = 0; Ai < Alen; Ai++)
-    {
-        c = E->coeffs + Ai;
-        fmpz_one(c);
-        for (i = 0; i < num; i++)
-        {
-            ulong ei = (Aexps[N*Ai + off[i]] >> shift[i]) & mask;
-            fmpz_mod_pow_ui(tt, betas + i, ei, fctx);
-            fmpz_mod_mul(c, c, tt, fctx);
-        }
-    }
-
-    flint_free(off);
-    fmpz_clear(tt);
-}
-
-
-/*
-    evaluation at
-        gen(0) -> x
-        gen(1) -> y
-        gen(2) -> betas[0]
-        gen(3) -> betas[1]
-        ...
-        gen(m-1) -> betas[m-3]
-*/
-void _fmpz_mod_mpoly_monomial_evals2_cache(
-    fmpz_mod_polyun_t E,
-    const ulong * Aexps,
-    flint_bitcnt_t Abits,
-    slong Alen,
-    const fmpz * betas,
-    slong m,
-    const mpoly_ctx_t mctx,
-    const fmpz_mod_ctx_t fctx)
-{
-    slong i, Ai, Ei;
-    ulong e0, e1, e01;
-    ulong mask = (-UWORD(1)) >> (FLINT_BITS - Abits);
-    slong N = mpoly_words_per_exp_sp(Abits, mctx);
-    slong * off, * shift;
-    fmpz * c;
-    fmpz_t tt;
-
-    FLINT_ASSERT(Abits <= FLINT_BITS);
-    FLINT_ASSERT(Alen > 0);
-    FLINT_ASSERT(m > 2);
-
-    fmpz_init(tt);
-    off = FLINT_ARRAY_ALLOC(2*m, slong);
-    shift = off + m;
-    for (i = 0; i < m; i++)
-    {
-        mpoly_gen_offset_shift_sp(&off[i], &shift[i], i, Abits, mctx);
-    }
-
-    Ai = 0;
-    Ei = 0;
-
-    e0 = (Aexps[N*Ai + off[0]] >> shift[0]) & mask;
-    e1 = (Aexps[N*Ai + off[1]] >> shift[1]) & mask;
-    e01 = pack_exp2(e0, e1);
-    fmpz_mod_polyun_fit_length(E, Ei + 1, fctx);
-    E->exps[Ei] = e01;
-    fmpz_mod_poly_fit_length(E->coeffs + Ei, 1, fctx);
-    c = E->coeffs[Ei].coeffs + 0;
-    E->coeffs[Ei].length = 1;
-    Ei++;
-    fmpz_one(c);
-    for (i = 2; i < m; i++)
-    {
-        ulong ei = (Aexps[N*Ai + off[i]] >> shift[i]) & mask;
-        fmpz_mod_pow_ui(tt, betas + i - 2, ei, fctx);
-        fmpz_mod_mul(c, c, tt, fctx);
-    }
-
-    for (Ai++; Ai < Alen; Ai++)
-    {
-        e0 = (Aexps[N*Ai + off[0]] >> shift[0]) & mask;
-        e1 = (Aexps[N*Ai + off[1]] >> shift[1]) & mask;
-        e01 = pack_exp2(e0, e1);
-        if (e01 == E->exps[Ei-1])
-        {
-            slong len = E->coeffs[Ei-1].length;
-            fmpz_mod_poly_fit_length(E->coeffs + Ei-1, len + 1, fctx);
-            c = E->coeffs[Ei-1].coeffs + len;
-            E->coeffs[Ei-1].length = len + 1;
-        }
-        else
-        {
-            fmpz_mod_polyun_fit_length(E, Ei + 1, fctx);
-            E->exps[Ei] = e01;
-            fmpz_mod_poly_fit_length(E->coeffs + Ei, 1, fctx);
-            c = E->coeffs[Ei].coeffs + 0;
-            E->coeffs[Ei].length = 1;
-            Ei++;
-        }
-
-        fmpz_one(c);
-        for (i = 2; i < m; i++)
-        {
-            ulong ei = (Aexps[N*Ai + off[i]] >> shift[i]) & mask;
-            fmpz_mod_pow_ui(tt, betas + i - 2, ei, fctx);
-            fmpz_mod_mul(c, c, tt, fctx);
-        }
-    }
-
-    E->length = Ei;
-
-    flint_free(off);
-    fmpz_clear(tt);
-
-#if FLINT_WANT_ASSERT
-    Ai = 0;
-    for (i = 0; i < E->length; i++)
-        Ai += E->coeffs[i].length;
-    FLINT_ASSERT(Ai == Alen);
-#endif
-}
-
 static ulong _fmpz_mod_mpoly_bidegree(
     const fmpz_mod_mpoly_t A,
     const fmpz_mod_mpoly_ctx_t ctx)
@@ -519,19 +333,8 @@ int fmpz_mod_mpoly_gcd_get_use_new(
     return use;
 }
 
-void nmod_mpoly_cvtfrom_mpolyn(
-    nmod_mpoly_t A,
-    const nmod_mpolyn_t B,
-    slong var,
-    const nmod_mpoly_ctx_t ctx);
 
-void nmod_mpolyn_interp_lift_sm_mpoly(
-    nmod_mpolyn_t A,
-    const nmod_mpoly_t B,
-    const nmod_mpoly_ctx_t ctx);
-
-
-void fmpz_mod_poly_eval_step_sep(
+static void fmpz_mod_poly_zip_eval_cur_inc_coeff(
     fmpz_t eval,
     fmpz_mod_poly_t cur,
     const fmpz_mod_poly_t inc,
@@ -543,62 +346,35 @@ void fmpz_mod_poly_eval_step_sep(
     _fmpz_mod_zip_eval_step(eval, cur->coeffs, inc->coeffs, A->coeffs, A->length, ctx->ffinfo);
 }
 
-void static fmpz_mod_polyu2n_eval_step_sep(
-    fmpz_mod_polyun_t E,
-    fmpz_mod_polyun_t cur,
-    const fmpz_mod_polyun_t inc,
+
+static void fmpz_mod_mpoly_mock_eval_coeff(
+    fmpz_mod_polyun_t mock,
     const fmpz_mod_mpoly_t A,
+    const fmpz_mod_polyun_t Aeh_inc,
     const fmpz_mod_mpoly_ctx_t ctx)
 {
-    slong i, Ai, Ei, e0, e1, this_len;
-    fmpz_mod_poly_struct * Ec;
-    fmpz_t eval;
+    slong i, k;
 
-    FLINT_ASSERT(cur->length > 0);
-    FLINT_ASSERT(cur->length == inc->length);
-
-    fmpz_init(eval);
-
-    e0 = extract_exp(cur->exps[0], 1, 2);
-    e1 = extract_exp(cur->exps[0], 0, 2);
-
-    fmpz_mod_polyun_fit_length(E, 4, ctx->ffinfo);
-    Ei = 0;
-    E->exps[Ei] = e1;
-    Ec = E->coeffs + Ei;
-    fmpz_mod_poly_zero(Ec, ctx->ffinfo);
-
-    Ai = 0;
-    for (i = 0; i < cur->length; i++)
+    if (mock->alloc < Aeh_inc->length)
     {
-        this_len = cur->coeffs[i].length;
-        _fmpz_mod_zip_eval_step(eval, cur->coeffs[i].coeffs,
-                                  inc->coeffs[i].coeffs,
-                                  A->coeffs + Ai, this_len, ctx->ffinfo);
-        e0 = extract_exp(cur->exps[i], 1, 2);
-        e1 = extract_exp(cur->exps[i], 0, 2);
-
-        if (E->exps[Ei] != e0)
-        {
-            fmpz_mod_polyun_fit_length(E, Ei + 2, ctx->ffinfo);
-            Ei += !fmpz_mod_poly_is_zero(E->coeffs + Ei, ctx->ffinfo);
-            E->exps[Ei] = e0;
-            Ec = E->coeffs + Ei;
-            fmpz_mod_poly_zero(Ec, ctx->ffinfo);
-        }
-
-        fmpz_mod_poly_set_coeff_fmpz(Ec, e1, eval, ctx->ffinfo);
-        Ai += this_len;
+        mock->alloc = FLINT_MAX(Aeh_inc->length, mock->alloc + mock->alloc/2);
+        mock->coeffs = FLINT_ARRAY_REALLOC(mock->coeffs, mock->alloc,
+                                                         fmpz_mod_poly_struct);        
     }
 
-    FLINT_ASSERT(Ai == A->length);
+    mock->length = Aeh_inc->length;
 
-    Ei += !fmpz_mod_poly_is_zero(E->coeffs + Ei, ctx->ffinfo);
-    E->length = Ei;
+    k = 0;
+    for (i = 0; i < Aeh_inc->length; i++)
+    {
+        slong l = Aeh_inc->coeffs[i].length;
+        mock->coeffs[i].coeffs = A->coeffs + k;
+        mock->coeffs[i].alloc = l;
+        mock->coeffs[i].length = l;
+        k += l;
+    }
 
-    FLINT_ASSERT(fmpz_mod_polyun_is_canonical(E, ctx->ffinfo));
-
-    fmpz_clear(eval);
+    FLINT_ASSERT(k == A->length);
 }
 
 
@@ -642,28 +418,31 @@ void fmpz_mod_mpoly_get_polyu1n(
     FLINT_ASSERT(fmpz_mod_polyun_is_canonical(A, ctx->ffinfo));
 }
 
-
 static void fmpz_mod_mpoly_monomial_evals(
     fmpz_mod_poly_t E,
     const fmpz_mod_mpoly_t A,
-    const fmpz * betas,
+    fmpz_mod_poly_struct * beta_caches,
     slong start,
     slong stop,
     const fmpz_mod_mpoly_ctx_t ctx)
 {
-    _fmpz_mod_mpoly_monomial_evals_cache(E, A->exps, A->bits, A->length,
-                                  betas, start, stop, ctx->minfo, ctx->ffinfo);
+    mpoly_monomial_evals_fmpz_mod(E, A->exps, A->length, A->bits,
+                            beta_caches, start, stop, ctx->minfo, ctx->ffinfo);
 }
 
 static void fmpz_mod_mpoly_monomial_evals2(
     fmpz_mod_polyun_t E,
     const fmpz_mod_mpoly_t A,
-    const fmpz * betas,
+    fmpz_mod_poly_struct * betas,
     slong m,
-    const fmpz_mod_mpoly_ctx_t ctx)
+    const fmpz_mod_mpoly_ctx_t ctx,
+    n_poly_t tmark) /* temp space */
 {
-    _fmpz_mod_mpoly_monomial_evals2_cache(E, A->exps, A->bits, A->length, betas, m,
-                                                         ctx->minfo, ctx->ffinfo);
+    mpoly2_fill_marks(&tmark->coeffs, &tmark->length, &tmark->alloc,
+                                      A->exps, A->length, A->bits, ctx->minfo);
+
+    mpoly2_monomial_evals_fmpz_mod(E, A->exps, A->bits, tmark->coeffs,
+                            tmark->length, betas, m, ctx->minfo, ctx->ffinfo);
 }
 
 
@@ -976,7 +755,9 @@ int fmpz_mod_mpolyl_gcd_zippel_smprime(
     slong nvars = ctx->minfo->nvars;
     flint_bitcnt_t bits = A->bits;
     fmpz * alphas, * betas;
+    fmpz_mod_poly_struct * alpha_caches, * beta_caches;
     flint_rand_t state;
+    n_poly_t tmark;
     fmpz_mod_mpoly_t cont;
     fmpz_mod_mpoly_t T, G, Abar, Bbar;
     fmpz_mod_polyun_t HG, HAbar, HBbar, MG, MAbar, MBbar, ZG, ZAbar, ZBbar;
@@ -985,6 +766,7 @@ int fmpz_mod_mpolyl_gcd_zippel_smprime(
     fmpz_mod_mpolyn_t Tn, Gn, Abarn, Bbarn;
     slong lastdeg;
     slong cur_zip_image, req_zip_images, this_length;
+    fmpz_mod_polyun_t Aeh_coeff_mock, Beh_coeff_mock;
     fmpz_mod_polyun_t Aeh_cur, Aeh_inc, Beh_cur, Beh_inc;
     fmpz_mod_poly_t gammaeh_cur, gammaeh_inc;
     fmpz_mod_poly_t modulus, alphapow;
@@ -1034,6 +816,8 @@ int fmpz_mod_mpolyl_gcd_zippel_smprime(
     FLINT_ASSERT(gammadegs[0] == 0);
     FLINT_ASSERT(gammadegs[1] == 0);
 
+    n_poly_init(tmark);
+
     fmpz_mod_polyun_init(HG, ctx->ffinfo);
     fmpz_mod_polyun_init(HAbar, ctx->ffinfo);
     fmpz_mod_polyun_init(HBbar, ctx->ffinfo);
@@ -1068,9 +852,27 @@ int fmpz_mod_mpolyl_gcd_zippel_smprime(
     fmpz_mod_poly_stack_init(St->poly_stack);
     fmpz_mod_polyun_stack_init(St->polyun_stack);
 
+    Aeh_coeff_mock->exps = NULL;
+    Aeh_coeff_mock->coeffs = NULL;
+    Aeh_coeff_mock->length = 0;
+    Aeh_coeff_mock->alloc = 0;
+
+    Beh_coeff_mock->exps = NULL;
+    Beh_coeff_mock->coeffs = NULL;
+    Beh_coeff_mock->length = 0;
+    Beh_coeff_mock->alloc = 0;
+
     betas = _fmpz_vec_init(nvars);
     alphas = _fmpz_vec_init(nvars);
     flint_randinit(state);
+
+    beta_caches = FLINT_ARRAY_ALLOC(nvars, fmpz_mod_poly_struct);
+    alpha_caches = FLINT_ARRAY_ALLOC(nvars, fmpz_mod_poly_struct);
+    for (i = 0; i < nvars; i++)
+    {
+        fmpz_mod_poly_init(beta_caches + i, ctx->ffinfo);
+        fmpz_mod_poly_init(alpha_caches + i, ctx->ffinfo);
+    }
 
     Aevals = FLINT_ARRAY_ALLOC(nvars + 1, fmpz_mod_mpoly_struct);
     Bevals = FLINT_ARRAY_ALLOC(nvars + 1, fmpz_mod_mpoly_struct);
@@ -1350,12 +1152,15 @@ choose_alphas:
     choose_betas:
 
         /* only beta[2], beta[1], ..., beta[m - 1] will be used */
-        for (i = 2; i < ctx->minfo->nvars; i++)
+        for (i = 2; i < nvars; i++)
+        {
             fmpz_mod_rand_not_zero(betas + i, state, ctx->ffinfo);
+            fmpz_mod_pow_cache_start(betas + i, beta_caches + i, ctx->ffinfo);
+        }
 
-        fmpz_mod_mpoly_monomial_evals2(HG, G, betas + 2, m, ctx);
-        fmpz_mod_mpoly_monomial_evals2(HAbar, Abar, betas + 2, m, ctx);
-        fmpz_mod_mpoly_monomial_evals2(HBbar, Bbar, betas + 2, m, ctx);
+        fmpz_mod_mpoly_monomial_evals2(HG, G, beta_caches + 2, m, ctx, tmark);
+        fmpz_mod_mpoly_monomial_evals2(HAbar, Abar, beta_caches + 2, m, ctx, tmark);
+        fmpz_mod_mpoly_monomial_evals2(HBbar, Bbar, beta_caches + 2, m, ctx, tmark);
 
         if (use == 0)
         {
@@ -1408,21 +1213,23 @@ choose_alphas:
             if (Bevals[m].length < 1 || _fmpz_mod_mpoly_bidegree(Bevals + m, ctx) != Bbideg)
                 goto choose_alpha_m;
 
-            fmpz_mod_mpoly_monomial_evals2(Aeh_inc, Aevals + m, betas + 2, m, ctx);
-            fmpz_mod_mpoly_monomial_evals2(Beh_inc, Bevals + m, betas + 2, m, ctx);
-            fmpz_mod_mpoly_monomial_evals(gammaeh_inc, gammaevals + m, betas + 2, 2, m, ctx);
+            fmpz_mod_mpoly_monomial_evals2(Aeh_inc, Aevals + m, beta_caches + 2, m, ctx, tmark);
+            fmpz_mod_mpoly_monomial_evals2(Beh_inc, Bevals + m, beta_caches + 2, m, ctx, tmark);
+            fmpz_mod_mpoly_monomial_evals(gammaeh_inc, gammaevals + m, beta_caches + 2, 2, m, ctx);
             fmpz_mod_polyun_set(Aeh_cur, Aeh_inc, ctx->ffinfo);
             fmpz_mod_polyun_set(Beh_cur, Beh_inc, ctx->ffinfo);
             fmpz_mod_poly_set(gammaeh_cur, gammaeh_inc, ctx->ffinfo);
+            fmpz_mod_mpoly_mock_eval_coeff(Aeh_coeff_mock, Aevals + m, Aeh_inc, ctx);
+            fmpz_mod_mpoly_mock_eval_coeff(Beh_coeff_mock, Bevals + m, Beh_inc, ctx);
 
             fmpz_mod_polyun_zip_start(ZG, HG, req_zip_images, ctx->ffinfo);
             fmpz_mod_polyun_zip_start(ZAbar, HAbar, req_zip_images, ctx->ffinfo);
             fmpz_mod_polyun_zip_start(ZBbar, HBbar, req_zip_images, ctx->ffinfo);
             for (cur_zip_image = 0; cur_zip_image < req_zip_images; cur_zip_image++)
             {
-                fmpz_mod_polyu2n_eval_step_sep(Aev, Aeh_cur, Aeh_inc, Aevals + m, ctx);
-                fmpz_mod_polyu2n_eval_step_sep(Bev, Beh_cur, Beh_inc, Bevals + m, ctx);
-                fmpz_mod_poly_eval_step_sep(gammaev, gammaeh_cur, gammaeh_inc, gammaevals + m, ctx);
+                fmpz_mod_polyu2n_zip_eval_cur_inc_coeff(Aev, Aeh_cur, Aeh_inc, Aeh_coeff_mock, ctx->ffinfo);
+                fmpz_mod_polyu2n_zip_eval_cur_inc_coeff(Bev, Beh_cur, Beh_inc, Beh_coeff_mock, ctx->ffinfo);
+                fmpz_mod_poly_zip_eval_cur_inc_coeff(gammaev, gammaeh_cur, gammaeh_inc, gammaevals + m, ctx);
                 if (fmpz_is_zero(gammaev))
                     goto choose_betas;
                 if (Aev->length < 1 || fmpz_mod_polyu1n_bidegree(Aev) != Abideg)
@@ -1580,8 +1387,8 @@ choose_alphas:
                 }
             }
 
-            if (fmpz_mod_poly_degree(modulus, ctx->ffinfo) > gammadegs[m] + Adegs[m] &&
-                fmpz_mod_poly_degree(modulus, ctx->ffinfo) > gammadegs[m] + Bdegs[m])
+            if (_fmpz_mod_poly_degree(modulus) > gammadegs[m] + Adegs[m] &&
+                _fmpz_mod_poly_degree(modulus) > gammadegs[m] + Bdegs[m])
             {
                 goto choose_alphas;
             }
@@ -1594,6 +1401,8 @@ choose_alphas:
     success = 1;
 
 cleanup:
+
+    n_poly_clear(tmark);
 
     fmpz_mod_polyun_clear(HG, ctx->ffinfo);
     fmpz_mod_polyun_clear(HAbar, ctx->ffinfo);
@@ -1629,6 +1438,17 @@ cleanup:
     fmpz_mod_poly_stack_clear(St->poly_stack);
     fmpz_mod_polyun_stack_clear(St->polyun_stack);
 
+    flint_free(Aeh_coeff_mock->coeffs);
+    flint_free(Beh_coeff_mock->coeffs);
+
+    for (i = 0; i < nvars; i++)
+    {
+        fmpz_mod_poly_clear(beta_caches + i, ctx->ffinfo);
+        fmpz_mod_poly_clear(alpha_caches + i, ctx->ffinfo);
+    }
+    flint_free(beta_caches);
+    flint_free(alpha_caches);
+
     _fmpz_vec_clear(betas, nvars);
     _fmpz_vec_clear(alphas, nvars);
 
@@ -1651,6 +1471,8 @@ cleanup:
     FLINT_ASSERT(!success || rG->bits == bits);
     FLINT_ASSERT(!success || rAbar->bits == bits);
     FLINT_ASSERT(!success || rBbar->bits == bits);
+
+    FLINT_ASSERT(success || fmpz_abs_fits_ui(fmpz_mod_mpoly_ctx_modulus(ctx)));
 
     return success;
 

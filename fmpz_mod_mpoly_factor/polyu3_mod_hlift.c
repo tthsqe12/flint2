@@ -404,61 +404,6 @@ void fmpz_mod_polyu3n_interp_lift_2sm_bpoly(
 }
 
 
-void fmpz_mod_poly_eval2_pow(
-    fmpz_t vp,
-    fmpz_t vm,
-    const fmpz_mod_poly_t P, 
-    fmpz_mod_poly_t alphapow,
-    const fmpz_mod_ctx_t ctx)
-{
-    const fmpz * Pcoeffs = P->coeffs;
-    slong Plen = P->length;
-    fmpz * alpha_powers = alphapow->coeffs;
-    fmpz_t a, b;
-    slong k;
-
-    fmpz_init(a);
-    fmpz_init(b);
-
-    if (Plen > alphapow->length)
-    {
-        slong oldlength = alphapow->length;
-        FLINT_ASSERT(2 <= oldlength);
-        fmpz_mod_poly_fit_length(alphapow, Plen, ctx);
-        for (k = oldlength; k < Plen; k++)
-        {
-            fmpz_mod_mul(alphapow->coeffs + k, alphapow->coeffs + k - 1,
-                                               alphapow->coeffs + 1, ctx);
-        }
-        alphapow->length = Plen;
-        alpha_powers = alphapow->coeffs;
-    }
-
-    for (k = 0; k + 2 <= Plen; k += 2)
-    {
-        fmpz_addmul(a, Pcoeffs + k + 0, alpha_powers + k + 0);
-        fmpz_addmul(b, Pcoeffs + k + 1, alpha_powers + k + 1);
-    }
-
-    if (k < Plen)
-    {
-        fmpz_addmul(a, Pcoeffs + k + 0, alpha_powers + k + 0);
-        k++;
-    }
-
-    FLINT_ASSERT(k == Plen);
-
-    fmpz_mod_set_fmpz(a, a, ctx);
-    fmpz_mod_set_fmpz(b, b, ctx);
-
-    fmpz_mod_add(vp, a, b, ctx);
-    fmpz_mod_sub(vm, a, b, ctx);
-
-    fmpz_clear(a);
-    fmpz_clear(b);
-}
-
-
 int fmpz_mod_polyu3n_interp_crt_2sm_bpoly(
     slong * lastdeg,
     fmpz_mod_polyun_t F,
@@ -654,21 +599,6 @@ int fmpz_mod_polyu3n_interp_crt_2sm_bpoly(
     return changed;
 }
 
-void fmpz_mod_polyu3_print_pretty(
-    const fmpz_mod_polyu_t A,
-    const char * var0,
-    const char * var1,
-    const char * var2,
-    const fmpz_mod_ctx_t ctx);
-
-void fmpz_mod_polyu3n_print_pretty(
-    const fmpz_mod_polyun_t A,
-    const char * var0,
-    const char * var1,
-    const char * var2,
-    const char * varlast,
-    const fmpz_mod_ctx_t ctx);
-
 /*
     Input A, B0, B1, with A(y,x,z) = B0(y,x,z)*B1(y,x,z) mod (y-beta)
 
@@ -700,26 +630,6 @@ int fmpz_mod_polyu3_hlift(
     slong AdegY, AdegX, AdegZ;
     slong bad_primes_left;
     fmpz_mod_poly_bpoly_stack_t St;
-/*
-flint_printf("------------- fmpz_mod_polyu3_hlift called -----------\n");
-flint_printf("modulus ");
-fmpz_print(fmpz_mod_ctx_modulus(ctx));
-flint_printf("\n");
-flint_printf(" mod y - ");
-fmpz_print(beta);
-flint_printf("\n");
-
-flint_printf("A: ");
-fmpz_mod_polyu3_print_pretty(A, "y", "x", "z", ctx);
-flint_printf("\n");
-
-    for (i = 0; i < r; i++)
-{
-flint_printf("B[%wd]: ", i);
-fmpz_mod_polyu3_print_pretty(B+i, "y", "x", "z", ctx);
-flint_printf("\n");
-}
-*/
 
 /*
     if (r < 3)
@@ -777,11 +687,7 @@ choose_prime:
         success = -1;
         goto cleanup;
     }
-/*
-flint_printf("z = -+alpha: ");
-fmpz_print(alpha);
-flint_printf("\n");
-*/
+
     FLINT_ASSERT(fmpz_mod_is_canonical(alpha, ctx));
     FLINT_ASSERT(alphapow->alloc >= 2);
     alphapow->length = 2;
@@ -803,15 +709,7 @@ flint_printf("\n");
             goto cleanup;
         goto choose_prime;
     }
-/*
-flint_printf("hlift + done\n");
-for (i = 0; i < r; i++)
-{
-flint_printf("Bp[%wd]: ", i);
-fmpz_mod_bpoly_print_pretty(Bp + i, "y", "x", ctx);
-flint_printf("\n");
-}
-*/
+
     success = fmpz_mod_bpoly_hlift(r, Am, Bm, beta, degree_inner, ctx, St);
     if (success < 1)
     {
@@ -819,15 +717,7 @@ flint_printf("\n");
             goto cleanup;
         goto choose_prime;
     }
-/*
-flint_printf("hlift - done\n");
-for (i = 0; i < r; i++)
-{
-flint_printf("Bm[%wd]: ", i);
-fmpz_mod_bpoly_print_pretty(Bm + i, "y", "x", ctx);
-flint_printf("\n");
-}
-*/
+
     if (fmpz_mod_poly_degree(modulus, ctx) > 0)
     {
         fmpz_mod_poly_evaluate_fmpz(c, modulus, alpha, ctx);
@@ -860,22 +750,11 @@ flint_printf("\n");
                                                Bp + i, Bm + i, alpha, ctx);
         }
     }
-/*
-for (i = 0; i < r; i++)
-{
-flint_printf("BB[%wd]: ", i);
-fmpz_mod_polyu3n_print_pretty(BB + i, "y", "x", "1", "z", ctx);
-flint_printf("\n");
-}
-*/
+
     fmpz_mod_mul(c, alpha, alpha, ctx);
     fmpz_mod_neg(c, c, ctx);
     fmpz_mod_poly_shift_left_scalar_addmul_fmpz_mod(modulus, 2, c, ctx);
-/*
-flint_printf("modulus: ");
-fmpz_mod_poly_print_pretty(modulus, "x", ctx);
-flint_printf("\n");
-*/
+
     j = BBdegZ[0];
     for (i = 1; i < r; i++)
         j += BBdegZ[i];
@@ -942,10 +821,8 @@ cleanup:
 
     fmpz_clear(alpha);
     fmpz_clear(c);
-/*
-flint_printf("-------- fmpz_mod_polyu3_hlift returning %d --------\n", success);
-*/
-FLINT_ASSERT(success);
+
+    FLINT_ASSERT(success || fmpz_abs_fits_ui(fmpz_mod_ctx_modulus(ctx)));
 
     return success;
 }

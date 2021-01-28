@@ -114,3 +114,80 @@ void fmpz_mod_poly_addmul_linear(
     _fmpz_mod_poly_normalise(A);
 }
 
+
+/* evaluation at alphapow->coeffs[1] */
+void fmpz_mod_poly_eval_pow(
+    fmpz_t eval,
+    const fmpz_mod_poly_t P,
+    fmpz_mod_poly_t alphapow,
+    const fmpz_mod_ctx_t ctx)
+{
+    slong Plen = P->length;
+    if (Plen > alphapow->length)
+    {
+        slong i = alphapow->length;
+        FLINT_ASSERT(2 <= i);
+        fmpz_mod_poly_fit_length(alphapow, Plen, ctx);
+        alphapow->length = Plen;
+        for ( ; i < Plen; i++)
+            fmpz_mod_mul(alphapow->coeffs + i, alphapow->coeffs + i - 1,
+                                                    alphapow->coeffs + 1, ctx);
+    }
+
+    _fmpz_mod_vec_dot(eval, P->coeffs, alphapow->coeffs, Plen, ctx);
+}
+
+void fmpz_mod_poly_eval2_pow(
+    fmpz_t vp,
+    fmpz_t vm,
+    const fmpz_mod_poly_t P, 
+    fmpz_mod_poly_t alphapow,
+    const fmpz_mod_ctx_t ctx)
+{
+    const fmpz * Pcoeffs = P->coeffs;
+    slong Plen = P->length;
+    fmpz * alpha_powers = alphapow->coeffs;
+    fmpz_t a, b;
+    slong k;
+
+    fmpz_init(a);
+    fmpz_init(b);
+
+    if (Plen > alphapow->length)
+    {
+        slong oldlength = alphapow->length;
+        FLINT_ASSERT(2 <= oldlength);
+        fmpz_mod_poly_fit_length(alphapow, Plen, ctx);
+        for (k = oldlength; k < Plen; k++)
+        {
+            fmpz_mod_mul(alphapow->coeffs + k, alphapow->coeffs + k - 1,
+                                               alphapow->coeffs + 1, ctx);
+        }
+        alphapow->length = Plen;
+        alpha_powers = alphapow->coeffs;
+    }
+
+    for (k = 0; k + 2 <= Plen; k += 2)
+    {
+        fmpz_addmul(a, Pcoeffs + k + 0, alpha_powers + k + 0);
+        fmpz_addmul(b, Pcoeffs + k + 1, alpha_powers + k + 1);
+    }
+
+    if (k < Plen)
+    {
+        fmpz_addmul(a, Pcoeffs + k + 0, alpha_powers + k + 0);
+        k++;
+    }
+
+    FLINT_ASSERT(k == Plen);
+
+    fmpz_mod_set_fmpz(a, a, ctx);
+    fmpz_mod_set_fmpz(b, b, ctx);
+
+    fmpz_mod_add(vp, a, b, ctx);
+    fmpz_mod_sub(vm, a, b, ctx);
+
+    fmpz_clear(a);
+    fmpz_clear(b);
+}
+
