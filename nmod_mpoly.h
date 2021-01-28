@@ -1353,7 +1353,7 @@ FLINT_DLL void nmod_mpolyu_setform(nmod_mpolyu_t A, nmod_mpolyu_t B,
 
 FLINT_DLL int nmod_mpolyu_gcdm_zippel(nmod_mpolyu_t G, nmod_mpolyu_t Abar,
                        nmod_mpolyu_t Bbar, nmod_mpolyu_t A, nmod_mpolyu_t B,
-         nmod_mpoly_ctx_t ctx, mpoly_zipinfo_t zinfo, flint_rand_t randstate);
+                                 nmod_mpoly_ctx_t ctx, flint_rand_t randstate);
 
 NMOD_MPOLY_INLINE mp_limb_t nmod_mpolyu_leadcoeff(
                                    nmod_mpolyu_t A, const nmod_mpoly_ctx_t ctx)
@@ -1610,7 +1610,7 @@ FLINT_DLL nmod_gcds_ret_t nmod_mpolyu_gcds_zippel(nmod_mpolyu_t G,
 
 FLINT_DLL int nmod_mpolyu_gcdp_zippel(nmod_mpolyu_t G, nmod_mpolyu_t Abar,
              nmod_mpolyu_t Bbar, nmod_mpolyu_t A, nmod_mpolyu_t B, slong var,
-    const nmod_mpoly_ctx_t ctx, mpoly_zipinfo_t zinfo, flint_rand_t randstate);
+                           const nmod_mpoly_ctx_t ctx, flint_rand_t randstate);
 
 FLINT_DLL void nmod_mpoly_to_mpolyl_perm_deflate(
     nmod_mpoly_t A,

@@ -13,85 +13,80 @@
 #include "fmpz_mpoly.h"
 #include "fmpz_mpoly_factor.h"
 
-/*
-    Find a bound on the bits of the coefficients of gcd(A,B).
-    If this overflows a flint_bitcnt_t, the max flint_bitcnt_t is returned.
-    We will apply a Kronecker substitution and use the Landau-Mignotte bound
-        for univariates.
-
-         min(deg A, deg B)
-        2                  * gcd(A[0], B[0])
-
-                 * min( L2Norm(A) / A[0] , L2Norm(B) / B[0] )
-
-    This number is almost certainly not going to be used,
-        so it just needs to be correct and not nececessary as tight as possible.
-*/
-flint_bitcnt_t fmpz_mpolyu_gcd_bitbound(const fmpz_t gcdlc,
-                            const fmpz_mpolyu_t A, const fmpz_mpolyu_t B,
-                       const fmpz_mpoly_ctx_t ctx, const mpoly_zipinfo_t zinfo)
+static void fmpz_mpolyu_norm_degrees(
+    fmpz_t norm,
+    slong * degrees,
+    const fmpz_mpolyu_t A,
+    const fmpz_mpoly_ctx_t ctx)
 {
-    slong i;
-    fmpz_t n, an, bn;
-    ulong max, len;
-    flint_bitcnt_t r;
+    slong i, j;
+    fmpz_t M;
+    slong * tdegs;
+    TMP_INIT;
 
-    /* find the degree of the kronecker substitution in the lesser variables */
-    fmpz_init_set_ui(n, UWORD(1));
-    for (i = 0; i < zinfo->nvars - 1; i++)
-    {
-        fmpz_mul_ui(n, n, FLINT_MAX((ulong)(zinfo->Adegs[i]),
-                                    (ulong)(zinfo->Bdegs[i])) + UWORD(1));
-    }
+    fmpz_init(M);
 
-    /* n = min(deg A, deg B) after the KS */
-    i = zinfo->nvars - 1;
-    fmpz_addmul_ui(n, n, FLINT_MIN((ulong)(zinfo->Adegs[i]),
-                                   (ulong)(zinfo->Bdegs[i])));
+    TMP_START;
 
-    /* n += log2(gcd(A[0], B[0])) */
-    fmpz_add_ui(n, n, fmpz_bits(gcdlc));
+    tdegs = TMP_ARRAY_ALLOC(ctx->minfo->nvars, slong);
 
-    len = max = UWORD(0);
+    fmpz_zero(norm);
+
+    for (j = 0; j < ctx->minfo->nvars + 1; j++)
+        degrees[j] = 0;
+
     for (i = 0; i < A->length; i++)
     {
-        len += (A->coeffs + i)->length;
-        max = FLINT_MAX(max, FLINT_ABS(
-                    _fmpz_vec_max_bits((A->coeffs + i)->coeffs,
-                                       (A->coeffs + i)->length)
-              ));
+        _fmpz_vec_height(M, A->coeffs[i].coeffs, A->coeffs[i].length);
+        if (fmpz_cmp(norm, M) < 0)
+            fmpz_swap(norm, M);
+
+        fmpz_mpoly_degrees_si(tdegs, A->coeffs + i, ctx);
+
+        degrees[0] = FLINT_MAX(degrees[0], A->exps[i]);
+        for (j = 0; j < ctx->minfo->nvars; j++)
+            degrees[1 + j] = FLINT_MAX(degrees[1 + j], tdegs[j]);
     }
-    fmpz_init_set_ui(an, n_clog(len, UWORD(2))/UWORD(2));
-    fmpz_add_ui(an, an, max);
-    fmpz_sub_ui(an, an, fmpz_bits(fmpz_mpolyu_leadcoeff(A)));
-    FLINT_ASSERT(fmpz_sgn(an) >= 0);
 
-    len = max = UWORD(0);
-    for (i = 0; i < B->length; i++)
-    {
-        len += (B->coeffs + i)->length;
-        max = FLINT_MAX(max, FLINT_ABS(
-                    _fmpz_vec_max_bits((B->coeffs + i)->coeffs,
-                                       (B->coeffs + i)->length)
-              ));
-    }
-    fmpz_init_set_ui(bn, n_clog(len, UWORD(2))/UWORD(2));
-    fmpz_add_ui(bn, bn, max);
-    fmpz_sub_ui(bn, bn, fmpz_bits(fmpz_mpolyu_leadcoeff(B)));
-    FLINT_ASSERT(fmpz_sgn(bn) >= 0);
+    fmpz_clear(M);
 
-    /* n += log2( min( L2Norm(A) / A[0] , L2Norm(B) / B[0] ) ) */
-    fmpz_add(n, n, fmpz_cmp(an, bn) < 0 ? an : bn);
+    TMP_END;
+}
 
-    FLINT_ASSERT(fmpz_sgn(n) > 0);
+static flint_bitcnt_t fmpz_mpolyu_gcd_bitbound(
+    const fmpz_mpolyu_t A,
+    const fmpz_mpolyu_t B,
+    const fmpz_mpoly_ctx_t ctx)
+{
+    flint_bitcnt_t bound = UWORD_MAX;
+    fmpz_t Anorm, Bnorm, M;
+    slong * Adegs, * Bdegs;
+    TMP_INIT;
 
-    r = fmpz_abs_fits_ui(n) ? fmpz_get_ui(n) : -UWORD(1);
+    TMP_START;
 
-    fmpz_clear(n);
-    fmpz_clear(an);
-    fmpz_clear(bn);
+    fmpz_init(Anorm);
+    fmpz_init(Bnorm);
+    fmpz_init(M);
 
-    return r;
+    Adegs = TMP_ARRAY_ALLOC(ctx->minfo->nvars + 1, slong);
+    Bdegs = TMP_ARRAY_ALLOC(ctx->minfo->nvars + 1, slong);
+
+    fmpz_mpolyu_norm_degrees(Anorm, Adegs, A, ctx);
+    fmpz_mpolyu_norm_degrees(Bnorm, Bdegs, B, ctx);
+
+    if (fmpz_mpoly_factor_bound_si(M, Anorm, Adegs, ctx->minfo->nvars + 1))
+        bound = FLINT_MIN(bound, fmpz_bits(M));
+
+    if (fmpz_mpoly_factor_bound_si(M, Bnorm, Bdegs, ctx->minfo->nvars + 1))
+        bound = FLINT_MIN(bound, fmpz_bits(M));
+
+    fmpz_clear(Anorm);
+    fmpz_clear(Bnorm);
+    fmpz_clear(M);
+
+    TMP_END;
+    return bound;
 }
 
 int fmpz_mpolyu_gcdm_zippel(
@@ -101,7 +96,6 @@ int fmpz_mpolyu_gcdm_zippel(
     fmpz_mpolyu_t A,
     fmpz_mpolyu_t B,
     const fmpz_mpoly_ctx_t ctx,
-    mpoly_zipinfo_t zinfo,
     flint_rand_t randstate)
 {
     flint_bitcnt_t coeffbitbound;
@@ -129,7 +123,9 @@ int fmpz_mpolyu_gcdm_zippel(
 
     degbound = FLINT_MIN(A->exps[0], B->exps[0]);
 
-    coeffbitbound = fmpz_mpolyu_gcd_bitbound(gamma, A, B, ctx, zinfo);
+    coeffbitbound = fmpz_mpolyu_gcd_bitbound(A, B, ctx);
+    if (n_add_checked(&coeffbitbound, coeffbitbound, fmpz_bits(gamma)))
+        coeffbitbound = UWORD_MAX;
 
     nmod_mpoly_ctx_init(ctxp, ctx->minfo->nvars, ORD_LEX, 2);
 
@@ -170,7 +166,7 @@ choose_prime_outer:
         goto choose_prime_outer;
 
     success = nmod_mpolyu_gcdp_zippel(Gp, Abarp, Bbarp, Ap, Bp,
-                                ctx->minfo->nvars - 1, ctxp, zinfo, randstate);
+                                       ctx->minfo->nvars - 1, ctxp, randstate);
     if (!success || Gp->exps[0] > degbound)
         goto choose_prime_outer;
     degbound = Gp->exps[0];

@@ -22,11 +22,11 @@ int compute_gcd(
     flint_bitcnt_t wbits;
     flint_rand_t randstate;
     int success = 0;
-    mpoly_zipinfo_t zinfo;
     fmpz_mpoly_ctx_t uctx;
     fmpz_mpolyu_t Au, Bu, Gu, Abaru, Bbaru;
     fmpz_mpoly_t Ac, Bc, Gc;
     ulong * shift, * stride;
+    slong * perm;
     ulong amin, bmin;
 
     if (fmpz_mpoly_is_zero(A, ctx))
@@ -68,10 +68,12 @@ int compute_gcd(
         return 0;
     }
 
+    perm = (slong *) flint_malloc(ctx->minfo->nvars*sizeof(slong));
     shift = (ulong *) flint_malloc(ctx->minfo->nvars*sizeof(ulong));
     stride = (ulong *) flint_malloc(ctx->minfo->nvars*sizeof(ulong));
     for (i = 0; i < ctx->minfo->nvars; i++)
     {
+        perm[i] = i;
         shift[i] = 0;
         stride[i] = 1;
     }
@@ -102,12 +104,6 @@ int compute_gcd(
 
     flint_randinit(randstate);
 
-    mpoly_zipinfo_init(zinfo, ctx->minfo->nvars);
-    fmpz_mpoly_degrees_si(zinfo->Adegs, A, ctx);
-    fmpz_mpoly_degrees_si(zinfo->Bdegs, B, ctx);
-    for (i = 0; i < ctx->minfo->nvars; i++)
-        zinfo->perm[i] = i;
-
     wbits = FLINT_MAX(A->bits, B->bits);
 
     fmpz_mpoly_ctx_init(uctx, ctx->minfo->nvars - 1, ORD_LEX);
@@ -121,10 +117,10 @@ int compute_gcd(
     fmpz_mpoly_init3(Bc, 0, wbits, uctx);
     fmpz_mpoly_init3(Gc, 0, wbits, uctx);
 
-    fmpz_mpoly_to_mpolyu_perm_deflate_threaded_pool(Au, uctx, A, ctx, zinfo->perm,
-                                                 shift, stride, NULL, NULL, 0);
-    fmpz_mpoly_to_mpolyu_perm_deflate_threaded_pool(Bu, uctx, B, ctx, zinfo->perm,
-                                                 shift, stride, NULL, NULL, 0);
+    fmpz_mpoly_to_mpolyu_perm_deflate_threaded_pool(Au, uctx, A, ctx,
+                                           perm, shift, stride, NULL, NULL, 0);
+    fmpz_mpoly_to_mpolyu_perm_deflate_threaded_pool(Bu, uctx, B, ctx,
+                                           perm, shift, stride, NULL, NULL, 0);
 
     FLINT_ASSERT(Au->length > 0);
     FLINT_ASSERT(Bu->length > 0);
@@ -144,8 +140,7 @@ int compute_gcd(
     fmpz_mpolyu_divexact_mpoly_inplace(Bu, Bc, uctx);
 
     /* after removing content, degree bounds in zinfo are still valid bounds */
-    success = fmpz_mpolyu_gcdm_zippel(Gu, Abaru, Bbaru, Au, Bu,
-                                                       uctx, zinfo, randstate);
+    success = fmpz_mpolyu_gcdm_zippel(Gu, Abaru, Bbaru, Au, Bu, uctx, randstate);
     if (!success)
         goto cleanup;
 
@@ -159,7 +154,7 @@ int compute_gcd(
     fmpz_mpolyu_shift_left(Gu, FLINT_MIN(amin, bmin));
 
     fmpz_mpoly_from_mpolyu_perm_inflate(G, FLINT_MIN(A->bits, B->bits), ctx,
-                                         Gu, uctx, zinfo->perm, shift, stride);
+                                                Gu, uctx, perm, shift, stride);
     success = 1;
 
     if (fmpz_sgn(G->coeffs + 0) < 0)
@@ -178,12 +173,11 @@ cleanup:
 
     fmpz_mpoly_ctx_clear(uctx);
 
-    mpoly_zipinfo_clear(zinfo);
-
     flint_randclear(randstate);
 
 cleanup1:
 
+    flint_free(perm);
     flint_free(shift);
     flint_free(stride);
 

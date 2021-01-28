@@ -811,10 +811,8 @@ static int _try_zippel(
     const mpoly_gcd_info_t I,
     const fmpz_mpoly_ctx_t ctx)
 {
-    slong i, k;
     slong m = I->mvars;
     int success;
-    mpoly_zipinfo_t zinfo;
     flint_bitcnt_t wbits;
     flint_rand_t randstate;
     fmpz_mpoly_ctx_t uctx;
@@ -833,22 +831,8 @@ static int _try_zippel(
 
     flint_randinit(randstate);
 
-    /* interpolation will continue in m variables */
-    mpoly_zipinfo_init(zinfo, m);
-
     /* uctx is context for Z[y_1,...,y_{m-1}]*/
     fmpz_mpoly_ctx_init(uctx, m - 1, ORD_LEX);
-
-    /* fill in a valid zinfo->perm and degrees */
-    for (i = 0; i < m; i++)
-    {
-        k = I->zippel_perm[i];
-        zinfo->perm[i] = k;
-        zinfo->Adegs[i] = I->Adeflate_deg[k];
-        zinfo->Bdegs[i] = I->Bdeflate_deg[k];
-        FLINT_ASSERT(I->Adeflate_deg[k] != 0);
-        FLINT_ASSERT(I->Bdeflate_deg[k] != 0);
-    }
 
     wbits = FLINT_MAX(A->bits, B->bits);
 
@@ -863,10 +847,10 @@ static int _try_zippel(
     fmpz_mpoly_init3(Abarc, 0, wbits, uctx);
     fmpz_mpoly_init3(Bbarc, 0, wbits, uctx);
 
-    fmpz_mpoly_to_mpolyu_perm_deflate_threaded_pool(Au, uctx, A, ctx, zinfo->perm,
-                                I->Amin_exp, I->Gstride, I->Amax_exp, NULL, 0);
-    fmpz_mpoly_to_mpolyu_perm_deflate_threaded_pool(Bu, uctx, B, ctx, zinfo->perm,
-                                I->Bmin_exp, I->Gstride, I->Bmax_exp, NULL, 0);
+    fmpz_mpoly_to_mpolyu_perm_deflate_threaded_pool(Au, uctx, A, ctx,
+                I->zippel_perm, I->Amin_exp, I->Gstride, I->Amax_exp, NULL, 0);
+    fmpz_mpoly_to_mpolyu_perm_deflate_threaded_pool(Bu, uctx, B, ctx,
+                I->zippel_perm, I->Bmin_exp, I->Gstride, I->Bmax_exp, NULL, 0);
 
     FLINT_ASSERT(Au->bits == wbits);
     FLINT_ASSERT(Bu->bits == wbits);
@@ -891,23 +875,22 @@ static int _try_zippel(
     fmpz_mpolyu_divexact_mpoly_inplace(Au, Ac, uctx);
     fmpz_mpolyu_divexact_mpoly_inplace(Bu, Bc, uctx);
 
-    /* after removing content, degree bounds in zinfo are still valid bounds */
     success = fmpz_mpolyu_gcdm_zippel(Gu, Abaru, Bbaru, Au, Bu,
-                                                       uctx, zinfo, randstate);
+                                                              uctx, randstate);
     if (!success)
         goto cleanup;
 
     fmpz_mpoly_repack_bits_inplace(Gc, wbits, uctx);
     fmpz_mpolyu_mul_mpoly_inplace(Gu, Gc, uctx);
     fmpz_mpoly_from_mpolyu_perm_inflate(G, I->Gbits, ctx, Gu, uctx,
-                                         zinfo->perm, I->Gmin_exp, I->Gstride);
+                                      I->zippel_perm, I->Gmin_exp, I->Gstride);
 
     if (Abar != NULL)
     {
         fmpz_mpoly_repack_bits_inplace(Abarc, wbits, uctx);
         fmpz_mpolyu_mul_mpoly_inplace(Abaru, Abarc, uctx);
         fmpz_mpoly_from_mpolyu_perm_inflate(Abar, I->Abarbits, ctx, Abaru, uctx,
-                                      zinfo->perm, I->Abarmin_exp, I->Gstride);
+                                   I->zippel_perm, I->Abarmin_exp, I->Gstride);
     }
 
     if (Bbar != NULL)
@@ -915,7 +898,7 @@ static int _try_zippel(
         fmpz_mpoly_repack_bits_inplace(Bbarc, wbits, uctx);
         fmpz_mpolyu_mul_mpoly_inplace(Bbaru, Bbarc, uctx);        
         fmpz_mpoly_from_mpolyu_perm_inflate(Bbar, I->Bbarbits, ctx, Bbaru, uctx,
-                                      zinfo->perm, I->Bbarmin_exp, I->Gstride);
+                                   I->zippel_perm, I->Bbarmin_exp, I->Gstride);
     }
 
     success = 1;
@@ -934,8 +917,6 @@ cleanup:
     fmpz_mpoly_clear(Bbarc, uctx);
 
     fmpz_mpoly_ctx_clear(uctx);
-
-    mpoly_zipinfo_clear(zinfo);
 
     flint_randclear(randstate);
 

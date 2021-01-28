@@ -316,7 +316,6 @@ FLINT_DLL int fmpz_mpolyu_gcdm_zippel(
     fmpz_mpolyu_t A,
     fmpz_mpolyu_t B,
     const fmpz_mpoly_ctx_t ctx,
-    mpoly_zipinfo_t zinfo,
     flint_rand_t randstate);
 
 FLINT_DLL int fmpz_mpolyl_gcd_zippel2(
