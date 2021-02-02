@@ -45,6 +45,18 @@ void _fmpz_mod_vec_scalar_mul_fmpz_mod(
     }
 }
 
+void _fmpz_mod_vec_mul(
+    fmpz * A,
+    const fmpz * B,
+    const fmpz * C,
+    slong len,
+    const fmpz_mod_ctx_t ctx)
+{
+    for (len--; len >= 0; len--)
+        fmpz_mod_mul(A + len, B + len, C + len, ctx);
+}
+
+
 void _fmpz_mod_vec_scalar_div_fmpz_mod(
     fmpz * A,
     const fmpz * B,

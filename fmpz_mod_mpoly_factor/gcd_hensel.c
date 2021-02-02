@@ -156,7 +156,7 @@ got_alpha:
     {
         Gdeg = gdegx;
         for (i = 0; i < n; i++)
-            prev_alphas[i] = alphas[i];
+            fmpz_set(prev_alphas + i, alphas + i);
 
         goto next_alpha;
     }

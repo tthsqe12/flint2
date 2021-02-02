@@ -11,6 +11,26 @@
 
 #include "fmpz_mod_mpoly_factor.h"
 
+
+void _fmpz_mod_poly_vec_content(
+    fmpz_mod_poly_t g,
+    const fmpz_mod_poly_struct * A,
+    slong Alen,
+    const fmpz_mod_ctx_t ctx)
+{
+    slong i;
+
+    fmpz_mod_poly_zero(g, ctx);
+
+    for (i = 0; i < Alen; i++)
+    {
+        fmpz_mod_poly_gcd(g, g, A + i, ctx);
+
+        if (fmpz_mod_poly_is_one(g, ctx))
+            break;
+    }
+}
+
 void _fmpz_mod_poly_vec_remove_content(
     fmpz_mod_poly_t g,
     fmpz_mod_poly_struct * A,
@@ -20,12 +40,9 @@ void _fmpz_mod_poly_vec_remove_content(
     slong i;
     fmpz_mod_poly_t r;
 
-    fmpz_mod_poly_zero(g, ctx);
+    _fmpz_mod_poly_vec_content(g, A, Alen, ctx);
 
-    for (i = 0; i < Alen; i++)
-        fmpz_mod_poly_gcd(g, g, A + i, ctx);
-
-    if (fmpz_mod_poly_degree(g, ctx) < 1)
+    if (fmpz_mod_poly_is_one(g, ctx))
         return;
 
     fmpz_mod_poly_init(r, ctx);
@@ -43,6 +60,10 @@ void _fmpz_mod_poly_vec_mul_poly(
     const fmpz_mod_ctx_t ctx)
 {
     slong i;
+
+    if (fmpz_mod_poly_is_one(g, ctx))
+        return;
+
     for (i = 0; i < Alen; i++)
         fmpz_mod_poly_mul(A + i, A + i, g, ctx);
 }
@@ -55,6 +76,9 @@ void _fmpz_mod_poly_vec_divexact_poly(
 {
     slong i;
     fmpz_mod_poly_t t;
+
+    if (fmpz_mod_poly_is_one(g, ctx))
+        return;
 
     fmpz_mod_poly_init(t, ctx);
 
@@ -74,6 +98,10 @@ void _fmpz_mod_poly_vec_mul_fmpz_mod(
     const fmpz_mod_ctx_t ctx)
 {
     slong i;
+
+    if (fmpz_is_one(g))
+        return;
+
     for (i = 0; i < Alen; i++)
         fmpz_mod_poly_scalar_mul_fmpz(A + i, A + i, g, ctx);
 }

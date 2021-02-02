@@ -242,3 +242,81 @@ void fmpz_mod_polyun_scalar_mul_fmpz(
     for (i = 0; i < A->length; i++)
         fmpz_mod_poly_scalar_mul_fmpz(A->coeffs + i, A->coeffs + i, c, ctx);
 }
+
+
+void fmpz_mod_mpoly_get_polyu1n(
+    fmpz_mod_polyun_t A,
+    const fmpz_mod_mpoly_t B,
+    slong varx,
+    slong vary,
+    const fmpz_mod_mpoly_ctx_t ctx)
+{
+    slong j, Ai;
+    ulong Bexpx, Bexpy;
+    slong Boffx, Bshiftx, Boffy, Bshifty;
+    ulong mask = (-UWORD(1)) >> (FLINT_BITS - B->bits);
+    slong NB = mpoly_words_per_exp_sp(B->bits, ctx->minfo);
+    
+    mpoly_gen_offset_shift_sp(&Boffx, &Bshiftx, varx, B->bits, ctx->minfo);
+    mpoly_gen_offset_shift_sp(&Boffy, &Bshifty, vary, B->bits, ctx->minfo);
+
+    Ai = -1;
+    for (j = 0; j < B->length; j++)
+    {
+        Bexpx = ((B->exps + NB*j)[Boffx] >> Bshiftx) & mask;
+        Bexpy = ((B->exps + NB*j)[Boffy] >> Bshifty) & mask;
+
+        if (Ai < 0 || A->exps[Ai] != Bexpx)
+        {
+            Ai++;
+            fmpz_mod_polyun_fit_length(A, Ai + 1, ctx->ffinfo);
+            A->exps[Ai] = Bexpx;
+            fmpz_mod_poly_zero(A->coeffs + Ai, ctx->ffinfo);
+        }
+
+        fmpz_mod_poly_set_coeff_fmpz(A->coeffs + Ai, Bexpy, B->coeffs + j, ctx->ffinfo);
+        if (fmpz_mod_poly_is_zero(A->coeffs + Ai, ctx->ffinfo))
+            Ai--;
+    }
+
+    A->length = Ai + 1;
+
+    FLINT_ASSERT(fmpz_mod_polyun_is_canonical(A, ctx->ffinfo));
+}
+
+
+
+void fmpz_mod_mpoly_set_polyu1n(
+    fmpz_mod_mpoly_t B,
+    const fmpz_mod_polyun_t A,
+    slong varx,
+    slong vary,
+    const fmpz_mod_mpoly_ctx_t ctx)
+{
+    slong i, j;
+    slong Boffx, Bshiftx, Boffy, Bshifty;
+    slong N = mpoly_words_per_exp_sp(B->bits, ctx->minfo);
+
+    mpoly_gen_offset_shift_sp(&Boffx, &Bshiftx, varx, B->bits, ctx->minfo);
+    mpoly_gen_offset_shift_sp(&Boffy, &Bshifty, vary, B->bits, ctx->minfo);
+
+    B->length = 0;
+    for (i = 0; i < A->length; i++)
+    {
+        for (j = A->coeffs[i].length - 1; j >= 0; j--)
+        {
+            if (fmpz_is_zero(A->coeffs[i].coeffs + j))
+                continue;
+
+            fmpz_mod_mpoly_fit_length(B, B->length + 1, ctx);
+            mpoly_monomial_zero(B->exps + N*B->length, N);
+            (B->exps + N*B->length)[Boffx] += A->exps[i] << Bshiftx;
+            (B->exps + N*B->length)[Boffy] += j << Bshifty;
+            fmpz_set(B->coeffs + B->length, A->coeffs[i].coeffs + j);
+            B->length++;
+        }
+    }
+
+    FLINT_ASSERT(fmpz_mod_mpoly_is_canonical(B, ctx));
+}
+

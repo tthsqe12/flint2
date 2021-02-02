@@ -53,6 +53,13 @@ FLINT_DLL void _fmpz_mod_vec_neg(fmpz * A, const fmpz * B, slong len,
 FLINT_DLL void _fmpz_mod_vec_scalar_mul_fmpz_mod(fmpz * A, const fmpz * B,
                           slong len, const fmpz_t c, const fmpz_mod_ctx_t ctx);
 
+FLINT_DLL void _fmpz_mod_vec_mul(
+    fmpz * A,
+    const fmpz * B,
+    const fmpz * C,
+    slong len,
+    const fmpz_mod_ctx_t ctx);
+
 FLINT_DLL void _fmpz_mod_vec_scalar_div_fmpz_mod(fmpz * A, const fmpz * B,
                           slong len, const fmpz_t c, const fmpz_mod_ctx_t ctx);
 

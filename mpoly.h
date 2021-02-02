@@ -1286,6 +1286,10 @@ FLINT_DLL void mpoly_monomials_shift_right_ui(ulong * Aexps, flint_bitcnt_t Abit
 FLINT_DLL void mpoly_monomials_shift_right_ffmpz(ulong * Aexps, flint_bitcnt_t Abits,
                 slong Alength, const fmpz * user_exps, const mpoly_ctx_t mctx);
 
+FLINT_DLL void mpoly1_fill_marks(ulong ** Dcoeffs, slong * Dlen, slong * Dalloc,
+                        const ulong * Aexps, slong Alen, flint_bitcnt_t Abits,
+                                                       const mpoly_ctx_t mctx);
+
 FLINT_DLL void mpoly2_fill_marks(ulong ** Dcoeffs, slong * Dlen, slong * Dalloc,
                         const ulong * Aexps, slong Alen, flint_bitcnt_t Abits,
                                                        const mpoly_ctx_t mctx);
