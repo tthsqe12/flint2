@@ -1051,6 +1051,16 @@ FLINT_DLL void fmpz_mod_mpoly_univar_print_pretty(const fmpz_mod_mpoly_univar_t 
 FLINT_DLL void fmpz_mod_mpoly_univar_assert_canonical(fmpz_mod_mpoly_univar_t A,
                                                const fmpz_mod_mpoly_ctx_t ctx);
 
+FMPZ_MOD_MPOLY_INLINE
+void fmpz_mod_mpoly_univar_zero(fmpz_mod_mpoly_univar_t A,
+                                                const fmpz_mod_mpoly_ctx_t ctx)
+{
+    A->length = 0;
+}
+
+FLINT_DLL void fmpz_mod_mpoly_univar_set_coeff_ui(fmpz_mod_mpoly_univar_t A,
+            ulong e, const fmpz_mod_mpoly_t c, const fmpz_mod_mpoly_ctx_t ctx);
+
 FLINT_DLL void fmpz_mod_mpoly_to_univar(fmpz_mod_mpoly_univar_t A,
           const fmpz_mod_mpoly_t B, slong var, const fmpz_mod_mpoly_ctx_t ctx);
 
@@ -1108,6 +1118,32 @@ void fmpz_mod_mpoly_univar_swap_term_coeff(fmpz_mod_mpoly_t c,
     FLINT_ASSERT((ulong)i < (ulong)A->length);
     fmpz_mod_mpoly_swap(c, A->coeffs + i, ctx);
 }
+
+FLINT_DLL int fmpz_mod_mpoly_univar_resultant(
+    fmpz_mod_mpoly_t R,
+    const fmpz_mod_mpoly_univar_t Ax,
+    const fmpz_mod_mpoly_univar_t Bx,
+    const fmpz_mod_mpoly_ctx_t ctx);
+
+FLINT_DLL int fmpz_mod_mpoly_univar_discriminant(
+    fmpz_mod_mpoly_t D,
+    const fmpz_mod_mpoly_univar_t Fx,
+    const fmpz_mod_mpoly_ctx_t ctx);
+
+FLINT_DLL int fmpz_mod_mpoly_univar_pseudo_gcd(
+    fmpz_mod_mpoly_t Gx,
+    const fmpz_mod_mpoly_univar_t Ax,
+    const fmpz_mod_mpoly_univar_t Bx,
+    const fmpz_mod_mpoly_ctx_t ctx);
+
+FLINT_DLL int fmpz_mod_mpoly_univar_pseudo_xgcd(
+    fmpz_mod_mpoly_univar_t Gx,
+    fmpz_mod_mpoly_univar_t Sx,
+    fmpz_mod_mpoly_univar_t Tx,
+    const fmpz_mod_mpoly_univar_t Ax,
+    const fmpz_mod_mpoly_univar_t Bx,
+    const fmpz_mod_mpoly_ctx_t ctx);
+
 
 /******************************************************************************
 
