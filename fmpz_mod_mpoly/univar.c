@@ -347,7 +347,7 @@ void fmpz_mod_mpoly_to_univar(
     The assertion x->next == NULL would need to be replaced by a loop.
     Other asserts would need to be removed as well.
 */
-void fmpz_mod_mpoly_from_univar_bits(
+void _fmpz_mod_mpoly_from_univar(
     fmpz_mod_mpoly_t A,
     flint_bitcnt_t Abits,
     const fmpz_mod_mpoly_univar_t B,
@@ -549,7 +549,7 @@ void fmpz_mod_mpoly_from_univar(
     }
     TMP_END;
 
-    fmpz_mod_mpoly_from_univar_bits(A, bits, B, var, ctx);
+    _fmpz_mod_mpoly_from_univar(A, bits, B, var, ctx);
 }
 
 void fmpz_mod_mpoly_univar_set(
@@ -569,25 +569,6 @@ void fmpz_mod_mpoly_univar_set(
 
     A->length = B->length;
 }
-
-void fmpz_max(fmpz_t a, const fmpz_t b, const fmpz_t c)
-{
-    fmpz_set(a, fmpz_cmp(b, c) > 0 ? b : c);
-}
-
-
-void fmpz_mod_mpoly_divexact(
-    fmpz_mod_mpoly_t Q,
-    const fmpz_mod_mpoly_t A,
-    const fmpz_mod_mpoly_t B,
-    const fmpz_mod_mpoly_ctx_t ctx)
-{
-    if (fmpz_mod_mpoly_divides(Q, A, B, ctx))
-        return;
-
-    flint_throw(FLINT_ERROR, "fmpz_mod_mpoly_divexact");
-}
-
 
 /*
     A = prem(A, -B)
@@ -705,7 +686,7 @@ void _fmpz_mod_mpoly_univar_pgcd(
     FLINT_ASSERT(polyP->length > 0);
     FLINT_ASSERT(polyQ->length > 0);
     FLINT_ASSERT(fmpz_cmp(polyP->exps + 0, polyQ->exps + 0) >= 0);
-    FLINT_ASSERT(fmpz_sgn(polyQ->exps + 0) > 0);
+    FLINT_ASSERT(fmpz_sgn(polyQ->exps + 0) >= 0);
 
     fmpz_init(d);
     fmpz_init(e);
@@ -823,7 +804,16 @@ int _fmpz_mod_mpoly_univar_pgcd_ducos(
     FLINT_ASSERT(polyP->length > 0);
     FLINT_ASSERT(polyQ->length > 0);
     FLINT_ASSERT(fmpz_cmp(polyP->exps + 0, polyQ->exps + 0) >= 0);
-    FLINT_ASSERT(fmpz_sgn(polyQ->exps + 0) > 0);
+    FLINT_ASSERT(fmpz_sgn(polyQ->exps + 0) >= 0);
+
+    if (fmpz_is_zero(polyQ->exps + 0))
+    {
+        fmpz_mod_mpoly_univar_fit_length(poly1, 1, ctx);
+        fmpz_zero(poly1->exps + 0);
+        poly1->length = 1;
+        return fmpz_mod_mpoly_pow_fmpz(poly1->coeffs + 0, polyQ->coeffs + 0,
+                                                         polyP->exps + 0, ctx);
+    }
 
     fmpz_init(n);
     fmpz_init(d);

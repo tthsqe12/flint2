@@ -36,6 +36,11 @@
  extern "C" {
 #endif
 
+FMPZ_MOD_MPOLY_INLINE void fmpz_max(fmpz_t a, const fmpz_t b, const fmpz_t c)
+{
+    fmpz_set(a, fmpz_cmp(b, c) > 0 ? b : c);
+}
+
 FLINT_DLL int fmpz_mod_poly_is_canonical(const fmpz_mod_poly_t A, const fmpz_mod_ctx_t ctx);
 
 FLINT_DLL void fmpz_mod_ctx_init_rand_bits(fmpz_mod_ctx_t ctx,
@@ -706,6 +711,19 @@ FLINT_DLL void fmpz_mod_mpoly_divrem_ideal(fmpz_mod_mpoly_struct ** Q,
                             fmpz_mod_mpoly_struct * const * B, slong len,
                                                const fmpz_mod_mpoly_ctx_t ctx);
 
+FMPZ_MOD_MPOLY_INLINE
+void fmpz_mod_mpoly_divexact(
+    fmpz_mod_mpoly_t Q,
+    const fmpz_mod_mpoly_t A,
+    const fmpz_mod_mpoly_t B,
+    const fmpz_mod_mpoly_ctx_t ctx)
+{
+    if (fmpz_mod_mpoly_divides(Q, A, B, ctx))
+        return;
+
+    flint_throw(FLINT_ERROR, "fmpz_mod_mpoly_divexact");
+}
+
 FLINT_DLL int _fmpz_mod_mpoly_divides_dense_maxfields(fmpz_mod_mpoly_t Q,
                                 const fmpz_mod_mpoly_t A, fmpz * maxAfields,
                                 const fmpz_mod_mpoly_t B, fmpz * maxBfields,
@@ -779,6 +797,10 @@ FLINT_DLL int fmpz_mod_mpoly_gcd(fmpz_mod_mpoly_t G, const fmpz_mod_mpoly_t A,
 
 FLINT_DLL int fmpz_mod_mpoly_gcd_cofactors(fmpz_mod_mpoly_t G,
                         fmpz_mod_mpoly_t Abar, fmpz_mod_mpoly_t Bbar,
+                        const fmpz_mod_mpoly_t A, const fmpz_mod_mpoly_t B,
+                                               const fmpz_mod_mpoly_ctx_t ctx);
+
+FLINT_DLL int fmpz_mod_mpoly_gcd_prs(fmpz_mod_mpoly_t G,
                         const fmpz_mod_mpoly_t A, const fmpz_mod_mpoly_t B,
                                                const fmpz_mod_mpoly_ctx_t ctx);
 
@@ -1064,7 +1086,7 @@ FLINT_DLL void fmpz_mod_mpoly_univar_set_coeff_ui(fmpz_mod_mpoly_univar_t A,
 FLINT_DLL void fmpz_mod_mpoly_to_univar(fmpz_mod_mpoly_univar_t A,
           const fmpz_mod_mpoly_t B, slong var, const fmpz_mod_mpoly_ctx_t ctx);
 
-FLINT_DLL void fmpz_mod_mpoly_from_univar_bits(fmpz_mod_mpoly_t A,
+FLINT_DLL void _fmpz_mod_mpoly_from_univar(fmpz_mod_mpoly_t A,
             flint_bitcnt_t Abits, const fmpz_mod_mpoly_univar_t B, slong var,
                                                const fmpz_mod_mpoly_ctx_t ctx);
 
@@ -1130,18 +1152,16 @@ FLINT_DLL int fmpz_mod_mpoly_univar_discriminant(
     const fmpz_mod_mpoly_univar_t Fx,
     const fmpz_mod_mpoly_ctx_t ctx);
 
-FLINT_DLL int fmpz_mod_mpoly_univar_pseudo_gcd(
-    fmpz_mod_mpoly_t Gx,
-    const fmpz_mod_mpoly_univar_t Ax,
-    const fmpz_mod_mpoly_univar_t Bx,
+FLINT_DLL void _fmpz_mod_mpoly_univar_pgcd(
+    fmpz_mod_mpoly_univar_t poly1,
+    const fmpz_mod_mpoly_univar_t polyP,
+    const fmpz_mod_mpoly_univar_t polyQ,
     const fmpz_mod_mpoly_ctx_t ctx);
 
-FLINT_DLL int fmpz_mod_mpoly_univar_pseudo_xgcd(
-    fmpz_mod_mpoly_univar_t Gx,
-    fmpz_mod_mpoly_univar_t Sx,
-    fmpz_mod_mpoly_univar_t Tx,
-    const fmpz_mod_mpoly_univar_t Ax,
-    const fmpz_mod_mpoly_univar_t Bx,
+FLINT_DLL int _fmpz_mod_mpoly_univar_pgcd_ducos(
+    fmpz_mod_mpoly_univar_t poly1,
+    const fmpz_mod_mpoly_univar_t polyP,
+    const fmpz_mod_mpoly_univar_t polyQ,
     const fmpz_mod_mpoly_ctx_t ctx);
 
 

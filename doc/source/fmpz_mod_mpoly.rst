@@ -587,9 +587,9 @@ Greatest Common Divisor
 
     Do the operation of :func:`fmpz_mod_mpoly_gcd` and also compute ``Abar = A/G`` and ``Bbar = B/G`` if successful.
 
-.. function:: int fmpz_mod_mpoly_gcd_brown(fmpz_mod_mpoly_t G, const fmpz_mod_mpoly_t A, const fmpz_mod_mpoly_t B, const fmpz_mod_mpoly_ctx_t ctx)
+.. function:: int fmpz_mod_mpoly_gcd_prs(fmpz_mod_mpoly_t G, const fmpz_mod_mpoly_t A, const fmpz_mod_mpoly_t B, const fmpz_mod_mpoly_ctx_t ctx)
+              int fmpz_mod_mpoly_gcd_brown(fmpz_mod_mpoly_t G, const fmpz_mod_mpoly_t A, const fmpz_mod_mpoly_t B, const fmpz_mod_mpoly_ctx_t ctx)
               int fmpz_mod_mpoly_gcd_hensel(fmpz_mod_mpoly_t G, const fmpz_mod_mpoly_t A, const fmpz_mod_mpoly_t B, const fmpz_mod_mpoly_ctx_t ctx)
-              int fmpz_mod_mpoly_gcd_prs(fmpz_mod_mpoly_t G, const fmpz_mod_mpoly_t A, const fmpz_mod_mpoly_t B, const fmpz_mod_mpoly_ctx_t ctx)
               int fmpz_mod_mpoly_gcd_zippel(fmpz_mod_mpoly_t G, const fmpz_mod_mpoly_t A, const fmpz_mod_mpoly_t B, const fmpz_mod_mpoly_ctx_t ctx)
               int fmpz_mod_mpoly_gcd_zippel2(fmpz_mod_mpoly_t G, const fmpz_mod_mpoly_t A, const fmpz_mod_mpoly_t B, const fmpz_mod_mpoly_ctx_t ctx)
 
@@ -673,14 +673,6 @@ Univariate Functions
 .. function:: int fmpz_mod_mpoly_univar_discriminant(fmpz_mod_mpoly_t D, const fmpz_mod_mpoly_univar_t Ax, const fmpz_mod_mpoly_ctx_t ctx)
 
     Try to set ``D`` to the discriminant of ``Ax``.
-
-.. function:: int fmpz_mod_mpoly_univar_pseudo_gcd(fmpz_mod_mpoly_t Gx, const fmpz_mod_mpoly_univar_t Ax, const fmpz_mod_mpoly_univar_t Bx, const fmpz_mod_mpoly_ctx_t ctx)
-
-    Try to set ``Gx`` to the last non-zero polynomial in the subresultant remainder sequence of ``Ax`` and ``Bx``.
-
-.. function:: int fmpz_mod_mpoly_univar_pseudo_xgcd(fmpz_mod_mpoly_univar_t Gx, fmpz_mod_mpoly_univar_t Sx, fmpz_mod_mpoly_univar_t Tx, const fmpz_mod_mpoly_univar_t Ax, const fmpz_mod_mpoly_univar_t Bx, const fmpz_mod_mpoly_ctx_t ctx)
-
-    Try to compute ``Gx = Ax*Sx + Bx*Tx``.
 
 
 Internal Functions
