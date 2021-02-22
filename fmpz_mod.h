@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2017 - 2019 Daniel Schultz
+    Copyright (C) 2017 - 2021 Daniel Schultz
 
     This file is part of FLINT.
 
@@ -166,9 +166,17 @@ FLINT_DLL void fmpz_mod_sub_ui(fmpz_t a, const fmpz_t b, ulong c,
 FLINT_DLL void fmpz_mod_sub_si(fmpz_t a, const fmpz_t b, slong c,
                                                      const fmpz_mod_ctx_t ctx);
 
-FLINT_DLL void fmpz_mod_neg(fmpz_t a, const fmpz_t b,
+FLINT_DLL void fmpz_mod_fmpz_sub(fmpz_t a, const fmpz_t b, const fmpz_t c,
                                                      const fmpz_mod_ctx_t ctx);
 
+FLINT_DLL void fmpz_mod_ui_sub(fmpz_t a, ulong b, const fmpz_t c,
+                                                     const fmpz_mod_ctx_t ctx);
+
+FLINT_DLL void fmpz_mod_si_sub(fmpz_t a, slong b, const fmpz_t c,
+                                                     const fmpz_mod_ctx_t ctx);
+
+FLINT_DLL void fmpz_mod_neg(fmpz_t a, const fmpz_t b,
+                                                     const fmpz_mod_ctx_t ctx);
 
 FLINT_DLL void _fmpz_mod_mul1(fmpz_t a, const fmpz_t b, const fmpz_t c,
                                                      const fmpz_mod_ctx_t ctx);
