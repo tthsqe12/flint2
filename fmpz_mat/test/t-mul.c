@@ -125,7 +125,7 @@ int main(void)
             }
         }
 
-        if (abits <= 2 * FLINT_BITS && bbits <= 2 * FLINT_BITS && bits <= 4 * FLINT_BITS - 1)
+        if (abits < 2 * FLINT_BITS && bbits < 2 * FLINT_BITS && bits < 4 * FLINT_BITS)
         {
             fmpz_mat_mul_4(C, A, B);
 
