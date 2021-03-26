@@ -17,12 +17,14 @@
 
 int main(void)
 {
-    slong dim, i, reps, total;
+    slong dim, i, reps, total, mint, maxt;
     flint_bitcnt_t Abits, Bbits, Cbits;
     timeit_t timer;
     FLINT_TEST_INIT(state);
 
-    for (dim = 10; dim <= 100; dim += 10 + dim/4)
+    flint_set_num_threads(1);
+
+    for (dim = 16; dim <= 200; dim += 5 + dim/8)
     {
         fmpz_mat_t A, B, C, D, E;
 
@@ -33,6 +35,8 @@ int main(void)
         fmpz_mat_init(E, dim, dim);
 
         total = 0;
+        mint = 10000000000;
+        maxt = 0;
 
         for (Abits = 20; Abits < 2*FLINT_BITS; Abits += 15)
         for (Bbits = Abits; Bbits < 2*FLINT_BITS; Bbits += 15)
@@ -47,17 +51,19 @@ int main(void)
 
             fmpz_mat_mul_classical_inline(D, A, B);
 
-            reps = 1 + 100000000/dim/dim/dim;
+            reps = 1 + 50000000/dim/dim/dim;
 
             timeit_start(timer);
             for (i = reps; i > 0; i--)
-                fmpz_mat_mul_4(E, A, B);
+                fmpz_mat_mul_multi_mod(E, A, B);
             timeit_stop(timer);
-
+/*
             flint_printf("dim %3wd, Abits %3wu, Bbits %3wu: %5wd\n",
                          dim, Abits, Bbits, timer->wall);
-
+*/
             total += timer->wall;
+            mint = FLINT_MIN(mint, timer->wall);
+            maxt = FLINT_MAX(maxt, timer->wall);
 
             if (!fmpz_mat_equal(D, E))
             {
@@ -66,7 +72,7 @@ int main(void)
             }
         }
 
-        flint_printf("*** dim %wd total: %6wd\n", dim, total);
+        flint_printf("dim %3wd: min %4wd  max %4wd  total %6wd\n", dim, mint, maxt, total);
 
         fmpz_mat_clear(A);
         fmpz_mat_clear(B);

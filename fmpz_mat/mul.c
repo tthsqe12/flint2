@@ -191,7 +191,7 @@ fmpz_mat_mul(fmpz_mat_t C, const fmpz_mat_t A, const fmpz_mat_t B)
         if (dim > 40) /* tuning param */
             _fmpz_mat_mul_multi_mod(C, A, B, bits);
         else
-            fmpz_mat_mul_4(C, A, B);
+            fmpz_mat_mul_4(C, A, B, 1);
     }
     else
     {
