@@ -176,8 +176,13 @@ fmpz_mat_mul_4(fmpz_mat_t C, const fmpz_mat_t A, const fmpz_mat_t B)
     TMP_END;
 }
 
+#endif
 
-#else
+
+/******************************** simple ***********************************/
+
+
+#if 0
 
 
 
@@ -278,6 +283,62 @@ void _do_signed_row_branchless(
     slong j, k, l;
     mp_limb_t s[4], t3, t2, t1, t0, w3, w2, w1, w0;
     mp_limb_t A0, A1, B0, B1;
+    mp_limb_t v3, v2, u2, u1, u0;
+
+    for (j = 0, l = 0; j < bc; j++)
+    {
+        t3 = t2 = t1 = t0 = 0;
+        u2 = u1 = u0 = 0;
+        v3 = v2 = 0;
+
+        for (k = 0; k < br; k++, l++)
+        {
+            A0 = AR[2*k + 0];
+            A1 = AR[2*k + 1];
+            B0 = B[2*l + 0];
+            B1 = B[2*l + 1];
+
+            sub_ddmmss(t3, t2, t3, t2, 0, FLINT_SIGN_EXT(A1)&B0);
+            sub_ddmmss(t3, t2, t3, t2, 0, FLINT_SIGN_EXT(B1)&A0);
+
+            smul_ppmm(w3, w2, B1, A1);
+            add_ssaaaa(t3, t2, t3, t2, w3, w2);
+
+            umul_ppmm(w1, w0, B0, A0);
+            add_sssaaaaaa(u2, u1, u0, u2, u1, u0, UWORD(0), w1, w0);
+
+            umul_ppmm(w2, w1, A1, B0);
+            add_sssaaaaaa(t3, t2, t1, t3, t2, t1, UWORD(0), w2, w1);
+
+            umul_ppmm(w2, w1, B1, A0);
+            add_sssaaaaaa(v3, v2, t1, v3, v2, t1, UWORD(0), w2, w1);
+        }
+
+        add_ssssaaaaaaaa(t3, t2, t1, t0, t3, t2, t1, t0,
+                         FLINT_SIGN_EXT(u2), u2, u1, u0);
+
+        add_ssaaaa(t3, t2, t3, t2, v3, v2);
+
+        s[3] = t3;
+        s[2] = t2;
+        s[1] = t1;
+        s[0] = t0;
+
+        fmpz_set_signed_ui_array(CR + j, s, 4);
+    }
+}
+
+#if 0
+void _do_signed_row_branchless(
+    fmpz * CR,
+    const mp_limb_t * AR,
+    const mp_limb_t * B,
+    slong br,
+    slong bc)
+{
+    slong j, k, l;
+    mp_limb_t s[4], t3, t2, t1, t0, w3, w2, w1, w0;
+    mp_limb_t A0, A1, B0, B1;
     mp_limb_t u3, u2, u1;
 
     for (j = 0, l = 0; j < bc; j++)
@@ -312,6 +373,7 @@ void _do_signed_row_branchless(
         fmpz_set_signed_ui_array(CR + j, s, 4);
     }
 }
+#endif
 
 static void _do_signed_row(
     fmpz * CR,
@@ -320,13 +382,15 @@ static void _do_signed_row(
     slong br,
     slong bc)
 {
+#if 0
     if (br < FMPZ_MAT_MUL_4_BRANCHLESS_CUTOFF)
         _do_signed_row_branchfull(CR, AR, B, br, bc);
     else
+#endif
         _do_signed_row_branchless(CR, AR, B, br, bc);
 }
 
-
+#if 0
 void _do_unsigned_row_branchfull(
     fmpz * CR,
     const mp_limb_t * AR,
@@ -375,6 +439,7 @@ void _do_unsigned_row_branchfull(
         fmpz_set_ui_array(CR + j, s, 4);
     }
 }
+#endif
 
 void _do_unsigned_row_branchless(
     fmpz * CR,
@@ -425,9 +490,11 @@ static void _do_unsigned_row(
     slong br,
     slong bc)
 {
+#if 0
     if (br < FMPZ_MAT_MUL_4_BRANCHLESS_CUTOFF)
         _do_unsigned_row_branchfull(CR, AR, B, br, bc);
     else
+#endif
         _do_unsigned_row_branchless(CR, AR, B, br, bc);
 }
 
@@ -601,6 +668,483 @@ use_one_thread:
     mainarg.Astoprow = (i + 1)*ar/(num_workers + 1);
     mainarg.Bstartcol = (i + 0)*bc/(num_workers + 1);
     mainarg.Bstopcol = (i + 1)*bc/(num_workers + 1);
+
+    for (i = 0; i < num_workers; i++)
+        thread_pool_wake(global_thread_pool, handles[i], 0, _red_worker, &args[i]);
+    _red_worker(&mainarg);
+    for (i = 0; i < num_workers; i++)
+        thread_pool_wait(global_thread_pool, handles[i]);
+
+    for (i = 0; i < num_workers; i++)
+        thread_pool_wake(global_thread_pool, handles[i], 0, _mul_worker, &args[i]);
+    _mul_worker(&mainarg);
+    for (i = 0; i < num_workers; i++)
+        thread_pool_wait(global_thread_pool, handles[i]);
+
+    flint_give_back_threads(handles, num_workers);
+    flint_free(args);
+
+    TMP_END;
+}
+
+#endif
+
+
+/**************************** complicated ***********************************/
+
+#if 1
+
+
+
+void fmpz_get_signed_uiui(mp_limb_t * hi, mp_limb_t * lo, const fmpz_t x)
+{
+    ulong r0, r1, s;
+
+    if (!COEFF_IS_MPZ(*x))
+    {
+        r0 = *x;
+        r1 = FLINT_SIGN_EXT(r0);
+    }
+    else
+    {
+        __mpz_struct * p = COEFF_TO_PTR(*x);
+        s = -(ulong)(p->_mp_size < 0);
+        r0 = p->_mp_d[0];
+        if (p->_mp_size == 2 || p->_mp_size == -2)
+            r1 = p->_mp_d[1];
+        else
+            r1 = 0;
+
+        sub_ddmmss(r1, r0, r1^s, r0^s, s, s);
+    }
+
+    *lo = r0;
+    *hi = r1;
+}
+
+void _signed_dot_add(
+    mp_limb_t * s,
+    const mp_limb_t * x,
+    const mp_limb_t * y,
+    slong len)
+{
+    slong i;
+    mp_limb_t t3, t2, t1, t0, w3, w2, w1, w0;
+    mp_limb_t v3, v2, u2, u1, u0;
+    mp_limb_t A0, A1, B0, B1;
+
+    t3 = s[3];
+    t2 = s[2];
+    t1 = s[1];
+    t0 = s[0];
+
+    u2 = u1 = u0 = 0;
+    v3 = v2 = 0;
+
+    for (i = 0; i < len; i++)
+    {
+        A0 = x[2*i + 0];
+        A1 = x[2*i + 1];
+        B0 = y[2*i + 0];
+        B1 = y[2*i + 1];
+
+        sub_ddmmss(t3, t2, t3, t2, 0, FLINT_SIGN_EXT(A1)&B0);
+        sub_ddmmss(t3, t2, t3, t2, 0, FLINT_SIGN_EXT(B1)&A0);
+
+        smul_ppmm(w3, w2, B1, A1);
+        add_ssaaaa(t3, t2, t3, t2, w3, w2);
+
+        umul_ppmm(w1, w0, B0, A0);
+        add_sssaaaaaa(u2, u1, u0, u2, u1, u0, UWORD(0), w1, w0);
+
+        umul_ppmm(w2, w1, A1, B0);
+        add_sssaaaaaa(t3, t2, t1, t3, t2, t1, UWORD(0), w2, w1);
+
+        umul_ppmm(w2, w1, B1, A0);
+        add_sssaaaaaa(v3, v2, t1, v3, v2, t1, UWORD(0), w2, w1);
+    }
+
+    add_ssssaaaaaaaa(t3, t2, t1, t0, t3, t2, t1, t0,
+                     UWORD(0), u2, u1, u0);
+
+    add_ssaaaa(t3, t2, t3, t2, v3, v2);
+
+    s[3] = t3;
+    s[2] = t2;
+    s[1] = t1;
+    s[0] = t0;
+}
+
+void _unsigned_dot_add(
+    mp_limb_t * s,
+    const mp_limb_t * x,
+    const mp_limb_t * y,
+    slong len)
+{
+    slong i;
+    mp_limb_t t3, t2, t1, t0, w3, w2, w1, w0;
+    mp_limb_t v3, v2, u2, u1, u0;
+    mp_limb_t A0, A1, B0, B1;
+
+    t3 = s[3];
+    t2 = s[2];
+    t1 = s[1];
+    t0 = s[0];
+
+    u2 = u1 = u0 = 0;
+    v3 = v2 = 0;
+
+    for (i = 0; i < len; i++)
+    {
+        A0 = x[2*i + 0];
+        A1 = x[2*i + 1];
+        B0 = y[2*i + 0];
+        B1 = y[2*i + 1];
+
+        umul_ppmm(w3, w2, B1, A1);
+        add_ssaaaa(t3, t2, t3, t2, w3, w2);
+
+        umul_ppmm(w1, w0, B0, A0);
+        add_sssaaaaaa(u2, u1, u0, u2, u1, u0, UWORD(0), w1, w0);
+
+        umul_ppmm(w2, w1, A1, B0);
+        add_sssaaaaaa(t3, t2, t1, t3, t2, t1, UWORD(0), w2, w1);
+
+        umul_ppmm(w2, w1, B1, A0);
+        add_sssaaaaaa(v3, v2, t1, v3, v2, t1, UWORD(0), w2, w1);
+    }
+
+    add_ssssaaaaaaaa(t3, t2, t1, t0, t3, t2, t1, t0,
+                     UWORD(0), u2, u1, u0);
+
+    add_ssaaaa(t3, t2, t3, t2, v3, v2);
+
+    s[3] = t3;
+    s[2] = t2;
+    s[1] = t1;
+    s[0] = t0;
+}
+
+typedef struct {
+    slong Astartrow;
+    slong Astoprow;
+    slong Bstartcol;
+    slong Bstopcol;
+    slong n;
+    slong k;
+    slong m;
+    slong n_blk_ct;
+    slong k_blk_ct;
+    slong k_blk_sz;
+    slong m_blk_sz;
+    fmpz ** Crows;
+    fmpz ** Arows;
+    fmpz ** Brows;
+    mp_limb_t * BL;
+    int sign;
+} _worker_arg;
+
+static void _red_worker(void * varg)
+{
+    _worker_arg * arg = (_worker_arg *) varg;
+    slong Bstartcol = arg->Bstartcol;
+    slong Bstopcol = arg->Bstopcol;
+    slong n = arg->n;
+    slong k_blk_sz = arg->k_blk_sz;
+    fmpz ** Brows = arg->Brows;
+    mp_limb_t * BL = arg->BL;
+    int sign = arg->sign;
+    slong i, iq, ir, j;
+    mp_limb_t * t;
+
+    iq = Bstartcol/k_blk_sz;
+    ir = Bstartcol%k_blk_sz;
+
+    for (i = Bstartcol; i < Bstopcol; i++)
+    {
+        t = &BL[2*(iq*n*k_blk_sz + 0*k_blk_sz + ir)];
+
+        if (sign)
+            for (j = 0; j < n; j++, t += 2*k_blk_sz)
+                fmpz_get_signed_uiui(t+1, t+0, &Brows[i][j]);
+        else
+            for (j = 0; j < n; j++, t += 2*k_blk_sz)
+                fmpz_get_uiui(t+1, t+0, &Brows[i][j]);
+
+        ir++;
+        if (ir >= k_blk_sz)
+        {
+            ir = 0;
+            iq++;
+        }
+    }
+}
+
+static void _mul_worker(void * varg)
+{
+    _worker_arg * arg = (_worker_arg *) varg;
+    slong Astartrow = arg->Astartrow;
+    slong Astoprow = arg->Astoprow;
+    slong n = arg->n;
+    slong k = arg->k;
+    slong m = arg->m;
+    slong m_blk_sz = arg->m_blk_sz;
+    slong k_blk_sz = arg->k_blk_sz;
+    fmpz ** Crows = arg->Crows;
+    fmpz ** Arows = arg->Arows;
+    mp_limb_t * BL = arg->BL;
+    int sign = arg->sign;
+    mp_limb_t * TA, * TC;
+    slong h, hh, i, ii, j, w;
+    TMP_INIT;
+
+    TMP_START;
+
+    if (k <= k_blk_sz)
+    {
+        mp_limb_t s[4];
+
+        TA = TMP_ARRAY_ALLOC(2*m_blk_sz*k, mp_limb_t);
+
+        for (h = Astartrow; h < Astoprow; h += m_blk_sz)
+        {
+            slong hstop = FLINT_MIN(m - h, m_blk_sz);
+
+            for (hh = 0; hh < hstop; hh++)
+            for (i = 0; i < k; i++)
+            {
+                fmpz_get_signed_uiui(&TA[2*(hh*k + i) + 1],
+                                     &TA[2*(hh*k + i) + 0],
+                                     &Arows[h + hh][i]);
+            }
+
+            for (j = 0; j < n; j++)
+            for (hh = 0; hh < hstop; hh++)
+            {
+                s[3] = s[2] = s[1] = s[0] = 0;
+                _signed_dot_add(s, &TA[2*hh*k],
+                                   &BL[2*(0*n + j*k_blk_sz)], k);
+
+                fmpz_set_signed_ui_array(&Crows[h + hh][j], s, 4);                
+            }
+        }
+
+        TMP_END;
+
+        return;
+    }
+
+    TA = TMP_ARRAY_ALLOC(2*m_blk_sz*k_blk_sz, mp_limb_t);
+    TC = TMP_ARRAY_ALLOC(4*n*m_blk_sz, mp_limb_t);
+
+    for (h = Astartrow; h < Astoprow; h += m_blk_sz)
+    {
+        slong hstop = FLINT_MIN(m - h, m_blk_sz);
+
+        /* TC is a compressed block for C[h:h+hhstop-1, all] */
+        for (j = 0; j < n; j++)
+        for (hh = 0; hh < hstop; hh++)
+        {
+            for (w = 0; w < 4; w++)
+                TC[4*(hh + m_blk_sz*j) + w] = 0;
+        }
+
+        if (sign)
+        {
+            for (i = 0; i < k; i += k_blk_sz)
+            {
+                slong istop = FLINT_MIN(k_blk_sz, k - i);
+
+                /* get a compressed copy of A[h:h+hhstop, i:i+iistop] into TA */
+                for (hh = 0; hh < hstop; hh++)
+                for (ii = 0; ii < istop; ii++)
+                {
+                    fmpz_get_signed_uiui(&TA[2*(hh*k_blk_sz + ii) + 1],
+                                         &TA[2*(hh*k_blk_sz + ii) + 0],
+                                         &Arows[h + hh][i + ii]);
+                }
+
+                for (j = 0; j < n; j++)
+                for (hh = 0; hh < hstop; hh++)
+                {
+                    _signed_dot_add(&TC[4*(hh + m_blk_sz*j)],
+                                    &TA[2*hh*k_blk_sz],
+                                    &BL[2*(i*n + j*k_blk_sz)], istop);
+                }
+            }
+
+            /* copy out answer for C[h:h+hhstop-1, all] */
+            for (j = 0; j < n; j++)
+            for (hh = 0; hh < hstop; hh++)
+            {
+                fmpz_set_signed_ui_array(&Crows[h + hh][j],
+                                         &TC[4*(hh + m_blk_sz*j)], 4);
+            }
+        }
+        else
+        {
+            for (i = 0; i < k; i += k_blk_sz)
+            {
+                slong istop = FLINT_MIN(k_blk_sz, k - i);
+
+                /* get a compressed copy of A[h:h+hhstop, i:i+iistop] into TA */
+                for (hh = 0; hh < hstop; hh++)
+                for (ii = 0; ii < istop; ii++)
+                {
+                    fmpz_get_uiui(&TA[2*(hh*k_blk_sz + ii) + 1],
+                                  &TA[2*(hh*k_blk_sz + ii) + 0],
+                                  &Arows[h + hh][i + ii]);
+                }
+
+                for (j = 0; j < n; j++)
+                for (hh = 0; hh < hstop; hh++)
+                {
+                    _unsigned_dot_add(&TC[4*(hh + m_blk_sz*j)],
+                                      &TA[2*hh*k_blk_sz],
+                                      &BL[2*(i*n + j*k_blk_sz)], istop);
+                }
+            }
+
+            /* copy out answer for C[h:h+hhstop-1, all] */
+            for (j = 0; j < n; j++)
+            for (hh = 0; hh < hstop; hh++)
+            {
+                fmpz_set_ui_array(&Crows[h + hh][j],
+                                  &TC[4*(hh + m_blk_sz*j)], 4);
+            }
+        }
+    }
+
+    TMP_END;
+}
+
+
+/*
+    sign = 1:   max|A|, max|B| < 2^(2*FLINT_BITS - 1)
+                max|C| < 2^(4*FLINT_BITS - 1)
+
+    sign = 0:   all entries are >= 0 and
+                max|A|, max|B| < 2^(2*FLINT_BITS)
+                max|C| < 2^(4*FLINT_BITS)
+*/
+FLINT_DLL void fmpz_mat_mul_4(
+    fmpz_mat_t C,
+    const fmpz_mat_t A,
+    const fmpz_mat_t B,
+    int sign)
+{
+    slong i, n, k, m;
+    _worker_arg mainarg;
+    thread_pool_handle * handles;
+    slong num_workers;
+    _worker_arg * args;
+    slong limit;
+    slong n_blk_ct;
+    slong k_blk_ct;
+    slong k_blk_sz;
+    slong m_blk_sz;
+    TMP_INIT;
+
+    TMP_START;
+
+    n = fmpz_mat_nrows(A);
+    k = fmpz_mat_nrows(B);
+    m = fmpz_mat_ncols(B);
+
+    if (k <= 256)
+    {
+        k_blk_sz = k;
+    }
+    else
+    {
+        slong l;
+        double best_ratio = 0;
+
+        k_blk_sz = 256-4*16;
+
+        for (l = k_blk_sz; l < 256+4*16; l += 16)
+        {
+            double ratio = (double)(((k+l-1)%(l) + 1))/(double)(l);
+            if (ratio > best_ratio)
+            {
+                k_blk_sz = l;
+                best_ratio = ratio;
+            }
+        }
+    }
+
+    m_blk_sz = 8;
+
+    n_blk_ct = (n + k_blk_sz - 1)/k_blk_sz;
+    k_blk_ct = (k + k_blk_sz - 1)/k_blk_sz;
+
+    mainarg.n_blk_ct = n_blk_ct;
+    mainarg.k_blk_ct = k_blk_ct;
+    mainarg.m_blk_sz = m_blk_sz;
+    mainarg.k_blk_sz = k_blk_sz;
+    mainarg.Astartrow = 0;
+    mainarg.Astoprow = n;
+    mainarg.Bstartcol = 0;
+    mainarg.Bstopcol = m;
+    mainarg.k = k;
+    mainarg.m = m;
+    mainarg.n = n;
+    mainarg.Crows = C->rows;
+    mainarg.Arows = A->rows;
+    mainarg.Brows = B->rows;
+    mainarg.BL = TMP_ARRAY_ALLOC(2*n*n_blk_ct*k_blk_sz, mp_limb_t);
+    mainarg.sign = sign;
+
+    /* limit on number of threads */
+    limit = FLINT_MAX(k, m);
+    limit = FLINT_MIN(limit, n);
+    limit = limit < 16 ? 0 : (limit - 16)/8;
+
+    if (limit < 2)
+    {
+use_one_thread:
+
+        _red_worker(&mainarg);
+        _mul_worker(&mainarg);
+
+        TMP_END;
+        return;
+    }
+
+    num_workers = flint_request_threads(&handles, limit);
+    if (num_workers < 1)
+    {
+        flint_give_back_threads(handles, num_workers);
+        goto use_one_thread;
+    }
+
+    args = FLINT_ARRAY_ALLOC(num_workers, _worker_arg);
+
+    for (i = 0; i < num_workers; i++)
+    {
+        args[i].n_blk_ct = mainarg.n_blk_ct;
+        args[i].k_blk_ct = mainarg.k_blk_ct;
+        args[i].m_blk_sz = mainarg.m_blk_sz;
+        args[i].k_blk_sz = mainarg.k_blk_sz;
+        args[i].Astartrow = (i + 0)*n/(num_workers + 1);
+        args[i].Astoprow = (i + 1)*n/(num_workers + 1);
+        args[i].Bstartcol = (i + 0)*m/(num_workers + 1);
+        args[i].Bstopcol = (i + 1)*m/(num_workers + 1);
+        args[i].k = mainarg.k;
+        args[i].m = mainarg.m;
+        args[i].n = mainarg.n;
+        args[i].Crows = mainarg.Crows;
+        args[i].Arows = mainarg.Arows;
+        args[i].Brows = mainarg.Brows;
+        args[i].BL = mainarg.BL;
+        args[i].sign = mainarg.sign;
+    }
+
+    i = num_workers;
+    mainarg.Astartrow = (i + 0)*n/(num_workers + 1);
+    mainarg.Astoprow = (i + 1)*n/(num_workers + 1);
+    mainarg.Bstartcol = (i + 0)*m/(num_workers + 1);
+    mainarg.Bstopcol = (i + 1)*m/(num_workers + 1);
 
     for (i = 0; i < num_workers; i++)
         thread_pool_wake(global_thread_pool, handles[i], 0, _red_worker, &args[i]);
