@@ -21,7 +21,7 @@
 int main(void)
 {
     fmpz_mat_t A, B, C, D;
-    slong i;
+    slong i, max_threads = 5;
     FLINT_TEST_INIT(state);
 
     flint_printf("mul_multi_mod....");
@@ -30,6 +30,8 @@ int main(void)
     for (i = 0; i < 100 * flint_test_multiplier(); i++)
     {
         slong m, n, k;
+
+flint_printf("1 i = %wd/1000\n", i);
 
         m = n_randint(state, 50);
         n = n_randint(state, 50);
@@ -52,8 +54,10 @@ int main(void)
         if (!fmpz_mat_equal(C, D))
         {
             flint_printf("FAIL: results not equal\n");
-            abort();
+            flint_abort();
         }
+
+        flint_set_num_threads(1 + n_randint(state, max_threads));
 
         fmpz_mat_clear(A);
         fmpz_mat_clear(B);
@@ -64,6 +68,8 @@ int main(void)
     for (i = 0; i < 100 * flint_test_multiplier(); i++)
     {
         slong m, n, k;
+
+flint_printf("2 i = %wd/1000\n", i);
 
         m = n_randint(state, 3);
         n = n_randint(state, 3);
@@ -86,8 +92,10 @@ int main(void)
         if (!fmpz_mat_equal(C, D))
         {
             flint_printf("FAIL: results not equal\n");
-            abort();
+            flint_abort();
         }
+
+        flint_set_num_threads(1 + n_randint(state, max_threads));
 
         fmpz_mat_clear(A);
         fmpz_mat_clear(B);

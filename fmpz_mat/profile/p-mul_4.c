@@ -23,9 +23,9 @@ int main(void)
     timeit_t timer;
     FLINT_TEST_INIT(state);
 
-    flint_set_num_threads(1);
+    flint_set_num_threads(8);
 
-    for (dim = 16; dim <= 1000; dim += 5 + dim/8)
+    for (dim = 16; dim <= 2000; dim += 5 + dim/8)
     {
         fmpz_mat_t A, B, C, D, E;
 
@@ -44,7 +44,7 @@ int main(void)
         mint = 10000000000;
         maxt = 0;
 
-        for (Abits = 50; Abits < 2*FLINT_BITS; Abits += 15)
+        for (Abits = 80; Abits < 2*FLINT_BITS; Abits += 15)
         for (Bbits = Abits; Bbits < 2*FLINT_BITS; Bbits += 15)
         {
             Cbits = Abits + Bbits + FLINT_BIT_COUNT(dim) + 1;
@@ -57,7 +57,7 @@ int main(void)
 
             timeit_start(timer);
             for (i = reps; i > 0; i--)
-                fmpz_mat_mul_multi_mod(E, A, B);
+                fmpz_mat_mul_blas(E, A, B);
             timeit_stop(timer);
 /*
             flint_printf("dim %3wd, Abits %3wu, Bbits %3wu: %5wd\n",

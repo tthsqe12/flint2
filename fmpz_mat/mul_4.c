@@ -1051,7 +1051,7 @@ FLINT_DLL void fmpz_mat_mul_4(
     k = fmpz_mat_nrows(B);
     m = fmpz_mat_ncols(B);
 
-    if (k <= 256)
+    if (k <= 512)
     {
         k_blk_sz = k;
     }
@@ -1060,9 +1060,9 @@ FLINT_DLL void fmpz_mat_mul_4(
         slong l;
         double best_ratio = 0;
 
-        k_blk_sz = 256-4*16;
+        k_blk_sz = 512-4*16;
 
-        for (l = k_blk_sz; l < 256+4*16; l += 16)
+        for (l = k_blk_sz; l < 512+4*16; l += 16)
         {
             double ratio = (double)(((k+l-1)%(l) + 1))/(double)(l);
             if (ratio > best_ratio)
