@@ -183,6 +183,7 @@ fmpz_mat_mul(fmpz_mat_t C, const fmpz_mat_t A, const fmpz_mat_t B)
 
     if (bits <= FLINT_BITS - 2)
     {
+        /* inputs are small and output is small */
         if (ar < 9 || ar + br < 20)
             _fmpz_mat_mul_1(C, A, B);
         else if (dim < 600)
@@ -192,24 +193,19 @@ fmpz_mat_mul(fmpz_mat_t C, const fmpz_mat_t A, const fmpz_mat_t B)
     }
     else if (abits <= FLINT_BITS - 2 && bbits <= FLINT_BITS - 2)
     {
-        if (ar < 9 || ar + br < 20)
-        {
-            if (bits <= 2 * FLINT_BITS - 1)
-                _fmpz_mat_mul_2a(C, A, B);
-            else
-                _fmpz_mat_mul_2b(C, A, B);
-        }
+        /* inputs are small and output fits in at most three words */
+        if ((ar < 9 || ar + br < 20) && bits <= 2 * FLINT_BITS - 1)
+            _fmpz_mat_mul_2a(C, A, B);
+        else if ((ar < 9 || ar + br < 20))
+            _fmpz_mat_mul_2b(C, A, B);
         else if (dim < 400 + bits)  /* tuning param */
-        {
             _fmpz_mat_mul_small(C, A, B, bits - 1);
-        }
         else
-        {
             _fmpz_mat_mul_multi_mod(C, A, B, bits);
-        }
     }
     else if (abits + sign <= 2 * FLINT_BITS && bbits + sign <= 2 * FLINT_BITS)
     {
+        /* inputs are double words and output fits into five words */
         if (dim < 100 + bits) /* tuning param */
             _fmpz_mat_mul_22(C, A, B, sign, bits - 1);
         else

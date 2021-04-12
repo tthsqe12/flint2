@@ -110,9 +110,9 @@ int main(void)
     timeit_t timer;
     FLINT_TEST_INIT(state);
 
-    flint_set_num_threads(1);
+    flint_set_num_threads(8);
 
-    for (t = 0; t < 0*tmul; t++)
+    for (t = 0; t < tmul; t++)
     {
         if (t % 10 == 0)
             fprintf(stderr, "#randtest %d/%d\n", (int)t, (int)tmul);
@@ -140,16 +140,13 @@ int main(void)
         fmpz_mat_clear(C);
     }
 
-    for (t = 0; t < 1+0*tmul; t++)
+    for (t = 0; t < tmul; t++)
     {
         if (t % 10 == 0)
             fprintf(stderr, "#randtest square %d/%d\n", (int)t, (int)tmul);
 
         m = k = n = 3 + n_randint(state, 1500);
         Abits = Bbits = 5 + n_randint(state, 1 + 100000/(10 + m));
-
-m = k = n = 773;
-Abits = Bbits = 7;
 
         fmpz_mat_init(A, m, k);
         fmpz_mat_init(B, k, n);
@@ -168,7 +165,7 @@ Abits = Bbits = 7;
         fmpz_mat_clear(C);
     }
 
-    for (t = 0; t < 0*tmul; t++)
+    for (t = 0; t < tmul; t++)
     {
         int atri, btri;
 
