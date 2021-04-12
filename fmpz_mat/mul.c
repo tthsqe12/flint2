@@ -102,12 +102,19 @@ void _fmpz_mat_mul_2b(fmpz_mat_t C, const fmpz_mat_t A, const fmpz_mat_t B)
     }
 }
 
+void _fmpz_mat_mul_small(
+    fmpz_mat_t C,
+    const fmpz_mat_t A,
+    const fmpz_mat_t B,
+    flint_bitcnt_t Cbits);
+
 void
 fmpz_mat_mul(fmpz_mat_t C, const fmpz_mat_t A, const fmpz_mat_t B)
 {
     slong ar, br, bc;
     slong abits, bbits, bits;
     slong i, j, dim;
+    int sign;
 
     ar = fmpz_mat_nrows(A);
     br = fmpz_mat_nrows(B);
@@ -150,8 +157,19 @@ fmpz_mat_mul(fmpz_mat_t C, const fmpz_mat_t A, const fmpz_mat_t B)
 
     abits = fmpz_mat_max_bits(A);
     bbits = fmpz_mat_max_bits(B);
-    abits = FLINT_ABS(abits);
-    bbits = FLINT_ABS(bbits);
+
+    sign = 0;
+    if (abits < 0)
+    {
+        sign = 1;
+        abits = -abits;
+    }
+
+    if (bbits < 0)
+    {
+        sign = 1;
+        bbits = -bbits;
+    }
 
     if (abits == 0 || bbits == 0)
     {
@@ -165,28 +183,37 @@ fmpz_mat_mul(fmpz_mat_t C, const fmpz_mat_t A, const fmpz_mat_t B)
 
     if (bits <= FLINT_BITS - 2)
     {
-        if ((dim > 160 && abits + bbits <= 20) || dim > 600) /* tuning param */
-            _fmpz_mat_mul_multi_mod(C, A, B, bits);
-        else if (dim > 160) /* tuning param */
-            fmpz_mat_mul_strassen(C, A, B);
-        else
+        if (ar < 9 || ar + br < 20)
             _fmpz_mat_mul_1(C, A, B);
+        else if (dim < 600)
+            _fmpz_mat_mul_small(C, A, B, bits - 1);
+        else
+            _fmpz_mat_mul_multi_mod(C, A, B, bits);
     }
     else if (abits <= FLINT_BITS - 2 && bbits <= FLINT_BITS - 2)
     {
-        if (dim > 400) /* tuning param */
-            _fmpz_mat_mul_multi_mod(C, A, B, bits);
-        else if (bits <= 2 * FLINT_BITS - 1)
-            _fmpz_mat_mul_2a(C, A, B);
+        if (ar < 9 || ar + br < 20)
+        {
+            if (bits <= 2 * FLINT_BITS - 1)
+                _fmpz_mat_mul_2a(C, A, B);
+            else
+                _fmpz_mat_mul_2b(C, A, B);
+        }
+        else if (dim < 400 + bits)  /* tuning param */
+        {
+            _fmpz_mat_mul_small(C, A, B, bits - 1);
+        }
         else
-            _fmpz_mat_mul_2b(C, A, B);
+        {
+            _fmpz_mat_mul_multi_mod(C, A, B, bits);
+        }
     }
-    else if (abits < 2 * FLINT_BITS && bbits < 2 * FLINT_BITS)
+    else if (abits + sign <= 2 * FLINT_BITS && bbits + sign <= 2 * FLINT_BITS)
     {
-        if (dim > 40) /* tuning param */
-            _fmpz_mat_mul_multi_mod(C, A, B, bits);
+        if (dim < 100 + bits) /* tuning param */
+            _fmpz_mat_mul_22(C, A, B, sign, bits - 1);
         else
-            _fmpz_mat_mul_4(C, A, B);
+            _fmpz_mat_mul_multi_mod(C, A, B, bits);
     }
     else
     {
